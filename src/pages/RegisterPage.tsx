@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ApiError } from '@/lib/api'
+import { useSound } from '@/lib/use-sound'
 
 export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
+  const playSound = useSound()
   const [form, setForm] = React.useState({
     inviteCode: '',
     username: '',
@@ -36,8 +38,10 @@ export function RegisterPage() {
         username: form.username.trim(),
         email: form.email.trim()
       })
+      playSound('success')
       navigate('/', { replace: true })
     } catch (err) {
+      playSound('error')
       if (err instanceof ApiError) setError(err.message)
       else setError('Falha ao conectar. Verifique se a API está online.')
     } finally {

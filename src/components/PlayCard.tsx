@@ -2,6 +2,7 @@ import { FileText, Gamepad2, Loader2, Server, TriangleAlert, Wifi } from 'lucide
 import type { LaunchStatus } from '../../electron/preload/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useSound } from '@/lib/use-sound'
 
 interface Props {
   status: LaunchStatus
@@ -11,9 +12,15 @@ interface Props {
 }
 
 export function PlayCard({ status, readyToPlay, onLaunch, serverTarget }: Props) {
+  const playSound = useSound()
   const isPreparing = status.stage === 'preparing'
   const isRunning = status.stage === 'running'
   const isError = status.stage === 'error'
+
+  const handleLaunch = () => {
+    playSound('launch')
+    onLaunch()
+  }
 
   const target = serverTarget ?? status.serverTarget ?? '187.77.205.239:25565'
 
@@ -65,7 +72,7 @@ export function PlayCard({ status, readyToPlay, onLaunch, serverTarget }: Props)
           size="lg"
           className="w-full"
           disabled={!readyToPlay || isPreparing || isRunning}
-          onClick={onLaunch}
+          onClick={handleLaunch}
         >
           {isPreparing ? (
             <>

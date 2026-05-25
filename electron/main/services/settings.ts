@@ -7,11 +7,19 @@ const FILE = 'settings.json'
 export interface LauncherSettings {
   maxRamMb: number
   minRamMb: number
+  notifyOnJoinLeave: boolean
+  soundEnabled: boolean
+  soundVolume: number
+  lastSeenModpackTag: string | null
 }
 
 export const DEFAULTS: LauncherSettings = {
   maxRamMb: 4096,
-  minRamMb: 1024
+  minRamMb: 1024,
+  notifyOnJoinLeave: true,
+  soundEnabled: true,
+  soundVolume: 0.5,
+  lastSeenModpackTag: null
 }
 
 export const RAM_LIMITS = {
@@ -32,10 +40,20 @@ function clampRam(value: number): number {
 
 function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
   const maxRamMb = clampRam(raw.maxRamMb ?? DEFAULTS.maxRamMb)
-  // Min is capped at max so we never end up with min > max
   const rawMin = raw.minRamMb ?? DEFAULTS.minRamMb
   const minRamMb = Math.min(maxRamMb, Math.max(512, Math.round(rawMin)))
-  return { maxRamMb, minRamMb }
+  const notifyOnJoinLeave = raw.notifyOnJoinLeave ?? DEFAULTS.notifyOnJoinLeave
+  const soundEnabled = raw.soundEnabled ?? DEFAULTS.soundEnabled
+  const soundVolume = Math.max(0, Math.min(1, raw.soundVolume ?? DEFAULTS.soundVolume))
+  const lastSeenModpackTag = raw.lastSeenModpackTag ?? DEFAULTS.lastSeenModpackTag
+  return {
+    maxRamMb,
+    minRamMb,
+    notifyOnJoinLeave,
+    soundEnabled,
+    soundVolume,
+    lastSeenModpackTag
+  }
 }
 
 export async function loadSettings(): Promise<LauncherSettings> {

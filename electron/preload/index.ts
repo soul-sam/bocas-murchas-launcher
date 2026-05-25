@@ -62,6 +62,20 @@ const api: BocasAPI = {
       ipcRenderer.on('window:state', listener)
       return () => ipcRenderer.removeListener('window:state', listener)
     }
+  },
+  serverStatus: {
+    get: () => ipcRenderer.invoke('server-status:get'),
+    refresh: () => ipcRenderer.invoke('server-status:refresh'),
+    onStatus: (cb) => {
+      const listener = (_e: Electron.IpcRendererEvent, status: Parameters<typeof cb>[0]) =>
+        cb(status)
+      ipcRenderer.on('server-status:status', listener)
+      return () => ipcRenderer.removeListener('server-status:status', listener)
+    }
+  },
+  modpack: {
+    changelog: () => ipcRenderer.invoke('modpack:changelog'),
+    installedTag: () => ipcRenderer.invoke('modpack:installed-tag')
   }
 }
 

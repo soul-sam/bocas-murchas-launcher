@@ -10,6 +10,8 @@ import { MicrosoftDeviceCodeModal } from '@/components/MicrosoftDeviceCodeModal'
 import { InstallStatusCard } from '@/components/InstallStatusCard'
 import { PlayCard } from '@/components/PlayCard'
 import { UpdateBanner } from '@/components/UpdateBanner'
+import { ServerStatusCard } from '@/components/ServerStatusCard'
+import { ChangelogModal } from '@/components/ChangelogModal'
 import { SettingsModal } from '@/components/SettingsModal'
 
 export function HomePage() {
@@ -53,6 +55,7 @@ export function HomePage() {
 
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5">
         <UpdateBanner />
+        <ServerStatusCard />
         <MicrosoftAccountCard
           profile={mc.profile}
           onConnect={mc.connect}
@@ -75,6 +78,7 @@ export function HomePage() {
       </main>
 
       <SettingsModal />
+      <ChangelogModal />
     </div>
   )
 }

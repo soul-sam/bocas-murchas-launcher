@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ApiError } from '@/lib/api'
+import { useSound } from '@/lib/use-sound'
 
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const playSound = useSound()
   const [identifier, setIdentifier] = React.useState('')
   const [password, setPassword] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
@@ -21,8 +23,10 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login(identifier.trim(), password)
+      playSound('success')
       navigate('/', { replace: true })
     } catch (err) {
+      playSound('error')
       if (err instanceof ApiError) setError(err.message)
       else setError('Falha ao conectar. Verifique se a API está online.')
     } finally {

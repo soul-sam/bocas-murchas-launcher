@@ -17,10 +17,18 @@ interface GithubAsset {
 interface GithubRelease {
   tag_name: string
   name: string | null
+  body: string | null
   prerelease: boolean
   draft: boolean
   published_at: string
   assets: GithubAsset[]
+}
+
+export interface ModpackChangelog {
+  tag: string
+  publishedAt: string
+  name?: string
+  body?: string
 }
 
 export interface ModpackManifest {
@@ -225,4 +233,19 @@ export async function syncModpack(onProgress: ModpackProgressFn): Promise<Modpac
 export async function getInstalledModpackVersion(): Promise<string | null> {
   const state = await readState()
   return state?.tag ?? null
+}
+
+export async function getLatestModpackChangelog(): Promise<ModpackChangelog | null> {
+  try {
+    const release = await fetchLatestRelease()
+    if (!release || release.draft) return null
+    return {
+      tag: release.tag_name,
+      publishedAt: release.published_at,
+      name: release.name ?? undefined,
+      body: release.body ?? undefined
+    }
+  } catch {
+    return null
+  }
 }

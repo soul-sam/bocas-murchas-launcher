@@ -91,6 +91,38 @@ export interface UpdaterStatus {
 export interface LauncherSettings {
   maxRamMb: number
   minRamMb: number
+  notifyOnJoinLeave: boolean
+  soundEnabled: boolean
+  soundVolume: number
+  lastSeenModpackTag: string | null
+}
+
+export interface ModpackChangelog {
+  tag: string
+  publishedAt: string
+  name?: string
+  body?: string
+}
+
+export interface PlayerSample {
+  name: string
+  id: string
+}
+
+export interface ServerStatus {
+  online: boolean
+  host: string
+  port: number
+  latencyMs?: number
+  versionName?: string
+  protocol?: number
+  motd?: string
+  playersOnline?: number
+  playersMax?: number
+  sample?: PlayerSample[]
+  favicon?: string
+  error?: string
+  fetchedAt: string
 }
 
 export interface RamLimits {
@@ -146,6 +178,15 @@ export interface BocasAPI {
     close: () => Promise<void>
     isMaximized: () => Promise<boolean>
     onStateChanged: (cb: (state: { maximized: boolean }) => void) => () => void
+  }
+  serverStatus: {
+    get: () => Promise<ServerStatus>
+    refresh: () => Promise<ServerStatus>
+    onStatus: (cb: (status: ServerStatus) => void) => () => void
+  }
+  modpack: {
+    changelog: () => Promise<ModpackChangelog | null>
+    installedTag: () => Promise<string | null>
   }
 }
 

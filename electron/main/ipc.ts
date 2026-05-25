@@ -2,9 +2,11 @@ import { BrowserWindow, ipcMain, shell } from 'electron'
 import { saveToken, loadToken, clearToken } from './secure-store.js'
 import { cancelMcAuth, getMcProfile, logoutMc, startMcAuth } from './services/mc-auth-flow.js'
 import { startInstall, getInstallStatus } from './services/install-flow.js'
+import { getLatestModpackChangelog, getInstalledModpackVersion } from './services/modpack.js'
 import { launchGame, getLaunchStatus } from './services/launcher.js'
 import { getUpdaterStatus, quitAndInstall } from './services/updater.js'
 import { loadSettings, updateSettings, type LauncherSettings } from './services/settings.js'
+import { getServerStatus, refreshServerStatusNow } from './services/server-status.js'
 
 function serializeError(err: unknown): { message: string; code?: string } {
   if (err instanceof Error) {
@@ -91,4 +93,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('window:is-maximized', (e) => {
     return BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false
   })
+
+  ipcMain.handle('server-status:get', async () => getServerStatus())
+
+  ipcMain.handle('server-status:refresh', async () => refreshServerStatusNow())
+
+  ipcMain.handle('modpack:changelog', async () => getLatestModpackChangelog())
+
+  ipcMain.handle('modpack:installed-tag', async () => getInstalledModpackVersion())
 }

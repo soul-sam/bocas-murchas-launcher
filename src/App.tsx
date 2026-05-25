@@ -5,6 +5,7 @@ import { InstallProvider } from '@/lib/install-context'
 import { LaunchProvider } from '@/lib/launch-context'
 import { UpdaterProvider } from '@/lib/updater-context'
 import { SettingsProvider } from '@/lib/settings-context'
+import { ServerStatusProvider } from '@/lib/server-status-context'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { HomePage } from '@/pages/HomePage'
@@ -42,6 +43,7 @@ export function App() {
           <LaunchProvider>
             <UpdaterProvider>
               <SettingsProvider>
+               <ServerStatusProvider>
                 <HashRouter>
                   <div className="flex h-screen flex-col overflow-hidden bg-background">
                     <TitleBar />
@@ -76,6 +78,7 @@ export function App() {
                     </main>
                   </div>
                 </HashRouter>
+               </ServerStatusProvider>
               </SettingsProvider>
             </UpdaterProvider>
           </LaunchProvider>

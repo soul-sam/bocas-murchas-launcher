@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { registerIpcHandlers } from './ipc.js'
 import { initUpdater } from './services/updater.js'
+import { startServerStatusPolling } from './services/server-status.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -51,6 +52,7 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   createWindow()
   initUpdater()
+  startServerStatusPolling()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
