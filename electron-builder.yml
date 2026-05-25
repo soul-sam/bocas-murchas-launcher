@@ -23,8 +23,9 @@ win:
     - target: nsis
       arch:
         - x64
-  icon: build/icon.png
-  publisherName: Bocas Murchas
+  icon: build/icon.ico
+  signtoolOptions:
+    publisherName: Bocas Murchas
 
 nsis:
   oneClick: false
@@ -34,8 +35,8 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Bocas Murchas
-  installerIcon: build/icon.png
-  uninstallerIcon: build/icon.png
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
   uninstallDisplayName: Bocas Murchas Launcher
   artifactName: ${productName}-Setup-${version}.${ext}
   deleteAppDataOnUninstall: false

@@ -12,7 +12,8 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "package": "electron-vite build && electron-builder --win --x64"
+    "package": "electron-vite build && electron-builder --win --x64",
+    "release": "electron-vite build && electron-builder --win --x64 --publish always"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.0",
