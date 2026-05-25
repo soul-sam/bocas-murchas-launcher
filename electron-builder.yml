@@ -1,7 +1,7 @@
 appId: gg.bocasmurchas.launcher
 productName: Bocas Murchas Launcher
 copyright: Copyright © 2026 Bocas Murchas
-artifactName: ${productName}-Setup-${version}.${ext}
+artifactName: Bocas-Murchas-Launcher-Setup-${version}.${ext}
 
 directories:
   output: release
@@ -38,7 +38,7 @@ nsis:
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   uninstallDisplayName: Bocas Murchas Launcher
-  artifactName: ${productName}-Setup-${version}.${ext}
+  artifactName: Bocas-Murchas-Launcher-Setup-${version}.${ext}
   deleteAppDataOnUninstall: false
 
 publish:
