@@ -41,7 +41,7 @@ export function MicrosoftDeviceCodeModal() {
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/bocas-murchas-transp.png"
+              src="bocas-murchas-transp.png"
               alt=""
               aria-hidden
               className="h-9 w-9 drop-shadow-[0_0_8px_rgba(106,255,0,0.5)]"

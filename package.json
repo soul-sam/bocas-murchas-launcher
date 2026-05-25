@@ -1,6 +1,6 @@
 {
   "name": "bocas-murchas-launcher",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Launcher do grupo Bocas Murchas — Minecraft + futuras features",
   "main": "out/main/index.js",

@@ -28,7 +28,7 @@ export function TitleBar() {
 
       <div className="flex items-center gap-2">
         <img
-          src="/bocas-murchas-transp.png"
+          src="bocas-murchas-transp.png"
           alt=""
           aria-hidden
           className="h-5 w-5 drop-shadow-[0_0_6px_rgba(106,255,0,0.5)]"

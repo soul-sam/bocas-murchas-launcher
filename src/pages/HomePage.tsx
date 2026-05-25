@@ -26,7 +26,7 @@ export function HomePage() {
       <header className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
-            src="/bocas-murchas-transp.png"
+            src="bocas-murchas-transp.png"
             alt=""
             aria-hidden
             className="h-10 w-10 drop-shadow-[0_0_10px_rgba(106,255,0,0.5)]"
