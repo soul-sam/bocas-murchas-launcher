@@ -81,3 +81,44 @@ export const auth = {
     return res.user
   }
 }
+
+export interface InviteSummary {
+  id: string
+  code: string
+  maxUses: number
+  uses: number
+  isActive: boolean
+  expiresAt: string | null
+  createdAt: string
+  createdBy?: { displayName: string }
+}
+
+export const admin = {
+  async createInvite(
+    token: string,
+    options: { maxUses?: number; expiresInDays?: number } = {}
+  ): Promise<{ code: string; maxUses: number; expiresAt: string | null }> {
+    const res = await request<{
+      invite: { code: string; maxUses: number; expiresAt: string | null }
+    }>('/auth/invite', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({
+        maxUses: options.maxUses ?? 1,
+        ...(options.expiresInDays !== undefined
+          ? { expiresInDays: options.expiresInDays }
+          : {})
+      })
+    })
+    return res.invite
+  },
+
+  async listInvites(token: string): Promise<InviteSummary[]> {
+    const res = await request<{ invites: InviteSummary[] }>('/auth/invites', { token })
+    return res.invites
+  },
+
+  async deactivateInvite(token: string, id: string): Promise<void> {
+    await request('/auth/invite/' + id, { method: 'DELETE', token })
+  }
+}

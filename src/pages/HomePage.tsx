@@ -1,4 +1,5 @@
-import { LogOut, Settings as SettingsIcon } from 'lucide-react'
+import * as React from 'react'
+import { LogOut, Settings as SettingsIcon, Shield } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useMcAuth } from '@/lib/mc-auth-context'
 import { useInstall } from '@/lib/install-context'
@@ -12,6 +13,7 @@ import { PlayCard } from '@/components/PlayCard'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { ServerStatusCard } from '@/components/ServerStatusCard'
 import { ChangelogModal } from '@/components/ChangelogModal'
+import { AdminPanel } from '@/components/AdminPanel'
 import { SettingsModal } from '@/components/SettingsModal'
 
 export function HomePage() {
@@ -20,8 +22,10 @@ export function HomePage() {
   const install = useInstall()
   const launch = useLaunch()
   const settings = useSettings()
+  const [adminOpen, setAdminOpen] = React.useState(false)
 
   const readyToPlay = !!mc.profile && install.status.stage === 'done'
+  const isAdmin = user?.role === 'admin'
 
   return (
     <div className="flex flex-1 flex-col p-8">
@@ -42,6 +46,12 @@ export function HomePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button variant="ghost" size="sm" onClick={() => setAdminOpen(true)}>
+              <Shield className="mr-2 h-4 w-4" />
+              Admin
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={settings.open}>
             <SettingsIcon className="mr-2 h-4 w-4" />
             Config
@@ -79,6 +89,7 @@ export function HomePage() {
 
       <SettingsModal />
       <ChangelogModal />
+      {isAdmin && <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />}
     </div>
   )
 }
