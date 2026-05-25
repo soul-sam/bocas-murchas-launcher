@@ -200,7 +200,7 @@ export async function syncModpack(onProgress: ModpackProgressFn): Promise<Modpac
   // Copy mods/ and config/ to the .minecraft root
   onProgress({ phase: 'apply', current: 0, total: 1, detail: 'Aplicando modpack' })
   const writtenFiles: string[] = []
-  for (const subdir of ['mods', 'config']) {
+  for (const subdir of ['mods', 'config', 'shaderpacks']) {
     const src = path.join(extractDir, subdir)
     if (!(await fs.access(src).then(() => true).catch(() => false))) continue
     const dst = path.join(mcRoot, subdir)
