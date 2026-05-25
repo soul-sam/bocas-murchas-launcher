@@ -1,0 +1,47 @@
+appId: gg.bocasmurchas.launcher
+productName: Bocas Murchas Launcher
+copyright: Copyright © 2026 Bocas Murchas
+artifactName: ${productName}-Setup-${version}.${ext}
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+  - "!**/*.{md,map,d.ts}"
+  - "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,LICENSE,license}"
+  - "!**/node_modules/*/{test,tests,docs,examples}/**"
+
+asar: true
+asarUnpack:
+  - "**/node_modules/extract-zip/**"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.png
+  publisherName: Bocas Murchas
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Bocas Murchas
+  installerIcon: build/icon.png
+  uninstallerIcon: build/icon.png
+  uninstallDisplayName: Bocas Murchas Launcher
+  artifactName: ${productName}-Setup-${version}.${ext}
+  deleteAppDataOnUninstall: false
+
+publish:
+  provider: github
+  owner: soul-sam
+  repo: bocas-murchas-launcher
+  releaseType: release

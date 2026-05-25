@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700"/>
+      <stop offset="50%" style="stop-color:#FFA500"/>
+      <stop offset="100%" style="stop-color:#FF8C00"/>
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="url(#bgGrad)" stroke="url(#goldGrad)" stroke-width="3"/>
+  
+  <!-- Sad/Murcha face - the "Boca Murcha" -->
+  <g filter="url(#glow)">
+    <!-- Left eye - sleepy/droopy -->
+    <ellipse cx="70" cy="75" rx="15" ry="10" fill="none" stroke="url(#goldGrad)" stroke-width="3"/>
+    <circle cx="70" cy="77" r="5" fill="url(#goldGrad)"/>
+    <!-- Droopy eyelid -->
+    <path d="M55 70 Q70 65 85 70" fill="none" stroke="url(#goldGrad)" stroke-width="2"/>
+    
+    <!-- Right eye - sleepy/droopy -->
+    <ellipse cx="130" cy="75" rx="15" ry="10" fill="none" stroke="url(#goldGrad)" stroke-width="3"/>
+    <circle cx="130" cy="77" r="5" fill="url(#goldGrad)"/>
+    <!-- Droopy eyelid -->
+    <path d="M115 70 Q130 65 145 70" fill="none" stroke="url(#goldGrad)" stroke-width="2"/>
+    
+    <!-- Sad/Murcha mouth - wavy droopy line -->
+    <path d="M60 130 Q80 145 100 125 Q120 145 140 130" fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round"/>
+    
+    <!-- Tear drop on left -->
+    <path d="M60 90 Q55 100 60 105 Q65 100 60 90" fill="#60A5FA"/>
+  </g>
+  
+  <!-- Lottery balls around -->
+  <g>
+    <circle cx="30" cy="50" r="12" fill="#22c55e" stroke="#fff" stroke-width="2"/>
+    <text x="30" y="54" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">7</text>
+    
+    <circle cx="170" cy="50" r="12" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+    <text x="170" y="54" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">13</text>
+    
+    <circle cx="25" cy="150" r="12" fill="#3b82f6" stroke="#fff" stroke-width="2"/>
+    <text x="25" y="154" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">42</text>
+    
+    <circle cx="175" cy="150" r="12" fill="#a855f7" stroke="#fff" stroke-width="2"/>
+    <text x="175" y="154" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">58</text>
+  </g>
+  
+  <!-- Crown (for winners) tilted/falling -->
+  <g transform="rotate(-15, 100, 30)">
+    <path d="M70 45 L80 25 L90 40 L100 20 L110 40 L120 25 L130 45 Z" fill="url(#goldGrad)"/>
+    <rect x="70" y="45" width="60" height="8" fill="url(#goldGrad)"/>
+  </g>
+</svg>

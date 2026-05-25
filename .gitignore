@@ -1,0 +1,16 @@
+node_modules/
+out/
+dist/
+release/
+.env
+.env.local
+.DS_Store
+*.log
+*.tsbuildinfo
+.vscode/
+.idea/
+
+# Sibling repos cloned into this directory — not part of the launcher
+bocas-murchas-api/
+bocas-murchas-modpack/
+bocas-murchas/
