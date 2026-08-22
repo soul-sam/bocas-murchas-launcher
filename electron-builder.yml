@@ -14,6 +14,12 @@ files:
   - "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,LICENSE,license}"
   - "!**/node_modules/*/{test,tests,docs,examples}/**"
 
+# O icone da bandeja e carregado em runtime de process.resourcesPath; sem isso
+# ele nao existe no app empacotado e a bandeja aparece sem imagem.
+extraResources:
+  - from: build/icon.ico
+    to: icon.ico
+
 asar: true
 asarUnpack:
   - "**/node_modules/extract-zip/**"
@@ -24,8 +30,18 @@ win:
       arch:
         - x64
   icon: build/icon.ico
-  signtoolOptions:
-    publisherName: Bocas Murchas
+  # publisherName foi REMOVIDO de proposito.
+  #
+  # O electron-updater usa esse valor pra conferir a assinatura do instalador
+  # baixado (Get-AuthenticodeSignature no Windows). Como nao temos certificado,
+  # o arquivo sai sem assinatura, a conferencia nunca bate e a atualizacao e
+  # RECUSADA em silencio — o usuario baixa o update e ele simplesmente nao
+  # aplica.
+  #
+  # Sem publisherName, o updater pula essa conferencia e a atualizacao funciona.
+  # Quando comprarem um certificado de code signing, e so voltar a linha
+  # (com o nome EXATO do titular do certificado) que a verificacao passa a
+  # valer de verdade.
 
 nsis:
   oneClick: false

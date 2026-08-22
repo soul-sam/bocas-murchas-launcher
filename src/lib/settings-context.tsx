@@ -1,8 +1,14 @@
 import * as React from 'react'
-import type { LauncherSettings } from '../../electron/preload/types'
+import { DEFAULT_SETTINGS, type LauncherSettings } from '../../electron/preload/types'
 
 interface SettingsContextValue {
-  settings: LauncherSettings | null
+  /**
+   * Nunca e null: enquanto o arquivo nao carrega, valem os defaults. Antes isso
+   * era `LauncherSettings | null` e cada componente social precisaria de um
+   * `settings?.voice?.mode` — com uma arvore desse tamanho, um esquecimento
+   * viraria tela branca.
+   */
+  settings: LauncherSettings
   loading: boolean
   isOpen: boolean
   open: () => void
@@ -13,7 +19,7 @@ interface SettingsContextValue {
 const SettingsContext = React.createContext<SettingsContextValue | null>(null)
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = React.useState<LauncherSettings | null>(null)
+  const [settings, setSettings] = React.useState<LauncherSettings>(DEFAULT_SETTINGS)
   const [loading, setLoading] = React.useState(true)
   const [isOpen, setIsOpen] = React.useState(false)
 

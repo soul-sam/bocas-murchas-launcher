@@ -14,7 +14,6 @@ import { UpdateBanner } from '@/components/UpdateBanner'
 import { ServerStatusCard } from '@/components/ServerStatusCard'
 import { ChangelogModal } from '@/components/ChangelogModal'
 import { AdminPanel } from '@/components/AdminPanel'
-import { SettingsModal } from '@/components/SettingsModal'
 
 export function HomePage() {
   const { user, logout } = useAuth()
@@ -87,7 +86,6 @@ export function HomePage() {
         />
       </main>
 
-      <SettingsModal />
       <ChangelogModal />
       {isAdmin && <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />}
     </div>

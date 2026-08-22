@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, shell } from 'electron'
+import { BrowserWindow, Notification, ipcMain, shell } from 'electron'
 import { saveToken, loadToken, clearToken } from './secure-store.js'
 import { cancelMcAuth, getMcProfile, logoutMc, startMcAuth } from './services/mc-auth-flow.js'
 import { startInstall, getInstallStatus } from './services/install-flow.js'
@@ -7,6 +7,15 @@ import { launchGame, getLaunchStatus } from './services/launcher.js'
 import { getUpdaterStatus, quitAndInstall } from './services/updater.js'
 import { loadSettings, updateSettings, type LauncherSettings } from './services/settings.js'
 import { getServerStatus, refreshServerStatusNow } from './services/server-status.js'
+import {
+  setHotkeys,
+  probeAccelerator,
+  clearHotkeys,
+  type HotkeyBinding
+} from './services/hotkeys.js'
+import { listSources, selectSource, cancelSelection } from './services/screen-share.js'
+import { shakeWindow, type NudgeOptions } from './services/nudge.js'
+import { setVoiceState, setCloseToTray } from './services/tray.js'
 
 function serializeError(err: unknown): { message: string; code?: string } {
   if (err instanceof Error) {
@@ -69,7 +78,13 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('settings:get', async () => loadSettings())
 
-  ipcMain.handle('settings:update', async (_e, patch: Partial<LauncherSettings>) => updateSettings(patch))
+  ipcMain.handle('settings:update', async (_e, patch: Partial<LauncherSettings>) => {
+    const next = await updateSettings(patch)
+    // O handler de 'close' e sincrono e nao pode ler o arquivo; mantemos o
+    // cache do main alinhado a cada salvamento.
+    setCloseToTray(next.closeToTray)
+    return next
+  })
 
   ipcMain.handle('window:minimize', (e) => {
     BrowserWindow.fromWebContents(e.sender)?.minimize()
@@ -101,4 +116,73 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('modpack:changelog', async () => getLatestModpackChangelog())
 
   ipcMain.handle('modpack:installed-tag', async () => getInstalledModpackVersion())
+
+  // ============================================
+  // ATALHOS GLOBAIS
+  // ============================================
+  ipcMain.handle('hotkeys:set', async (_e, bindings: HotkeyBinding[]) =>
+    setHotkeys(Array.isArray(bindings) ? bindings : [])
+  )
+
+  ipcMain.handle('hotkeys:probe', async (_e, accelerator: string) =>
+    probeAccelerator(accelerator)
+  )
+
+  ipcMain.handle('hotkeys:clear', async () => {
+    clearHotkeys()
+  })
+
+  // ============================================
+  // COMPARTILHAR TELA
+  // ============================================
+  ipcMain.handle('screen:list-sources', async () => listSources())
+
+  ipcMain.handle(
+    'screen:select-source',
+    async (_e, payload: { sourceId: string; withAudio?: boolean }) => {
+      selectSource(payload.sourceId, payload.withAudio ?? true)
+    }
+  )
+
+  ipcMain.handle('screen:cancel-selection', async () => {
+    cancelSelection()
+  })
+
+  // ============================================
+  // NUDGE
+  // ============================================
+  ipcMain.handle('nudge:shake', async (_e, options?: NudgeOptions) => shakeWindow(options))
+
+  // ============================================
+  // BANDEJA E NOTIFICACOES
+  // ============================================
+  ipcMain.handle(
+    'tray:set-voice-state',
+    async (_e, state: { inVoice?: boolean; micMuted?: boolean }) => {
+      setVoiceState(state ?? {})
+    }
+  )
+
+  ipcMain.handle(
+    'notify:show',
+    async (_e, payload: { title: string; body: string; silent?: boolean }) => {
+      if (!Notification.isSupported()) return
+
+      const notification = new Notification({
+        title: payload.title,
+        body: payload.body,
+        silent: payload.silent ?? false
+      })
+
+      notification.on('click', () => {
+        const win = BrowserWindow.getAllWindows()[0]
+        if (!win) return
+        if (win.isMinimized()) win.restore()
+        win.show()
+        win.focus()
+      })
+
+      notification.show()
+    }
+  )
 }

@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { BocasAPI } from './types.js'
 
+/** Açúcar pra registrar listener e devolver o unsubscribe. */
+function on<T>(channel: string, cb: (payload: T) => void): () => void {
+  const listener = (_e: Electron.IpcRendererEvent, payload: T): void => cb(payload)
+  ipcRenderer.on(channel, listener)
+  return () => ipcRenderer.removeListener(channel, listener)
+}
+
 const api: BocasAPI = {
   auth: {
     saveToken: (token) => ipcRenderer.invoke('auth:save-token', token),
@@ -15,37 +22,21 @@ const api: BocasAPI = {
     cancel: () => ipcRenderer.invoke('mc-auth:cancel'),
     getProfile: () => ipcRenderer.invoke('mc-auth:get-profile'),
     logout: () => ipcRenderer.invoke('mc-auth:logout'),
-    onProgress: (cb) => {
-      const listener = (_e: Electron.IpcRendererEvent, event: Parameters<typeof cb>[0]) => cb(event)
-      ipcRenderer.on('mc-auth:progress', listener)
-      return () => ipcRenderer.removeListener('mc-auth:progress', listener)
-    }
+    onProgress: (cb) => on('mc-auth:progress', cb)
   },
   install: {
     start: (options) => ipcRenderer.invoke('install:start', options),
     status: () => ipcRenderer.invoke('install:status'),
-    onProgress: (cb) => {
-      const listener = (_e: Electron.IpcRendererEvent, status: Parameters<typeof cb>[0]) => cb(status)
-      ipcRenderer.on('install:progress', listener)
-      return () => ipcRenderer.removeListener('install:progress', listener)
-    }
+    onProgress: (cb) => on('install:progress', cb)
   },
   game: {
     launch: () => ipcRenderer.invoke('game:launch'),
     status: () => ipcRenderer.invoke('game:status'),
-    onStatus: (cb) => {
-      const listener = (_e: Electron.IpcRendererEvent, status: Parameters<typeof cb>[0]) => cb(status)
-      ipcRenderer.on('game:status', listener)
-      return () => ipcRenderer.removeListener('game:status', listener)
-    }
+    onStatus: (cb) => on('game:status', cb)
   },
   updater: {
     status: () => ipcRenderer.invoke('updater:status'),
-    onStatus: (cb) => {
-      const listener = (_e: Electron.IpcRendererEvent, status: Parameters<typeof cb>[0]) => cb(status)
-      ipcRenderer.on('updater:status', listener)
-      return () => ipcRenderer.removeListener('updater:status', listener)
-    },
+    onStatus: (cb) => on('updater:status', cb),
     quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install')
   },
   settings: {
@@ -57,25 +48,38 @@ const api: BocasAPI = {
     maximizeToggle: () => ipcRenderer.invoke('window:maximize-toggle'),
     close: () => ipcRenderer.invoke('window:close'),
     isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
-    onStateChanged: (cb) => {
-      const listener = (_e: Electron.IpcRendererEvent, state: { maximized: boolean }) => cb(state)
-      ipcRenderer.on('window:state', listener)
-      return () => ipcRenderer.removeListener('window:state', listener)
-    }
+    onStateChanged: (cb) => on('window:state', cb)
   },
   serverStatus: {
     get: () => ipcRenderer.invoke('server-status:get'),
     refresh: () => ipcRenderer.invoke('server-status:refresh'),
-    onStatus: (cb) => {
-      const listener = (_e: Electron.IpcRendererEvent, status: Parameters<typeof cb>[0]) =>
-        cb(status)
-      ipcRenderer.on('server-status:status', listener)
-      return () => ipcRenderer.removeListener('server-status:status', listener)
-    }
+    onStatus: (cb) => on('server-status:status', cb)
   },
   modpack: {
     changelog: () => ipcRenderer.invoke('modpack:changelog'),
     installedTag: () => ipcRenderer.invoke('modpack:installed-tag')
+  },
+  hotkeys: {
+    set: (bindings) => ipcRenderer.invoke('hotkeys:set', bindings),
+    probe: (accelerator) => ipcRenderer.invoke('hotkeys:probe', accelerator),
+    clear: () => ipcRenderer.invoke('hotkeys:clear'),
+    onTriggered: (cb) => on('hotkey:triggered', cb)
+  },
+  screen: {
+    listSources: () => ipcRenderer.invoke('screen:list-sources'),
+    selectSource: (sourceId, withAudio) =>
+      ipcRenderer.invoke('screen:select-source', { sourceId, withAudio }),
+    cancelSelection: () => ipcRenderer.invoke('screen:cancel-selection')
+  },
+  nudge: {
+    shake: (options) => ipcRenderer.invoke('nudge:shake', options)
+  },
+  tray: {
+    setVoiceState: (state) => ipcRenderer.invoke('tray:set-voice-state', state),
+    onCommand: (cb) => on('tray:command', cb)
+  },
+  notify: {
+    show: (payload) => ipcRenderer.invoke('notify:show', payload)
   }
 }
 

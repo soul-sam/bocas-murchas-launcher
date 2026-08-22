@@ -17,6 +17,8 @@ interface AuthContextValue extends AuthState {
     inviteCode: string
   }) => Promise<void>
   logout: () => Promise<void>
+  /** Aplica localmente o perfil salvo, sem precisar refazer o /auth/me. */
+  applyUser: (user: AuthUser) => void
 }
 
 const AuthContext = React.createContext<AuthContextValue | null>(null)
@@ -81,9 +83,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ user: null, token: null, loading: false })
   }, [])
 
+  const applyUser = React.useCallback((user: AuthUser) => {
+    setState((prev) => (prev.user ? { ...prev, user: { ...prev.user, ...user } } : prev))
+  }, [])
+
   const value = React.useMemo<AuthContextValue>(
-    () => ({ ...state, login, register, logout }),
-    [state, login, register, logout]
+    () => ({ ...state, login, register, logout, applyUser }),
+    [state, login, register, logout, applyUser]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

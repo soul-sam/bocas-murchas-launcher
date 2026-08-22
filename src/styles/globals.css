@@ -214,8 +214,81 @@
   transform: scale(1.05);
 }
 
+/* Mesma cara do ram-slider, mas fino: cabe no card de quem esta na call. */
+.mini-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #0B0B0B;
+  border: 1px solid #3A5F0B;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.mini-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #6AFF00;
+  border: 1px solid #8FFF40;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(106, 255, 0, 0.5);
+}
+
+/* Volume zerado nao pode parecer "so baixinho" — vira vermelho de mudo. */
+.mini-slider.is-muted {
+  border-color: #7A2222;
+}
+
+.mini-slider.is-muted::-webkit-slider-thumb {
+  background: #B33;
+  border-color: #D55;
+  box-shadow: none;
+}
+
 .terminal-cursor::after {
   content: '█';
   animation: terminal-blink 1s step-end infinite;
   color: #6AFF00;
+}
+
+
+/* ============================================
+   NUDGE - tremor do conteudo
+   ============================================
+   A janela do Windows tambem pula (processo main), mas so isso nao aparece pra
+   quem esta com a janela maximizada — nesse caso mover a janela a tiraria do
+   estado maximizado, entao o main desiste e sobra este tremor de CSS.
+
+   translate3d forca camada propria de composicao: sem isso o navegador
+   reposiciona a arvore inteira a cada quadro e a animacao engasga. */
+@keyframes nudge-shake {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
+  10%  { transform: translate3d(-9px, 4px, 0) rotate(-0.6deg); }
+  20%  { transform: translate3d(8px, -6px, 0) rotate(0.5deg); }
+  30%  { transform: translate3d(-7px, -3px, 0) rotate(-0.4deg); }
+  40%  { transform: translate3d(6px, 5px, 0) rotate(0.4deg); }
+  50%  { transform: translate3d(-5px, -4px, 0) rotate(-0.3deg); }
+  60%  { transform: translate3d(4px, 3px, 0) rotate(0.25deg); }
+  70%  { transform: translate3d(-3px, -2px, 0) rotate(-0.15deg); }
+  80%  { transform: translate3d(2px, 2px, 0) rotate(0.1deg); }
+  90%  { transform: translate3d(-1px, -1px, 0) rotate(0deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+}
+
+.nudge-shake {
+  animation: nudge-shake 0.7s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  will-change: transform;
+}
+
+/* Quem pediu menos animacao no sistema nao deve levar a tela sacudindo. */
+@media (prefers-reduced-motion: reduce) {
+  .nudge-shake {
+    animation: none;
+    outline: 2px solid #F2B705;
+    outline-offset: -2px;
+  }
 }
