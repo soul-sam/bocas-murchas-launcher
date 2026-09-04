@@ -4,7 +4,11 @@ import { cancelMcAuth, getMcProfile, logoutMc, startMcAuth } from './services/mc
 import { startInstall, getInstallStatus } from './services/install-flow.js'
 import { getLatestModpackChangelog, getInstalledModpackVersion } from './services/modpack.js'
 import { launchGame, getLaunchStatus } from './services/launcher.js'
-import { getUpdaterStatus, quitAndInstall } from './services/updater.js'
+import {
+  getUpdaterStatus,
+  quitAndInstall,
+  checkForUpdates
+} from './services/updater.js'
 import { loadSettings, updateSettings, type LauncherSettings } from './services/settings.js'
 import { getServerStatus, refreshServerStatusNow } from './services/server-status.js'
 import {
@@ -72,6 +76,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('updater:status', async () => getUpdaterStatus())
 
+  ipcMain.handle('updater:check', async () => checkForUpdates(true))
+
   ipcMain.handle('updater:quit-and-install', async () => {
     quitAndInstall()
   })
@@ -107,6 +113,13 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('window:is-maximized', (e) => {
     return BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false
+  })
+
+  // Saida de emergencia: se a interface travar de um jeito que nem o guarda do
+  // renderer resolva, recarregar a janela devolve o app sem derrubar o
+  // processo (e sem perder a sessao, que fica no disco).
+  ipcMain.handle('window:reload', (e) => {
+    BrowserWindow.fromWebContents(e.sender)?.webContents.reload()
   })
 
   ipcMain.handle('server-status:get', async () => getServerStatus())

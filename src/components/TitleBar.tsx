@@ -1,8 +1,11 @@
 import * as React from 'react'
 import { Minus, Square, Copy, X } from 'lucide-react'
+import { UpdatePill } from '@/components/UpdatePill'
+import { useUpdater } from '@/lib/updater-context'
 
 export function TitleBar() {
   const [maximized, setMaximized] = React.useState(false)
+  const { status, check } = useUpdater()
 
   React.useEffect(() => {
     void window.bocas.appWindow.isMaximized().then(setMaximized)
@@ -36,9 +39,20 @@ export function TitleBar() {
         <span className="font-display text-[11px] uppercase tracking-[0.2em] text-[#EAEAEA]">
           Bocas <span className="text-acid">Murchas</span>
         </span>
-        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-          launcher
-        </span>
+        {/* A versao vira o botao de "procurar atualizacoes": e o lugar onde as
+            pessoas ja olham quando querem saber se estao desatualizadas. */}
+        <button
+          type="button"
+          onClick={() => void check()}
+          title="Procurar atualizações"
+          className="app-no-drag rounded-brutal px-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-acid"
+        >
+          v{status.currentVersion ?? '—'}
+        </button>
+      </div>
+
+      <div className="app-no-drag ml-auto mr-2 flex items-center">
+        <UpdatePill />
       </div>
 
       <div className="app-no-drag flex h-full items-stretch">

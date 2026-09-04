@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { MessagesSquare, Gamepad2, LogOut } from 'lucide-react'
+import { MessagesSquare, Gamepad2, LogOut, Keyboard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useChat } from '@/lib/chat-context'
+import { useOverlays } from '@/lib/overlay-context'
 
 /**
  * Barra estreita da esquerda: alterna entre o social e o launcher do Minecraft.
@@ -10,13 +11,22 @@ import { useChat } from '@/lib/chat-context'
  */
 export function AppRail() {
   const { logout } = useAuth()
-  const { unread } = useChat()
+  const { unread, mentions } = useChat()
+  const { toggleShortcuts } = useOverlays()
 
   const totalUnread = Object.values(unread).reduce((sum, count) => sum + count, 0)
+  const totalMentions = Object.values(mentions).reduce((sum, count) => sum + count, 0)
 
   return (
     <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-[#1a1a1a] bg-[#080808] py-2">
-      <RailLink to="/" label="Social" badge={totalUnread}>
+      <RailLink
+        to="/"
+        label="Social"
+        badge={totalMentions || totalUnread}
+        // Menção é vermelha; não-lida comum é discreta. Voltar pro PC e ver
+        // vermelho tem que significar "alguém falou COM VOCÊ".
+        urgent={totalMentions > 0}
+      >
         <MessagesSquare className="h-5 w-5" />
       </RailLink>
 
@@ -26,10 +36,20 @@ export function AppRail() {
 
       <button
         type="button"
+        title="Atalhos (Ctrl + /)"
+        aria-label="Atalhos"
+        onClick={toggleShortcuts}
+        className="mt-auto rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-acid"
+      >
+        <Keyboard className="h-4 w-4" />
+      </button>
+
+      <button
+        type="button"
         title="Sair da conta"
         aria-label="Sair da conta"
         onClick={() => void logout()}
-        className="mt-auto rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+        className="rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
       >
         <LogOut className="h-4 w-4" />
       </button>
@@ -41,11 +61,13 @@ function RailLink({
   to,
   label,
   badge,
+  urgent,
   children
 }: {
   to: string
   label: string
   badge?: number
+  urgent?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -65,7 +87,12 @@ function RailLink({
     >
       {children}
       {!!badge && badge > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-destructive px-1 text-center font-mono text-[9px] font-bold leading-4 text-dirty-white">
+        <span
+          className={cn(
+            'absolute -right-0.5 -top-0.5 min-w-4 rounded-full px-1 text-center font-mono text-[9px] font-bold leading-4 text-dirty-white',
+            urgent ? 'bg-destructive' : 'bg-[#2a2a2a]'
+          )}
+        >
           {badge > 99 ? '99+' : badge}
         </span>
       )}

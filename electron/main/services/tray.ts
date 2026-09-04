@@ -63,6 +63,20 @@ function showWindow(): void {
   win.focus()
 }
 
+/**
+ * Recarrega o renderer.
+ *
+ * A janela e frameless: fechar e minimizar sao botoes React. Se a interface
+ * travar, a bandeja e o unico lugar de onde ainda da pra agir — por isso este
+ * item existe aqui e nao so dentro do app.
+ */
+function reloadWindow(): void {
+  const win = mainWindow()
+  if (!win || win.isDestroyed()) return
+  win.show()
+  win.webContents.reloadIgnoringCache()
+}
+
 function send(channel: string, payload?: unknown): void {
   mainWindow()?.webContents.send(channel, payload)
 }
@@ -85,6 +99,10 @@ function buildMenu(): Menu {
       click: () => send('tray:command', { command: 'leave-voice' })
     },
     { type: 'separator' },
+    {
+      label: 'Recarregar janela',
+      click: reloadWindow
+    },
     {
       label: 'Fechar launcher',
       click: () => {

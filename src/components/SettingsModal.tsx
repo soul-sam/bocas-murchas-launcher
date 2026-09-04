@@ -6,6 +6,7 @@ import {
   Keyboard,
   Zap,
   Gamepad2,
+  MessagesSquare,
   Loader2,
   TriangleAlert
 } from 'lucide-react'
@@ -58,6 +59,10 @@ export function SettingsModal() {
               <Mic className="mr-1.5 inline h-3 w-3" />
               Voz
             </TabsTrigger>
+            <TabsTrigger value="chat">
+              <MessagesSquare className="mr-1.5 inline h-3 w-3" />
+              Chat
+            </TabsTrigger>
             <TabsTrigger value="atalhos">
               <Keyboard className="mr-1.5 inline h-3 w-3" />
               Atalhos
@@ -75,6 +80,9 @@ export function SettingsModal() {
           <TabsContent value="voz">
             <VoiceTab />
           </TabsContent>
+          <TabsContent value="chat">
+            <ChatTab />
+          </TabsContent>
           <TabsContent value="atalhos">
             <HotkeysTab />
           </TabsContent>
@@ -87,6 +95,74 @@ export function SettingsModal() {
         </Tabs>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ============================================
+// CHAT
+// ============================================
+
+function ChatTab() {
+  const { settings, update } = useSettings()
+  const chat = settings.chat
+
+  const patch = (part: Partial<typeof chat>): void => {
+    void update({ chat: { ...chat, ...part } })
+  }
+
+  return (
+    <div className="space-y-5">
+      <section>
+        <SectionTitle>Exibição</SectionTitle>
+        <SwitchRow
+          label="Modo compacto"
+          hint="Uma linha por mensagem, sem avatar grande. Cabe muito mais conversa na tela."
+          checked={chat.compact}
+          onCheckedChange={(compact) => patch({ compact })}
+        />
+        <SwitchRow
+          label="Prévia de links"
+          hint="Cartão com miniatura embaixo de links de YouTube e imagem."
+          checked={chat.showEmbeds}
+          onCheckedChange={(showEmbeds) => patch({ showEmbeds })}
+        />
+      </section>
+
+      <section>
+        <SectionTitle>Avisos</SectionTitle>
+        <SwitchRow
+          label="Som de mensagem"
+          hint="Bipe curto quando chega mensagem; um pouco mais alto quando citam você."
+          checked={chat.messageSound}
+          onCheckedChange={(messageSound) => patch({ messageSound })}
+        />
+        <SwitchRow
+          label="Notificar quando me citarem"
+          hint="Balão do Windows quando alguém escreve @seunome (ou @todos)."
+          checked={chat.notifyOnMention}
+          onCheckedChange={(notifyOnMention) => patch({ notifyOnMention })}
+        />
+        <SwitchRow
+          label="Notificar toda mensagem"
+          hint="Balão em QUALQUER mensagem nova. Em grupo tagarela isso vira spam — deixe desligado se não for pra trabalho."
+          checked={chat.notifyAllMessages}
+          onCheckedChange={(notifyAllMessages) => patch({ notifyAllMessages })}
+        />
+
+        <p className="mt-3 rounded-brutal border border-[#1a1a1a] bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          Pra silenciar UM canal só, clique no sininho no topo dele. Canal
+          silenciado não conta não-lidas nem avisa — mas menção direta a você
+          continua passando.
+        </p>
+
+        {chat.mutedChannels.length > 0 && (
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            {chat.mutedChannels.length}{' '}
+            {chat.mutedChannels.length === 1 ? 'canal silenciado' : 'canais silenciados'}
+          </p>
+        )}
+      </section>
+    </div>
   )
 }
 

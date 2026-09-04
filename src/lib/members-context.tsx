@@ -28,7 +28,7 @@ const MembersContext = React.createContext<MembersContextValue | null>(null)
 
 export function MembersProvider({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuth()
-  const { onlineIds, profileUpdates } = useSocket()
+  const { onlineIds, presenceById, profileUpdates } = useSocket()
 
   const [raw, setRaw] = React.useState<AuthUser[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -78,8 +78,32 @@ export function MembersProvider({ children }: { children: React.ReactNode }) {
   const members = React.useMemo<Member[]>(() => {
     return raw
       .map((member) => {
+        /**
+         * Tres camadas, da mais velha pra mais nova.
+         *
+         * `raw` e a foto REST tirada quando o app abriu. A presenca vem por
+         * cima porque chega a cada entrada e saida de alguem. E a edicao de
+         * perfil por cima de tudo, porque e o aviso mais recente que existe.
+         *
+         * Faltava a camada do meio: sem ela, quem entrasse em "nao perturbe"
+         * (ou trocasse de nome) continuava aparecendo do jeito antigo pra todo
+         * mundo que ja estava com o launcher aberto.
+         */
+        const presence = presenceById[member.id]
+        const withPresence = presence
+          ? {
+              ...member,
+              displayName: presence.displayName || member.displayName,
+              avatar: presence.avatar ?? member.avatar,
+              status: presence.status ?? member.status,
+              customStatus: presence.customStatus ?? member.customStatus,
+              profileColor: presence.profileColor ?? member.profileColor
+            }
+          : member
+
         const patched = profileUpdates[member.id]
-        const merged = patched ? { ...member, ...patched } : member
+        const merged = patched ? { ...withPresence, ...patched } : withPresence
+
         return {
           ...merged,
           // O proprio usuario esta sempre online — ele esta olhando a tela.
@@ -90,7 +114,7 @@ export function MembersProvider({ children }: { children: React.ReactNode }) {
         if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1
         return a.displayName.localeCompare(b.displayName, 'pt-BR')
       })
-  }, [raw, profileUpdates, onlineIds, user?.id])
+  }, [raw, presenceById, profileUpdates, onlineIds, user?.id])
 
   const byId = React.useMemo(() => {
     const map: Record<string, Member> = {}

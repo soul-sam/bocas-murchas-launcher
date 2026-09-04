@@ -86,6 +86,10 @@ export interface UpdaterStatus {
   transferred?: number
   total?: number
   error?: string
+  /** Verdadeiro quando a checagem partiu de um clique, nao do timer. */
+  manualCheck?: boolean
+  /** Quando a ultima checagem terminou (ISO). */
+  checkedAt?: string
 }
 
 /** Atalhos globais. Valor vazio = nao vinculado. */
@@ -114,6 +118,27 @@ export interface VoiceSettings {
   autoGainControl: boolean
 }
 
+/**
+ * Preferencias do chat.
+ *
+ * Ficam no settings.json (e nao no servidor) de proposito: sao decisoes de
+ * quem LE, nao do canal. Cada um silencia o que quiser sem afetar a galera.
+ */
+export interface ChatSettings {
+  /** Modo compacto: uma linha por mensagem, sem avatar grande. */
+  compact: boolean
+  /** Cartoes de preview embaixo dos links. */
+  showEmbeds: boolean
+  /** Notificacao do sistema quando citam voce. */
+  notifyOnMention: boolean
+  /** Notificacao do sistema em QUALQUER mensagem nova. */
+  notifyAllMessages: boolean
+  /** Bipe curto quando chega mensagem. */
+  messageSound: boolean
+  /** Canais sem contador e sem aviso. */
+  mutedChannels: string[]
+}
+
 export interface LauncherSettings {
   maxRamMb: number
   minRamMb: number
@@ -124,6 +149,7 @@ export interface LauncherSettings {
 
   voice: VoiceSettings
   hotkeys: HotkeySettings
+  chat: ChatSettings
   /**
    * Volume por pessoa na call: userId -> 0..2 (1 = normal, 0 = mudo pra mim).
    *
@@ -272,6 +298,15 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     nudgeChannel: '',
     sounds: {}
   },
+  chat: {
+    compact: false,
+    showEmbeds: true,
+    notifyOnMention: true,
+    // Desligado: um grupo tagarela viraria uma fila de balao no canto da tela.
+    notifyAllMessages: false,
+    messageSound: true,
+    mutedChannels: []
+  },
   userVolumes: {},
   soundboardVolume: 0.7,
   nudgeOptOut: false,
@@ -308,6 +343,8 @@ export interface BocasAPI {
   updater: {
     status: () => Promise<UpdaterStatus>
     onStatus: (cb: (status: UpdaterStatus) => void) => () => void
+    /** Procura versao nova agora (pedido explicito do usuario). */
+    check: () => Promise<UpdaterStatus>
     quitAndInstall: () => Promise<void>
   }
   settings: {
@@ -318,6 +355,8 @@ export interface BocasAPI {
     minimize: () => Promise<void>
     maximizeToggle: () => Promise<boolean>
     close: () => Promise<void>
+    /** Recarrega o renderer — saida de emergencia pra interface travada. */
+    reload: () => Promise<void>
     isMaximized: () => Promise<boolean>
     onStateChanged: (cb: (state: { maximized: boolean }) => void) => () => void
   }

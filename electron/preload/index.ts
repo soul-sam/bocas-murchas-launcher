@@ -37,6 +37,7 @@ const api: BocasAPI = {
   updater: {
     status: () => ipcRenderer.invoke('updater:status'),
     onStatus: (cb) => on('updater:status', cb),
+    check: () => ipcRenderer.invoke('updater:check'),
     quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install')
   },
   settings: {
@@ -47,6 +48,7 @@ const api: BocasAPI = {
     minimize: () => ipcRenderer.invoke('window:minimize'),
     maximizeToggle: () => ipcRenderer.invoke('window:maximize-toggle'),
     close: () => ipcRenderer.invoke('window:close'),
+    reload: () => ipcRenderer.invoke('window:reload'),
     isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
     onStateChanged: (cb) => on('window:state', cb)
   },

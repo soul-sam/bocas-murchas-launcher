@@ -4,6 +4,7 @@ import {
   RoomEvent,
   Track,
   ConnectionState,
+  type LocalTrackPublication,
   type RemoteTrack,
   type RemoteTrackPublication,
   type RemoteParticipant,
@@ -44,12 +45,39 @@ export interface VoiceParticipant {
   isSpeaking: boolean
   micEnabled: boolean
   isScreenSharing: boolean
+  cameraEnabled: boolean
+}
+
+/** Uma webcam no ar. Mesmo formato do compartilhamento de tela. */
+export interface CameraFeed {
+  identity: string
+  name: string
+  track: Track
+  isLocal: boolean
 }
 
 export interface ScreenShareFeed {
   identity: string
   name: string
   track: Track
+  /**
+   * Verdadeiro na SUA propria transmissao.
+   *
+   * Antes o palco so listava faixa de terceiro (o handler era o de
+   * TrackSubscribed, que por definicao nao dispara pra voce): quem estava
+   * compartilhando nao via nada — nem qual janela foi parar no ar, nem se
+   * ainda estava no ar. A propria transmissao entra na lista como qualquer
+   * outra; o que muda e o rotulo e o botao de parar.
+   */
+  isLocal: boolean
+}
+
+/** O que esta sendo transmitido agora — pro palco poder dizer em voz alta. */
+export interface ScreenShareInfo {
+  sourceName: string
+  quality: ScreenQuality
+  withAudio: boolean
+  startedAt: number
 }
 
 interface VoiceContextValue {
@@ -61,10 +89,15 @@ interface VoiceContextValue {
 
   participants: VoiceParticipant[]
   screenShares: ScreenShareFeed[]
+  /** Webcams ligadas na call, incluindo a sua. */
+  cameras: CameraFeed[]
 
   micEnabled: boolean
+  cameraEnabled: boolean
   deafened: boolean
   screenSharing: boolean
+  /** Detalhes da SUA transmissao. Null quando voce nao esta compartilhando. */
+  shareInfo: ScreenShareInfo | null
 
   /** userId -> volume 0..2 (1 = normal). So contem quem foi ajustado. */
   userVolumes: Record<string, number>
@@ -78,9 +111,11 @@ interface VoiceContextValue {
   toggleMic: () => Promise<void>
   setMic: (enabled: boolean) => Promise<void>
   toggleDeafen: () => void
+  toggleCamera: () => Promise<void>
   startScreenShare: (sourceId: string, options?: {
     withAudio?: boolean
     quality?: ScreenQuality
+    sourceName?: string
   }) => Promise<void>
   stopScreenShare: () => Promise<void>
 }
@@ -109,9 +144,24 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
   const [participants, setParticipants] = React.useState<VoiceParticipant[]>([])
   const [screenShares, setScreenShares] = React.useState<ScreenShareFeed[]>([])
+  const [cameras, setCameras] = React.useState<CameraFeed[]>([])
+  const [cameraEnabled, setCameraEnabled] = React.useState(false)
   const [micEnabled, setMicEnabled] = React.useState(false)
   const [deafened, setDeafened] = React.useState(false)
   const [screenSharing, setScreenSharing] = React.useState(false)
+  const [shareInfo, setShareInfo] = React.useState<ScreenShareInfo | null>(null)
+
+  /**
+   * O socket lido por ref.
+   *
+   * Os handlers do LiveKit sao registrados uma unica vez, dentro do connect. Se
+   * avisassem o servidor pelo `socket` capturado ali, uma reconexao trocaria a
+   * instancia e o aviso de "parei de compartilhar" iria pro lugar nenhum — a
+   * bolinha vermelha de quem transmite ficaria acesa pra sempre na barra dos
+   * outros.
+   */
+  const socketRef = React.useRef(socket)
+  socketRef.current = socket
 
   /** Elementos <audio> das faixas remotas ficam fora do React. */
   const audioSinkRef = React.useRef<HTMLDivElement | null>(null)
@@ -272,13 +322,15 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           isLocal: p.identity === current.localParticipant.identity,
           isSpeaking: p.isSpeaking,
           micEnabled: p.isMicrophoneEnabled,
-          isScreenSharing: p.isScreenShareEnabled
+          isScreenSharing: p.isScreenShareEnabled,
+          cameraEnabled: p.isCameraEnabled
         }
       })
     )
 
     setMicEnabled(current.localParticipant.isMicrophoneEnabled)
     setScreenSharing(current.localParticipant.isScreenShareEnabled)
+    setCameraEnabled(current.localParticipant.isCameraEnabled)
   }, [])
 
   const applyDeafen = React.useCallback(
@@ -306,8 +358,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       await current.disconnect().catch(() => {})
     }
 
-    socket?.emit('leaveVoice')
-    socket?.emit('screenshare:state', { active: false })
+    // Pela ref, nao pelo `socket` fechado no callback: `leave` e chamada de
+    // dentro dos handlers do LiveKit e do menu da bandeja, que foram
+    // registrados uma unica vez. Com a instancia capturada, uma saida
+    // disparada por ali podia avisar um socket que nao existe mais — e a
+    // pessoa ficava pendurada na call pro resto da galera.
+    socketRef.current?.emit('leaveVoice')
+    socketRef.current?.emit('screenshare:state', { active: false })
 
     setRoom(null)
     setChannel(null)
@@ -315,14 +372,17 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     setConnecting(false)
     setParticipants([])
     setScreenShares([])
+    setCameras([])
     setMicEnabled(false)
     setScreenSharing(false)
+    setCameraEnabled(false)
+    setShareInfo(null)
     setDeafened(false)
     deafenedRef.current = false
 
     void window.bocas.tray.setVoiceState({ inVoice: false, micMuted: false })
     leavingRef.current = false
-  }, [socket, cue])
+  }, [cue])
 
   const join = React.useCallback(
     async (target: Channel) => {
@@ -372,8 +432,64 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         next.on(RoomEvent.TrackMuted, () => syncParticipants(next))
         next.on(RoomEvent.TrackUnmuted, () => syncParticipants(next))
         next.on(RoomEvent.ActiveSpeakersChanged, () => syncParticipants(next))
-        next.on(RoomEvent.LocalTrackPublished, () => syncParticipants(next))
-        next.on(RoomEvent.LocalTrackUnpublished, () => syncParticipants(next))
+        next.on(RoomEvent.LocalTrackPublished, (publication: LocalTrackPublication) => {
+          // A propria transmissao entra no palco como qualquer outra: e o
+          // unico jeito de quem compartilha conferir o que foi pro ar.
+          if (publication.source === Track.Source.ScreenShare && publication.track) {
+            const meta = readMetadata(next.localParticipant)
+            const track = publication.track
+            setScreenShares((prev) => [
+              ...prev.filter((s) => !s.isLocal),
+              {
+                identity: next.localParticipant.identity,
+                name: meta.displayName || next.localParticipant.name || 'Você',
+                track,
+                isLocal: true
+              }
+            ])
+          }
+
+          // A propria camera tambem aparece: e o espelho que todo mundo
+          // procura antes de ligar a webcam ("ta pegando meu rosto?").
+          if (publication.source === Track.Source.Camera && publication.track) {
+            const meta = readMetadata(next.localParticipant)
+            const track = publication.track
+            setCameras((prev) => [
+              ...prev.filter((c) => !c.isLocal),
+              {
+                identity: next.localParticipant.identity,
+                name: meta.displayName || next.localParticipant.name || 'Você',
+                track,
+                isLocal: true
+              }
+            ])
+          }
+
+          syncParticipants(next)
+        })
+
+        next.on(RoomEvent.LocalTrackUnpublished, (publication: LocalTrackPublication) => {
+          /**
+           * A transmissao pode acabar sem passar pelo nosso botao: a janela
+           * compartilhada e fechada, o driver de video reinicia, o SFU derruba
+           * a faixa. Antes o app continuava mostrando "compartilhando" e a
+           * bolinha vermelha ficava acesa na barra lateral dos outros — pra
+           * voltar ao normal so saindo da call.
+           */
+          if (publication.source === Track.Source.ScreenShare) {
+            setScreenShares((prev) => prev.filter((s) => !s.isLocal))
+            setScreenSharing(false)
+            setShareInfo(null)
+            socketRef.current?.emit('screenshare:state', { active: false })
+          }
+
+          if (publication.source === Track.Source.Camera) {
+            setCameras((prev) => prev.filter((c) => !c.isLocal))
+            setCameraEnabled(false)
+          }
+
+          syncParticipants(next)
+        })
 
         next.on(
           RoomEvent.TrackSubscribed,
@@ -394,17 +510,39 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
             if (
               track.kind === Track.Kind.Video &&
-              track.source === Track.Source.ScreenShare
+              track.source === Track.Source.Camera
             ) {
               const meta = readMetadata(participant)
-              setScreenShares((prev) => [
-                ...prev.filter((s) => s.identity !== participant.identity),
+              setCameras((prev) => [
+                ...prev.filter((c) => c.identity !== participant.identity),
                 {
                   identity: participant.identity,
                   name: meta.displayName || participant.name || participant.identity,
-                  track
+                  track,
+                  isLocal: false
                 }
               ])
+            }
+
+            if (
+              track.kind === Track.Kind.Video &&
+              track.source === Track.Source.ScreenShare
+            ) {
+              const meta = readMetadata(participant)
+              // Antes das suas: quem entra numa call pra assistir quer ver a
+              // tela do outro, nao a propria.
+              setScreenShares((prev) => {
+                const rest = prev.filter((s) => s.identity !== participant.identity)
+                const feed: ScreenShareFeed = {
+                  identity: participant.identity,
+                  name: meta.displayName || participant.name || participant.identity,
+                  track,
+                  isLocal: false
+                }
+                const localIndex = rest.findIndex((s) => s.isLocal)
+                if (localIndex === -1) return [...rest, feed]
+                return [...rest.slice(0, localIndex), feed, ...rest.slice(localIndex)]
+              })
             }
 
             syncParticipants(next)
@@ -420,6 +558,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
               setScreenShares((prev) =>
                 prev.filter((s) => s.identity !== participant.identity)
               )
+            }
+
+            if (track.source === Track.Source.Camera) {
+              setCameras((prev) => prev.filter((c) => c.identity !== participant.identity))
             }
 
             syncParticipants(next)
@@ -454,7 +596,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         cue('self-join')
 
         // Só agora o servidor sabe em que sala mandar soundboard e nudge.
-        socket?.emit('joinVoice', target.id)
+        socketRef.current?.emit('joinVoice', target.id)
 
         void window.bocas.tray.setVoiceState({ inVoice: true, micMuted: startMuted })
       } catch (err) {
@@ -464,7 +606,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         setConnecting(false)
       }
     },
-    [token, leave, settings.voice, socket, syncParticipants, cue, effectiveVolume]
+    [token, leave, settings.voice, syncParticipants, cue, effectiveVolume]
   )
 
   const setMic = React.useCallback(
@@ -497,16 +639,42 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     })
   }, [applyDeafen, setMic, cue])
 
+  /**
+   * Liga e desliga a webcam.
+   *
+   * Resolucao modesta de proposito: numa call de 6 pessoas o gargalo e o
+   * upload de quem transmite, e rosto em 720p nao acrescenta nada sobre 480p —
+   * ao contrario da tela, onde texto pequeno exige resolucao.
+   */
+  const toggleCamera = React.useCallback(async () => {
+    const current = roomRef.current
+    if (!current) return
+
+    const next = !current.localParticipant.isCameraEnabled
+
+    try {
+      await current.localParticipant.setCameraEnabled(next, {
+        resolution: { width: 640, height: 480, frameRate: 24 }
+      })
+      setCameraEnabled(next)
+      if (!next) setCameras((prev) => prev.filter((c) => !c.isLocal))
+    } catch (err) {
+      // Webcam ocupada por outro programa (ou sem permissao) e o caso comum.
+      setError(err instanceof Error ? err.message : 'Não consegui abrir a câmera')
+    }
+  }, [])
+
   const startScreenShare = React.useCallback(
     async (
       sourceId: string,
-      options: { withAudio?: boolean; quality?: ScreenQuality } = {}
+      options: { withAudio?: boolean; quality?: ScreenQuality; sourceName?: string } = {}
     ) => {
       const current = roomRef.current
       if (!current) return
 
       const withAudio = options.withAudio ?? true
-      const preset = SCREEN_QUALITY[options.quality ?? '720p30']
+      const quality = options.quality ?? '720p30'
+      const preset = SCREEN_QUALITY[quality]
 
       // O main so libera getDisplayMedia se a fonte estiver marcada antes.
       await window.bocas.screen.selectSource(sourceId, withAudio)
@@ -534,14 +702,20 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         )
 
         setScreenSharing(true)
-        socket?.emit('screenshare:state', { active: true })
+        setShareInfo({
+          sourceName: options.sourceName ?? 'Sua tela',
+          quality,
+          withAudio,
+          startedAt: Date.now()
+        })
+        socketRef.current?.emit('screenshare:state', { active: true })
       } catch (err) {
         await window.bocas.screen.cancelSelection()
         setError(err instanceof Error ? err.message : 'Erro ao compartilhar tela')
         throw err
       }
     },
-    [socket]
+    []
   )
 
   const stopScreenShare = React.useCallback(async () => {
@@ -549,8 +723,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (!current) return
     await current.localParticipant.setScreenShareEnabled(false)
     setScreenSharing(false)
-    socket?.emit('screenshare:state', { active: false })
-  }, [socket])
+    setShareInfo(null)
+    // O feed local sai na hora: esperar o LocalTrackUnpublished deixaria o
+    // palco com uma imagem congelada por um instante depois do clique.
+    setScreenShares((prev) => prev.filter((s) => !s.isLocal))
+    socketRef.current?.emit('screenshare:state', { active: false })
+  }, [])
 
   /**
    * Reconexao do socket: reavisar em que canal eu estou.
@@ -604,9 +782,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       error,
       participants,
       screenShares,
+      cameras,
       micEnabled,
+      cameraEnabled,
       deafened,
       screenSharing,
+      shareInfo,
       userVolumes,
       setUserVolume,
       userVolume,
@@ -615,6 +796,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       toggleMic,
       setMic,
       toggleDeafen,
+      toggleCamera,
       startScreenShare,
       stopScreenShare
     }),
@@ -626,9 +808,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       error,
       participants,
       screenShares,
+      cameras,
       micEnabled,
+      cameraEnabled,
       deafened,
       screenSharing,
+      shareInfo,
       userVolumes,
       setUserVolume,
       userVolume,
@@ -637,6 +822,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       toggleMic,
       setMic,
       toggleDeafen,
+      toggleCamera,
       startScreenShare,
       stopScreenShare
     ]

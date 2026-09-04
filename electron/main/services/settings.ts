@@ -3,13 +3,14 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import {
   DEFAULT_SETTINGS,
+  type ChatSettings,
   type HotkeySettings,
   type LauncherSettings,
   type VoiceSettings,
   type VoiceMode
 } from '../../preload/types.js'
 
-export type { HotkeySettings, LauncherSettings, VoiceSettings, VoiceMode }
+export type { ChatSettings, HotkeySettings, LauncherSettings, VoiceSettings, VoiceMode }
 
 const FILE = 'settings.json'
 
@@ -72,6 +73,26 @@ function normalizeHotkeys(raw: Partial<HotkeySettings> | undefined): HotkeySetti
   }
 }
 
+function normalizeChat(raw: Partial<ChatSettings> | undefined): ChatSettings {
+  const d = DEFAULTS.chat
+  const c = raw ?? {}
+
+  // Lista de canais silenciados vem do disco: filtrar o que nao e string
+  // evita que um arquivo editado na mao quebre o `includes` do renderer.
+  const mutedChannels = Array.isArray(c.mutedChannels)
+    ? Array.from(new Set(c.mutedChannels.filter((id) => typeof id === 'string' && id)))
+    : d.mutedChannels
+
+  return {
+    compact: c.compact ?? d.compact,
+    showEmbeds: c.showEmbeds ?? d.showEmbeds,
+    notifyOnMention: c.notifyOnMention ?? d.notifyOnMention,
+    notifyAllMessages: c.notifyAllMessages ?? d.notifyAllMessages,
+    messageSound: c.messageSound ?? d.messageSound,
+    mutedChannels
+  }
+}
+
 /** Volume por pessoa: 0..2. Entrada porca (string, NaN, negativo) e descartada. */
 function normalizeUserVolumes(
   raw: Record<string, number> | undefined
@@ -105,6 +126,7 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
 
     voice: normalizeVoice(raw.voice),
     hotkeys: normalizeHotkeys(raw.hotkeys),
+    chat: normalizeChat(raw.chat),
     userVolumes: normalizeUserVolumes(raw.userVolumes),
     soundboardVolume: clamp(Number(raw.soundboardVolume), 0, 1, DEFAULTS.soundboardVolume),
     nudgeOptOut: raw.nudgeOptOut ?? DEFAULTS.nudgeOptOut,
@@ -137,6 +159,9 @@ export async function updateSettings(patch: Partial<LauncherSettings>): Promise<
       ...(patch.hotkeys ?? {}),
       sounds: { ...current.hotkeys.sounds, ...(patch.hotkeys?.sounds ?? {}) }
     },
+    // `mutedChannels` NAO entra no merge: silenciar e dessilenciar precisam
+    // poder ENCOLHER a lista, e um spread so sabe crescer.
+    chat: { ...current.chat, ...(patch.chat ?? {}) },
     // Merge por pessoa: ajustar o volume de UM nao pode apagar o dos outros.
     // Voltar alguem pro 1 remove a chave no normalize logo abaixo.
     userVolumes: { ...current.userVolumes, ...(patch.userVolumes ?? {}) }

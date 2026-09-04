@@ -206,6 +206,13 @@ export const users = {
 // UPLOADS
 // ============================================
 
+export interface UploadedFile {
+  url: string
+  fileName: string
+  sizeBytes: number
+  mimeType: string
+}
+
 export const uploads = {
   async image(
     token: string,
@@ -215,6 +222,19 @@ export const uploads = {
     const form = new FormData()
     form.append('file', file)
     return upload<{ url: string }>(`/uploads/${kind}`, form, token)
+  },
+
+  /**
+   * Anexo que nao e imagem (zip, pdf, log, mod).
+   *
+   * Rota separada de proposito: o limite e outro (50 MB contra 8 MB), o
+   * servidor grava direto no disco em vez de segurar na memoria, e a lista de
+   * formatos aceitos e praticamente aberta.
+   */
+  async file(token: string, file: File): Promise<UploadedFile> {
+    const form = new FormData()
+    form.append('file', file)
+    return upload<UploadedFile>('/uploads/file', form, token)
   }
 }
 
@@ -222,7 +242,14 @@ export const uploads = {
 // CANAIS
 // ============================================
 
-export type ChannelType = 'text' | 'voice' | 'announcements'
+/**
+ * O tipo do canal.
+ *
+ * 'dm' NAO existe no servidor: e um canal sintetico que o chat-context cria
+ * por cima de cada conversa direta, pra que a tela de conversa seja
+ * literalmente a mesma tela de canal. Ver lib/chat-context.tsx.
+ */
+export type ChannelType = 'text' | 'voice' | 'announcements' | 'dm'
 
 export interface VoiceUser {
   id: string
@@ -261,8 +288,31 @@ export const channels = {
     return res.channel
   },
 
+  async update(
+    token: string,
+    id: string,
+    patch: { name?: string; description?: string | null; icon?: string | null }
+  ): Promise<Channel> {
+    const res = await request<{ channel: Channel }>(`/channels/${id}`, {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(patch)
+    })
+    return res.channel
+  },
+
   async remove(token: string, id: string): Promise<void> {
     await request(`/channels/${id}`, { method: 'DELETE', token })
+  },
+
+  /** A ordem INTEIRA de uma vez — ver o comentario na rota. */
+  async reorder(token: string, order: string[]): Promise<Channel[]> {
+    const res = await request<{ channels: Channel[] }>('/channels/reorder', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ order: order.map((id, position) => ({ id, position })) })
+    })
+    return res.channels
   },
 
   async seedDefaults(token: string): Promise<void> {
@@ -292,12 +342,21 @@ export interface MessageReaction {
 export interface ChatMessage {
   id: string
   content: string
-  type: 'text' | 'gif' | 'sticker' | 'system' | 'image'
+  type: 'text' | 'gif' | 'sticker' | 'system' | 'image' | 'file'
   gifUrl?: string | null
   stickerUrl?: string | null
   imageUrl?: string | null
+  /** Anexo generico (zip, pdf, log, mod). O nome original vem separado. */
+  fileUrl?: string | null
+  fileName?: string | null
+  fileSize?: number | null
+  fileMime?: string | null
   author: MessageAuthor
-  channelId: string
+  /** Uma das duas vem preenchida: mensagem de canal OU de conversa direta. */
+  channelId?: string | null
+  conversationId?: string | null
+  /** So nos resultados de busca, pra dizer ONDE a mensagem estava. */
+  channel?: { id: string; name: string; type: ChannelType } | null
   replyToId?: string | null
   replyTo?: {
     id: string
@@ -308,6 +367,19 @@ export interface ChatMessage {
   isEdited: boolean
   isPinned: boolean
   createdAt: string
+}
+
+/** Mesmo corpo pro canal e pra conversa: as duas rotas aceitam os mesmos campos. */
+export interface SendMessagePayload {
+  content: string
+  type?: ChatMessage['type']
+  imageUrl?: string
+  gifUrl?: string
+  fileUrl?: string
+  fileName?: string
+  fileSize?: number
+  fileMime?: string
+  replyToId?: string
 }
 
 export const messages = {
@@ -331,13 +403,7 @@ export const messages = {
   async send(
     token: string,
     channelId: string,
-    payload: {
-      content: string
-      type?: ChatMessage['type']
-      imageUrl?: string
-      gifUrl?: string
-      replyToId?: string
-    }
+    payload: SendMessagePayload
   ): Promise<ChatMessage> {
     const res = await request<{ message: ChatMessage }>(`/messages/channel/${channelId}`, {
       method: 'POST',
@@ -385,6 +451,108 @@ export const messages = {
       { token }
     )
     return res.messages
+  },
+
+  /**
+   * Busca no historico.
+   *
+   * O servidor so devolve o que VOCE pode ver: canais (abertos a todos) mais
+   * as conversas diretas de que voce participa. DM de terceiro nunca entra no
+   * resultado — a checagem e la, nao aqui.
+   */
+  async search(
+    token: string,
+    term: string,
+    options: { channelId?: string; authorId?: string; limit?: number } = {}
+  ): Promise<ChatMessage[]> {
+    const params = new URLSearchParams({ q: term })
+    if (options.channelId) params.set('channelId', options.channelId)
+    if (options.authorId) params.set('authorId', options.authorId)
+    if (options.limit) params.set('limit', String(options.limit))
+
+    const res = await request<{ messages: ChatMessage[] }>(
+      `/messages/search?${params.toString()}`,
+      { token }
+    )
+    return res.messages
+  }
+}
+
+// ============================================
+// CONVERSAS DIRETAS
+// ============================================
+
+export interface ConversationPeer {
+  id: string
+  username: string
+  displayName: string
+  avatar?: string | null
+  status?: UserStatus
+  profileColor?: string | null
+}
+
+export interface Conversation {
+  id: string
+  other: ConversationPeer
+  lastMessageAt: string
+  lastMessage?: {
+    id: string
+    content: string
+    imageUrl?: string | null
+    fileName?: string | null
+    createdAt: string
+    authorId: string
+  } | null
+  unread: number
+}
+
+export const dm = {
+  async list(token: string): Promise<Conversation[]> {
+    const res = await request<{ conversations: Conversation[] }>('/dm', { token })
+    return res.conversations
+  },
+
+  /** Abre a conversa com alguem — cria na primeira vez. */
+  async open(token: string, userId: string): Promise<Conversation> {
+    const res = await request<{ conversation: Conversation }>(`/dm/with/${userId}`, {
+      method: 'POST',
+      token
+    })
+    return res.conversation
+  },
+
+  async messages(
+    token: string,
+    conversationId: string,
+    options: { limit?: number; before?: string } = {}
+  ): Promise<ChatMessage[]> {
+    const params = new URLSearchParams()
+    if (options.limit) params.set('limit', String(options.limit))
+    if (options.before) params.set('before', options.before)
+    const query = params.toString()
+
+    const res = await request<{ messages: ChatMessage[] }>(
+      `/dm/${conversationId}/messages${query ? '?' + query : ''}`,
+      { token }
+    )
+    return res.messages
+  },
+
+  async send(
+    token: string,
+    conversationId: string,
+    payload: SendMessagePayload
+  ): Promise<ChatMessage> {
+    const res = await request<{ message: ChatMessage }>(`/dm/${conversationId}/messages`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify(payload)
+    })
+    return res.message
+  },
+
+  async markRead(token: string, conversationId: string): Promise<void> {
+    await request(`/dm/${conversationId}/read`, { method: 'POST', token })
   }
 }
 

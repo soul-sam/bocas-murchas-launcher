@@ -2,34 +2,47 @@ import * as React from 'react'
 import { X } from 'lucide-react'
 import { useChat } from '@/lib/chat-context'
 import { useVoice } from '@/lib/voice-context'
+import { useLayout } from '@/lib/layout-context'
 import type { Channel } from '@/lib/api'
 import { ChannelSidebar } from '@/components/social/ChannelSidebar'
 import { ChatView } from '@/components/social/ChatView'
 import { VoiceStage } from '@/components/social/VoiceStage'
 import { MemberList } from '@/components/social/MemberList'
+import { PinnedPanel } from '@/components/social/PinnedPanel'
+import { SearchPanel } from '@/components/social/SearchPanel'
+import { ChannelManager } from '@/components/social/ChannelManager'
 import { SoundboardPanel } from '@/components/social/SoundboardPanel'
-import { ProfileEditor } from '@/components/social/ProfileEditor'
+import { useOverlays } from '@/lib/overlay-context'
 
 /**
  * Tela social: canais à esquerda, chat ou call no meio, membros à direita.
  *
  * Clicar num canal de voz entra na call E troca a área central pro palco;
- * clicar num canal de texto volta pro chat sem sair da call — igual Discord.
+ * clicar num canal de texto (ou numa conversa) volta pro chat sem sair da call
+ * — igual Discord.
+ *
+ * As colunas laterais somem sozinhas conforme a janela aperta — a regra mora em
+ * lib/layout-context.tsx. `relative` aqui não é decoração: é o que ancora a
+ * gaveta de canais em janela estreita.
  */
 export function SocialPage() {
   const { setActiveChannel } = useChat()
   const voice = useVoice()
+  // O editor de perfil vive na casca autenticada, não aqui: esta página some ao
+  // trocar pra aba do Minecraft, e desmontar uma modal aberta trava o app
+  // inteiro (ver lib/interaction-guard.ts).
+  const { openProfileEditor } = useOverlays()
+  const { view, setView, membersOpen, pinnedOpen, searchOpen } = useLayout()
 
-  const [view, setView] = React.useState<'chat' | 'voice'>('chat')
   const [soundboardOpen, setSoundboardOpen] = React.useState(false)
-  const [profileOpen, setProfileOpen] = React.useState(false)
+  const [channelManagerOpen, setChannelManagerOpen] = React.useState(false)
 
   const handleSelectText = React.useCallback(
     (channel: Channel) => {
       setActiveChannel(channel.id)
       setView('chat')
     },
-    [setActiveChannel]
+    [setActiveChannel, setView]
   )
 
   const handleSelectVoice = React.useCallback(
@@ -39,7 +52,7 @@ export function SocialPage() {
       if (voice.channel?.id === channel.id) return
       void voice.join(channel)
     },
-    [voice]
+    [voice, setView]
   )
 
   // Sair da call (por qualquer caminho) não pode deixar a tela num palco vazio.
@@ -53,15 +66,15 @@ export function SocialPage() {
     if (voice.error) return
 
     setView('chat')
-  }, [view, voice.connected, voice.connecting, voice.error])
+  }, [view, voice.connected, voice.connecting, voice.error, setView])
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="relative flex min-h-0 flex-1 overflow-hidden">
       <ChannelSidebar
-        view={view}
         onSelectText={handleSelectText}
         onSelectVoice={handleSelectVoice}
-        onOpenProfile={() => setProfileOpen(true)}
+        onOpenProfile={openProfileEditor}
+        onManageChannels={() => setChannelManagerOpen(true)}
       />
 
       <main className="flex min-w-0 flex-1 flex-col">
@@ -72,8 +85,10 @@ export function SocialPage() {
         )}
       </main>
 
+      {/* Uma coluna à direita só, disputada por quatro painéis. Empilhar todos
+          numa janela de 1000px não sobraria chat nenhum. */}
       {soundboardOpen ? (
-        <aside className="flex w-80 shrink-0 flex-col border-l border-[#1a1a1a] bg-[#0D0D0D] p-3">
+        <aside className="flex w-72 shrink-0 flex-col border-l border-[#1a1a1a] bg-[#0D0D0D] p-3 xl:w-80">
           <button
             type="button"
             onClick={() => setSoundboardOpen(false)}
@@ -84,11 +99,20 @@ export function SocialPage() {
           </button>
           <SoundboardPanel />
         </aside>
-      ) : (
+      ) : searchOpen && view === 'chat' ? (
+        <SearchPanel />
+      ) : pinnedOpen && view === 'chat' ? (
+        <PinnedPanel />
+      ) : membersOpen ? (
         <MemberList />
-      )}
+      ) : null}
 
-      <ProfileEditor open={profileOpen} onClose={() => setProfileOpen(false)} />
+      {/* A modal fica AQUI e não na casca porque só existe pra esta tela — e
+          fecha por transição, nunca sendo arrancada da árvore. */}
+      <ChannelManager
+        open={channelManagerOpen}
+        onClose={() => setChannelManagerOpen(false)}
+      />
     </div>
   )
 }

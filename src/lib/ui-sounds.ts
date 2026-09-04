@@ -23,6 +23,8 @@ export type UiSound =
   | 'deafen'
   | 'undeafen'
   | 'nudge'
+  | 'message'
+  | 'mention'
 
 interface Note {
   /** Frequência em Hz. */
@@ -127,6 +129,25 @@ const CUES: Record<UiSound, Cue> = {
       { freq: E4, at: 0, dur: 0.08 },
       { freq: G4, at: 0.06, dur: 0.1 },
       { freq: C5, at: 0.12, dur: 0.18 }
+    ]
+  },
+
+  // Mensagem nova: uma nota só, curta e baixa. Toca dezenas de vezes por
+  // noite — qualquer coisa mais elaborada vira tortura em duas horas.
+  message: {
+    volume: 0.3,
+    cutoff: 3000,
+    notes: [{ freq: C5, at: 0, dur: 0.07 }]
+  },
+
+  // Citaram você: duas notas subindo, mais altas que a mensagem comum. É o
+  // único aviso do chat com direito a roubar atenção.
+  mention: {
+    volume: 0.7,
+    cutoff: 3200,
+    notes: [
+      { freq: E5, at: 0, dur: 0.08 },
+      { freq: A5, at: 0.07, dur: 0.18 }
     ]
   },
 

@@ -292,3 +292,24 @@
     outline-offset: -2px;
   }
 }
+
+
+/* ============================================
+   PULAR PRA UMA MENSAGEM
+   ============================================
+   Clicar numa resposta (ou numa fixada) rola ate a mensagem original. Sem um
+   sinal visual, a rolagem parava no meio da conversa e a pessoa nao sabia qual
+   das mensagens era a que ela pediu. O brilho apaga sozinho pra nao virar um
+   destaque permanente. */
+@keyframes flash {
+  0%   { background-color: rgba(106, 255, 0, 0.22); }
+  70%  { background-color: rgba(106, 255, 0, 0.14); }
+  100% { background-color: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[flash_1\.2s_ease-out\] {
+    animation: none;
+    box-shadow: inset 2px 0 0 #6AFF00;
+  }
+}

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { io, type Socket } from 'socket.io-client'
-import { API_ORIGIN, type AuthUser, type VoiceUser } from './api'
+import { API_ORIGIN, type AuthUser, type UserStatus, type VoiceUser } from './api'
 import { useAuth } from './auth-context'
 
 /**
@@ -18,6 +18,16 @@ export interface OnlineUser {
   displayName: string
   avatar?: string | null
   role?: string
+  /**
+   * Status de AGORA.
+   *
+   * Vem junto com a presenca de proposito. O `status` que a lista de membros
+   * traz do REST e uma foto do momento em que o app abriu: quem entrasse em
+   * "nao perturbe" depois disso continuava verde pros outros.
+   */
+  status?: UserStatus
+  customStatus?: string | null
+  profileColor?: string | null
 }
 
 /** Quem esta compartilhando tela agora, por canal. */
@@ -28,6 +38,8 @@ interface SocketContextValue {
   connected: boolean
   onlineUsers: OnlineUser[]
   onlineIds: Set<string>
+  /** Presenca indexada por id — o mesmo dado de `onlineUsers`, pra lookup. */
+  presenceById: Record<string, OnlineUser>
   /** channelId -> pessoas na voz */
   voiceByChannel: Record<string, VoiceUser[]>
   /** channelId -> userIds compartilhando tela */
@@ -58,9 +70,24 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     const client = io(API_ORIGIN, {
       auth: { token },
-      transports: ['websocket'],
+      /**
+       * Websocket primeiro, long-polling de reserva.
+       *
+       * Antes era `['websocket']` e mais nada. Onde o upgrade nao passa — proxy
+       * mal configurado, rede corporativa, antivirus que abre o TLS — o
+       * launcher nao conectava DE JEITO NENHUM: ficava em "Reconectando..." pra
+       * sempre, sem chat, sem presenca e sem nenhum erro na tela. `polling`
+       * atras (e `tryAllTransports`, que e o que de fato faz o cliente tentar o
+       * segundo da lista) troca "nao funciona" por "funciona mais devagar".
+       */
+      transports: ['websocket', 'polling'],
+      tryAllTransports: true,
       reconnectionDelay: 1_000,
-      reconnectionDelayMax: 8_000
+      reconnectionDelayMax: 8_000,
+      // Sem teto de tentativas: o launcher fica aberto o dia inteiro e precisa
+      // voltar sozinho quando a internet voltar, sem ninguem reabrir o app.
+      reconnectionAttempts: Infinity,
+      timeout: 10_000
     })
 
     const handleConnect = (): void => {
@@ -73,7 +100,22 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       client.emit('requestPresence')
     }
 
+    /**
+     * Cair NAO limpa a lista.
+     *
+     * A ultima presenca conhecida e o melhor palpite que temos enquanto
+     * estamos fora — a galera provavelmente continua online, quem sumiu foi a
+     * nossa conexao. Quem avisa que estamos desconectados e a bolinha vermelha
+     * do topo da barra; a lista e corrigida inteira no `connect` seguinte.
+     */
     const handleDisconnect = (): void => setConnected(false)
+
+    const handleConnectError = (err: Error): void => {
+      setConnected(false)
+      // Unica pista quando o app fica preso em "Reconectando...": token
+      // vencido, proxy sem upgrade, CORS, servidor fora do ar.
+      console.warn('[socket] falha ao conectar:', err.message)
+    }
 
     const handlePresence = (data: { onlineUsers?: OnlineUser[] }): void => {
       if (Array.isArray(data?.onlineUsers)) {
@@ -81,16 +123,43 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const handleVoiceState = (data: { byChannelId: Record<string, VoiceUser[]> }): void => {
+    const handleVoiceState = (data: {
+      byChannelId?: Record<string, VoiceUser[]>
+      sharingByChannelId?: Record<string, string[]>
+    }): void => {
+      // Isto e um RETRATO do servidor, entao SUBSTITUI os dois mapas em vez de
+      // misturar: misturar deixaria pra tras gente que saiu da call (ou parou
+      // de transmitir) enquanto o socket estava fora.
       setVoiceByChannel(data?.byChannelId ?? {})
+      setScreenShares(data?.sharingByChannelId ?? {})
     }
 
     const handleVoiceChanged = (data: {
       channelId: string
-      voiceUsers: VoiceUser[]
+      voiceUsers?: VoiceUser[]
     }): void => {
       if (!data?.channelId) return
-      setVoiceByChannel((prev) => ({ ...prev, [data.channelId]: data.voiceUsers ?? [] }))
+
+      const roster = data.voiceUsers ?? []
+      setVoiceByChannel((prev) => ({ ...prev, [data.channelId]: roster }))
+
+      /**
+       * Quem nao esta mais na sala nao esta transmitindo.
+       *
+       * O servidor tambem manda `screenshare:state` quando alguem cai
+       * transmitindo, mas a ordem de chegada dos dois eventos nao e garantida —
+       * e bolinha vermelha grudada e o tipo de coisa que ninguem consegue
+       * limpar sem fechar o launcher.
+       */
+      const present = new Set(roster.map((u) => u.id))
+      setScreenShares((prev) => {
+        const current = prev[data.channelId]
+        if (!current || current.length === 0) return prev
+
+        const next = current.filter((id) => present.has(id))
+        if (next.length === current.length) return prev
+        return { ...prev, [data.channelId]: next }
+      })
     }
 
     const handleScreenShare = (data: {
@@ -117,6 +186,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     client.on('connect', handleConnect)
     client.on('disconnect', handleDisconnect)
+    client.on('connect_error', handleConnectError)
     client.on('userOnline', handlePresence)
     client.on('userOffline', handlePresence)
     client.on('voiceState', handleVoiceState)
@@ -130,6 +200,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     return () => {
       client.off('connect', handleConnect)
       client.off('disconnect', handleDisconnect)
+      client.off('connect_error', handleConnectError)
       client.off('userOnline', handlePresence)
       client.off('userOffline', handlePresence)
       client.off('voiceState', handleVoiceState)
@@ -148,17 +219,33 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     [onlineUsers]
   )
 
+  const presenceById = React.useMemo(() => {
+    const map: Record<string, OnlineUser> = {}
+    for (const person of onlineUsers) map[person.id] = person
+    return map
+  }, [onlineUsers])
+
   const value = React.useMemo<SocketContextValue>(
     () => ({
       socket,
       connected,
       onlineUsers,
       onlineIds,
+      presenceById,
       voiceByChannel,
       screenShares,
       profileUpdates
     }),
-    [socket, connected, onlineUsers, onlineIds, voiceByChannel, screenShares, profileUpdates]
+    [
+      socket,
+      connected,
+      onlineUsers,
+      onlineIds,
+      presenceById,
+      voiceByChannel,
+      screenShares,
+      profileUpdates
+    ]
   )
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>

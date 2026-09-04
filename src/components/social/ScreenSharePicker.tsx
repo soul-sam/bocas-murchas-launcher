@@ -1,7 +1,14 @@
 import * as React from 'react'
-import { Monitor, AppWindow, Volume2, Loader2 } from 'lucide-react'
+import { Monitor, AppWindow, Volume2, Loader2, RefreshCw, Search } from 'lucide-react'
 import type { ScreenSource } from '../../../electron/preload/types'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { SCREEN_QUALITY, type ScreenQuality } from '@/lib/voice-context'
@@ -12,12 +19,18 @@ const QUALITY_LABEL: Record<ScreenQuality, string> = {
   '1080p60': '1080p 60fps — pesado'
 }
 
+const QUALITY_HINT: Record<ScreenQuality, string> = {
+  '720p30': 'Conversa e navegação. Aguenta internet ruim.',
+  '1080p30': 'Padrão pra jogo e pra ler código na tela dos outros.',
+  '1080p60': 'Jogo rápido. Só com upload sobrando dos dois lados.'
+}
+
 interface ScreenSharePickerProps {
   open: boolean
   onClose: () => void
   onConfirm: (
     sourceId: string,
-    options: { withAudio: boolean; quality: ScreenQuality }
+    options: { withAudio: boolean; quality: ScreenQuality; sourceName: string }
   ) => Promise<void>
 }
 
@@ -27,27 +40,34 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
   const [selected, setSelected] = React.useState<string | null>(null)
   const [withAudio, setWithAudio] = React.useState(true)
   const [quality, setQuality] = React.useState<ScreenQuality>('720p30')
+  const [filter, setFilter] = React.useState('')
   const [starting, setStarting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
-    if (!open) return
-
+  const load = React.useCallback((keepSelection: boolean) => {
     setLoading(true)
     setError(null)
-    setSelected(null)
 
     window.bocas.screen
       .listSources()
       .then((list) => {
         setSources(list)
-        // Pre-seleciona a tela principal: e o caso comum.
-        const firstScreen = list.find((s) => s.isScreen)
-        if (firstScreen) setSelected(firstScreen.id)
+        setSelected((prev) => {
+          // Atualizar a lista nao pode perder o que a pessoa ja tinha marcado
+          // — a nao ser que aquela janela tenha sido fechada nesse meio tempo.
+          if (keepSelection && prev && list.some((s) => s.id === prev)) return prev
+          return list.find((s) => s.isScreen)?.id ?? list[0]?.id ?? null
+        })
       })
       .catch(() => setError('Não consegui listar as telas'))
       .finally(() => setLoading(false))
-  }, [open])
+  }, [])
+
+  React.useEffect(() => {
+    if (!open) return
+    setFilter('')
+    load(false)
+  }, [open, load])
 
   // Deixar uma fonte marcada no main sem usar seria uma permissao pendurada.
   const handleClose = React.useCallback(() => {
@@ -56,11 +76,15 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
   }, [onClose])
 
   const handleConfirm = async (): Promise<void> => {
-    if (!selected) return
+    const source = sources.find((s) => s.id === selected)
+    if (!source) return
+
     setStarting(true)
     setError(null)
     try {
-      await onConfirm(selected, { withAudio, quality })
+      // O nome vai junto pro palco poder dizer O QUE esta no ar. Sem ele,
+      // quem compartilha só sabia que "algo" estava sendo transmitido.
+      await onConfirm(source.id, { withAudio, quality, sourceName: source.name })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao compartilhar')
@@ -69,8 +93,13 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
     }
   }
 
-  const screens = sources.filter((s) => s.isScreen)
-  const windows = sources.filter((s) => !s.isScreen)
+  const needle = filter.trim().toLowerCase()
+  const visible = needle
+    ? sources.filter((s) => s.name.toLowerCase().includes(needle))
+    : sources
+
+  const screens = visible.filter((s) => s.isScreen)
+  const windows = visible.filter((s) => !s.isScreen)
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && handleClose()}>
@@ -80,8 +109,31 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
           <DialogDescription>Escolha o que a galera vai ver</DialogDescription>
         </DialogHeader>
 
+        <div className="mb-3 flex shrink-0 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-brutal border-2 border-[#1a1a1a] bg-void px-2 transition-colors focus-within:border-acid/60">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <input
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              placeholder="Filtrar janelas…"
+              className="min-w-0 flex-1 bg-transparent py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => load(true)}
+            disabled={loading}
+            title="Atualizar a lista"
+            aria-label="Atualizar a lista"
+            className="shrink-0 rounded-brutal border-2 border-[#1a1a1a] p-2 text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid disabled:opacity-40"
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+          </button>
+        </div>
+
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          {loading ? (
+          {loading && sources.length === 0 ? (
             <div className="flex h-40 items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="font-mono text-xs uppercase tracking-widest">
@@ -97,6 +149,7 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
                   sources={screens}
                   selected={selected}
                   onSelect={setSelected}
+                  onConfirm={() => void handleConfirm()}
                 />
               )}
               {windows.length > 0 && (
@@ -106,18 +159,19 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
                   sources={windows}
                   selected={selected}
                   onSelect={setSelected}
+                  onConfirm={() => void handleConfirm()}
                 />
               )}
-              {sources.length === 0 && (
+              {visible.length === 0 && (
                 <p className="py-10 text-center text-sm text-muted-foreground">
-                  Nenhuma janela disponível.
+                  {needle ? 'Nada com esse nome.' : 'Nenhuma janela disponível.'}
                 </p>
               )}
             </>
           )}
         </div>
 
-        <div className="mt-4 flex shrink-0 flex-wrap items-center gap-4 border-t border-[#1a1a1a] pt-4">
+        <div className="mt-4 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-[#1a1a1a] pt-4">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -145,11 +199,13 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
               ))}
             </select>
           </label>
+
+          <p className="w-full font-mono text-[10px] text-muted-foreground">
+            {QUALITY_HINT[quality]}
+          </p>
         </div>
 
-        {error && (
-          <p className="mt-2 shrink-0 text-xs text-destructive">{error}</p>
-        )}
+        {error && <p className="mt-2 shrink-0 text-xs text-destructive">{error}</p>}
 
         <DialogFooter>
           <Button variant="ghost" onClick={handleClose} disabled={starting}>
@@ -176,27 +232,32 @@ function SourceGroup({
   label,
   sources,
   selected,
-  onSelect
+  onSelect,
+  onConfirm
 }: {
   icon: React.ReactNode
   label: string
   sources: ScreenSource[]
   selected: string | null
   onSelect: (id: string) => void
+  onConfirm: () => void
 }) {
   return (
     <section className="mb-5">
       <h3 className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         {icon}
         {label}
+        <span className="text-[9px] opacity-60">— {sources.length}</span>
       </h3>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {sources.map((source) => (
           <button
             key={source.id}
             type="button"
             onClick={() => onSelect(source.id)}
+            // Duplo clique compartilha direto: é o gesto que todo mundo tenta.
+            onDoubleClick={onConfirm}
             className={cn(
               'group overflow-hidden rounded-brutal border-2 text-left transition-all',
               selected === source.id

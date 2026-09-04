@@ -1,8 +1,8 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, dialog, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { registerIpcHandlers } from './ipc.js'
-import { initUpdater } from './services/updater.js'
+import { initUpdater, stopUpdater } from './services/updater.js'
 import { startServerStatusPolling } from './services/server-status.js'
 import { initScreenShare } from './services/screen-share.js'
 import { clearHotkeys } from './services/hotkeys.js'
@@ -64,6 +64,46 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' }
   })
 
+  // A janela nao tem moldura do Windows: minimizar, maximizar e fechar sao
+  // botoes React. Se o renderer travar, o app fica sem NENHUMA saida — nem o X
+  // funciona. Aqui o processo principal percebe e oferece o caminho de volta.
+  let hangDialogOpen = false
+  win.webContents.on('unresponsive', () => {
+    // Uma trava longa dispara 'unresponsive' mais de uma vez; sem esta guarda
+    // a pessoa acaba com uma pilha de caixas de dialogo.
+    if (hangDialogOpen) return
+    hangDialogOpen = true
+
+    void dialog
+      .showMessageBox(win, {
+        type: 'warning',
+        title: 'Bocas Murchas travou',
+        message: 'A janela parou de responder.',
+        detail:
+          'Recarregar recupera o app sem derrubar a sessao. A chamada de voz cai e precisa ser refeita.',
+        buttons: ['Recarregar', 'Esperar mais um pouco', 'Fechar o launcher'],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true
+      })
+      .then(({ response }) => {
+        hangDialogOpen = false
+        if (response === 0) win.webContents.reloadIgnoringCache()
+        if (response === 2) {
+          beginQuit()
+          app.quit()
+        }
+      })
+  })
+
+  // Renderer morto (falta de memoria, crash do GPU process) deixa uma janela
+  // desenhada e morta. Recarregar e sempre melhor que ficar assim.
+  win.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[main] renderer caiu:', details.reason)
+    if (details.reason === 'clean-exit') return
+    if (!win.isDestroyed()) win.webContents.reload()
+  })
+
   if (isDev && RENDERER_DEV_URL) {
     win.loadURL(RENDERER_DEV_URL)
     win.webContents.openDevTools({ mode: 'detach' })
@@ -121,4 +161,5 @@ app.on('will-quit', () => {
   // Atalho global que sobrevive ao processo trava a tecla pro sistema inteiro.
   clearHotkeys()
   destroyTray()
+  stopUpdater()
 })
