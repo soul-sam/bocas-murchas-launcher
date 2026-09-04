@@ -65,6 +65,21 @@ interface LayoutContextValue {
   toggleSearch: () => void
   openSearch: () => void
   closeSearch: () => void
+
+  /** Achados: links compartilhados no canal. Mesma coluna dos outros paineis. */
+  linksOpen: boolean
+  toggleLinks: () => void
+  closeLinks: () => void
+
+  /** Agenda: proximos eventos marcados. */
+  agendaOpen: boolean
+  toggleAgenda: () => void
+  closeAgenda: () => void
+
+  /** Ranking / XP / badges. */
+  leaderboardOpen: boolean
+  toggleLeaderboard: () => void
+  closeLeaderboard: () => void
 }
 
 const LayoutContext = React.createContext<LayoutContextValue | null>(null)
@@ -81,9 +96,31 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   /** `null` = deixa o automatico decidir. */
   const [sidebarPref, setSidebarPref] = React.useState<boolean | null>(null)
   const [membersPref, setMembersPref] = React.useState<boolean | null>(null)
-  const [pinnedOpen, setPinnedOpen] = React.useState(false)
-  const [searchOpen, setSearchOpen] = React.useState(false)
   const [view, setView] = React.useState<CenterView>('chat')
+
+  /**
+   * Um painel por vez na coluna da direita.
+   *
+   * Eram dois booleans (fixadas/busca) que se fechavam mutuamente; com
+   * achados, agenda e ranking entrando na mesma coluna, virou UM estado com o
+   * nome do painel aberto — impossivel dois ficarem abertos ao mesmo tempo.
+   */
+  type RightPanel = 'pinned' | 'search' | 'links' | 'agenda' | 'leaderboard' | null
+  const [panel, setPanel] = React.useState<RightPanel>(null)
+  const togglePanel = React.useCallback(
+    (name: Exclude<RightPanel, null>) => setPanel((prev) => (prev === name ? null : name)),
+    []
+  )
+  const closePanel = React.useCallback(
+    (name: Exclude<RightPanel, null>) => setPanel((prev) => (prev === name ? null : prev)),
+    []
+  )
+
+  const pinnedOpen = panel === 'pinned'
+  const searchOpen = panel === 'search'
+  const linksOpen = panel === 'links'
+  const agendaOpen = panel === 'agenda'
+  const leaderboardOpen = panel === 'leaderboard'
 
   // Ctrl+F abre a busca do chat. O Chromium nao tem busca nativa de pagina no
   // Electron, entao a tecla estava sobrando — e e a que todo mundo aperta.
@@ -91,8 +128,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
     const handle = (event: KeyboardEvent): void => {
       if (!(event.ctrlKey || event.metaKey) || event.code !== 'KeyF') return
       event.preventDefault()
-      setSearchOpen(true)
-      setPinnedOpen(false)
+      setPanel('search')
     }
 
     window.addEventListener('keydown', handle)
@@ -147,25 +183,24 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       membersOpen,
       toggleMembers: () => {
         setMembersPref((prev) => !(prev ?? membersAuto))
-        setPinnedOpen(false)
-        setSearchOpen(false)
+        setPanel(null)
       },
       pinnedOpen,
-      togglePinned: () => {
-        setPinnedOpen((prev) => !prev)
-        setSearchOpen(false)
-      },
-      closePinned: () => setPinnedOpen(false),
+      togglePinned: () => togglePanel('pinned'),
+      closePinned: () => closePanel('pinned'),
       searchOpen,
-      toggleSearch: () => {
-        setSearchOpen((prev) => !prev)
-        setPinnedOpen(false)
-      },
-      openSearch: () => {
-        setSearchOpen(true)
-        setPinnedOpen(false)
-      },
-      closeSearch: () => setSearchOpen(false)
+      toggleSearch: () => togglePanel('search'),
+      openSearch: () => setPanel('search'),
+      closeSearch: () => closePanel('search'),
+      linksOpen,
+      toggleLinks: () => togglePanel('links'),
+      closeLinks: () => closePanel('links'),
+      agendaOpen,
+      toggleAgenda: () => togglePanel('agenda'),
+      closeAgenda: () => closePanel('agenda'),
+      leaderboardOpen,
+      toggleLeaderboard: () => togglePanel('leaderboard'),
+      closeLeaderboard: () => closePanel('leaderboard')
     }),
     [
       width,
@@ -176,6 +211,11 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       membersAuto,
       pinnedOpen,
       searchOpen,
+      linksOpen,
+      agendaOpen,
+      leaderboardOpen,
+      togglePanel,
+      closePanel,
       view
     ]
   )

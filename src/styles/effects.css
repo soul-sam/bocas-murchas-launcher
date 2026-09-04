@@ -1,0 +1,158 @@
+/* ============================================
+   COSMÉTICOS DA GAMIFICAÇÃO
+   ============================================
+   Efeitos de nome (.fx-*), molduras de avatar (.frame-*) e a entrada dos
+   toasts de XP. Vive fora do globals.css porque é tudo da mesma feature e
+   porque roda em DEZENAS de elementos ao mesmo tempo (cada nome da lista de
+   membros, cada autor de mensagem) — então as animações só mexem em
+   transform, opacity e background-position, que o compositor resolve sem
+   repintar a árvore. Nada de animar text-shadow, filter ou box-shadow. */
+
+/* --- glow ---------------------------------------------------------------
+   O brilho fixo fica no próprio texto; o que pulsa é uma cópia por cima
+   (::after com attr(data-text)) que só varia a opacidade. Texto invisível,
+   sombra na cor herdada — text-fill-color não afeta a cor da sombra. */
+.fx-glow {
+  position: relative;
+  text-shadow: 0 0 6px currentColor;
+}
+
+.fx-glow::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+  animation: fx-glow-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes fx-glow-pulse {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 1; }
+}
+
+/* --- rainbow --------------------------------------------------------------
+   Gradiente 3x mais largo que o texto correndo pela horizontal. */
+.fx-rainbow {
+  background-image: linear-gradient(
+    90deg,
+    #ff004c, #ff9a00, #6aff00, #00e5ff, #b400ff, #ff004c
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: fx-slide 4s linear infinite;
+}
+
+@keyframes fx-slide {
+  from { background-position: 0% 50%; }
+  to { background-position: 300% 50%; }
+}
+
+/* --- glitch ---------------------------------------------------------------
+   Parado 90% do tempo; um tranco curto de vez em quando. As sombras
+   vermelha/ciana são fixas — o tranco é só transform. */
+.fx-glitch {
+  display: inline-block;
+  text-shadow: 1px 0 rgba(255, 0, 80, 0.55), -1px 0 rgba(0, 229, 255, 0.55);
+  animation: fx-glitch 3.2s steps(1, end) infinite;
+}
+
+@keyframes fx-glitch {
+  0%, 89%, 100% { transform: translate(0, 0); }
+  90% { transform: translate(-2px, 1px); }
+  92% { transform: translate(2px, -1px) skewX(-6deg); }
+  94% { transform: translate(-1px, 0); }
+  96% { transform: translate(1px, 1px); }
+}
+
+/* --- fire -----------------------------------------------------------------
+   Gradiente vertical de fogo (amarelo em cima, vermelho embaixo) que sobe e
+   desce, com uma tremida de opacidade por cima. */
+.fx-fire {
+  background-image: linear-gradient(0deg, #ff2d00 0%, #ff8a00 45%, #ffd000 80%, #fff3a0 100%);
+  background-size: 100% 220%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: fx-fire 1.1s ease-in-out infinite alternate, fx-flicker 0.35s steps(2, end) infinite;
+}
+
+@keyframes fx-fire {
+  from { background-position: 50% 100%; }
+  to { background-position: 50% 0%; }
+}
+
+@keyframes fx-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.86; }
+}
+
+/* ============================================
+   MOLDURAS DE AVATAR
+   ============================================
+   Aplicadas no <Avatar> (que já tem border e overflow hidden). A neon é a
+   única animada: um anel de gradiente ATRÁS do avatar correndo pela
+   horizontal — mesmo truque do rainbow, só background-position. */
+.frame-acid {
+  border-color: #6aff00 !important;
+  box-shadow: 0 0 8px rgba(106, 255, 0, 0.65), inset 0 0 0 1px rgba(106, 255, 0, 0.4);
+}
+
+.frame-gold {
+  border-color: #f2b705 !important;
+  box-shadow: 0 0 0 1px #f2b705, 0 0 10px rgba(242, 183, 5, 0.55);
+}
+
+.frame-pixel {
+  border-style: dashed !important;
+  border-color: #6aff00 !important;
+  border-width: 2px !important;
+}
+
+.frame-neon {
+  border-color: transparent !important;
+}
+
+/* O anel: quem monta o avatar coloca este irmão logo antes dele. */
+.frame-neon-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 6px;
+  background-image: linear-gradient(90deg, #6aff00, #00e5ff, #b400ff, #ff004c, #f2b705, #6aff00);
+  background-size: 300% 100%;
+  animation: fx-slide 3s linear infinite;
+  pointer-events: none;
+}
+
+/* ============================================
+   TOASTS DE XP
+   ============================================ */
+@keyframes toast-in {
+  from { transform: translate3d(24px, 0, 0); opacity: 0; }
+  to { transform: translate3d(0, 0, 0); opacity: 1; }
+}
+
+.toast-in {
+  animation: toast-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Barra de XP enchendo: só width muda, e uma vez só. */
+.xp-fill {
+  transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Quem pediu menos animação no sistema não leva nome piscando na lista. */
+@media (prefers-reduced-motion: reduce) {
+  .fx-glow::after,
+  .fx-rainbow,
+  .fx-glitch,
+  .fx-fire,
+  .frame-neon-ring,
+  .toast-in {
+    animation: none;
+  }
+  .fx-glow::after { opacity: 0.6; }
+}

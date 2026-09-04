@@ -1,6 +1,18 @@
 import * as React from 'react'
-import { Play, Plus, Trash2, Loader2, Volume2, TriangleAlert } from 'lucide-react'
+import {
+  Play,
+  Plus,
+  Trash2,
+  Loader2,
+  Volume2,
+  TriangleAlert,
+  Square,
+  MoreHorizontal,
+  Ban,
+  Check
+} from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +26,9 @@ import type { Sound } from '@/lib/api'
 
 const MAX_DURATION_MS = 8_000
 
+/** Aba "todas" — não é categoria de verdade, é a ausência de filtro. */
+const ALL = '*'
+
 /**
  * Painel do soundboard.
  *
@@ -21,12 +36,25 @@ const MAX_DURATION_MS = 8_000
  * so pra quem clicou — util pra conferir o som antes de soltar na call.
  */
 export function SoundboardPanel() {
-  const { sounds, loading, play, preview, remove, cooldownMessage, recent } = useSoundboard()
+  const { sounds, byCategory, loading, play, preview, stopAll, cooldownMessage, recent } =
+    useSoundboard()
   const { settings, update } = useSettings()
   const { user } = useAuth()
   const { connected: inVoice } = useVoice()
 
   const [uploadOpen, setUploadOpen] = React.useState(false)
+  const [category, setCategory] = React.useState<string>(ALL)
+
+  const isAdmin = user?.role === 'admin'
+
+  const categories = React.useMemo(() => Object.keys(byCategory).sort(), [byCategory])
+
+  // A categoria escolhida pode sumir (apagaram o último som dela): volta pra "todas".
+  React.useEffect(() => {
+    if (category !== ALL && !byCategory[category]) setCategory(ALL)
+  }, [category, byCategory])
+
+  const visible = category === ALL ? sounds : (byCategory[category] ?? [])
 
   const bindHotkey = (soundId: string, accelerator: string): void => {
     void update({ hotkeys: { ...settings.hotkeys, sounds: { [soundId]: accelerator } } })
@@ -42,10 +70,23 @@ export function SoundboardPanel() {
           </p>
         </div>
 
-        <Button size="sm" variant="outline" onClick={() => setUploadOpen(true)}>
-          <Plus className="mr-1.5 h-3.5 w-3.5" />
-          Novo som
-        </Button>
+        <div className="flex items-center gap-1.5">
+          {/* Só o que está tocando AQUI: o servidor não tem "parar" — cada
+              launcher toca o arquivo localmente. */}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={stopAll}
+            title="Parar os sons que estão tocando aqui"
+          >
+            <Square className="mr-1.5 h-3.5 w-3.5" />
+            Parar tudo
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setUploadOpen(true)}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Novo som
+          </Button>
+        </div>
       </header>
 
       {cooldownMessage && (
@@ -55,28 +96,46 @@ export function SoundboardPanel() {
         </div>
       )}
 
+      {categories.length > 1 && (
+        <div className="mb-3 flex shrink-0 flex-wrap gap-1">
+          <CategoryChip active={category === ALL} onClick={() => setCategory(ALL)}>
+            todas
+          </CategoryChip>
+          {categories.map((name) => (
+            <CategoryChip
+              key={name}
+              active={category === name}
+              onClick={() => setCategory(name)}
+            >
+              {name}
+            </CategoryChip>
+          ))}
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {loading ? (
           <div className="flex h-32 items-center justify-center text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
-        ) : sounds.length === 0 ? (
+        ) : visible.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
             Nenhum som ainda. Sobe o primeiro aí.
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
-            {sounds.map((sound) => (
+            {visible.map((sound) => (
               <SoundTile
                 key={sound.id}
                 sound={sound}
+                categories={categories}
                 hotkey={settings.hotkeys.sounds[sound.id] ?? ''}
-                canDelete={sound.uploadedBy.id === user?.id || user?.role === 'admin'}
-                disabled={!inVoice}
+                canEdit={sound.uploadedBy.id === user?.id || isAdmin}
+                isAdmin={isAdmin}
+                disabled={!inVoice || sound.isBlocked}
                 onPlay={() => void play(sound.id)}
                 onPreview={() => preview(sound)}
                 onBind={(accelerator) => bindHotkey(sound.id, accelerator)}
-                onDelete={() => void remove(sound.id)}
               />
             ))}
           </div>
@@ -110,42 +169,81 @@ export function SoundboardPanel() {
         )}
       </footer>
 
-      <UploadSoundDialog open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <UploadSoundDialog
+        open={uploadOpen}
+        categories={categories}
+        onClose={() => setUploadOpen(false)}
+      />
     </div>
+  )
+}
+
+function CategoryChip({
+  active,
+  onClick,
+  children
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-brutal border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+        active
+          ? 'border-acid bg-acid/10 text-acid'
+          : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-foreground'
+      )}
+    >
+      {children}
+    </button>
   )
 }
 
 function SoundTile({
   sound,
+  categories,
   hotkey,
-  canDelete,
+  canEdit,
+  isAdmin,
   disabled,
   onPlay,
   onPreview,
-  onBind,
-  onDelete
+  onBind
 }: {
   sound: Sound
+  categories: string[]
   hotkey: string
-  canDelete: boolean
+  canEdit: boolean
+  isAdmin: boolean
   disabled: boolean
   onPlay: () => void
   onPreview: () => void
   onBind: (accelerator: string) => void
-  onDelete: () => void
 }) {
   return (
     <div
       className={cn(
         'group flex flex-col gap-1.5 rounded-brutal border-2 border-[#1a1a1a] p-2',
-        'transition-colors hover:border-acid/50'
+        'transition-colors hover:border-acid/50',
+        // Só admin vê som bloqueado — e vê apagado, pra saber que está fora do ar.
+        sound.isBlocked && 'border-dashed opacity-50'
       )}
     >
       <button
         type="button"
         onClick={onPlay}
         disabled={disabled}
-        title={disabled ? 'Entre num canal de voz' : `Tocar "${sound.name}" pra sala`}
+        title={
+          sound.isBlocked
+            ? 'Bloqueado — ninguém consegue tocar'
+            : disabled
+              ? 'Entre num canal de voz'
+              : `Tocar "${sound.name}" pra sala`
+        }
         className={cn(
           'flex items-center gap-2 rounded-brutal px-1 py-1 text-left transition-colors',
           disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-acid/10'
@@ -157,6 +255,9 @@ function SoundTile({
             {sound.name}
           </span>
           <span className="block font-mono text-[10px] text-muted-foreground">
+            {sound.isBlocked ? (
+              <span className="text-burn">bloqueado · </span>
+            ) : null}
             {(sound.durationMs / 1000).toFixed(1)}s · {sound.playCount}x
           </span>
         </span>
@@ -179,27 +280,262 @@ function SoundTile({
           <Play className="h-3 w-3" />
         </button>
 
-        {canDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            title="Apagar som"
-            className="shrink-0 rounded-brutal p-1.5 text-muted-foreground opacity-0 transition-all hover:bg-muted hover:text-destructive group-hover:opacity-100"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-        )}
+        {canEdit && <SoundMenu sound={sound} categories={categories} isAdmin={isAdmin} />}
       </div>
     </div>
   )
 }
 
-function UploadSoundDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+/**
+ * Menu "⋯" do som: renomear, emoji, categoria, volume, apagar e (admin)
+ * bloquear.
+ *
+ * Popover NÃO-modal de propósito: modal do Radix trava o <body> enquanto
+ * aberto, e este menu vive num painel que troca de aba e some com o som
+ * apagado por outra pessoa — exatamente o cenário que deixa o app sem clique
+ * (ver lib/interaction-guard.ts).
+ */
+function SoundMenu({
+  sound,
+  categories,
+  isAdmin
+}: {
+  sound: Sound
+  categories: string[]
+  isAdmin: boolean
+}) {
+  const { update, remove, setBlocked } = useSoundboard()
+
+  const [open, setOpen] = React.useState(false)
+  const [name, setName] = React.useState(sound.name)
+  const [emoji, setEmoji] = React.useState(sound.emoji)
+  const [category, setCategory] = React.useState(sound.category)
+  const [volume, setVolume] = React.useState(sound.volume)
+  const [busy, setBusy] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = React.useState(false)
+
+  // Abrir sempre parte do que está salvo, não do que ficou digitado da última vez.
+  const handleOpenChange = (next: boolean): void => {
+    if (next) {
+      setName(sound.name)
+      setEmoji(sound.emoji)
+      setCategory(sound.category)
+      setVolume(sound.volume)
+      setError(null)
+      setConfirmDelete(false)
+    }
+    setOpen(next)
+  }
+
+  const dirty =
+    name.trim() !== sound.name ||
+    emoji !== sound.emoji ||
+    category.trim() !== sound.category ||
+    Math.abs(volume - sound.volume) > 0.001
+
+  const save = async (): Promise<void> => {
+    if (!dirty || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await update(sound.id, {
+        ...(name.trim() !== sound.name ? { name: name.trim() } : {}),
+        ...(emoji !== sound.emoji ? { emoji } : {}),
+        ...(category.trim() !== sound.category ? { category: category.trim() || 'geral' } : {}),
+        ...(Math.abs(volume - sound.volume) > 0.001 ? { volume } : {})
+      })
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não deu pra salvar')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleDelete = async (): Promise<void> => {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await remove(sound.id)
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não deu pra apagar')
+      setBusy(false)
+    }
+  }
+
+  const toggleBlocked = async (): Promise<void> => {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await setBlocked(sound.id, !sound.isBlocked)
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não deu pra bloquear')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange} modal={false}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title="Editar som"
+          aria-label="Editar som"
+          className={cn(
+            'shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-acid',
+            !open && 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+          )}
+        >
+          <MoreHorizontal className="h-3 w-3" />
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent align="end" className="w-64 space-y-3">
+        <div className="flex gap-2">
+          <div className="w-14 space-y-1">
+            <Label htmlFor={`emoji-${sound.id}`}>Emoji</Label>
+            <Input
+              id={`emoji-${sound.id}`}
+              value={emoji}
+              onChange={(e) => setEmoji(e.target.value.slice(0, 4))}
+              className="h-8 px-1 text-center text-base"
+            />
+          </div>
+          <div className="flex-1 space-y-1">
+            <Label htmlFor={`name-${sound.id}`}>Nome</Label>
+            <Input
+              id={`name-${sound.id}`}
+              value={name}
+              maxLength={24}
+              onChange={(e) => setName(e.target.value)}
+              className="h-8 text-xs"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor={`cat-${sound.id}`}>Categoria</Label>
+          <Input
+            id={`cat-${sound.id}`}
+            value={category}
+            maxLength={24}
+            list={`cats-${sound.id}`}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="geral"
+            className="h-8 text-xs"
+          />
+          {/* Sugere as que já existem — categoria nova é só digitar outra. */}
+          <datalist id={`cats-${sound.id}`}>
+            {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </div>
+
+        <label className="block space-y-1">
+          <span className="flex items-center justify-between">
+            <Label>Volume do som</Label>
+            <span className="font-mono text-[10px] text-acid">{Math.round(volume * 100)}%</span>
+          </span>
+          <input
+            type="range"
+            min={0.05}
+            max={1}
+            step={0.05}
+            value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            className="ram-slider w-full"
+          />
+        </label>
+
+        {error && <p className="text-xs text-destructive">{error}</p>}
+
+        <div className="flex items-center justify-between gap-2 border-t border-[#1a1a1a] pt-2">
+          <div className="flex items-center gap-1">
+            {confirmDelete ? (
+              <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-destructive">
+                apagar?
+                <button
+                  type="button"
+                  onClick={() => void handleDelete()}
+                  disabled={busy}
+                  className="font-bold hover:underline"
+                >
+                  sim
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="text-muted-foreground hover:underline"
+                >
+                  não
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                title="Apagar som"
+                className="rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+
+            {isAdmin && !confirmDelete && (
+              <button
+                type="button"
+                onClick={() => void toggleBlocked()}
+                disabled={busy}
+                title={sound.isBlocked ? 'Liberar pra todo mundo' : 'Bloquear pra todo mundo'}
+                className={cn(
+                  'flex items-center gap-1 rounded-brutal px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors',
+                  sound.isBlocked
+                    ? 'text-acid hover:bg-acid/10'
+                    : 'text-muted-foreground hover:bg-burn/10 hover:text-burn'
+                )}
+              >
+                <Ban className="h-3.5 w-3.5" />
+                {sound.isBlocked ? 'liberar' : 'bloquear'}
+              </button>
+            )}
+          </div>
+
+          <Button size="sm" onClick={() => void save()} disabled={!dirty || busy}>
+            {busy ? (
+              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+            ) : (
+              <Check className="mr-1.5 h-3 w-3" />
+            )}
+            Salvar
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function UploadSoundDialog({
+  open,
+  categories,
+  onClose
+}: {
+  open: boolean
+  categories: string[]
+  onClose: () => void
+}) {
   const { upload } = useSoundboard()
 
   const [file, setFile] = React.useState<File | null>(null)
   const [name, setName] = React.useState('')
   const [emoji, setEmoji] = React.useState('🔊')
+  const [category, setCategory] = React.useState('')
   const [duration, setDuration] = React.useState<number | null>(null)
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -208,6 +544,7 @@ function UploadSoundDialog({ open, onClose }: { open: boolean; onClose: () => vo
     setFile(null)
     setName('')
     setEmoji('🔊')
+    setCategory('')
     setDuration(null)
     setError(null)
   }
@@ -242,7 +579,12 @@ function UploadSoundDialog({ open, onClose }: { open: boolean; onClose: () => vo
     setBusy(true)
     setError(null)
     try {
-      await upload({ file, name: name.trim(), emoji })
+      await upload({
+        file,
+        name: name.trim(),
+        emoji,
+        ...(category.trim() ? { category: category.trim() } : {})
+      })
       reset()
       onClose()
     } catch (err) {
@@ -315,6 +657,23 @@ function UploadSoundDialog({ open, onClose }: { open: boolean; onClose: () => vo
                 placeholder="risada, buzina…"
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="sound-category">Categoria (opcional)</Label>
+            <Input
+              id="sound-category"
+              value={category}
+              maxLength={24}
+              list="sound-category-options"
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="geral"
+            />
+            <datalist id="sound-category-options">
+              {categories.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}

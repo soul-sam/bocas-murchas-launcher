@@ -15,8 +15,17 @@ import {
   setCloseToTray
 } from './services/tray.js'
 import { loadSettings } from './services/settings.js'
+import { startLolWatcher, stopLolWatcher } from './services/lol.js'
+import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+/**
+ * Aberto pelo autostart do Windows E com "abrir na bandeja" ligado: a janela
+ * nasce escondida. Decidido uma vez, antes da janela existir. Abrir pelo
+ * atalho normal sempre mostra a janela.
+ */
+let startHidden = false
 
 const isDev = !app.isPackaged
 const RENDERER_DEV_URL = process.env['ELECTRON_RENDERER_URL']
@@ -47,7 +56,11 @@ function createWindow(): BrowserWindow {
     }
   })
 
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => {
+    // Na bandeja o app continua conectando: presenca, call e notificacoes
+    // funcionam igual — so a janela fica guardada ate alguem clicar no icone.
+    if (!startHidden) win.show()
+  })
 
   win.on('maximize', () => win.webContents.send('window:state', { maximized: true }))
   win.on('unmaximize', () => win.webContents.send('window:state', { maximized: false }))
@@ -135,11 +148,18 @@ if (!gotTheLock) {
     // decidiria com o padrao em vez da preferencia salva.
     const settings = await loadSettings()
     setCloseToTray(settings.closeToTray)
+    startHidden = launchedAtLogin() && settings.startMinimized
 
     createWindow()
     initTray()
     initUpdater()
     startServerStatusPolling()
+
+    // Alinha o registro do Windows com a preferencia (inclusive na primeira
+    // vez, quando o padrao e "ligado" e ninguem mexeu em nada ainda).
+    void applyAutostart()
+
+    if (settings.lol.enabled) startLolWatcher()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -162,4 +182,5 @@ app.on('will-quit', () => {
   clearHotkeys()
   destroyTray()
   stopUpdater()
+  stopLolWatcher()
 })

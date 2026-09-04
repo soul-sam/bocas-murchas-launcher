@@ -1,6 +1,8 @@
 import * as React from 'react'
 import * as AvatarPrimitive from '@radix-ui/react-avatar'
 import { cn } from '@/lib/utils'
+import { cosmeticKey } from '@/lib/api-gamification'
+import '@/styles/effects.css'
 
 export const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
@@ -51,6 +53,20 @@ const STATUS_STYLES: Record<string, string> = {
   offline: 'bg-[#3A3A3A]'
 }
 
+/**
+ * Molduras compradas na lojinha (ids `frame:*`). As classes estão em
+ * styles/effects.css. Moldura ganha da cor do perfil na borda: quem pagou por
+ * ela quer que apareça.
+ */
+const FRAME_STYLES: Record<string, string> = {
+  acid: 'frame-acid',
+  gold: 'frame-gold',
+  pixel: 'frame-pixel',
+  neon: 'frame-neon'
+}
+
+export const AVATAR_FRAME_KEYS = Object.keys(FRAME_STYLES)
+
 /** Avatar com bolinha de status no canto, igual Discord. */
 export function UserAvatar({
   src,
@@ -58,7 +74,8 @@ export function UserAvatar({
   status,
   className,
   ringColor,
-  speaking
+  speaking,
+  frame
 }: {
   src?: string
   name: string
@@ -66,12 +83,21 @@ export function UserAvatar({
   className?: string
   ringColor?: string | null
   speaking?: boolean
+  /** Id do cosmético de moldura (`frame:gold`) ou só a chave (`gold`). */
+  frame?: string | null
 }) {
+  const frameKey = cosmeticKey(frame)
+  const frameClass = frameKey ? FRAME_STYLES[frameKey] : undefined
+
   return (
     <div className="relative shrink-0">
+      {/* Anel neon fica ATRÁS do avatar: vem antes no DOM e o Avatar é
+          `relative`, então pinta por cima dele. */}
+      {frameKey === 'neon' && <span aria-hidden className="frame-neon-ring" />}
+
       <Avatar
-        className={cn(className, speaking && 'ring-2 ring-acid')}
-        style={ringColor && !speaking ? { borderColor: ringColor } : undefined}
+        className={cn(className, frameClass, speaking && 'ring-2 ring-acid')}
+        style={ringColor && !speaking && !frameClass ? { borderColor: ringColor } : undefined}
       >
         {src && <AvatarImage src={src} alt="" />}
         <AvatarFallback>{name.slice(0, 2)}</AvatarFallback>

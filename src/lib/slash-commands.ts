@@ -1,0 +1,63 @@
+/**
+ * Comandos de barra do compositor.
+ *
+ * "/marcar sexta 21h LoL" abre o compositor de evento já com o texto;
+ * "/enquete" abre o de enquete; "/bora" o de "bora?". O texto NÃO é enviado
+ * como mensagem. Quem não conhece o comando manda o texto normal — ninguém
+ * perde mensagem por causa de uma barra no começo.
+ */
+
+export type SlashCommand =
+  | { kind: 'poll' }
+  | { kind: 'event'; seed: string }
+  | { kind: 'party'; seed: string }
+  | { kind: 'drop'; seed: string }
+  | { kind: 'shop' }
+
+const ALIASES: Record<string, SlashCommand['kind']> = {
+  enquete: 'poll',
+  poll: 'poll',
+  votacao: 'poll',
+  votação: 'poll',
+  marcar: 'event',
+  evento: 'event',
+  agenda: 'event',
+  bora: 'party',
+  party: 'party',
+  drop: 'drop',
+  loja: 'shop',
+  lojinha: 'shop',
+  shop: 'shop'
+}
+
+export function parseSlashCommand(text: string): SlashCommand | null {
+  const match = /^\/([\p{L}]+)(?:\s+([\s\S]*))?$/u.exec(text.trim())
+  if (!match) return null
+
+  const kind = ALIASES[match[1].toLowerCase()]
+  if (!kind) return null
+
+  const seed = (match[2] ?? '').trim()
+
+  switch (kind) {
+    case 'poll':
+      return { kind: 'poll' }
+    case 'shop':
+      return { kind: 'shop' }
+    case 'event':
+      return { kind: 'event', seed }
+    case 'party':
+      return { kind: 'party', seed }
+    case 'drop':
+      return { kind: 'drop', seed }
+  }
+}
+
+/** Lista pro autocompletar quando a pessoa digita "/" */
+export const SLASH_HELP: Array<{ command: string; hint: string }> = [
+  { command: '/enquete', hint: 'Criar uma enquete' },
+  { command: '/marcar', hint: 'Marcar na agenda — ex.: /marcar sexta 21h LoL' },
+  { command: '/bora', hint: 'Chamar pra jogar agora — ex.: /bora lol' },
+  { command: '/drop', hint: 'Anúncio animado (admin)' },
+  { command: '/loja', hint: 'Abrir a lojinha' }
+]

@@ -1,9 +1,11 @@
-import { NavLink } from 'react-router-dom'
-import { MessagesSquare, Gamepad2, LogOut, Keyboard } from 'lucide-react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { MessagesSquare, Gamepad2, LogOut, Keyboard, Trophy, Flame } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useChat } from '@/lib/chat-context'
 import { useOverlays } from '@/lib/overlay-context'
+import { useLayout } from '@/lib/layout-context'
+import { useGamification } from '@/lib/gamification-context'
 
 /**
  * Barra estreita da esquerda: alterna entre o social e o launcher do Minecraft.
@@ -13,9 +15,30 @@ export function AppRail() {
   const { logout } = useAuth()
   const { unread, mentions } = useChat()
   const { toggleShortcuts } = useOverlays()
+  const { leaderboardOpen, toggleLeaderboard } = useLayout()
+  const { profile } = useGamification()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
 
   const totalUnread = Object.values(unread).reduce((sum, count) => sum + count, 0)
   const totalMentions = Object.values(mentions).reduce((sum, count) => sum + count, 0)
+
+  const onSocial = pathname === '/'
+  const streak = profile?.streak ?? 0
+
+  /**
+   * O painel de ranking mora na coluna direita da tela social. Clicar nele
+   * da aba do Minecraft precisa levar pra lá — abrir um painel que a pessoa
+   * não vê é a mesma coisa que não fazer nada.
+   */
+  const openRanking = (): void => {
+    if (!onSocial) {
+      navigate('/')
+      if (!leaderboardOpen) toggleLeaderboard()
+      return
+    }
+    toggleLeaderboard()
+  }
 
   return (
     <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-[#1a1a1a] bg-[#080808] py-2">
@@ -33,6 +56,37 @@ export function AppRail() {
       <RailLink to="/jogo" label="Minecraft">
         <Gamepad2 className="h-5 w-5" />
       </RailLink>
+
+      <button
+        type="button"
+        title={profile ? `Ranking · nível ${profile.level}` : 'Ranking'}
+        aria-label="Ranking"
+        onClick={openRanking}
+        className={cn(
+          'relative rounded-brutal p-2.5 transition-colors',
+          leaderboardOpen && onSocial
+            ? 'bg-acid/10 text-acid shadow-[inset_2px_0_0_#6AFF00]'
+            : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
+        )}
+      >
+        <Trophy className="h-5 w-5" />
+        {profile && (
+          <span className="absolute -bottom-0.5 -right-0.5 min-w-4 rounded-full border border-acid-dark bg-void px-1 text-center font-mono text-[9px] font-bold leading-4 text-acid">
+            {profile.level}
+          </span>
+        )}
+      </button>
+
+      {/* Streak só a partir de 2: "1" é qualquer um que abriu o app hoje. */}
+      {streak >= 2 && (
+        <span
+          title={`Streak de check-in: ${streak} dias seguidos`}
+          className="flex items-center gap-0.5 rounded-brutal px-1 font-mono text-[10px] font-bold text-burn"
+        >
+          <Flame className="h-3 w-3" />
+          {streak}
+        </span>
+      )}
 
       <button
         type="button"

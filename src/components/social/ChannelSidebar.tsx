@@ -39,6 +39,9 @@ import { useSettings } from '@/lib/settings-context'
 import { useHotkeys } from '@/lib/hotkeys-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
+import { useActivity } from '@/lib/activity-context'
+import { ActivityLine } from './ActivityLine'
+import { OpenPartiesStrip } from './OpenPartiesStrip'
 
 const STATUS_OPTIONS: Array<{ value: UserStatus; label: string; color: string }> = [
   { value: 'online', label: 'Online', color: '#6AFF00' },
@@ -73,10 +76,11 @@ export function ChannelSidebar({
     isMuted
   } = useChat()
   const voice = useVoice()
+  const { mine: myActivity } = useActivity()
   const { voiceByChannel, screenShares, connected } = useSocket()
   const { open: openSettings } = useSettings()
   const { pttActive } = useHotkeys()
-  const { openUserMenu, openQuickSwitcher } = useOverlays()
+  const { openUserMenu, openQuickSwitcher, openAdmin } = useOverlays()
   const { view, sidebarIsDrawer, sidebarOpen, closeSidebar } = useLayout()
 
   const setStatus = async (status: UserStatus): Promise<void> => {
@@ -460,6 +464,9 @@ export function ChannelSidebar({
         </div>
       )}
 
+      {/* "Bora?" abertos: visível mesmo com o chat em outro canal. */}
+      <OpenPartiesStrip />
+
       {/* Rodapé do usuário */}
       <footer className="flex shrink-0 items-center gap-2 border-t border-[#1a1a1a] bg-[#0B0B0B] px-2 py-2">
         {/* modal={false} de proposito: menu modal do Radix escreve
@@ -487,9 +494,13 @@ export function ChannelSidebar({
                 >
                   {user?.displayName}
                 </span>
-                <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-                  {user?.customStatus || `@${user?.username}`}
-                </span>
+                {myActivity ? (
+                  <ActivityLine activity={myActivity} />
+                ) : (
+                  <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                    {user?.customStatus || `@${user?.username}`}
+                  </span>
+                )}
               </span>
             </button>
           </DropdownMenuTrigger>
@@ -510,6 +521,9 @@ export function ChannelSidebar({
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onOpenProfile}>Editar perfil</DropdownMenuItem>
+            {user?.role === 'admin' && (
+              <DropdownMenuItem onSelect={openAdmin}>Painel admin</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 

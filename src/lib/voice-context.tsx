@@ -4,6 +4,7 @@ import {
   RoomEvent,
   Track,
   ConnectionState,
+  LocalAudioTrack,
   type LocalTrackPublication,
   type RemoteTrack,
   type RemoteTrackPublication,
@@ -15,6 +16,7 @@ import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
+import { createMicProcessor, type MicProcessor } from './audio-processor'
 
 /**
  * Chamada de voz e compartilhamento de tela via LiveKit.
@@ -118,6 +120,34 @@ interface VoiceContextValue {
     sourceName?: string
   }) => Promise<void>
   stopScreenShare: () => Promise<void>
+
+  /**
+   * Nível do microfone processado, 0..100, e se o gate está aberto.
+   *
+   * São funções, não estado: o medidor lê por requestAnimationFrame e escreve
+   * no DOM. Se fossem estado, cada frame re-renderizaria todo mundo que usa
+   * useVoice() — a sidebar inteira, o palco, a bandeja.
+   */
+  getMicLevel: () => number
+  isMicGateOpen: () => boolean
+
+  /**
+   * Mantém um processador de mic vivo mesmo fora da call, pra o medidor da
+   * tela de configurações ter o que mostrar. Devolve a função que solta. Na
+   * call o medidor lê o mic publicado e este pedido é inofensivo.
+   */
+  holdMicMonitor: () => () => void
+
+  /**
+   * "Testar microfone": ouvir o próprio mic, já processado (ganho + gate), na
+   * saída de som escolhida. Só faz sentido na tela de configurações — é onde a
+   * pessoa está mexendo nos sliders e quer ouvir o que os outros vão ouvir.
+   */
+  micTest: {
+    start: () => void
+    stop: () => void
+    active: boolean
+  }
 }
 
 const VoiceContext = React.createContext<VoiceContextValue | null>(null)
@@ -168,6 +198,26 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const roomRef = React.useRef<Room | null>(null)
   const deafenedRef = React.useRef(false)
   const leavingRef = React.useRef(false)
+
+  /**
+   * Processamento do microfone (ganho + noise gate), ver lib/audio-processor.
+   *
+   * Dois processadores possíveis, nunca os dois ao mesmo tempo com o mesmo
+   * papel: o da CALL nasce no join e morre no leave — é a faixa publicada no
+   * LiveKit. O AVULSO só existe fora da call, enquanto a tela de configurações
+   * pede (holdMicMonitor / micTest), pra o medidor e o teste funcionarem antes
+   * de a pessoa entrar em algum canal. O medidor lê o que estiver vivo.
+   */
+  const callProcessorRef = React.useRef<MicProcessor | null>(null)
+  const standaloneProcessorRef = React.useRef<MicProcessor | null>(null)
+  const [monitorHolds, setMonitorHolds] = React.useState(0)
+  const [micTestActive, setMicTestActive] = React.useState(false)
+  /** Incrementa quando um processador nasce ou morre — o loopback reanexa. */
+  const [processorEpoch, setProcessorEpoch] = React.useState(0)
+
+  /** Configurações de voz por ref, pros efeitos que não devem reagir a slider. */
+  const voiceSettingsRef = React.useRef(settings.voice)
+  voiceSettingsRef.current = settings.voice
 
   /** Onde estou e se estou compartilhando — pra reavisar o socket ao reconectar. */
   const channelRef = React.useRef<Channel | null>(null)
@@ -357,6 +407,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       cue('self-leave')
       await current.disconnect().catch(() => {})
     }
+
+    // O disconnect para a faixa publicada, mas o grafo de áudio e o mic cru
+    // por baixo dela são nossos: sem isso o LED do mic fica aceso e o timer
+    // do gate continua rodando pra ninguém.
+    callProcessorRef.current?.destroy()
+    callProcessorRef.current = null
+    setProcessorEpoch((epoch) => epoch + 1)
 
     // Pela ref, nao pelo `socket` fechado no callback: `leave` e chamada de
     // dentro dos handlers do LiveKit e do menu da bandeja, que foram
@@ -580,7 +637,56 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
         // Push-to-talk comeca mudo; voz ativa comeca aberto.
         const startMuted = settings.voice.mode === 'push-to-talk'
-        await next.localParticipant.setMicrophoneEnabled(!startMuted)
+
+        /**
+         * O microfone NÃO é o setMicrophoneEnabled(true) do LiveKit: a faixa
+         * publicada é a saída do nosso grafo (ganho + noise gate), embrulhada
+         * num LocalAudioTrack "fornecido pelo usuário". Pro LiveKit ela é um
+         * mic comum com source=Microphone — então setMicrophoneEnabled,
+         * isMicrophoneEnabled, PTT e mute continuam funcionando em cima dela
+         * (mute/unmute só ligam e desligam a faixa; user-provided nunca é
+         * parada nem readquirida pelo SDK).
+         *
+         * Muta ANTES de publicar quando é PTT: publicar e mutar depois abriria
+         * uma janela de alguns quadros com o mic no ar.
+         */
+        try {
+          const processor = await createMicProcessor({
+            deviceId:
+              settings.voice.inputDeviceId !== 'default'
+                ? settings.voice.inputDeviceId
+                : undefined,
+            echoCancellation: settings.voice.echoCancellation,
+            noiseSuppression: settings.voice.noiseSuppression,
+            autoGainControl: settings.voice.autoGainControl,
+            inputGain: settings.voice.inputGain,
+            noiseGateThreshold: settings.voice.noiseGateThreshold
+          })
+          callProcessorRef.current?.destroy()
+          callProcessorRef.current = processor
+          setProcessorEpoch((epoch) => epoch + 1)
+
+          const micTrack = new LocalAudioTrack(processor.processedTrack, undefined, true)
+          if (startMuted) await micTrack.mute()
+
+          await next.localParticipant.publishTrack(micTrack, {
+            source: Track.Source.Microphone,
+            name: 'microphone',
+            // Repetidos aqui (e não só em publishDefaults) porque é o gate que
+            // torna o DTX útil: gate fechado = silêncio digital = Opus para de
+            // mandar pacote. Com o mic cru o DTX quase nunca engatava.
+            dtx: true,
+            red: true,
+            audioPreset: { maxBitrate: 48_000 }
+          })
+        } catch (err) {
+          // Sem permissão, sem mic, AudioContext falhou… a call ainda tem que
+          // acontecer: cai pro mic cru do LiveKit, sem ganho e sem gate.
+          console.warn('[voice] processamento do mic falhou, publicando o mic cru', err)
+          callProcessorRef.current?.destroy()
+          callProcessorRef.current = null
+          await next.localParticipant.setMicrophoneEnabled(!startMuted)
+        }
 
         if (settings.voice.outputDeviceId !== 'default') {
           await next.switchActiveDevice('audiooutput', settings.voice.outputDeviceId).catch(
@@ -773,6 +879,145 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     })
   }, [toggleMic, leave])
 
+  // ============================================
+  // PROCESSAMENTO DO MIC: medidor, teste e ajustes ao vivo
+  // ============================================
+
+  const getMicLevel = React.useCallback((): number => {
+    const processor = callProcessorRef.current ?? standaloneProcessorRef.current
+    return processor?.getLevel() ?? 0
+  }, [])
+
+  const isMicGateOpen = React.useCallback((): boolean => {
+    const processor = callProcessorRef.current ?? standaloneProcessorRef.current
+    return processor?.isOpen() ?? false
+  }, [])
+
+  const holdMicMonitor = React.useCallback((): (() => void) => {
+    setMonitorHolds((count) => count + 1)
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      setMonitorHolds((count) => Math.max(0, count - 1))
+    }
+  }, [])
+
+  // Ganho e limiar valem NA HORA, na call e no avulso: é o único jeito de
+  // ajustar olhando o medidor. Dispositivo e filtros do Chromium continuam
+  // valendo só na próxima entrada — trocar exige readquirir o mic.
+  React.useEffect(() => {
+    const patch = {
+      inputGain: settings.voice.inputGain,
+      noiseGateThreshold: settings.voice.noiseGateThreshold
+    }
+    callProcessorRef.current?.update(patch)
+    standaloneProcessorRef.current?.update(patch)
+  }, [settings.voice.inputGain, settings.voice.noiseGateThreshold])
+
+  /**
+   * Processador avulso: existe enquanto alguém segura o monitor (ou o teste
+   * está ligado) e NÃO há call. Assim que a call conecta, morre — o medidor
+   * passa a ler a faixa publicada, que é a que importa.
+   *
+   * Recriado ao trocar de microfone ou de filtro: é justamente na tela de
+   * configurações que a pessoa troca de mic e quer ver o medidor acompanhar.
+   */
+  const needStandalone = (monitorHolds > 0 || micTestActive) && !connected
+
+  React.useEffect(() => {
+    if (!needStandalone) return
+
+    let cancelled = false
+    let mine: MicProcessor | null = null
+    const voice = voiceSettingsRef.current
+
+    void createMicProcessor({
+      deviceId: voice.inputDeviceId !== 'default' ? voice.inputDeviceId : undefined,
+      echoCancellation: voice.echoCancellation,
+      noiseSuppression: voice.noiseSuppression,
+      autoGainControl: voice.autoGainControl,
+      inputGain: voice.inputGain,
+      noiseGateThreshold: voice.noiseGateThreshold
+    })
+      .then((processor) => {
+        // A tela fechou (ou a call entrou) antes do getUserMedia responder.
+        if (cancelled) {
+          processor.destroy()
+          return
+        }
+        mine = processor
+        standaloneProcessorRef.current = processor
+        setProcessorEpoch((epoch) => epoch + 1)
+      })
+      .catch((err) => {
+        console.warn('[voice] não consegui abrir o mic pro medidor', err)
+      })
+
+    return () => {
+      cancelled = true
+      mine?.destroy()
+      if (standaloneProcessorRef.current === mine) standaloneProcessorRef.current = null
+      setProcessorEpoch((epoch) => epoch + 1)
+    }
+  }, [
+    needStandalone,
+    settings.voice.inputDeviceId,
+    settings.voice.echoCancellation,
+    settings.voice.noiseSuppression,
+    settings.voice.autoGainControl
+  ])
+
+  /**
+   * Loopback do teste: a faixa processada vai pra um <audio> apontado pra
+   * saída escolhida. Depende do epoch porque o processador por baixo troca
+   * (entrou na call, trocou de mic) e o elemento precisa apontar pro novo.
+   */
+  React.useEffect(() => {
+    if (!micTestActive) return
+
+    const processor = callProcessorRef.current ?? standaloneProcessorRef.current
+    if (!processor) return
+
+    const audio = document.createElement('audio')
+    audio.srcObject = processor.processedStream
+    audio.dataset.bocas = 'mic-test'
+    audioSinkRef.current?.appendChild(audio)
+
+    const outputId = voiceSettingsRef.current.outputDeviceId
+    const route =
+      outputId !== 'default' && typeof audio.setSinkId === 'function'
+        ? audio.setSinkId(outputId).catch(() => {})
+        : Promise.resolve()
+
+    void route.then(() => audio.play()).catch(() => {})
+
+    return () => {
+      audio.pause()
+      audio.srcObject = null
+      audio.remove()
+    }
+  }, [micTestActive, processorEpoch, settings.voice.outputDeviceId])
+
+  // Logout (o provider desmonta) não pode deixar mic aberto nem timer rodando.
+  React.useEffect(() => {
+    return () => {
+      callProcessorRef.current?.destroy()
+      callProcessorRef.current = null
+      standaloneProcessorRef.current?.destroy()
+      standaloneProcessorRef.current = null
+    }
+  }, [])
+
+  const micTest = React.useMemo(
+    () => ({
+      start: () => setMicTestActive(true),
+      stop: () => setMicTestActive(false),
+      active: micTestActive
+    }),
+    [micTestActive]
+  )
+
   const value = React.useMemo<VoiceContextValue>(
     () => ({
       room,
@@ -798,7 +1043,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       toggleDeafen,
       toggleCamera,
       startScreenShare,
-      stopScreenShare
+      stopScreenShare,
+      getMicLevel,
+      isMicGateOpen,
+      holdMicMonitor,
+      micTest
     }),
     [
       room,
@@ -824,7 +1073,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       toggleDeafen,
       toggleCamera,
       startScreenShare,
-      stopScreenShare
+      stopScreenShare,
+      getMicLevel,
+      isMicGateOpen,
+      holdMicMonitor,
+      micTest
     ]
   )
 

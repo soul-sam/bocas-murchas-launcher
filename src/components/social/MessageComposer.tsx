@@ -9,9 +9,15 @@ import {
   Loader2,
   Zap,
   Type,
-  FileText
+  FileText,
+  Settings2
 } from 'lucide-react'
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverClose
+} from '@/components/ui/popover'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import {
@@ -24,6 +30,13 @@ import { useAuth } from '@/lib/auth-context'
 import { useNudge } from '@/lib/nudge-context'
 import { useVoice } from '@/lib/voice-context'
 import { useMembers, type Member } from '@/lib/members-context'
+import { useOverlays } from '@/lib/overlay-context'
+import { parseSlashCommand, SLASH_HELP } from '@/lib/slash-commands'
+import { useEmojis, toPickerEmojis, type CustomEmoji, type Sticker } from '@/lib/emoji-context'
+import { ComposerActions } from './ComposerActions'
+import { EmojiImage } from './CustomEmojiImg'
+import { StickerPicker } from './StickerPicker'
+import { EmojiManager, type ManagerTab } from './EmojiManager'
 
 /** O servidor corta bem depois disso; o aviso aparece antes pra não perder texto. */
 const SOFT_LIMIT = 1_800
@@ -31,6 +44,8 @@ const SOFT_LIMIT = 1_800
 export interface ComposerPayload {
   content: string
   imageUrl?: string
+  /** Sticker do servidor (URL relativa /static/stickers/...). */
+  stickerUrl?: string
   file?: { url: string; name: string; size: number; mime: string }
   replyToId?: string
 }
@@ -44,6 +59,8 @@ interface MessageComposerProps {
   onTyping: () => void
   /** Seta pra cima com o campo vazio edita a última mensagem sua. */
   onEditLast?: () => void
+  /** Admin: abrir o compositor de drop (anúncio animado). */
+  onDrop?: (seed: string) => void
 }
 
 function formatSize(bytes: number): string {
@@ -58,12 +75,15 @@ export function MessageComposer({
   onCancelReply,
   onSend,
   onTyping,
-  onEditLast
+  onEditLast,
+  onDrop
 }: MessageComposerProps) {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const { nudgeChannel } = useNudge()
   const { connected: inVoice } = useVoice()
   const { members } = useMembers()
+  const { openPollComposer, openEventComposer, openPartyComposer, openShop } = useOverlays()
+  const { emojis } = useEmojis()
 
   const [content, setContent] = React.useState('')
   const [image, setImage] = React.useState<string | null>(null)
@@ -75,6 +95,12 @@ export function MessageComposer({
 
   /** Índice do candidato destacado no autocompletar de @. */
   const [mentionIndex, setMentionIndex] = React.useState(0)
+  /** Idem, pro autocompletar de :emoji:. */
+  const [emojiIndex, setEmojiIndex] = React.useState(0)
+
+  /** Gerenciador de emojis/stickers — abre a partir dos dois pickers. */
+  const [managerOpen, setManagerOpen] = React.useState(false)
+  const [managerTab, setManagerTab] = React.useState<ManagerTab>('emojis')
 
   /**
    * Posição do cursor, em ESTADO — não lida do DOM na hora do render.
@@ -160,6 +186,97 @@ export function MessageComposer({
     [mentionQuery, content, caret, autoGrow]
   )
 
+  /**
+   * Autocompletar de :emoji:, nos mesmos moldes do @.
+   *
+   * Só abre com 2+ letras depois do `:` — com uma, "10:3" já abriria a lista
+   * pra qualquer horário digitado. E o `:` tem que estar num começo de
+   * palavra, que é também a regra do parser (lib/rich-text.ts): sugerir algo
+   * que depois não vira emoji seria mentira.
+   */
+  const emojiQuery = React.useMemo(() => {
+    const upToCaret = content.slice(0, Math.min(caret, content.length))
+    const match = /(?:^|[\s([{]):([a-z0-9_]{2,32})$/i.exec(upToCaret)
+    if (!match) return null
+
+    return { term: match[1].toLowerCase(), start: upToCaret.length - match[1].length - 1 }
+  }, [content, caret])
+
+  const emojiSuggestions = React.useMemo<CustomEmoji[]>(() => {
+    if (!emojiQuery) return []
+
+    const term = emojiQuery.term
+    return emojis
+      .filter((emoji) => emoji.name.includes(term))
+      // Quem COMEÇA com o termo primeiro: digitou "ke", quer "kekw" antes de "pokemon".
+      .sort(
+        (a, b) =>
+          Number(b.name.startsWith(term)) - Number(a.name.startsWith(term)) ||
+          a.name.localeCompare(b.name)
+      )
+      .slice(0, 8)
+  }, [emojiQuery, emojis])
+
+  React.useEffect(() => {
+    setEmojiIndex(0)
+  }, [emojiQuery?.term])
+
+  const applyCustomEmoji = React.useCallback(
+    (emoji: CustomEmoji) => {
+      if (!emojiQuery) return
+
+      const el = textareaRef.current
+      const token = ':' + emoji.name + ': '
+      const next = content.slice(0, emojiQuery.start) + token + content.slice(caret)
+      const position = emojiQuery.start + token.length
+
+      setContent(next)
+      setCaret(position)
+
+      requestAnimationFrame(() => {
+        autoGrow()
+        el?.focus()
+        el?.setSelectionRange(position, position)
+      })
+    },
+    [emojiQuery, content, caret, autoGrow]
+  )
+
+  /**
+   * Insere no CURSOR, não no fim: quem abre o picker no meio de uma frase quer
+   * o emoji ali. Com `needsBoundary`, ganha um espaço antes quando está grudado
+   * em letra ou número — o parser recusa `kkk:kekw:` de propósito (ver
+   * lib/rich-text.ts), então sem o espaço o emoji do servidor viraria texto.
+   */
+  const insertAtCaret = React.useCallback(
+    (text: string, opts?: { needsBoundary?: boolean }) => {
+      const el = textareaRef.current
+      const position = Math.min(caret, content.length)
+      const before = content.slice(0, position)
+      const pad = opts?.needsBoundary && /[\p{L}\p{N}]$/u.test(before) ? ' ' : ''
+      const inserted = pad + text
+      const next = before + inserted + content.slice(position)
+      const after = position + inserted.length
+
+      setContent(next)
+      setCaret(after)
+
+      requestAnimationFrame(() => {
+        autoGrow()
+        el?.focus()
+        el?.setSelectionRange(after, after)
+      })
+    },
+    [caret, content, autoGrow]
+  )
+
+  const pickerCustomEmojis = React.useMemo(() => toPickerEmojis(emojis), [emojis])
+
+  const openManager = (tab: ManagerTab): void => {
+    setManagerTab(tab)
+    setManagerOpen(true)
+  }
+
   const uploadImage = React.useCallback(
     async (picked: File) => {
       if (!token) return
@@ -215,9 +332,54 @@ export function MessageComposer({
     void uploadImage(picked)
   }
 
+  /** "/marcar sexta 21h" abre o compositor certo em vez de mandar texto. */
+  const runSlashCommand = (text: string): boolean => {
+    const command = parseSlashCommand(text)
+    if (!command) return false
+
+    switch (command.kind) {
+      case 'poll':
+        openPollComposer()
+        break
+      case 'event':
+        openEventComposer(command.seed)
+        break
+      case 'party':
+        openPartyComposer(command.seed)
+        break
+      case 'shop':
+        openShop()
+        break
+      case 'drop':
+        if (user?.role !== 'admin' || !onDrop) return false
+        onDrop(command.seed)
+        break
+    }
+
+    setContent('')
+    setCaret(0)
+    requestAnimationFrame(autoGrow)
+    return true
+  }
+
+  // Sugestões de comando enquanto a mensagem é só "/algo" (sem espaço ainda).
+  const slashQuery = React.useMemo(() => {
+    const match = /^\/([\p{L}]*)$/u.exec(content)
+    return match ? match[1].toLowerCase() : null
+  }, [content])
+
+  const slashSuggestions = React.useMemo(() => {
+    if (slashQuery === null || image || file) return []
+    return SLASH_HELP.filter((item) => item.command.slice(1).startsWith(slashQuery)).filter(
+      (item) => item.command !== '/drop' || user?.role === 'admin'
+    )
+  }, [slashQuery, image, file, user?.role])
+
   const submit = async (): Promise<void> => {
     const text = content.trim()
     if ((!text && !image && !file) || sending) return
+
+    if (text && !image && !file && runSlashCommand(text)) return
 
     setSending(true)
     setError(null)
@@ -238,6 +400,26 @@ export function MessageComposer({
       requestAnimationFrame(autoGrow)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao enviar')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  /**
+   * Sticker vai na hora, sem passar pelo campo: é uma mensagem inteira (type
+   * 'sticker'), não um pedaço de texto. Responde a quem estava sendo
+   * respondido, como qualquer outra mensagem.
+   */
+  const sendSticker = async (sticker: Sticker): Promise<void> => {
+    if (sending) return
+
+    setSending(true)
+    setError(null)
+    try {
+      await onSend({ content: '', stickerUrl: sticker.url, replyToId: replyTo?.id })
+      onCancelReply()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao enviar sticker')
     } finally {
       setSending(false)
     }
@@ -284,6 +466,31 @@ export function MessageComposer({
         e.preventDefault()
         // Fecha a lista sem mexer no texto: levar o cursor pro fim tira o
         // "@algo" de baixo dele, que é o que mantinha a lista aberta.
+        setCaret(content.length)
+        return
+      }
+    }
+
+    // Mesma coisa pra lista de :emoji:. As duas nunca abrem juntas — o fim do
+    // texto ou termina em "@algo" ou em ":algo", não nos dois.
+    if (emojiSuggestions.length > 0 && emojiQuery) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setEmojiIndex((prev) => (prev + 1) % emojiSuggestions.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setEmojiIndex((prev) => (prev - 1 + emojiSuggestions.length) % emojiSuggestions.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        applyCustomEmoji(emojiSuggestions[emojiIndex])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
         setCaret(content.length)
         return
       }
@@ -370,6 +577,54 @@ export function MessageComposer({
         </div>
       )}
 
+      {emojiSuggestions.length > 0 && emojiQuery && (
+        <div className="mb-1 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.6)]">
+          <p className="border-b border-[#1a1a1a] px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+            Emojis do servidor — Enter ou Tab pra escolher
+          </p>
+          {emojiSuggestions.map((emoji, index) => (
+            <button
+              key={emoji.id}
+              type="button"
+              onMouseDown={(event) => {
+                event.preventDefault()
+                applyCustomEmoji(emoji)
+              }}
+              onMouseEnter={() => setEmojiIndex(index)}
+              className={cn(
+                'flex w-full items-center gap-2 px-2 py-1.5 text-left transition-colors',
+                index === emojiIndex ? 'bg-acid/15 text-acid' : 'text-foreground'
+              )}
+            >
+              <EmojiImage emoji={emoji} className="h-5 w-5 shrink-0" />
+              <span className="truncate font-mono text-xs">:{emoji.name}:</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {slashSuggestions.length > 0 && (
+        <div className="mb-1 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.6)]">
+          <p className="border-b border-[#1a1a1a] px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+            Comandos — Enter pra abrir
+          </p>
+          {slashSuggestions.map((item) => (
+            <button
+              key={item.command}
+              type="button"
+              onMouseDown={(event) => {
+                event.preventDefault()
+                runSlashCommand(item.command)
+              }}
+              className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-foreground transition-colors hover:bg-acid/15 hover:text-acid"
+            >
+              <span className="font-mono text-xs text-acid">{item.command}</span>
+              <span className="truncate text-[11px] text-muted-foreground">{item.hint}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {replyTo && (
         <div className="flex items-center gap-2 rounded-t-brutal border-2 border-b-0 border-[#1a1a1a] bg-void-light/60 px-3 py-1.5">
           <span className="truncate text-[11px] text-muted-foreground">
@@ -446,6 +701,8 @@ export function MessageComposer({
           replyTo || hasAttachment ? 'rounded-b-brutal' : 'rounded-brutal'
         )}
       >
+        <ComposerActions onDrop={onDrop ? () => onDrop('') : undefined} />
+
         <label
           title="Enviar imagem"
           className="shrink-0 cursor-pointer rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
@@ -553,7 +810,7 @@ export function MessageComposer({
               <Smile className="h-4 w-4" />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-auto border-0 p-0">
+          <PopoverContent align="end" className="w-auto overflow-hidden border-0 p-0">
             <EmojiPicker
               theme={Theme.DARK}
               emojiStyle={EmojiStyle.NATIVE}
@@ -561,15 +818,39 @@ export function MessageComposer({
               width={320}
               height={380}
               searchPlaceholder="Procurar emoji"
+              customEmojis={pickerCustomEmojis}
               onEmojiClick={(emoji) => {
-                const next = content + emoji.emoji
-                setContent(next)
-                setCaret(next.length)
-                textareaRef.current?.focus()
+                // Emoji do servidor entra como `:nome:` — é o que o parser lê.
+                if (emoji.isCustom) {
+                  insertAtCaret(':' + emoji.names[0] + ':', { needsBoundary: true })
+                } else {
+                  insertAtCaret(emoji.emoji)
+                }
               }}
             />
+            <div className="flex items-center justify-between gap-2 border-t border-[#1a1a1a] bg-void px-3 py-1.5">
+              <span className="truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                digitar :nome: também vale
+              </span>
+              <PopoverClose asChild>
+                <button
+                  type="button"
+                  onClick={() => openManager('emojis')}
+                  className="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-acid"
+                >
+                  <Settings2 className="h-3 w-3" />
+                  gerenciar
+                </button>
+              </PopoverClose>
+            </div>
           </PopoverContent>
         </Popover>
+
+        <StickerPicker
+          onPick={sendSticker}
+          onManage={() => openManager('stickers')}
+          disabled={sending}
+        />
 
         {inVoice && (
           <button
@@ -603,6 +884,12 @@ export function MessageComposer({
       </div>
 
       {error && <p className="mt-1 text-[11px] text-destructive">{error}</p>}
+
+      <EmojiManager
+        open={managerOpen}
+        initialTab={managerTab}
+        onClose={() => setManagerOpen(false)}
+      />
     </div>
   )
 }

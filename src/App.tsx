@@ -16,6 +16,11 @@ import { NudgeProvider, useNudge } from '@/lib/nudge-context'
 import { HotkeysProvider } from '@/lib/hotkeys-context'
 import { OverlayProvider, useOverlays } from '@/lib/overlay-context'
 import { LayoutProvider } from '@/lib/layout-context'
+import { ActivityProvider } from '@/lib/activity-context'
+import { PartyProvider } from '@/lib/party-context'
+import { GamificationProvider } from '@/lib/gamification-context'
+import { WatchProvider } from '@/lib/watch-context'
+import { EmojiProvider } from '@/lib/emoji-context'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { HomePage } from '@/pages/HomePage'
@@ -32,6 +37,13 @@ import { QuickSwitcher } from '@/components/social/QuickSwitcher'
 import { ShortcutsHelp } from '@/components/social/ShortcutsHelp'
 import { ImageLightbox } from '@/components/social/ImageLightbox'
 import { InterfaceGuardNotice } from '@/components/InterfaceGuardNotice'
+import { PollComposer } from '@/components/social/PollComposer'
+import { EventComposer } from '@/components/social/EventComposer'
+import { PartyComposer } from '@/components/social/PartyComposer'
+import { ShopModal } from '@/components/social/ShopModal'
+import { DropHost } from '@/components/social/DropHost'
+import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
+import { AdminModal } from '@/components/AdminModal'
 import { cn } from '@/lib/utils'
 
 function LoadingSplash() {
@@ -92,6 +104,16 @@ function GlobalOverlays() {
       <QuickSwitcher />
       <ShortcutsHelp />
       <ImageLightbox />
+      {/* Compositores de cartão e lojinha: abertos do compositor de mensagens
+          e de comandos de barra, que vivem numa tela que some. */}
+      <PollComposer />
+      <EventComposer />
+      <PartyComposer />
+      <ShopModal />
+      <AdminModal />
+      {/* Banners: drops de admin e "tem gente do grupo no seu lobby". */}
+      <DropHost />
+      <PartyCallPrompt />
     </>
   )
 }
@@ -146,21 +168,35 @@ function AuthedLayout() {
       <MembersProvider>
         <ChatProvider>
           <VoiceProvider>
-            <SoundboardProvider>
-              <NudgeProvider>
-                <HotkeysProvider>
-                  <OverlayProvider>
-                    <LayoutProvider>
-                      {/* Índices de @pessoa e #canal montados uma vez, não
-                          uma vez por mensagem na tela. */}
-                      <RichTextProvider>
-                        <AuthedShell />
-                      </RichTextProvider>
-                    </LayoutProvider>
-                  </OverlayProvider>
-                </HotkeysProvider>
-              </NudgeProvider>
-            </SoundboardProvider>
+            {/* Presença de jogo depende de chat (canais de voz), voz (entrar
+                na call do 5-stack) e membros (Riot ID -> pessoa). */}
+            <ActivityProvider>
+              <SoundboardProvider>
+                <NudgeProvider>
+                  <HotkeysProvider>
+                    <OverlayProvider>
+                      <LayoutProvider>
+                        {/* Emojis do servidor vêm ANTES do RichText, que os
+                            desenha. Os outros só precisam de socket/overlays. */}
+                        <EmojiProvider>
+                          <GamificationProvider>
+                            <PartyProvider>
+                              <WatchProvider>
+                                {/* Índices de @pessoa e #canal montados uma
+                                    vez, não uma vez por mensagem na tela. */}
+                                <RichTextProvider>
+                                  <AuthedShell />
+                                </RichTextProvider>
+                              </WatchProvider>
+                            </PartyProvider>
+                          </GamificationProvider>
+                        </EmojiProvider>
+                      </LayoutProvider>
+                    </OverlayProvider>
+                  </HotkeysProvider>
+                </NudgeProvider>
+              </SoundboardProvider>
+            </ActivityProvider>
           </VoiceProvider>
         </ChatProvider>
       </MembersProvider>

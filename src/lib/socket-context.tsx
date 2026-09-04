@@ -1,7 +1,19 @@
 import * as React from 'react'
 import { io, type Socket } from 'socket.io-client'
-import { API_ORIGIN, type AuthUser, type UserStatus, type VoiceUser } from './api'
+import {
+  API_ORIGIN,
+  type AuthUser,
+  type GameActivity,
+  type UserStatus,
+  type VoiceUser
+} from './api'
 import { useAuth } from './auth-context'
+
+/** Atividade de alguem, como o servidor guarda (com quem e quando). */
+export interface ActivityEntry extends GameActivity {
+  userId: string
+  updatedAt: number
+}
 
 /**
  * Conexao unica de Socket.io do launcher.
@@ -46,6 +58,12 @@ interface SocketContextValue {
   screenShares: ScreenShareMap
   /** Perfis atualizados em tempo real (id -> user). */
   profileUpdates: Record<string, AuthUser>
+  /**
+   * Quem esta jogando o que (userId -> atividade). Vem no mesmo retrato da
+   * presenca e e atualizado por `activity:changed`. Quem nao esta jogando
+   * simplesmente nao esta no mapa.
+   */
+  activities: Record<string, ActivityEntry>
 }
 
 const SocketContext = React.createContext<SocketContextValue | null>(null)
@@ -59,6 +77,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [voiceByChannel, setVoiceByChannel] = React.useState<Record<string, VoiceUser[]>>({})
   const [screenShares, setScreenShares] = React.useState<ScreenShareMap>({})
   const [profileUpdates, setProfileUpdates] = React.useState<Record<string, AuthUser>>({})
+  const [activities, setActivities] = React.useState<Record<string, ActivityEntry>>({})
 
   React.useEffect(() => {
     if (!token || !user) {
@@ -117,9 +136,38 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       console.warn('[socket] falha ao conectar:', err.message)
     }
 
-    const handlePresence = (data: { onlineUsers?: OnlineUser[] }): void => {
+    const handlePresence = (data: {
+      onlineUsers?: OnlineUser[]
+      activities?: Record<string, ActivityEntry>
+    }): void => {
       if (Array.isArray(data?.onlineUsers)) {
         setOnlineUsers(data.onlineUsers.filter(Boolean))
+      }
+      // Retrato completo: SUBSTITUI, pelo mesmo motivo do estado de voz.
+      if (data?.activities && typeof data.activities === 'object') {
+        setActivities(data.activities)
+      }
+    }
+
+    const handleActivityChanged = (data: {
+      userId: string
+      activity: ActivityEntry | null
+    }): void => {
+      if (!data?.userId) return
+      setActivities((prev) => {
+        if (!data.activity) {
+          if (!(data.userId in prev)) return prev
+          const next = { ...prev }
+          delete next[data.userId]
+          return next
+        }
+        return { ...prev, [data.userId]: data.activity }
+      })
+    }
+
+    const handleActivityState = (data: { activities?: Record<string, ActivityEntry> }): void => {
+      if (data?.activities && typeof data.activities === 'object') {
+        setActivities(data.activities)
       }
     }
 
@@ -194,6 +242,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     client.on('voiceUserLeft', handleVoiceChanged)
     client.on('screenshare:state', handleScreenShare)
     client.on('user:profileUpdated', handleProfileUpdated)
+    client.on('activity:changed', handleActivityChanged)
+    client.on('activity:state', handleActivityState)
 
     setSocket(client)
 
@@ -208,6 +258,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       client.off('voiceUserLeft', handleVoiceChanged)
       client.off('screenshare:state', handleScreenShare)
       client.off('user:profileUpdated', handleProfileUpdated)
+      client.off('activity:changed', handleActivityChanged)
+      client.off('activity:state', handleActivityState)
       client.disconnect()
       setSocket(null)
       setConnected(false)
@@ -234,7 +286,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       presenceById,
       voiceByChannel,
       screenShares,
-      profileUpdates
+      profileUpdates,
+      activities
     }),
     [
       socket,
@@ -244,7 +297,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       presenceById,
       voiceByChannel,
       screenShares,
-      profileUpdates
+      profileUpdates,
+      activities
     ]
   )
 

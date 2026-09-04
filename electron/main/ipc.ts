@@ -20,6 +20,9 @@ import {
 import { listSources, selectSource, cancelSelection } from './services/screen-share.js'
 import { shakeWindow, type NudgeOptions } from './services/nudge.js'
 import { setVoiceState, setCloseToTray } from './services/tray.js'
+import { getLolStatus, refreshLolNow, startLolWatcher, stopLolWatcher } from './services/lol.js'
+import { applyAutostart, launchedAtLogin } from './services/autostart.js'
+import { app } from 'electron'
 
 function serializeError(err: unknown): { message: string; code?: string } {
   if (err instanceof Error) {
@@ -85,12 +88,34 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('settings:get', async () => loadSettings())
 
   ipcMain.handle('settings:update', async (_e, patch: Partial<LauncherSettings>) => {
+    const before = await loadSettings()
     const next = await updateSettings(patch)
     // O handler de 'close' e sincrono e nao pode ler o arquivo; mantemos o
     // cache do main alinhado a cada salvamento.
     setCloseToTray(next.closeToTray)
+
+    // Preferencias que o main precisa aplicar na hora, nao so gravar.
+    if (before.autostart !== next.autostart) void applyAutostart()
+    if (before.lol.enabled !== next.lol.enabled || before.lol.lockfilePath !== next.lol.lockfilePath) {
+      stopLolWatcher()
+      if (next.lol.enabled) startLolWatcher()
+    }
+
     return next
   })
+
+  // ============================================
+  // LEAGUE OF LEGENDS (LCU) E APP
+  // ============================================
+  ipcMain.handle('lol:status', async () => getLolStatus())
+
+  ipcMain.handle('lol:refresh', async () => refreshLolNow())
+
+  ipcMain.handle('app:apply-autostart', async () => applyAutostart())
+
+  ipcMain.handle('app:launched-at-login', async () => launchedAtLogin())
+
+  ipcMain.handle('app:version', async () => app.getVersion())
 
   ipcMain.handle('window:minimize', (e) => {
     BrowserWindow.fromWebContents(e.sender)?.minimize()

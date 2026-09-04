@@ -139,6 +139,117 @@ export interface ChatSettings {
   mutedChannels: string[]
 }
 
+// ============================================
+// PRESENCA DE JOGO (LoL via LCU, Minecraft via launch)
+// ============================================
+
+/** Fases do cliente do LoL, ja traduzidas do gameflow da LCU. */
+export type LolPhase =
+  | 'none'
+  | 'lobby'
+  | 'matchmaking'
+  | 'ready-check'
+  | 'champ-select'
+  | 'in-progress'
+  | 'end-of-game'
+
+export interface LolLobbyMember {
+  /** Riot ID: gameName#tagLine. */
+  riotId: string
+  puuid?: string
+  summonerId?: number
+}
+
+export interface LolLiveScore {
+  kills: number
+  deaths: number
+  assists: number
+  cs?: number
+  gold?: number
+  level?: number
+  /** Tempo de jogo em segundos. */
+  gameTimeSec?: number
+}
+
+/** Retrato do cliente do LoL na maquina — vem do processo main a cada poll. */
+export interface LolStatus {
+  /** Cliente aberto e respondendo? */
+  clientRunning: boolean
+  phase: LolPhase
+  /** Epoch ms de quando a fase atual comecou. */
+  phaseSince: number
+  /** Riot ID de quem esta logado no cliente. */
+  me?: LolLobbyMember
+  /** Fila em texto curto: ranked_solo, ranked_flex, normal_draft, aram, arena, tft, custom… */
+  queue?: string
+  /** Quem esta no lobby (inclui voce). */
+  lobby?: LolLobbyMember[]
+  /** Campeao escolhido (champ select ou em partida). */
+  champion?: string
+  /** Placar ao vivo, so em partida. */
+  score?: LolLiveScore
+  /** Ultimo erro de leitura, pra diagnostico na tela de configuracoes. */
+  error?: string
+  updatedAt: number
+}
+
+/** Fim de partida, com as estatisticas que o card de pos-jogo e o recap usam. */
+export interface LolGameResult {
+  gameId?: number
+  queue?: string
+  result: 'win' | 'loss' | 'remake' | 'unknown'
+  champion?: string
+  kills: number
+  deaths: number
+  assists: number
+  cs?: number
+  gold?: number
+  damageToChampions?: number
+  visionScore?: number
+  doubleKills?: number
+  tripleKills?: number
+  quadraKills?: number
+  pentaKills?: number
+  durationSec: number
+  /** Riot IDs do time da pessoa (pra achar quem do grupo estava junto). */
+  teammates?: LolLobbyMember[]
+  /** Payload cru da LCU (eog-stats-block), pra guardar no servidor. */
+  raw?: unknown
+  endedAt: number
+}
+
+export type ActivityGame = 'lol' | 'minecraft'
+
+/**
+ * O que o launcher manda pro servidor sobre "o que estou fazendo". Espelha
+ * `GameActivity` do backend (src/realtime/activity.ts).
+ */
+export interface GameActivity {
+  game: ActivityGame
+  phase: LolPhase | 'in-progress'
+  detail?: string
+  queue?: string
+  champion?: string
+  partyUserIds?: string[]
+  score?: Omit<LolLiveScore, 'gameTimeSec'>
+  since: number
+  server?: string
+}
+
+/** Preferencias da integracao com o LoL. */
+export interface LolSettings {
+  /** Ler o cliente do LoL e mostrar presenca pra galera. */
+  enabled: boolean
+  /** Mandar o placar ao vivo (KDA) junto com a presenca. */
+  shareLiveScore: boolean
+  /** Ao detectar 2+ do grupo no mesmo lobby: entrar na call sozinho, perguntar ou nada. */
+  autoJoinVoice: 'auto' | 'ask' | 'off'
+  /** Postar o card de pos-jogo no chat automaticamente. */
+  postGameCard: boolean
+  /** Caminho manual do lockfile, quando a deteccao automatica falha. */
+  lockfilePath: string
+}
+
 export interface LauncherSettings {
   maxRamMb: number
   minRamMb: number
@@ -146,6 +257,14 @@ export interface LauncherSettings {
   soundEnabled: boolean
   soundVolume: number
   lastSeenModpackTag: string | null
+
+  /** Iniciar junto com o Windows. */
+  autostart: boolean
+  /** Ao iniciar com o Windows, abrir direto na bandeja (sem janela). */
+  startMinimized: boolean
+  /** Mostrar "jogando Minecraft" pros outros. */
+  shareMinecraftActivity: boolean
+  lol: LolSettings
 
   voice: VoiceSettings
   hotkeys: HotkeySettings
@@ -279,6 +398,19 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   soundVolume: 0.5,
   lastSeenModpackTag: null,
 
+  // Ligado por padrao: o ponto do launcher e estar aberto quando a galera
+  // aparece. Quem nao quiser desliga nas configuracoes.
+  autostart: true,
+  startMinimized: true,
+  shareMinecraftActivity: true,
+  lol: {
+    enabled: true,
+    shareLiveScore: true,
+    autoJoinVoice: 'ask',
+    postGameCard: true,
+    lockfilePath: ''
+  },
+
   voice: {
     mode: 'voice-activity',
     pttKey: 'Space',
@@ -390,6 +522,23 @@ export interface BocasAPI {
   }
   notify: {
     show: (payload: { title: string; body: string; silent?: boolean }) => Promise<void>
+  }
+  /** Leitura do cliente do League of Legends (LCU) na maquina. */
+  lol: {
+    status: () => Promise<LolStatus>
+    onStatus: (cb: (status: LolStatus) => void) => () => void
+    /** Partida terminou: estatisticas finais lidas do cliente. */
+    onGameEnded: (cb: (result: LolGameResult) => void) => () => void
+    /** Forca uma releitura agora (botao "testar" nas configuracoes). */
+    refresh: () => Promise<LolStatus>
+  }
+  app: {
+    /** Aplica iniciar-com-o-Windows AGORA (a preferencia ja foi salva). */
+    applyAutostart: () => Promise<{ enabled: boolean; supported: boolean }>
+    /** true quando este processo foi aberto pelo autostart do Windows. */
+    launchedAtLogin: () => Promise<boolean>
+    /** Versao do launcher (package.json). */
+    version: () => Promise<string>
   }
 }
 

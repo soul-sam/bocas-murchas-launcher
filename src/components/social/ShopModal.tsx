@@ -1,0 +1,382 @@
+import * as React from 'react'
+import { X, Coins, Loader2, Check, ShoppingBag, Tag, Sparkles, Frame } from 'lucide-react'
+import { UserAvatar } from '@/components/ui/avatar'
+import { ApiError, resolveAssetUrl } from '@/lib/api'
+import {
+  formatCompact,
+  RARITY_COLOR,
+  RARITY_LABEL,
+  type CosmeticType,
+  type ShopItem
+} from '@/lib/api-gamification'
+import { useAuth } from '@/lib/auth-context'
+import { useMembers } from '@/lib/members-context'
+import { useOverlays } from '@/lib/overlay-context'
+import { useGamification } from '@/lib/gamification-context'
+import { cn } from '@/lib/utils'
+import { NameEffect } from './NameEffect'
+
+/**
+ * LOJINHA — gastar murchos em título, efeito de nome e moldura de avatar.
+ *
+ * Camada própria (div fixed + clique fora fecha), NÃO Radix Dialog: ela mora
+ * em GlobalOverlays mas quem abre pode estar numa tela que some, e camada
+ * modal arrancada da árvore trava o <body> — ver lib/interaction-guard.ts.
+ *
+ * A prévia do topo mostra MEU nome/avatar com o item em que o mouse está,
+ * caindo no que está equipado quando o mouse sai. É assim que a pessoa decide
+ * se o rainbow fica bom com a cor dela antes de gastar.
+ */
+
+const TABS: { type: CosmeticType; label: string; Icon: typeof Tag }[] = [
+  { type: 'title', label: 'Títulos', Icon: Tag },
+  { type: 'nameEffect', label: 'Efeitos', Icon: Sparkles },
+  { type: 'avatarFrame', label: 'Molduras', Icon: Frame }
+]
+
+const RARITY_ORDER: Record<string, number> = { common: 0, rare: 1, epic: 2, legendary: 3 }
+
+export function ShopModal() {
+  const { shopOpen: open, closeShop: close } = useOverlays()
+  const { user } = useAuth()
+  const { byId } = useMembers()
+  const { shop, loadShop, buy, equip, profile } = useGamification()
+
+  const [tab, setTab] = React.useState<CosmeticType>('title')
+  const [hovered, setHovered] = React.useState<ShopItem | null>(null)
+  const [confirming, setConfirming] = React.useState<string | null>(null)
+  const [busy, setBusy] = React.useState<string | null>(null)
+  const [error, setError] = React.useState<string | null>(null)
+  const [loading, setLoading] = React.useState(false)
+
+  // Rebusca ao abrir: preço e saldo podem ter mudado desde o login.
+  React.useEffect(() => {
+    if (!open) return
+    setLoading(true)
+    setError(null)
+    setConfirming(null)
+    void loadShop().finally(() => setLoading(false))
+  }, [open, loadShop])
+
+  React.useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') close()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, close])
+
+  if (!open || !user) return null
+
+  const me = byId[user.id] ?? user
+  const color = me.profileColor ?? '#6AFF00'
+  const coins = profile?.coins ?? shop?.coins ?? 0
+
+  const items = (shop?.items ?? [])
+    .filter((item) => item.type === tab)
+    .sort((a, b) => (RARITY_ORDER[a.rarity] ?? 0) - (RARITY_ORDER[b.rarity] ?? 0) || a.price - b.price)
+
+  // Prévia: item sob o mouse ganha do equipado, mas só no slot dele.
+  const previewTitle =
+    hovered?.type === 'title' ? hovered.name : titleName(shop?.items, me.title)
+  const previewEffect = hovered?.type === 'nameEffect' ? hovered.id : me.nameEffect
+  const previewFrame = hovered?.type === 'avatarFrame' ? hovered.id : me.avatarFrame
+
+  const handleBuy = async (item: ShopItem): Promise<void> => {
+    setBusy(item.id)
+    setError(null)
+    try {
+      await buy(item.id)
+      setConfirming(null)
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.status === 402
+            ? 'Murchos insuficientes. Vai jogar mais.'
+            : err.status === 409
+              ? 'Você já tem esse.'
+              : err.message
+          : 'Não deu pra comprar agora.'
+      )
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleEquip = async (item: ShopItem, unequip: boolean): Promise<void> => {
+    setBusy(item.id)
+    setError(null)
+    try {
+      await equip(item.type, unequip ? null : item.id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não deu pra equipar agora.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+      onClick={close}
+    >
+      <div
+        className="card-acid relative flex max-h-[85vh] w-full max-w-2xl flex-col rounded-brutal p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          aria-label="Fechar"
+          onClick={close}
+          className="absolute right-3 top-3 text-muted-foreground hover:text-acid"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <div className="mb-4 flex items-center gap-3">
+          <ShoppingBag className="h-7 w-7 text-burn drop-shadow-[0_0_8px_rgba(242,183,5,0.6)]" />
+          <div className="min-w-0 flex-1">
+            <h2 className="title-brutal text-2xl">Lojinha</h2>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              enfeite pro seu nome, pago em murchos
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-1.5 rounded-brutal border-2 border-burn/60 bg-burn/10 px-3 py-1.5 font-mono text-sm text-burn"
+            title="Seu saldo"
+          >
+            <Coins className="h-4 w-4" />
+            {formatCompact(coins)}
+            <span className="text-[10px] uppercase tracking-widest opacity-70">murchos</span>
+          </div>
+        </div>
+
+        {/* Prévia: eu, com o que está sob o mouse. */}
+        <div className="mb-4 flex items-center gap-3 rounded-brutal border border-[#1a1a1a] bg-void px-3 py-2">
+          <UserAvatar
+            src={resolveAssetUrl(me.avatar)}
+            name={me.displayName}
+            ringColor={color}
+            frame={previewFrame}
+            className="h-11 w-11 border-2"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="flex items-baseline gap-1.5 font-display text-base leading-tight" style={{ color }}>
+              <NameEffect effect={previewEffect} className="truncate">
+                {me.displayName}
+              </NameEffect>
+              {previewTitle && (
+                <span className="shrink-0 rounded-brutal border border-burn/40 px-1 font-mono text-[9px] uppercase leading-4 tracking-widest text-burn">
+                  {previewTitle}
+                </span>
+              )}
+            </p>
+            <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+              {hovered ? `prévia: ${hovered.name}` : 'é assim que a galera te vê'}
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-3 flex gap-1">
+          {TABS.map(({ type, label, Icon }) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => {
+                setTab(type)
+                setConfirming(null)
+                setError(null)
+              }}
+              className={cn(
+                'flex items-center gap-1.5 rounded-brutal border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+                tab === type
+                  ? 'border-acid bg-acid/10 text-acid'
+                  : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-foreground'
+              )}
+            >
+              <Icon className="h-3 w-3" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <p className="mb-2 rounded-brutal border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+            {error}
+          </p>
+        )}
+
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1" onMouseLeave={() => setHovered(null)}>
+          {loading && !shop ? (
+            <div className="flex h-32 items-center justify-center text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : items.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              Nada nessa prateleira ainda.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {items.map((item) => (
+                <ItemTile
+                  key={item.id}
+                  item={item}
+                  me={{ name: me.displayName, avatar: resolveAssetUrl(me.avatar), color }}
+                  coins={coins}
+                  busy={busy === item.id}
+                  confirming={confirming === item.id}
+                  onHover={() => setHovered(item)}
+                  onAskBuy={() => setConfirming(item.id)}
+                  onCancel={() => setConfirming(null)}
+                  onBuy={() => void handleBuy(item)}
+                  onEquip={() => void handleEquip(item, false)}
+                  onUnequip={() => void handleEquip(item, true)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Texto do título equipado a partir do catálogo (o user guarda só o id). */
+function titleName(items: ShopItem[] | undefined, id: string | null | undefined): string | null {
+  if (!id) return null
+  const found = items?.find((item) => item.id === id)
+  if (found) return found.name
+  return id.replace(/^title:/, '').replace(/[-_]+/g, ' ')
+}
+
+function ItemTile({
+  item,
+  me,
+  coins,
+  busy,
+  confirming,
+  onHover,
+  onAskBuy,
+  onCancel,
+  onBuy,
+  onEquip,
+  onUnequip
+}: {
+  item: ShopItem
+  me: { name: string; avatar?: string; color: string }
+  coins: number
+  busy: boolean
+  confirming: boolean
+  onHover: () => void
+  onAskBuy: () => void
+  onCancel: () => void
+  onBuy: () => void
+  onEquip: () => void
+  onUnequip: () => void
+}) {
+  const rarity = RARITY_COLOR[item.rarity] ?? RARITY_COLOR.common
+  const affordable = coins >= item.price
+
+  return (
+    <div
+      onMouseEnter={onHover}
+      className={cn(
+        'flex flex-col gap-2 rounded-brutal border-2 bg-void/60 p-2 transition-colors',
+        item.equipped ? 'border-acid' : 'border-[#1a1a1a] hover:border-[#2a2a2a]'
+      )}
+      style={!item.equipped ? { borderColor: `${rarity}55` } : undefined}
+    >
+      {/* Amostra do item, do jeito que vai aparecer. */}
+      <div className="flex h-12 items-center justify-center rounded-brutal bg-void px-2">
+        {item.type === 'title' && (
+          <span className="rounded-brutal border border-burn/40 px-1.5 font-mono text-[10px] uppercase leading-5 tracking-widest text-burn">
+            {item.name}
+          </span>
+        )}
+        {item.type === 'nameEffect' && (
+          <span className="truncate font-display text-base" style={{ color: me.color }}>
+            <NameEffect effect={item.id}>{me.name}</NameEffect>
+          </span>
+        )}
+        {item.type === 'avatarFrame' && (
+          <UserAvatar src={me.avatar} name={me.name} frame={item.id} className="h-9 w-9 border-2" />
+        )}
+      </div>
+
+      <div className="min-w-0">
+        <p className="flex items-center gap-1 truncate text-sm font-medium text-foreground">
+          <span className="truncate">{item.name}</span>
+          {item.equipped && <Check className="h-3 w-3 shrink-0 text-acid" aria-label="equipado" />}
+        </p>
+        <p
+          className="font-mono text-[9px] uppercase tracking-widest"
+          style={{ color: rarity }}
+        >
+          {RARITY_LABEL[item.rarity] ?? item.rarity}
+        </p>
+        {item.description && (
+          <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+            {item.description}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-auto">
+        {item.owned ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={item.equipped ? onUnequip : onEquip}
+            className={cn(
+              'flex w-full items-center justify-center gap-1 rounded-brutal border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50',
+              item.equipped
+                ? 'border-acid bg-acid/15 text-acid hover:bg-destructive/15 hover:text-destructive hover:border-destructive/60'
+                : 'border-acid-dark text-acid hover:bg-acid/15'
+            )}
+            title={item.equipped ? 'Clique pra tirar' : 'Equipar'}
+          >
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : item.equipped ? <Check className="h-3 w-3" /> : null}
+            {item.equipped ? 'equipado' : 'equipar'}
+          </button>
+        ) : confirming ? (
+          <div className="flex gap-1">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onBuy}
+              className="flex flex-1 items-center justify-center gap-1 rounded-brutal border border-burn bg-burn/20 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-burn transition-colors hover:bg-burn/30 disabled:opacity-50"
+            >
+              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Coins className="h-3 w-3" />}
+              confirmar
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onCancel}
+              className="rounded-brutal border border-[#1a1a1a] px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+            >
+              não
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={!affordable || busy}
+            onClick={onAskBuy}
+            title={affordable ? `Comprar por ${item.price} murchos` : `Faltam ${item.price - coins} murchos`}
+            className={cn(
+              'flex w-full items-center justify-center gap-1 rounded-brutal border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors',
+              affordable
+                ? 'border-burn/60 text-burn hover:bg-burn/15'
+                : 'cursor-not-allowed border-[#1a1a1a] text-muted-foreground opacity-60'
+            )}
+          >
+            <Coins className="h-3 w-3" />
+            {formatCompact(item.price)}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}

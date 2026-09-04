@@ -21,7 +21,19 @@
       produção: `https:` (qualquer host) já estava liberado, então somar a
       máquina local não amplia o que uma mensagem consegue carregar.
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://api.bocasmurchas.com.br wss://api.bocasmurchas.com.br https://live.bewhale.com.br wss://live.bewhale.com.br https://api.minecraftservices.com https://crafatar.com; img-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*; media-src 'self' blob: https: http://localhost:* http://127.0.0.1:*;" />
+    <!--
+      frame-src é pro "assistir junto": o player do YouTube é um <iframe> e,
+      sem frame-src, cai no default-src 'self' e o palco fica um retângulo
+      preto sem erro nenhum no console do app. youtube-nocookie.com é o que
+      usamos (não grava cookie de rastreamento); youtube.com entra porque o
+      player redireciona pra lá em alguns vídeos (idade, embed restrito).
+      Controlamos o player por postMessage, então script-src continua 'self'
+      — o SDK oficial do YouTube NÃO roda aqui, de propósito.
+
+      connect-src ganha https://www.youtube.com só pelo oEmbed, que é como
+      descobrimos o título do vídeo sem chave de API.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://api.bocasmurchas.com.br wss://api.bocasmurchas.com.br https://live.bewhale.com.br wss://live.bewhale.com.br https://api.minecraftservices.com https://crafatar.com https://www.youtube.com; img-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*; media-src 'self' blob: https: http://localhost:* http://127.0.0.1:*; frame-src https://www.youtube-nocookie.com https://www.youtube.com;" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />

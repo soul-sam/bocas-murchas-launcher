@@ -114,6 +114,17 @@ export default {
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-5px)' }
+        },
+        // Drops: o banner inteiro gira a matiz (arco-íris) e a barra de
+        // validade encolhe até sumir — a duração vem inline, é o tempo que
+        // resta até o drop vencer.
+        rainbow: {
+          '0%': { filter: 'hue-rotate(0deg)' },
+          '100%': { filter: 'hue-rotate(360deg)' }
+        },
+        'shrink-width': {
+          from: { width: '100%' },
+          to: { width: '0%' }
         }
       },
       animation: {
@@ -122,7 +133,12 @@ export default {
         glitch: 'glitch 0.3s ease-in-out',
         flicker: 'flicker 3s ease-in-out infinite',
         scan: 'scan 3s linear infinite',
-        float: 'float 3s ease-in-out infinite'
+        float: 'float 3s ease-in-out infinite',
+        rainbow: 'rainbow 2s linear infinite',
+        // O `shake` de cima é um tranco só (erro de formulário); o drop treme
+        // enquanto estiver na tela.
+        'drop-shake': 'shake 0.5s ease-in-out infinite',
+        'shrink-width': 'shrink-width linear forwards'
       }
     }
   },

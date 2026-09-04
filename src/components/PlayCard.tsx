@@ -2,7 +2,8 @@ import { FileText, Gamepad2, Loader2, Server, TriangleAlert, Wifi } from 'lucide
 import type { LaunchStatus } from '../../electron/preload/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useSound } from '@/lib/use-sound'
+import { useSettings } from '@/lib/settings-context'
+import { playUiSound } from '@/lib/ui-sounds'
 
 interface Props {
   status: LaunchStatus
@@ -12,13 +13,14 @@ interface Props {
 }
 
 export function PlayCard({ status, readyToPlay, onLaunch, serverTarget }: Props) {
-  const playSound = useSound()
+  const { settings } = useSettings()
   const isPreparing = status.stage === 'preparing'
   const isRunning = status.stage === 'running'
   const isError = status.stage === 'error'
 
   const handleLaunch = () => {
-    playSound('launch')
+    // O mesmo aviso de "entrei" da call: subir = algo começou.
+    playUiSound('self-join', settings.soundEnabled ? settings.soundVolume : 0)
     onLaunch()
   }
 

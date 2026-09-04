@@ -23,8 +23,15 @@ import { useSettings } from '@/lib/settings-context'
 import { collectLinks, isEmojiOnly, openExternal, parseBlocks } from '@/lib/rich-text'
 import { RichText, useMentionsMe } from './RichText'
 import { LinkEmbeds } from './LinkEmbed'
+import { MessageCard, hasCard } from '@/components/cards'
+import { AuthorName } from './AuthorName'
+import { useEmojis, toPickerEmojis } from '@/lib/emoji-context'
+import { CustomEmojiImg } from './CustomEmojiImg'
 
 const QUICK_EMOJIS = ['😂', '💀', '🔥', '👍', '❤️', '😭']
+
+/** Reação com emoji do servidor é guardada como `:nome:`, igual no texto. */
+const CUSTOM_REACTION = /^:([a-z0-9_]+):$/
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('pt-BR', {
@@ -87,6 +94,7 @@ export function MessageItem({
   const { byId } = useMembers()
   const { openUserMenu, openLightbox } = useOverlays()
   const { settings } = useSettings()
+  const { emojis, byName } = useEmojis()
   const [draft, setDraft] = React.useState(message.content)
   const [copied, setCopied] = React.useState(false)
 
@@ -103,10 +111,17 @@ export function MessageItem({
   const color = author?.profileColor ?? undefined
 
   const mentionsMe = useMentionsMe(message.content, user?.id)
+  // Emoji do servidor só conta pro tamanhão se EXISTIR: `:zzz:` desconhecido
+  // vira texto no render, e texto em 2.4rem ficaria ridículo.
   const jumbo = React.useMemo(
-    () => !message.imageUrl && !message.gifUrl && isEmojiOnly(message.content),
-    [message.content, message.imageUrl, message.gifUrl]
+    () =>
+      !message.imageUrl &&
+      !message.gifUrl &&
+      isEmojiOnly(message.content, (name) => byName.has(name)),
+    [message.content, message.imageUrl, message.gifUrl, byName]
   )
+
+  const pickerCustomEmojis = React.useMemo(() => toPickerEmojis(emojis), [emojis])
 
   // Links do texto: só precisam ser extraídos quando os cartões estão ligados.
   const links = React.useMemo(() => {
@@ -217,13 +232,13 @@ export function MessageItem({
             >
               {formatTime(message.createdAt)}
             </span>
-            <span
+            <AuthorName
+              userId={message.author.id}
+              displayName={message.author.displayName}
+              color={color}
               onContextMenu={(event) => openUserMenu(event, message.author.id)}
               className="shrink-0 cursor-default font-display text-xs uppercase tracking-wide hover:underline"
-              style={color ? { color } : undefined}
-            >
-              {message.author.displayName}
-            </span>
+            />
             <div className="min-w-0 flex-1">
               <MessageBody
                 message={message}
@@ -242,13 +257,13 @@ export function MessageItem({
           <>
             {!grouped && (
               <p className="flex items-baseline gap-2">
-                <span
+                <AuthorName
+                  userId={message.author.id}
+                  displayName={message.author.displayName}
+                  color={color}
                   onContextMenu={(event) => openUserMenu(event, message.author.id)}
                   className="cursor-default font-display text-sm leading-tight hover:underline"
-                  style={color ? { color } : undefined}
-                >
-                  {message.author.displayName}
-                </span>
+                />
                 <span
                   title={formatFullDate(message.createdAt)}
                   className="font-mono text-[10px] text-muted-foreground"
@@ -293,7 +308,11 @@ export function MessageItem({
                     : 'border-[#1a1a1a] bg-void-light/60 text-muted-foreground hover:border-acid/50'
                 )}
               >
-                <span>{emoji}</span>
+                {CUSTOM_REACTION.test(emoji) && byName.has(emoji.slice(1, -1)) ? (
+                  <CustomEmojiImg name={emoji.slice(1, -1)} className="h-4 w-4" />
+                ) : (
+                  <span>{emoji}</span>
+                )}
                 <span className="font-mono text-[10px]">{info.count}</span>
               </button>
             ))}
@@ -329,7 +348,9 @@ export function MessageItem({
               ))}
             </div>
             {/* O picker completo estava só no compositor: reagir ficava preso
-                a oito emojis fixos, que é bem menos do que a galera usa. */}
+                a oito emojis fixos, que é bem menos do que a galera usa.
+                Emoji do servidor reage como `:nome:` — a mesma string do
+                texto, então o chip desenha com o mesmo componente. */}
             <EmojiPicker
               theme={Theme.DARK}
               emojiStyle={EmojiStyle.NATIVE}
@@ -338,7 +359,13 @@ export function MessageItem({
               height={320}
               searchPlaceholder="Procurar emoji"
               previewConfig={{ showPreview: false }}
-              onEmojiClick={(emoji) => void onReact(message.id, emoji.emoji)}
+              customEmojis={pickerCustomEmojis}
+              onEmojiClick={(emoji) =>
+                void onReact(
+                  message.id,
+                  emoji.isCustom ? ':' + emoji.names[0] + ':' : emoji.emoji
+                )
+              }
             />
           </PopoverContent>
         </Popover>
@@ -427,6 +454,13 @@ function MessageBody({
   links: string[]
 }) {
   const attachment = resolveAssetUrl(message.imageUrl ?? message.gifUrl)
+  const sticker = message.type === 'sticker' ? resolveAssetUrl(message.stickerUrl) : undefined
+
+  // Cartão (enquete, evento, pós-jogo…): o componente É a mensagem. O texto
+  // fica só como fallback pra busca e notificação.
+  if (hasCard(message)) {
+    return <MessageCard message={message} />
+  }
 
   if (editing) {
     return (
@@ -459,6 +493,16 @@ function MessageBody({
             </span>
           )}
         </div>
+      )}
+
+      {sticker && (
+        <img
+          src={sticker}
+          alt=""
+          loading="lazy"
+          className="mt-1 block h-32 w-32 object-contain"
+          draggable={false}
+        />
       )}
 
       {attachment && (

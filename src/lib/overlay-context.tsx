@@ -62,6 +62,37 @@ interface OverlayContextValue {
   /** Abre o menu de contexto de um usuario. Ja cancela o menu nativo. */
   openUserMenu: (event: React.MouseEvent, userId: string) => void
   closeUserMenu: () => void
+
+  /**
+   * Compositores de cartao (enquete, evento da agenda, "bora?") e a lojinha.
+   *
+   * Moram aqui pelo mesmo motivo das outras modais: sao abertos do
+   * compositor de mensagens (que some ao trocar de aba) e de comandos /barra,
+   * e precisam viver num ponto da arvore que nao desmonta.
+   */
+  pollComposerOpen: boolean
+  openPollComposer: () => void
+  closePollComposer: () => void
+
+  eventComposerOpen: boolean
+  /** Texto inicial vindo de um comando tipo "/marcar sexta 21h LoL". */
+  eventComposerSeed: string | null
+  openEventComposer: (seed?: string) => void
+  closeEventComposer: () => void
+
+  partyComposerOpen: boolean
+  partyComposerSeed: string | null
+  openPartyComposer: (seed?: string) => void
+  closePartyComposer: () => void
+
+  shopOpen: boolean
+  openShop: () => void
+  closeShop: () => void
+
+  /** Painel admin (convites, membros, sons, ferramentas) como camada global. */
+  adminOpen: boolean
+  openAdmin: () => void
+  closeAdmin: () => void
 }
 
 const OverlayContext = React.createContext<OverlayContextValue | null>(null)
@@ -73,6 +104,13 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [quickSwitcherOpen, setQuickSwitcherOpen] = React.useState(false)
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
   const [userMenu, setUserMenu] = React.useState<UserMenuTarget | null>(null)
+  const [pollComposerOpen, setPollComposerOpen] = React.useState(false)
+  const [eventComposerOpen, setEventComposerOpen] = React.useState(false)
+  const [eventComposerSeed, setEventComposerSeed] = React.useState<string | null>(null)
+  const [partyComposerOpen, setPartyComposerOpen] = React.useState(false)
+  const [partyComposerSeed, setPartyComposerSeed] = React.useState<string | null>(null)
+  const [shopOpen, setShopOpen] = React.useState(false)
+  const [adminOpen, setAdminOpen] = React.useState(false)
 
   const openUserMenu = React.useCallback((event: React.MouseEvent, userId: string) => {
     event.preventDefault()
@@ -134,7 +172,35 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       closeShortcuts: () => setShortcutsOpen(false),
       userMenu,
       openUserMenu,
-      closeUserMenu: () => setUserMenu(null)
+      closeUserMenu: () => setUserMenu(null),
+
+      pollComposerOpen,
+      openPollComposer: () => setPollComposerOpen(true),
+      closePollComposer: () => setPollComposerOpen(false),
+
+      eventComposerOpen,
+      eventComposerSeed,
+      openEventComposer: (seed?: string) => {
+        setEventComposerSeed(seed ?? null)
+        setEventComposerOpen(true)
+      },
+      closeEventComposer: () => setEventComposerOpen(false),
+
+      partyComposerOpen,
+      partyComposerSeed,
+      openPartyComposer: (seed?: string) => {
+        setPartyComposerSeed(seed ?? null)
+        setPartyComposerOpen(true)
+      },
+      closePartyComposer: () => setPartyComposerOpen(false),
+
+      shopOpen,
+      openShop: () => setShopOpen(true),
+      closeShop: () => setShopOpen(false),
+
+      adminOpen,
+      openAdmin: () => setAdminOpen(true),
+      closeAdmin: () => setAdminOpen(false)
     }),
     [
       profileEditorOpen,
@@ -143,7 +209,14 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       quickSwitcherOpen,
       shortcutsOpen,
       userMenu,
-      openUserMenu
+      openUserMenu,
+      pollComposerOpen,
+      eventComposerOpen,
+      eventComposerSeed,
+      partyComposerOpen,
+      partyComposerSeed,
+      shopOpen,
+      adminOpen
     ]
   )
 

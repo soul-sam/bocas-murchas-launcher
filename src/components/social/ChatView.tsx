@@ -9,7 +9,9 @@ import {
   Users,
   PanelLeftOpen,
   ArrowDown,
-  Search
+  Search,
+  Link2,
+  CalendarDays
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
@@ -20,6 +22,7 @@ import { useLayout } from '@/lib/layout-context'
 import type { ChatMessage } from '@/lib/api'
 import { MessageItem } from './MessageItem'
 import { MessageComposer } from './MessageComposer'
+import { DropComposer } from './DropComposer'
 
 /** Mensagens seguidas do mesmo autor em até 5 min viram um bloco só. */
 const GROUP_WINDOW_MS = 5 * 60_000
@@ -77,13 +80,22 @@ export function ChatView() {
     pinnedOpen,
     togglePinned,
     searchOpen,
-    toggleSearch
+    toggleSearch,
+    linksOpen,
+    toggleLinks,
+    agendaOpen,
+    toggleAgenda
   } = useLayout()
 
   const [replyTo, setReplyTo] = React.useState<ChatMessage | null>(null)
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [highlightedId, setHighlightedId] = React.useState<string | null>(null)
   const [atBottom, setAtBottom] = React.useState(true)
+  /**
+   * Compositor de drop (admin): null = fechado; string = aberto com o texto
+   * que veio do "/drop ..." (vazio quando abriu pelo "+").
+   */
+  const [dropSeed, setDropSeed] = React.useState<string | null>(null)
 
   const scrollRef = React.useRef<HTMLDivElement>(null)
 
@@ -271,6 +283,19 @@ export function ChatView() {
             </HeaderButton>
           )}
 
+          {/* Achados e agenda são do grupo, não de uma conversa a dois. */}
+          {!isDm && (
+            <HeaderButton label="Achados (links do canal)" active={linksOpen} onClick={toggleLinks}>
+              <Link2 className="h-4 w-4" />
+            </HeaderButton>
+          )}
+
+          {!isDm && (
+            <HeaderButton label="Agenda do grupo" active={agendaOpen} onClick={toggleAgenda}>
+              <CalendarDays className="h-4 w-4" />
+            </HeaderButton>
+          )}
+
           <HeaderButton
             label={membersOpen ? 'Esconder membros' : 'Mostrar membros'}
             active={membersOpen}
@@ -397,6 +422,16 @@ export function ChatView() {
         onSend={send}
         onTyping={notifyTyping}
         onEditLast={editLast}
+        onDrop={user?.role === 'admin' ? setDropSeed : undefined}
+      />
+
+      <DropComposer
+        open={dropSeed !== null}
+        seed={dropSeed ?? ''}
+        // Numa conversa direta não existe "só neste canal": drop é do grupo.
+        channelId={isDm ? null : activeChannel.id}
+        channelName={activeChannel.name}
+        onClose={() => setDropSeed(null)}
       />
     </div>
   )

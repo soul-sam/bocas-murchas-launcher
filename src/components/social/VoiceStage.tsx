@@ -16,16 +16,20 @@ import {
   Users,
   PanelLeftOpen,
   Video,
-  VideoOff
+  VideoOff,
+  Tv,
+  Radio
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
-import { useVoice, type VoiceParticipant } from '@/lib/voice-context'
+import { useVoice, type ScreenShareFeed, type VoiceParticipant } from '@/lib/voice-context'
 import { useNudge } from '@/lib/nudge-context'
 import { useMembers, type Member } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
+import { useWatch } from '@/lib/watch-context'
 import { ScreenStage, VideoSurface } from './ScreenStage'
+import { WatchStage } from './WatchStage'
 
 export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void }) {
   const voice = useVoice()
@@ -36,8 +40,60 @@ export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void 
   // aberta trava o app inteiro (ver lib/interaction-guard.ts).
   const { openScreenPicker, openUserMenu } = useOverlays()
   const { density, sidebarIsDrawer, toggleSidebar } = useLayout()
+  const watch = useWatch()
 
   const [focused, setFocused] = React.useState<string | null>(null)
+
+  /**
+   * Assistir junto no palco.
+   *
+   * `watchOpen` é SÓ meu: fechar o painel não para o vídeo de ninguém, e a
+   * sessão da sala continua existindo pra quem quiser reabrir pelo botão.
+   * `watchFocused` decide quem manda no palco quando tem vídeo E tela
+   * compartilhada ao mesmo tempo — o outro vira uma barra fina com "ver".
+   */
+  const [watchOpen, setWatchOpen] = React.useState(false)
+  const [watchFocused, setWatchFocused] = React.useState(true)
+
+  const hasStage = voice.screenShares.length > 0
+  const watchVideoId = watch.current?.videoId ?? null
+
+  /**
+   * Vídeo novo na sala (alguém colou um link, ou eu entrei numa call que já
+   * tinha um) abre o palco sozinho — a pessoa não deveria precisar saber que
+   * existe um botão pra ver o que os outros já estão vendo. Quando a sessão
+   * acaba, o painel fecha; se eu fechei no meio, fica fechado até o PRÓXIMO
+   * vídeo, não até a próxima mensagem de play/pause.
+   *
+   * Com uma tela no ar, a tela continua em foco e o vídeo entra como barra:
+   * quem está compartilhando tem prioridade sobre um link colado.
+   */
+  const previousVideoRef = React.useRef<string | null>(null)
+  const watchOpenRef = React.useRef(watchOpen)
+  watchOpenRef.current = watchOpen
+  const hasStageRef = React.useRef(hasStage)
+  hasStageRef.current = hasStage
+
+  React.useEffect(() => {
+    const previous = previousVideoRef.current
+    previousVideoRef.current = watchVideoId
+
+    if (watchVideoId && watchVideoId !== previous) {
+      // Refs, não deps: o foco inicial é decidido UMA vez, na hora em que o
+      // vídeo chega. Mudar de tela ou abrir o painel depois não deve reabrir nada.
+      if (!watchOpenRef.current) setWatchFocused(!hasStageRef.current)
+      setWatchOpen(true)
+    } else if (!watchVideoId && previous) {
+      setWatchOpen(false)
+    }
+  }, [watchVideoId])
+
+  const toggleWatch = React.useCallback(() => {
+    setWatchOpen((open) => {
+      if (!open) setWatchFocused(true)
+      return !open
+    })
+  }, [])
 
   /** identity -> faixa de webcam, pro card mostrar o rosto no lugar do avatar. */
   const cameraByIdentity = React.useMemo(() => {
@@ -90,8 +146,8 @@ export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void 
     )
   }
 
-  const hasStage = voice.screenShares.length > 0
   const compact = density !== 'wide'
+  const watchIsMain = watchOpen && (!hasStage || watchFocused)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -118,25 +174,63 @@ export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void 
           {voice.participants.length}
         </span>
 
-        {voice.screenSharing && (
-          <span className="ml-auto flex shrink-0 items-center gap-1.5 rounded-brutal border border-burn/50 bg-burn/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-burn">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-burn" />
-            no ar
-          </span>
-        )}
+        <span className="ml-auto flex shrink-0 items-center gap-1.5">
+          {watch.current && (
+            <button
+              type="button"
+              onClick={() => {
+                setWatchOpen(true)
+                setWatchFocused(true)
+              }}
+              title={watch.current.title ?? 'Assistindo junto'}
+              className="flex items-center gap-1.5 rounded-brutal border border-acid/50 bg-acid/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20"
+            >
+              <Tv className="h-3 w-3" />
+              {watch.current.playing ? 'assistindo' : 'vídeo pausado'}
+            </button>
+          )}
+
+          {voice.screenSharing && (
+            <span className="flex shrink-0 items-center gap-1.5 rounded-brutal border border-burn/50 bg-burn/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-burn">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-burn" />
+              no ar
+            </span>
+          )}
+        </span>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-2 p-2 sm:gap-3 sm:p-4">
-        {hasStage ? (
-          <>
-            <ScreenStage
-              feeds={voice.screenShares}
-              focusedIdentity={focused}
-              onFocus={setFocused}
-            />
+        {/*
+          O WatchStage é sempre o PRIMEIRO filho quando está aberto, nos dois
+          modos (painel e barra). Se mudasse de posição na árvore ao trocar o
+          foco com a tela compartilhada, o React remontaria o iframe e o vídeo
+          recomeçaria do zero pra essa pessoa.
+        */}
+        {watchOpen && (
+          <WatchStage
+            collapsed={hasStage && !watchFocused}
+            onExpand={() => setWatchFocused(true)}
+            onClose={() => setWatchOpen(false)}
+          />
+        )}
 
-            {/* Fila enxuta: com a tela aberta os cards saem, e sem isso não
-                haveria como abaixar o volume de ninguém durante uma gameplay. */}
+        {hasStage && watchIsMain && (
+          <ScreenSharesBar feeds={voice.screenShares} onShow={() => setWatchFocused(false)} />
+        )}
+
+        {hasStage && !watchIsMain && (
+          <ScreenStage
+            feeds={voice.screenShares}
+            focusedIdentity={focused}
+            onFocus={setFocused}
+          />
+        )}
+
+        {hasStage || watchOpen ? (
+          <>
+            {/* Fila enxuta: com a tela (ou o vídeo) aberta os cards saem, e sem
+                isso não haveria como abaixar o volume de ninguém durante uma
+                gameplay. */}
             <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:gap-2">
               {voice.participants.map((participant) => (
                 <ParticipantChip
@@ -227,6 +321,23 @@ export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void 
             <Music className="h-4 w-4" />
           </ControlButton>
 
+          {/* "Rolando" quando tem vídeo na sala e eu fechei o painel: é a
+              única pista de que tem algo pra reabrir. */}
+          <ControlButton
+            active={watchOpen}
+            label={
+              watchOpen
+                ? 'Fechar o assistir junto (só pra mim)'
+                : watch.current
+                  ? 'Tem vídeo rolando na sala — abrir'
+                  : 'Assistir junto (YouTube sincronizado)'
+            }
+            text={compact ? undefined : watch.current && !watchOpen ? 'Rolando' : 'Assistir'}
+            onClick={toggleWatch}
+          >
+            <Tv className="h-4 w-4" />
+          </ControlButton>
+
           <ControlButton
             label="Tremer a tela de todo mundo (1x por minuto)"
             onClick={nudgeChannel}
@@ -248,6 +359,41 @@ export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void 
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * Barra fina de "tem tela no ar" enquanto o vídeo ocupa o palco.
+ *
+ * Quando alguém começa a transmitir com o assistir junto em foco, a tela NÃO
+ * toma o palco à força: quem está vendo o vídeo decide quando trocar. Mas
+ * precisa saber que tem tela pra trocar — daí a barra, com quem está
+ * transmitindo e um botão de ver.
+ */
+function ScreenSharesBar({ feeds, onShow }: { feeds: ScreenShareFeed[]; onShow: () => void }) {
+  const names = feeds.map((feed) => (feed.isLocal ? 'você' : feed.name))
+  const label =
+    feeds.length === 1
+      ? feeds[0].isLocal
+        ? 'você está transmitindo'
+        : `${names[0]} está transmitindo`
+      : `${feeds.length} telas no ar: ${names.join(', ')}`
+
+  return (
+    <button
+      type="button"
+      onClick={onShow}
+      className="flex shrink-0 items-center gap-2 rounded-brutal border-2 border-[#1a1a1a] bg-void/60 px-2 py-1.5 text-left transition-colors hover:border-destructive/50"
+    >
+      <Radio className="h-3.5 w-3.5 shrink-0 animate-pulse text-destructive" />
+      <span className="min-w-0 truncate font-mono text-[10px] uppercase tracking-widest text-dirty-white">
+        {label}
+      </span>
+      <span className="ml-auto flex shrink-0 items-center gap-1 rounded-brutal border border-destructive/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-destructive">
+        <MonitorUp className="h-3 w-3" />
+        ver tela
+      </span>
+    </button>
   )
 }
 

@@ -22,7 +22,11 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(
+/**
+ * Exportado pra os módulos de API por feature (api-polls.ts, api-events.ts…)
+ * montarem as próprias chamadas sem crescer este arquivo.
+ */
+export async function request<T>(
   endpoint: string,
   options: RequestInit & { token?: string | null } = {}
 ): Promise<T> {
@@ -46,7 +50,7 @@ async function request<T>(
 }
 
 /** Upload usa FormData: nao pode mandar Content-Type manual (o boundary se perde). */
-async function upload<T>(
+export async function upload<T>(
   endpoint: string,
   form: FormData,
   token: string | null
@@ -94,7 +98,23 @@ export interface AuthUser {
   lastSeen?: string
   createdAt?: string
   voiceChannelId?: string | null
+  /** Cosméticos equipados (ids de Cosmetic) — ver gamificação. */
+  title?: string | null
+  nameEffect?: string | null
+  avatarFrame?: string | null
+  /** Riot ID lido do cliente do LoL. */
+  riotGameName?: string | null
+  riotTagLine?: string | null
 }
+
+// Tipos de presença de jogo, compartilhados com o processo main.
+export type {
+  GameActivity,
+  ActivityGame,
+  LolPhase,
+  LolStatus,
+  LolGameResult
+} from '../../electron/preload/types'
 
 export function parseLinks(raw: string | null | undefined): ProfileLink[] {
   if (!raw) return []
@@ -339,10 +359,56 @@ export interface MessageReaction {
   user?: { id: string; displayName: string }
 }
 
+/**
+ * Mensagens-cartão: o launcher desenha um componente em vez do texto. O que
+ * o cartão precisa vem em `metadata` (JSON) — ver components/cards.
+ */
+export type CardMessageType =
+  | 'poll'
+  | 'event'
+  | 'game'
+  | 'recap'
+  | 'party'
+  | 'wager'
+  | 'watch'
+  | 'system'
+
+export type MessageType = 'text' | 'gif' | 'sticker' | 'image' | 'file' | CardMessageType
+
+export const CARD_MESSAGE_TYPES: ReadonlySet<string> = new Set<CardMessageType>([
+  'poll',
+  'event',
+  'game',
+  'recap',
+  'party',
+  'wager',
+  'watch',
+  'system'
+])
+
+export function isCardMessage(message: { type: string }): boolean {
+  return CARD_MESSAGE_TYPES.has(message.type)
+}
+
+/** `metadata` vem como string JSON; devolve objeto ou null sem estourar. */
+export function parseMetadata<T = Record<string, unknown>>(
+  raw: string | null | undefined
+): T | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? (parsed as T) : null
+  } catch {
+    return null
+  }
+}
+
 export interface ChatMessage {
   id: string
   content: string
-  type: 'text' | 'gif' | 'sticker' | 'system' | 'image' | 'file'
+  type: MessageType
+  /** JSON por tipo de cartão — use parseMetadata(). */
+  metadata?: string | null
   gifUrl?: string | null
   stickerUrl?: string | null
   imageUrl?: string | null
@@ -375,11 +441,14 @@ export interface SendMessagePayload {
   type?: ChatMessage['type']
   imageUrl?: string
   gifUrl?: string
+  stickerUrl?: string
   fileUrl?: string
   fileName?: string
   fileSize?: number
   fileMime?: string
   replyToId?: string
+  /** Objeto: o servidor guarda como JSON. */
+  metadata?: Record<string, unknown>
 }
 
 export const messages = {
@@ -632,6 +701,83 @@ export const livekit = {
       method: 'POST',
       token,
       body: JSON.stringify({ roomName })
+    })
+  }
+}
+
+// ============================================
+// PARTIDAS (presença de jogo -> servidor)
+// ============================================
+
+export interface GameSessionSummary {
+  id: string
+  userId: string
+  game: 'lol' | 'minecraft'
+  startedAt: string
+  endedAt?: string | null
+  result?: 'win' | 'loss' | 'remake' | 'unknown' | null
+  queue?: string | null
+  champion?: string | null
+  kills?: number | null
+  deaths?: number | null
+  assists?: number | null
+  durationSec?: number | null
+  messageId?: string | null
+}
+
+/**
+ * Contrato com /api/games (implementado no backend pelo módulo de partidas).
+ *
+ *   POST /games/session            { game, queue?, champion?, startedAt }      -> { session }
+ *   POST /games/session/:id/end    { result, kills, deaths, assists, durationSec,
+ *                                    champion?, queue?, data?, teammateRiotIds?,
+ *                                    postCard }                                -> { session, message? }
+ *   POST /games/riot-id            { gameName, tagLine }                       -> { user }
+ *   GET  /games/recent?limit=      -> { sessions }  (com user)
+ *   GET  /games/live               -> { sessions }  partidas em andamento (pra apostar)
+ */
+export const games = {
+  async start(
+    token: string,
+    payload: { game: 'lol' | 'minecraft'; queue?: string; champion?: string; startedAt: string }
+  ): Promise<GameSessionSummary> {
+    const res = await request<{ session: GameSessionSummary }>('/games/session', {
+      method: 'POST',
+      token,
+      body: JSON.stringify(payload)
+    })
+    return res.session
+  },
+
+  async end(
+    token: string,
+    sessionId: string,
+    payload: {
+      result: 'win' | 'loss' | 'remake' | 'unknown'
+      kills: number
+      deaths: number
+      assists: number
+      durationSec: number
+      champion?: string
+      queue?: string
+      data?: unknown
+      /** Riot IDs (nome#tag) dos aliados — o servidor resolve quem é do grupo. */
+      teammateRiotIds?: string[]
+      postCard: boolean
+    }
+  ): Promise<{ session: GameSessionSummary; message?: ChatMessage }> {
+    return request(`/games/session/${sessionId}/end`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify(payload)
+    })
+  },
+
+  async setRiotId(token: string, gameName: string, tagLine: string): Promise<void> {
+    await request('/games/riot-id', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ gameName, tagLine })
     })
   }
 }

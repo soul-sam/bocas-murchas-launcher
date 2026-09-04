@@ -12,6 +12,7 @@ import {
   type InlineNode,
   type InlineStyle
 } from '@/lib/rich-text'
+import { CustomEmojiImg } from './CustomEmojiImg'
 
 /**
  * Desenha a arvore que o lib/rich-text.ts produz.
@@ -19,7 +20,17 @@ import {
  * Os indices de @pessoa e #canal vivem num contexto proprio pra serem montados
  * UMA vez por render da lista, nao uma vez por mensagem: com 50 mensagens na
  * tela, dois Map novos em cada uma custam caro a toa.
+ *
+ * Emoji do servidor (`:kekw:`) nao tem indice aqui: a lista mora no
+ * emoji-context (montado acima deste provider) e o CustomEmojiImg consulta la.
  */
+
+/**
+ * "Mensagem so de emoji" precisa chegar ate o no de emoji customizado, que
+ * fica varios niveis abaixo (paragrafo > negrito > emoji). Contexto em vez de
+ * prop pra nao enfiar `jumbo` em cada componente intermediario da arvore.
+ */
+const JumboContext = React.createContext(false)
 
 interface Lookups {
   /** username (e primeiro nome) em minusculas -> pessoa. */
@@ -114,6 +125,7 @@ function InlineNodes({ nodes }: { nodes: InlineNode[] }) {
   const lookups = useMentionLookups()
   const { setActiveChannel } = useChat()
   const { openUserMenu } = useOverlays()
+  const jumbo = React.useContext(JumboContext)
 
   return (
     <>
@@ -207,6 +219,11 @@ function InlineNodes({ nodes }: { nodes: InlineNode[] }) {
             )
           }
 
+          // Nome desconhecido vira texto la dentro — o parser so reconhece a
+          // sintaxe, quem sabe o que existe e o componente.
+          case 'custom-emoji':
+            return <CustomEmojiImg key={index} name={node.name} jumbo={jumbo} />
+
           default:
             return null
         }
@@ -259,16 +276,18 @@ export function RichText({
   const blocks = React.useMemo(() => parseBlocks(content), [content])
 
   return (
-    <div
-      className={cn(
-        'min-w-0 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground',
-        jumbo && 'text-[2.4rem] leading-tight',
-        className
-      )}
-    >
-      {blocks.map((block, index) => (
-        <BlockView key={index} block={block} />
-      ))}
-    </div>
+    <JumboContext.Provider value={!!jumbo}>
+      <div
+        className={cn(
+          'min-w-0 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground',
+          jumbo && 'text-[2.4rem] leading-tight',
+          className
+        )}
+      >
+        {blocks.map((block, index) => (
+          <BlockView key={index} block={block} />
+        ))}
+      </div>
+    </JumboContext.Provider>
   )
 }

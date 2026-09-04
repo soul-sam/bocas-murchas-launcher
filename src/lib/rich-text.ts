@@ -9,7 +9,7 @@
  *
  *   **negrito**  *italico*  __sublinhado__  ~~riscado~~  ||spoiler||
  *   `codigo`     ```bloco```              > citacao
- *   [texto](url) <url> url-solta          @pessoa  #canal
+ *   [texto](url) <url> url-solta          @pessoa  #canal  :emoji:
  *
  * DECISAO: nada de biblioteca de markdown. As de verdade cospem HTML — e HTML
  * vindo de mensagem de terceiro dentro de um Electron com acesso a
@@ -31,6 +31,12 @@ export type InlineNode =
   | { kind: 'link'; url: string; label: string }
   | { kind: 'mention'; raw: string; username: string }
   | { kind: 'channel'; raw: string; name: string }
+  /**
+   * `:kekw:` — emoji do servidor. So SINTAXE: o parser nao sabe quais nomes
+   * existem (e puro, sem acesso a lista). Quem desenha decide: nome que nao
+   * existe volta a ser o texto `:kekw:`, igual mencao de gente que nao existe.
+   */
+  | { kind: 'custom-emoji'; name: string }
 
 export type Block =
   | { kind: 'paragraph'; children: InlineNode[] }
@@ -231,6 +237,14 @@ const RULES: Rule[] = [
       node: { kind: 'channel', raw: '#' + m[1], name: m[1] },
       raw: '#' + m[1]
     })
+  },
+  {
+    // Mesmo formato de nome que a API aceita (a-z, 0-9 e _; 2 a 32). O
+    // lookbehind recusa `:` colado em letra ou numero: "10:30:45" e horario,
+    // nao emoji chamado "30". Dentro de `codigo` nunca chega aqui — a regra de
+    // codigo comeca antes e leva o trecho inteiro.
+    re: /(?<![\p{L}\p{N}]):([a-z0-9_]{2,32}):/u,
+    build: (m) => ({ node: { kind: 'custom-emoji', name: m[1] }, raw: m[0] })
   }
 ]
 
@@ -391,11 +405,54 @@ export function mentionsEveryone(content: string): boolean {
  */
 const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|️|‍|\s)+$/u
 
-export function isEmojiOnly(content: string): boolean {
+const MAX_JUMBO_GLYPHS = 16
+/** Emoji do servidor e imagem de 48px; tres ja e uma linha inteira. */
+const MAX_JUMBO_CUSTOM = 3
+
+/** So emoji unicode, como sempre foi. */
+function isUnicodeEmojiOnly(text: string): boolean {
+  if (text.length > 40) return false
+  if (!EMOJI_ONLY.test(text)) return false
+  return Array.from(text.replace(/\s/g, '')).length <= MAX_JUMBO_GLYPHS
+}
+
+/**
+ * @param knownCustom Diz se `:nome:` existe no servidor. O parser trata
+ *   qualquer `:algo:` como emoji, mas o renderer mostra nome desconhecido como
+ *   texto — e texto em 2.4rem fica ridiculo. Quem tem a lista passa o teste;
+ *   sem ele, todo `:algo:` conta.
+ */
+export function isEmojiOnly(
+  content: string,
+  knownCustom?: (name: string) => boolean
+): boolean {
   const trimmed = content.trim()
-  if (!trimmed || trimmed.length > 40) return false
-  if (!EMOJI_ONLY.test(trimmed)) return false
-  return Array.from(trimmed.replace(/\s/g, '')).length <= 16
+  if (!trimmed) return false
+
+  // Caminho rapido: sem `:` nao tem emoji do servidor, e o teste antigo basta.
+  if (!trimmed.includes(':')) return isUnicodeEmojiOnly(trimmed)
+
+  // `:kekw:` nao e pictografico, entao passa pelo parser. Cada emoji do
+  // servidor vale um glifo; o que sobra entre eles so pode ser emoji unicode
+  // ou espaco. Qualquer outro no (link, negrito, palavra) tira o tamanho grande.
+  let custom = 0
+  let leftover = ''
+  for (const node of parseInline(trimmed)) {
+    if (node.kind === 'custom-emoji') {
+      if (knownCustom && !knownCustom(node.name)) return false
+      custom += 1
+      continue
+    }
+    if (node.kind !== 'text') return false
+    leftover += node.value
+  }
+
+  if (custom === 0) return isUnicodeEmojiOnly(trimmed)
+  if (custom > MAX_JUMBO_CUSTOM) return false
+
+  const rest = leftover.replace(/\s/g, '')
+  if (!rest) return true
+  return isUnicodeEmojiOnly(rest) && Array.from(rest).length + custom <= MAX_JUMBO_GLYPHS
 }
 
 // ============================================

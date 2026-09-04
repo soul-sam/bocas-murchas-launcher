@@ -9,7 +9,9 @@ import {
   MonitorUp,
   PhoneOff,
   Gamepad2,
-  CornerDownLeft
+  CornerDownLeft,
+  ShoppingBag,
+  Shield
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/lib/chat-context'
@@ -17,6 +19,7 @@ import { useVoice } from '@/lib/voice-context'
 import { useSettings } from '@/lib/settings-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
+import { useAuth } from '@/lib/auth-context'
 
 /**
  * Troca-canal do Ctrl+K.
@@ -68,8 +71,15 @@ function fuzzyScore(text: string, term: string): number | null {
 }
 
 export function QuickSwitcher() {
-  const { quickSwitcherOpen, closeQuickSwitcher, openProfileEditor, openScreenPicker } =
-    useOverlays()
+  const {
+    quickSwitcherOpen,
+    closeQuickSwitcher,
+    openProfileEditor,
+    openScreenPicker,
+    openShop,
+    openAdmin
+  } = useOverlays()
+  const { user } = useAuth()
   const { textChannels, voiceChannels, setActiveChannel } = useChat()
   const voice = useVoice()
   const { open: openSettings } = useSettings()
@@ -177,6 +187,28 @@ export function QuickSwitcher() {
       run: openSettings
     })
 
+    list.push({
+      id: 'cmd:shop',
+      label: 'Lojinha',
+      hint: 'gastar moedas',
+      icon: <ShoppingBag className="h-3.5 w-3.5" />,
+      keywords: 'loja lojinha moedas cosmeticos titulo moldura comprar',
+      run: openShop
+    })
+
+    // So aparece pra quem pode usar: o servidor recusaria, mas listar um
+    // comando que da erro e pior que nao listar.
+    if (user?.role === 'admin') {
+      list.push({
+        id: 'cmd:admin',
+        label: 'Painel admin',
+        hint: 'convites, membros, sons',
+        icon: <Shield className="h-3.5 w-3.5 text-acid" />,
+        keywords: 'admin painel convites membros sons ferramentas',
+        run: openAdmin
+      })
+    }
+
     return list
   }, [
     textChannels,
@@ -187,7 +219,10 @@ export function QuickSwitcher() {
     setView,
     openProfileEditor,
     openScreenPicker,
-    openSettings
+    openSettings,
+    openShop,
+    openAdmin,
+    user?.role
   ])
 
   const results = React.useMemo(() => {

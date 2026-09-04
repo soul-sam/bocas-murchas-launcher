@@ -97,6 +97,8 @@ interface ChatContextValue {
   send: (payload: {
     content: string
     imageUrl?: string
+    /** Sticker do servidor: a mensagem vira type 'sticker'. */
+    stickerUrl?: string
     file?: { url: string; name: string; size: number; mime: string }
     replyToId?: string
   }) => Promise<void>
@@ -118,6 +120,7 @@ const TYPING_TTL_MS = 5_000
 function preview(message: ChatMessage): string {
   const text = message.content?.trim()
   if (text) return text.length > 140 ? text.slice(0, 137) + '…' : text
+  if (message.stickerUrl) return 'mandou um sticker'
   if (message.imageUrl || message.gifUrl) return '📷 mandou uma imagem'
   if (message.fileName) return '📎 ' + message.fileName
   return 'mandou uma mensagem'
@@ -770,6 +773,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     async (payload: {
       content: string
       imageUrl?: string
+      stickerUrl?: string
       file?: { url: string; name: string; size: number; mime: string }
       replyToId?: string
     }) => {
@@ -777,8 +781,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       const body: SendMessagePayload = {
         content: payload.content,
-        type: payload.imageUrl ? 'image' : payload.file ? 'file' : 'text',
+        type: payload.stickerUrl
+          ? 'sticker'
+          : payload.imageUrl
+            ? 'image'
+            : payload.file
+              ? 'file'
+              : 'text',
         imageUrl: payload.imageUrl,
+        stickerUrl: payload.stickerUrl,
         fileUrl: payload.file?.url,
         fileName: payload.file?.name,
         fileSize: payload.file?.size,

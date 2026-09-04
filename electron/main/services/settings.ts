@@ -6,11 +6,12 @@ import {
   type ChatSettings,
   type HotkeySettings,
   type LauncherSettings,
+  type LolSettings,
   type VoiceSettings,
   type VoiceMode
 } from '../../preload/types.js'
 
-export type { ChatSettings, HotkeySettings, LauncherSettings, VoiceSettings, VoiceMode }
+export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, VoiceSettings, VoiceMode }
 
 const FILE = 'settings.json'
 
@@ -93,6 +94,21 @@ function normalizeChat(raw: Partial<ChatSettings> | undefined): ChatSettings {
   }
 }
 
+function normalizeLol(raw: Partial<LolSettings> | undefined): LolSettings {
+  const d = DEFAULTS.lol
+  const l = raw ?? {}
+  return {
+    enabled: l.enabled ?? d.enabled,
+    shareLiveScore: l.shareLiveScore ?? d.shareLiveScore,
+    autoJoinVoice:
+      l.autoJoinVoice === 'auto' || l.autoJoinVoice === 'off' || l.autoJoinVoice === 'ask'
+        ? l.autoJoinVoice
+        : d.autoJoinVoice,
+    postGameCard: l.postGameCard ?? d.postGameCard,
+    lockfilePath: typeof l.lockfilePath === 'string' ? l.lockfilePath.trim() : d.lockfilePath
+  }
+}
+
 /** Volume por pessoa: 0..2. Entrada porca (string, NaN, negativo) e descartada. */
 function normalizeUserVolumes(
   raw: Record<string, number> | undefined
@@ -124,6 +140,11 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     soundVolume: clamp(Number(raw.soundVolume), 0, 1, DEFAULTS.soundVolume),
     lastSeenModpackTag: raw.lastSeenModpackTag ?? DEFAULTS.lastSeenModpackTag,
 
+    autostart: raw.autostart ?? DEFAULTS.autostart,
+    startMinimized: raw.startMinimized ?? DEFAULTS.startMinimized,
+    shareMinecraftActivity: raw.shareMinecraftActivity ?? DEFAULTS.shareMinecraftActivity,
+    lol: normalizeLol(raw.lol),
+
     voice: normalizeVoice(raw.voice),
     hotkeys: normalizeHotkeys(raw.hotkeys),
     chat: normalizeChat(raw.chat),
@@ -154,6 +175,7 @@ export async function updateSettings(patch: Partial<LauncherSettings>): Promise<
     ...current,
     ...patch,
     voice: { ...current.voice, ...(patch.voice ?? {}) },
+    lol: { ...current.lol, ...(patch.lol ?? {}) },
     hotkeys: {
       ...current.hotkeys,
       ...(patch.hotkeys ?? {}),

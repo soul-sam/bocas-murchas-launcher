@@ -1,0 +1,335 @@
+import * as React from 'react'
+import { Coins, Loader2, TrendingDown, TrendingUp, Swords, Pickaxe } from 'lucide-react'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { ApiError } from '@/lib/api'
+import {
+  WAGER_MAX,
+  WAGER_MIN,
+  formatCompact,
+  type WagerPool,
+  type WagerPrediction
+} from '@/lib/api-gamification'
+import { useAuth } from '@/lib/auth-context'
+import { useGamification } from '@/lib/gamification-context'
+import { queueLabel } from '@/lib/activity-context'
+import { cn } from '@/lib/utils'
+
+/**
+ * Apostar murchos na partida de alguém.
+ *
+ * Popover NÃO modal de propósito: ele abre de dentro da lista de membros e
+ * do cartão de perfil, e a pessoa pode ficar offline (ou a partida acabar)
+ * com ele aberto. Camada modal arrancada da árvore trava o <body> — ver
+ * lib/interaction-guard.ts.
+ *
+ * A partida vem de `liveGames` (poll do /wagers/live). Se a pessoa está em
+ * jogo mas o servidor ainda não registrou a sessão, o gatilho fica
+ * desabilitado com o motivo no tooltip — em vez de abrir um formulário que
+ * vai falhar.
+ */
+export function BetPopover({
+  userId,
+  sessionId,
+  targetName,
+  side = 'left',
+  align = 'center',
+  children
+}: {
+  /** Quem está jogando. Usado pra achar a partida quando não há sessionId. */
+  userId: string
+  /** Partida específica (cartão de aposta, seção ao vivo). */
+  sessionId?: string
+  targetName?: string
+  side?: 'left' | 'right' | 'top' | 'bottom'
+  align?: 'start' | 'center' | 'end'
+  /** O gatilho — um <button>. */
+  children: React.ReactElement
+}) {
+  const { user } = useAuth()
+  const { liveGames, refreshLiveGames, profile } = useGamification()
+  const [open, setOpen] = React.useState(false)
+
+  const game = React.useMemo(
+    () =>
+      liveGames.find((g) =>
+        sessionId ? g.session.id === sessionId : g.session.userId === userId
+      ),
+    [liveGames, sessionId, userId]
+  )
+
+  // Abrir rebusca: a pool pode ter mudado desde o último poll de 30s.
+  React.useEffect(() => {
+    if (open) void refreshLiveGames()
+  }, [open, refreshLiveGames])
+
+  if (!game) {
+    return React.cloneElement(children, {
+      disabled: true,
+      title: 'Partida ainda não registrada no servidor — tenta de novo em instantes'
+    } as Record<string, unknown>)
+  }
+
+  const isMine = game.session.userId === user?.id
+  const name = targetName ?? game.session.user?.displayName ?? 'essa pessoa'
+  const GameIcon = game.session.game === 'minecraft' ? Pickaxe : Swords
+  const detail = [game.session.champion, queueLabel(game.session.queue ?? undefined)]
+    .filter(Boolean)
+    .join(' · ')
+
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
+      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      <PopoverContent side={side} align={align} className="w-64 p-3">
+        <header className="mb-2 flex items-start gap-2">
+          <GameIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-burn" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-sm leading-tight text-foreground">
+              Apostar em {name}
+            </p>
+            {detail && (
+              <p className="truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                {detail}
+              </p>
+            )}
+          </div>
+        </header>
+
+        <PoolBars pool={game.pool} className="mb-3" />
+
+        {isMine ? (
+          <p className="rounded-brutal border border-[#1a1a1a] bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
+            Não dá pra apostar no próprio jogo. Vai lá ganhar.
+          </p>
+        ) : game.myWager ? (
+          <p className="rounded-brutal border border-burn/40 bg-burn/[0.06] px-2 py-1.5 text-xs text-foreground">
+            Você já apostou{' '}
+            <span className="font-mono text-burn">{game.myWager.amount}</span> murchos em{' '}
+            <span className={game.myWager.prediction === 'win' ? 'text-acid' : 'text-destructive'}>
+              {game.myWager.prediction === 'win' ? 'vitória' : 'derrota'}
+            </span>
+            .
+          </p>
+        ) : (
+          <BetForm
+            sessionId={game.session.id}
+            coins={profile?.coins ?? 0}
+            onPlaced={() => setOpen(false)}
+          />
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+/**
+ * Barras de vitória × derrota da pool. Proporcionais ao total apostado de
+ * cada lado; pool vazia mostra os dois lados iguais e apagados.
+ */
+export function PoolBars({ pool, className }: { pool: WagerPool; className?: string }) {
+  const win = Math.max(0, pool?.win ?? 0)
+  const loss = Math.max(0, pool?.loss ?? 0)
+  const total = win + loss
+  const winPct = total > 0 ? Math.round((win / total) * 100) : 50
+
+  return (
+    <div className={className}>
+      <div className="mb-1 flex items-center justify-between font-mono text-[9px] uppercase tracking-widest">
+        <span className="flex items-center gap-1 text-acid">
+          <TrendingUp className="h-2.5 w-2.5" />
+          vitória · {formatCompact(win)}
+        </span>
+        <span className="flex items-center gap-1 text-destructive">
+          {formatCompact(loss)} · derrota
+          <TrendingDown className="h-2.5 w-2.5" />
+        </span>
+      </div>
+      <div className="flex h-1.5 w-full overflow-hidden rounded-brutal bg-[#1a1a1a]">
+        <div
+          className={cn('h-full transition-[width] duration-500', total > 0 ? 'bg-acid' : 'bg-acid/30')}
+          style={{ width: `${winPct}%` }}
+        />
+        <div
+          className={cn('h-full transition-[width] duration-500', total > 0 ? 'bg-destructive' : 'bg-destructive/30')}
+          style={{ width: `${100 - winPct}%` }}
+        />
+      </div>
+      <p className="mt-1 text-center font-mono text-[9px] text-muted-foreground">
+        {total > 0 ? `pool ${formatCompact(total)} murchos` : 'ninguém apostou ainda'}
+      </p>
+    </div>
+  )
+}
+
+const PRESETS = [10, 50, 100]
+
+/**
+ * Formulário da aposta: lado + valor. Compartilhado com o cartão de aposta
+ * no chat, por isso não sabe nada de popover.
+ */
+export function BetForm({
+  sessionId,
+  coins,
+  onPlaced,
+  className
+}: {
+  sessionId: string
+  coins: number
+  onPlaced?: () => void
+  className?: string
+}) {
+  const { placeWager } = useGamification()
+  const [prediction, setPrediction] = React.useState<WagerPrediction>('win')
+  const [amount, setAmount] = React.useState<number>(PRESETS[0])
+  const [custom, setCustom] = React.useState('')
+  const [busy, setBusy] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  const value = custom ? Number(custom) : amount
+  const valid = Number.isInteger(value) && value >= WAGER_MIN && value <= WAGER_MAX
+  const affordable = value <= coins
+  const canSubmit = valid && affordable && !busy
+
+  const submit = async (): Promise<void> => {
+    if (!canSubmit) return
+    setBusy(true)
+    setError(null)
+    try {
+      await placeWager(sessionId, prediction, value)
+      onPlaced?.()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(
+          err.status === 402
+            ? 'Murchos insuficientes.'
+            : err.status === 409
+              ? 'Você já apostou nessa partida.'
+              : err.message
+        )
+      } else {
+        setError('Não deu pra apostar agora.')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className={cn('space-y-2', className)}>
+      <div className="grid grid-cols-2 gap-1">
+        <SideButton
+          active={prediction === 'win'}
+          tone="acid"
+          onClick={() => setPrediction('win')}
+          icon={<TrendingUp className="h-3 w-3" />}
+        >
+          vitória
+        </SideButton>
+        <SideButton
+          active={prediction === 'loss'}
+          tone="destructive"
+          onClick={() => setPrediction('loss')}
+          icon={<TrendingDown className="h-3 w-3" />}
+        >
+          derrota
+        </SideButton>
+      </div>
+
+      <div className="flex items-center gap-1">
+        {PRESETS.map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            onClick={() => {
+              setAmount(preset)
+              setCustom('')
+            }}
+            className={cn(
+              'flex-1 rounded-brutal border px-1 py-1 font-mono text-[10px] transition-colors',
+              !custom && amount === preset
+                ? 'border-burn bg-burn/15 text-burn'
+                : 'border-[#1a1a1a] text-muted-foreground hover:border-burn/50 hover:text-foreground'
+            )}
+          >
+            {preset}
+          </button>
+        ))}
+        <input
+          type="number"
+          min={WAGER_MIN}
+          max={WAGER_MAX}
+          value={custom}
+          onChange={(e) => setCustom(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
+          placeholder="outro"
+          className={cn(
+            'input-terminal w-14 rounded-brutal px-1 py-1 text-center text-[10px]',
+            custom && !valid && 'border-destructive'
+          )}
+        />
+      </div>
+
+      <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Coins className="h-2.5 w-2.5 text-burn" />
+          você tem {formatCompact(coins)}
+        </span>
+        <span>
+          {WAGER_MIN}–{WAGER_MAX}
+        </span>
+      </div>
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {!error && valid && !affordable && (
+        <p className="text-xs text-destructive">Não tem murchos pra isso.</p>
+      )}
+
+      <button
+        type="button"
+        onClick={() => void submit()}
+        disabled={!canSubmit}
+        className={cn(
+          'flex w-full items-center justify-center gap-1.5 rounded-brutal border-2 px-2 py-1.5',
+          'font-mono text-[10px] uppercase tracking-widest transition-colors',
+          prediction === 'win'
+            ? 'border-acid-dark bg-acid/15 text-acid hover:bg-acid/25'
+            : 'border-destructive/60 bg-destructive/15 text-destructive hover:bg-destructive/25',
+          'disabled:cursor-not-allowed disabled:opacity-40'
+        )}
+      >
+        {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Coins className="h-3 w-3" />}
+        apostar {valid ? value : '—'} em {prediction === 'win' ? 'vitória' : 'derrota'}
+      </button>
+    </div>
+  )
+}
+
+function SideButton({
+  active,
+  tone,
+  onClick,
+  icon,
+  children
+}: {
+  active: boolean
+  tone: 'acid' | 'destructive'
+  onClick: () => void
+  icon: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center justify-center gap-1 rounded-brutal border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+        active
+          ? tone === 'acid'
+            ? 'border-acid bg-acid/15 text-acid'
+            : 'border-destructive bg-destructive/15 text-destructive'
+          : 'border-[#1a1a1a] text-muted-foreground hover:text-foreground'
+      )}
+    >
+      {icon}
+      {children}
+    </button>
+  )
+}

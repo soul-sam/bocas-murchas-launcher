@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ApiError } from '@/lib/api'
-import { useSound } from '@/lib/use-sound'
+import { useSettings } from '@/lib/settings-context'
+import { playUiSound } from '@/lib/ui-sounds'
 
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const playSound = useSound()
+  const { settings } = useSettings()
+  // Avisos sintetizados (ui-sounds), no volume que a pessoa escolheu.
+  const cueVolume = settings.soundEnabled ? settings.soundVolume : 0
   const [identifier, setIdentifier] = React.useState('')
   const [password, setPassword] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
@@ -23,10 +26,10 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login(identifier.trim(), password)
-      playSound('success')
+      playUiSound('self-join', cueVolume)
       navigate('/', { replace: true })
     } catch (err) {
-      playSound('error')
+      playUiSound('self-leave', cueVolume)
       if (err instanceof ApiError) setError(err.message)
       else setError('Falha ao conectar. Verifique se a API está online.')
     } finally {

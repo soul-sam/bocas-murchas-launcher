@@ -25,6 +25,9 @@ export type UiSound =
   | 'nudge'
   | 'message'
   | 'mention'
+  | 'xp'
+  | 'levelup'
+  | 'coins'
 
 interface Note {
   /** Frequência em Hz. */
@@ -55,6 +58,9 @@ const A5 = 880
 const B5 = 987.77
 const G4 = 392
 const E4 = 329.63
+const G5 = 783.99
+const C6 = 1046.5
+const E6 = 1318.51
 
 /**
  * Vocabulário: subir = algo começou/abriu, descer = algo terminou/fechou.
@@ -159,6 +165,39 @@ const CUES: Record<UiSound, Cue> = {
     notes: [
       { freq: 180, at: 0, dur: 0.18 },
       { freq: 90, at: 0.05, dur: 0.3 }
+    ]
+  },
+
+  // Ganhou XP: um blip só, mais agudo que a mensagem pra não confundir os
+  // dois. Toca a cada mensagem enviada — por isso é curto, baixo, e o
+  // contexto ainda segura pra no máximo um a cada 3s.
+  xp: {
+    volume: 0.3,
+    cutoff: 3400,
+    notes: [{ freq: G5, at: 0, dur: 0.06 }]
+  },
+
+  // Subiu de nível: arpejo de dó maior subindo até a oitava. É o único aviso
+  // da gamificação que tem direito a ser festivo — acontece poucas vezes.
+  levelup: {
+    volume: 0.9,
+    cutoff: 3000,
+    notes: [
+      { freq: C5, at: 0, dur: 0.1 },
+      { freq: E5, at: 0.09, dur: 0.1 },
+      { freq: G5, at: 0.18, dur: 0.1 },
+      { freq: C6, at: 0.27, dur: 0.32 }
+    ]
+  },
+
+  // Moedas/badge: duas notas altas e rápidas, o "plim-plim" de moeda de
+  // videogame. Agudo de propósito: moeda soa fina.
+  coins: {
+    volume: 0.55,
+    cutoff: 3800,
+    notes: [
+      { freq: B5, at: 0, dur: 0.07 },
+      { freq: E6, at: 0.07, dur: 0.16 }
     ]
   }
 }

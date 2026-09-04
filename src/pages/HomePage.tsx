@@ -1,10 +1,10 @@
-import * as React from 'react'
 import { LogOut, Settings as SettingsIcon, Shield } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useMcAuth } from '@/lib/mc-auth-context'
 import { useInstall } from '@/lib/install-context'
 import { useLaunch } from '@/lib/launch-context'
 import { useSettings } from '@/lib/settings-context'
+import { useOverlays } from '@/lib/overlay-context'
 import { Button } from '@/components/ui/button'
 import { MicrosoftAccountCard } from '@/components/MicrosoftAccountCard'
 import { MicrosoftDeviceCodeModal } from '@/components/MicrosoftDeviceCodeModal'
@@ -13,7 +13,6 @@ import { PlayCard } from '@/components/PlayCard'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { ServerStatusCard } from '@/components/ServerStatusCard'
 import { ChangelogModal } from '@/components/ChangelogModal'
-import { AdminPanel } from '@/components/AdminPanel'
 
 export function HomePage() {
   const { user, logout } = useAuth()
@@ -21,7 +20,8 @@ export function HomePage() {
   const install = useInstall()
   const launch = useLaunch()
   const settings = useSettings()
-  const [adminOpen, setAdminOpen] = React.useState(false)
+  // O painel admin vive em GlobalOverlays; aqui só o botão que pede pra abrir.
+  const { openAdmin } = useOverlays()
 
   const readyToPlay = !!mc.profile && install.status.stage === 'done'
   const isAdmin = user?.role === 'admin'
@@ -46,9 +46,9 @@ export function HomePage() {
         </div>
         <div className="flex items-center gap-2">
           {isAdmin && (
-            <Button variant="ghost" size="sm" onClick={() => setAdminOpen(true)}>
+            <Button variant="ghost" size="sm" onClick={openAdmin}>
               <Shield className="mr-2 h-4 w-4" />
-              Admin
+              Painel admin
             </Button>
           )}
           <Button variant="ghost" size="sm" onClick={settings.open}>
@@ -87,7 +87,6 @@ export function HomePage() {
       </main>
 
       <ChangelogModal />
-      {isAdmin && <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />}
     </div>
   )
 }

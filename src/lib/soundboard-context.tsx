@@ -4,6 +4,7 @@ import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { useVoice } from './voice-context'
+import { adminApi } from './api-admin'
 
 /**
  * Soundboard.
@@ -45,8 +46,13 @@ interface SoundboardContextValue {
     emoji: string
     category?: string
   }) => Promise<Sound>
-  update: (id: string, patch: { name?: string; emoji?: string; volume?: number }) => Promise<void>
+  update: (
+    id: string,
+    patch: { name?: string; emoji?: string; category?: string; volume?: number }
+  ) => Promise<void>
   remove: (id: string) => Promise<void>
+  /** Só admin. Bloqueado some pros membros e fica esmaecido pro admin. */
+  setBlocked: (id: string, isBlocked: boolean) => Promise<void>
   refresh: () => Promise<void>
 }
 
@@ -77,10 +83,20 @@ export function readAudioDuration(file: File): Promise<number> {
 }
 
 export function SoundboardProvider({ children }: { children: React.ReactNode }) {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const { socket } = useSocket()
   const { settings } = useSettings()
   const { connected: inVoice } = useVoice()
+
+  /**
+   * Admin ve os sons bloqueados (esmaecidos) pra poder desbloquear; membro nem
+   * sabe que existem. Por ref porque os handlers de socket sao registrados uma
+   * vez e nao podem depender do usuario — promover alguem no meio da sessao
+   * nao vale reabrir o socket.
+   */
+  const isAdmin = user?.role === 'admin'
+  const isAdminRef = React.useRef(isAdmin)
+  isAdminRef.current = isAdmin
 
   const [sounds, setSounds] = React.useState<Sound[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -94,7 +110,7 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
   const refresh = React.useCallback(async () => {
     if (!token) return
     try {
-      setSounds(await soundsApi.list(token))
+      setSounds(isAdmin ? await adminApi.listAllSounds(token) : await soundsApi.list(token))
     } catch {
       // Servidor antigo (sem /api/sounds) ou fora do ar: fica sem soundboard,
       // mas o resto do app continua funcionando.
@@ -102,7 +118,7 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, isAdmin])
 
   React.useEffect(() => {
     if (!token) {
@@ -172,7 +188,18 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
 
     const handleUpdated = (data: { sound: Sound }): void => {
       if (!data?.sound) return
-      setSounds((prev) => prev.map((s) => (s.id === data.sound.id ? data.sound : s)))
+      setSounds((prev) => {
+        // Bloqueio chega como update com isBlocked, nao como remocao: membro
+        // tira da lista, admin mantem pra poder voltar atras. Desbloqueado
+        // volta pra lista de quem ja nao o tinha.
+        if (data.sound.isBlocked && !isAdminRef.current) {
+          return prev.filter((s) => s.id !== data.sound.id)
+        }
+        const exists = prev.some((s) => s.id === data.sound.id)
+        return exists
+          ? prev.map((s) => (s.id === data.sound.id ? data.sound : s))
+          : [...prev, data.sound]
+      })
     }
 
     const handleRemoved = (data: { soundId: string }): void => {
@@ -247,9 +274,21 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
   )
 
   const update = React.useCallback(
-    async (id: string, patch: { name?: string; emoji?: string; volume?: number }) => {
+    async (
+      id: string,
+      patch: { name?: string; emoji?: string; category?: string; volume?: number }
+    ) => {
       if (!token) return
       const updated = await soundsApi.update(token, id, patch)
+      setSounds((prev) => prev.map((s) => (s.id === id ? updated : s)))
+    },
+    [token]
+  )
+
+  const setBlocked = React.useCallback(
+    async (id: string, isBlocked: boolean) => {
+      if (!token) return
+      const updated = await adminApi.setSoundBlocked(token, id, isBlocked)
       setSounds((prev) => prev.map((s) => (s.id === id ? updated : s)))
     },
     [token]
@@ -287,6 +326,7 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
       upload,
       update,
       remove,
+      setBlocked,
       refresh
     }),
     [
@@ -301,6 +341,7 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
       upload,
       update,
       remove,
+      setBlocked,
       refresh
     ]
   )

@@ -82,6 +82,17 @@ const api: BocasAPI = {
   },
   notify: {
     show: (payload) => ipcRenderer.invoke('notify:show', payload)
+  },
+  lol: {
+    status: () => ipcRenderer.invoke('lol:status'),
+    onStatus: (cb) => on('lol:status', cb),
+    onGameEnded: (cb) => on('lol:game-ended', cb),
+    refresh: () => ipcRenderer.invoke('lol:refresh')
+  },
+  app: {
+    applyAutostart: () => ipcRenderer.invoke('app:apply-autostart'),
+    launchedAtLogin: () => ipcRenderer.invoke('app:launched-at-login'),
+    version: () => ipcRenderer.invoke('app:version')
   }
 }
 
