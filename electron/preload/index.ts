@@ -38,7 +38,8 @@ const api: BocasAPI = {
     status: () => ipcRenderer.invoke('updater:status'),
     onStatus: (cb) => on('updater:status', cb),
     check: () => ipcRenderer.invoke('updater:check'),
-    quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install')
+    quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install'),
+    postpone: () => ipcRenderer.invoke('updater:postpone')
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),

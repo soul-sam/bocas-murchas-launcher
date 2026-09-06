@@ -1,0 +1,89 @@
+# Publica uma versao nova do launcher.
+#
+# Como usar: sobe a versao em package.json, commita, cria a tag com o mesmo
+# numero e empurra a tag:
+#
+#   npm version 0.6.0          # edita package.json e cria a tag v0.6.0
+#   git push && git push --tags
+#
+# O resto e automatico: este workflow compila no Windows, gera o instalador
+# NSIS e publica uma Release no GitHub com o Setup.exe, o .blockmap e o
+# latest.yml. O launcher instalado na maquina da galera checa esse latest.yml
+# a cada meia hora (electron/main/services/updater.ts), baixa em segundo plano
+# e reinicia sozinho quando ninguem esta em call ou jogando.
+#
+# Segredos necessarios no repositorio (Settings > Secrets > Actions):
+#   MAIN_VITE_MICROSOFT_CLIENT_ID  — client id do app Azure (login Microsoft
+#                                    do Minecraft). Vai embutido no build.
+#   VITE_API_BASE_URL              — opcional; sem ele usa a URL de producao.
+#
+# GITHUB_TOKEN e automatico e ja tem permissao de escrever releases (ver
+# `permissions` abaixo).
+
+name: Release launcher
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Tag e package.json precisam bater: o electron-updater compara a versao
+      # instalada com a do latest.yml, que vem do package.json. Uma tag v0.6.0
+      # com package.json em 0.5.0 publicaria um "update" que ninguem receberia.
+      - name: Confere versao da tag com package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG="$(node -p "require('./package.json').version")"
+          echo "tag=$TAG package.json=$PKG"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::A tag v$TAG nao bate com a versao $PKG do package.json"
+            exit 1
+          fi
+
+      - name: Instala dependencias
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Compila e publica
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAIN_VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MAIN_VITE_MICROSOFT_CLIENT_ID }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: npm run release
+
+      # Copia dos artefatos no proprio run, util pra baixar um build sem
+      # mexer na Release (ou quando o workflow rodou pelo botao, sem tag).
+      - name: Guarda artefatos
+        uses: actions/upload-artifact@v4
+        with:
+          name: launcher-${{ github.ref_name }}
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+          if-no-files-found: error

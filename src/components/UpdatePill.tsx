@@ -1,6 +1,7 @@
 import * as React from 'react'
-import { RefreshCw, Loader2, TriangleAlert, Check } from 'lucide-react'
+import { RefreshCw, Loader2, TriangleAlert, Check, Clock } from 'lucide-react'
 import { useUpdater } from '@/lib/updater-context'
+import { useNow } from '@/lib/use-now'
 import { cn } from '@/lib/utils'
 
 /**
@@ -12,8 +13,10 @@ import { cn } from '@/lib/utils'
  * nao ocupa espaco nenhum.
  */
 export function UpdatePill() {
-  const { status, check, applyUpdate } = useUpdater()
+  const { status, check, applyUpdate, postpone } = useUpdater()
   const [busy, setBusy] = React.useState(false)
+  // Tique de 1s so enquanto a contagem regressiva esta na tela.
+  const now = useNow(status.installAt ? 1_000 : 60_000)
 
   /**
    * "Tudo certo" so aparece quando a pessoa PEDIU pra procurar — a checagem de
@@ -71,6 +74,34 @@ export function UpdatePill() {
           />
         </span>
       </Pill>
+    )
+  }
+
+  if (status.stage === 'downloaded' && status.installAt) {
+    // Reinicio automatico a caminho: mostra quanto falta e deixa adiar. O
+    // clique no numero aplica na hora, pra quem nao quer esperar.
+    const seconds = Math.max(0, Math.ceil((status.installAt - now.getTime()) / 1000))
+    return (
+      <span className="flex items-center gap-1">
+        <Pill
+          tone="acid"
+          disabled={busy}
+          onClick={() => void run(applyUpdate)}
+          title={`Reiniciando em ${seconds}s pra aplicar a versão ${status.newVersion ?? 'nova'} — clique pra ir agora`}
+        >
+          <RefreshCw className={cn('h-3 w-3', busy && 'animate-spin')} />
+          atualizando em <span className="tabular-nums">{seconds}s</span>
+        </Pill>
+        <Pill
+          tone="muted"
+          disabled={busy}
+          onClick={() => void run(postpone)}
+          title="Adiar o reinício por 30 minutos"
+        >
+          <Clock className="h-3 w-3" />
+          adiar
+        </Pill>
+      </span>
     )
   }
 

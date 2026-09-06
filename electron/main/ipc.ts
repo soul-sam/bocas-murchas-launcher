@@ -7,7 +7,8 @@ import { launchGame, getLaunchStatus } from './services/launcher.js'
 import {
   getUpdaterStatus,
   quitAndInstall,
-  checkForUpdates
+  checkForUpdates,
+  postponeUpdate
 } from './services/updater.js'
 import { loadSettings, updateSettings, type LauncherSettings } from './services/settings.js'
 import { getServerStatus, refreshServerStatusNow } from './services/server-status.js'
@@ -84,6 +85,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('updater:quit-and-install', async () => {
     quitAndInstall()
   })
+
+  ipcMain.handle('updater:postpone', async () => postponeUpdate())
 
   ipcMain.handle('settings:get', async () => loadSettings())
 

@@ -7,6 +7,8 @@ interface UpdaterContextValue {
   check: () => Promise<void>
   /** Reinicia aplicando o que ja foi baixado. */
   applyUpdate: () => Promise<void>
+  /** Adia o reinicio automatico por meia hora. */
+  postpone: () => Promise<void>
 }
 
 const initial: UpdaterStatus = { stage: 'idle' }
@@ -30,9 +32,13 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
     await window.bocas.updater.quitAndInstall()
   }, [])
 
+  const postpone = React.useCallback(async () => {
+    setStatus(await window.bocas.updater.postpone())
+  }, [])
+
   const value = React.useMemo<UpdaterContextValue>(
-    () => ({ status, check, applyUpdate }),
-    [status, check, applyUpdate]
+    () => ({ status, check, applyUpdate, postpone }),
+    [status, check, applyUpdate, postpone]
   )
   return <UpdaterContext.Provider value={value}>{children}</UpdaterContext.Provider>
 }

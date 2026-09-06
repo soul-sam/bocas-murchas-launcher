@@ -90,6 +90,14 @@ export interface UpdaterStatus {
   manualCheck?: boolean
   /** Quando a ultima checagem terminou (ISO). */
   checkedAt?: string
+  /**
+   * Quando o launcher vai reiniciar sozinho pra aplicar a versao baixada
+   * (epoch ms). Presente so no estagio 'downloaded' e enquanto a contagem
+   * regressiva esta rodando; some se a pessoa adiar ou entrar numa call.
+   */
+  installAt?: number
+  /** Ate quando a instalacao automatica foi adiada (epoch ms). */
+  postponedUntil?: number
 }
 
 /** Atalhos globais. Valor vazio = nao vinculado. */
@@ -478,6 +486,8 @@ export interface BocasAPI {
     /** Procura versao nova agora (pedido explicito do usuario). */
     check: () => Promise<UpdaterStatus>
     quitAndInstall: () => Promise<void>
+    /** Adia a instalacao automatica por meia hora. */
+    postpone: () => Promise<UpdaterStatus>
   }
   settings: {
     get: () => Promise<LauncherSettings>

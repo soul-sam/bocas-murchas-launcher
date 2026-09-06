@@ -1,5 +1,6 @@
-import { RefreshCw, Sparkles, Loader2 } from 'lucide-react'
+import { RefreshCw, Sparkles, Loader2, Clock } from 'lucide-react'
 import { useUpdater } from '@/lib/updater-context'
+import { useNow } from '@/lib/use-now'
 import { Button } from '@/components/ui/button'
 
 /**
@@ -11,7 +12,8 @@ import { Button } from '@/components/ui/button'
  * dos "nao consigo conectar".
  */
 export function UpdateBanner() {
-  const { status, applyUpdate } = useUpdater()
+  const { status, applyUpdate, postpone } = useUpdater()
+  const now = useNow(status.installAt ? 1_000 : 60_000)
 
   if (
     status.stage === 'idle' ||
@@ -50,6 +52,10 @@ export function UpdateBanner() {
   }
 
   // status.stage === 'downloaded'
+  const seconds = status.installAt
+    ? Math.max(0, Math.ceil((status.installAt - now.getTime()) / 1000))
+    : null
+
   return (
     <div className="mb-4 rounded-brutal border-2 border-acid bg-acid/10 px-4 py-3 shadow-glow-acid">
       <div className="flex items-center gap-3">
@@ -59,9 +65,19 @@ export function UpdateBanner() {
             Atualização v{status.newVersion} pronta
           </p>
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            Reinicie pra aplicar
+            {seconds !== null
+              ? `Reiniciando sozinho em ${seconds}s`
+              : status.postponedUntil
+                ? 'Adiada — reinicia sozinho mais tarde, ou agora se preferir'
+                : 'Reinicia sozinho quando você sair da call ou do jogo'}
           </p>
         </div>
+        {seconds !== null && (
+          <Button size="sm" variant="outline" onClick={() => void postpone()}>
+            <Clock className="mr-2 h-3 w-3" />
+            Adiar 30 min
+          </Button>
+        )}
         <Button size="sm" onClick={() => void applyUpdate()}>
           <RefreshCw className="mr-2 h-3 w-3" />
           Reiniciar agora

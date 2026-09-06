@@ -32,6 +32,11 @@ export function isQuitting(): boolean {
   return quitting
 }
 
+/** O updater consulta isso antes de reiniciar sozinho: call nao se derruba. */
+export function isInVoice(): boolean {
+  return inVoice
+}
+
 export function shouldCloseToTray(): boolean {
   return closeToTray
 }
