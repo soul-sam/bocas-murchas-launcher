@@ -42,6 +42,7 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
   const [username, setUsername] = React.useState('')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [syncNote, setSyncNote] = React.useState<string | null>(null)
   const [, forceTick] = React.useState(0)
 
   const load = React.useCallback(async () => {
@@ -83,6 +84,7 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
     if (!token || busy) return
     setBusy(true)
     setError(null)
+    setSyncNote(null)
     try {
       await fn()
     } catch (err) {
@@ -110,6 +112,13 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
       const res = await chess.sync(token!)
       setData({ profile: res.profile, games: res.games })
       lastManualSyncAt = Date.now()
+      // O Chess.com publica a partida no arquivo do mês com atraso (minutos,
+      // às vezes horas). Sem avisar, "sincronizei e não veio nada" parece bug.
+      setSyncNote(
+        res.newGames > 0
+          ? `${res.newGames} partida${res.newGames > 1 ? 's' : ''} nova${res.newGames > 1 ? 's' : ''} paga${res.newGames > 1 ? 's' : ''}`
+          : 'Nada novo ainda. O Chess.com demora pra publicar a partida (minutos, às vezes horas); o servidor confere sozinho a cada 2 min.'
+      )
     })
 
   if (!data) return null
@@ -202,6 +211,7 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
       )}
 
       {error && <p className="font-mono text-[10px] text-destructive">{error}</p>}
+      {syncNote && !error && <p className="font-mono text-[10px] text-muted-foreground">{syncNote}</p>}
     </div>
   )
 }

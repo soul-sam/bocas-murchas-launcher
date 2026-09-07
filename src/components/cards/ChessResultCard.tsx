@@ -11,9 +11,10 @@ import { cn } from '@/lib/utils'
 /**
  * CARTÃO DE PARTIDA DE XADREZ.
  *
- * Postado pelo servidor quando o poller acha uma blitz/rapid nova (bullet
- * não posta: seria spam). Mesma família visual do GameResultCard: a cor do
- * resultado vem primeiro, depois o modo, o adversário e a variação de rating.
+ * Postado pelo servidor quando o poller acha uma partida nova paga (bullet,
+ * blitz ou rapid; partida no teto diário não posta). Mesma família visual do
+ * GameResultCard: a cor do resultado vem primeiro, depois o modo, o adversário
+ * e a variação de rating.
  */
 
 function accentFor(result: ChessCardMeta['result']): 'acid' | 'destructive' | 'muted' {
