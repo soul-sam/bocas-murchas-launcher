@@ -189,11 +189,14 @@ export function ShopModal() {
                 {me.displayName}
               </NameEffect>
               <NameEmoji glyph={previewEmoji} size="md" />
+              {/* Mesma classe da prateleira: a prévia tem que ser IGUAL ao
+                  item que a pessoa está olhando, senão parece outro título. */}
               {previewTitle && (
                 <TitleTag
                   titleId={previewTitleId}
                   name={previewTitle}
                   tooltip={hovered?.type === 'title' ? `prévia: ${previewTitle}` : undefined}
+                  className="px-1.5 text-[11.5px] leading-5"
                 />
               )}
             </p>
@@ -277,7 +280,12 @@ function titleName(items: ShopItem[] | undefined, id: string | null | undefined)
   if (!id) return null
   const found = items?.find((item) => item.id === id)
   if (found) return found.name
-  return id.replace(/^title:/, '').replace(/[-_]+/g, ' ')
+  // Catálogo ainda não chegou: capitaliza o slug pra não mostrar "boca murcha".
+  return id
+    .replace(/^title:/, '')
+    .split(/[-_]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
 }
 
 function ItemTile({
