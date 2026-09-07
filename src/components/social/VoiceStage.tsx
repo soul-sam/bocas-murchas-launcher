@@ -30,6 +30,7 @@ import { useLayout } from '@/lib/layout-context'
 import { useWatch } from '@/lib/watch-context'
 import { ScreenStage, VideoSurface } from './ScreenStage'
 import { WatchStage } from './WatchStage'
+import { NameEmoji } from './NameEmoji'
 
 export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void }) {
   const voice = useVoice()
@@ -469,8 +470,9 @@ function ParticipantTile({
         )}
       </div>
 
-      <p className="w-full truncate text-center text-sm text-foreground sm:text-base">
-        {participant.name}
+      <p className="flex w-full items-center justify-center gap-1 text-sm text-foreground sm:text-base">
+        <span className="truncate">{participant.name}</span>
+        <NameEmoji id={member?.emoji} size="md" />
         {participant.isLocal && (
           <span className="ml-1 text-[11px] text-muted-foreground">(você)</span>
         )}
@@ -577,6 +579,7 @@ function ParticipantChip({
         />
       )}
       <span className="max-w-28 truncate text-sm text-foreground">{participant.name}</span>
+      <NameEmoji id={member?.emoji} />
 
       {participant.isScreenSharing && (
         <MonitorUp className="h-3 w-3 shrink-0 text-destructive" aria-label="transmitindo" />

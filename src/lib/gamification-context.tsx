@@ -2,6 +2,7 @@ import * as React from 'react'
 import { ApiError } from './api'
 import {
   gamification as api,
+  cosmeticEmoji as glyphOf,
   cosmeticFallbackName,
   xpReasonLabel,
   type Badge,
@@ -63,6 +64,8 @@ interface GamificationContextValue {
   equip: (type: CosmeticType, cosmeticId: string | null) => Promise<void>
   /** Texto de um cosmético (título) pelo id; cai no id "limpo" se o catálogo não chegou. */
   cosmeticName: (id: string | null | undefined) => string | null
+  /** Glifo de um cosmético de emoji pelo id (`emoji:oculos` → 😎); null sem catálogo. */
+  cosmeticEmoji: (id: string | null | undefined) => string | null
 
   /** Partidas em andamento com pool de apostas (GET /wagers/live). */
   liveGames: LiveWagerGame[]
@@ -303,6 +306,11 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     [catalog]
   )
 
+  const cosmeticEmoji = React.useCallback(
+    (id: string | null | undefined): string | null => (id ? glyphOf(catalog[id]) : null),
+    [catalog]
+  )
+
   const buy = React.useCallback(
     async (cosmeticId: string): Promise<ShopItem> => {
       if (!token) throw new ApiError(401, 'Sem sessão')
@@ -537,6 +545,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       buy,
       equip,
       cosmeticName,
+      cosmeticEmoji,
       liveGames,
       refreshLiveGames,
       placeWager,
@@ -555,6 +564,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       buy,
       equip,
       cosmeticName,
+      cosmeticEmoji,
       liveGames,
       refreshLiveGames,
       placeWager,

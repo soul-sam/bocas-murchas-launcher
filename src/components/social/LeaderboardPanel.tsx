@@ -34,6 +34,7 @@ import { useGamification } from '@/lib/gamification-context'
 import { queueLabel } from '@/lib/activity-context'
 import { cn } from '@/lib/utils'
 import { NameEffect } from './NameEffect'
+import { NameEmoji } from './NameEmoji'
 import { LevelRing } from './LevelRing'
 import { BetPopover, PoolBars } from './BetPopover'
 import { formatElapsed } from './ActivityLine'
@@ -141,8 +142,11 @@ function MyCard() {
         </LevelRing>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-base leading-tight" style={{ color }}>
-            <NameEffect effect={me.nameEffect}>{me.displayName}</NameEffect>
+          <p className="flex items-center gap-1.5 font-display text-base leading-tight" style={{ color }}>
+            <NameEffect effect={me.nameEffect} className="truncate">
+              {me.displayName}
+            </NameEffect>
+            <NameEmoji id={me.emoji} size="md" />
           </p>
           {title && (
             <p className="truncate font-mono text-[9px] uppercase tracking-widest text-burn">{title}</p>
@@ -408,10 +412,14 @@ function Ranking() {
                     frame={person?.avatarFrame}
                     className="h-6 w-6"
                   />
-                  <span className="min-w-0 flex-1 truncate text-sm" style={color ? { color } : undefined}>
-                    <NameEffect effect={person?.nameEffect}>
+                  <span
+                    className="flex min-w-0 flex-1 items-center gap-1 text-sm"
+                    style={color ? { color } : undefined}
+                  >
+                    <NameEffect effect={person?.nameEffect} className="truncate">
                       {person?.displayName ?? entry.displayName}
                     </NameEffect>
+                    <NameEmoji id={person?.emoji} />
                   </span>
                   <span className="shrink-0 font-mono text-[10px] text-burn">
                     {formatMetricValue(metric, entry.value)}

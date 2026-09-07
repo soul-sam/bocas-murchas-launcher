@@ -102,6 +102,7 @@ export interface AuthUser {
   title?: string | null
   nameEffect?: string | null
   avatarFrame?: string | null
+  emoji?: string | null
   /** Riot ID lido do cliente do LoL. */
   riotGameName?: string | null
   riotTagLine?: string | null

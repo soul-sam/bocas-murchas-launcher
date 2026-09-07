@@ -5,6 +5,7 @@ import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
 import { formatCompact, type RecapCardMeta } from '@/lib/api-gamification'
 import { useMembers } from '@/lib/members-context'
+import { NameEmoji } from '@/components/social/NameEmoji'
 
 /**
  * CARTÃO DE RECAP SEMANAL.
@@ -74,6 +75,7 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                     <span style={who?.profileColor ? { color: who.profileColor } : undefined}>
                       {who?.displayName ?? 'alguém'}
                     </span>
+                    <NameEmoji id={who?.emoji} />
                   </li>
                 )
               })}
@@ -106,8 +108,9 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                       <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
                         {award.title}
                       </span>
-                      <span className="block truncate font-display text-sm leading-tight" style={color ? { color } : undefined}>
-                        {name}
+                      <span className="flex items-center gap-1 font-display text-sm leading-tight" style={color ? { color } : undefined}>
+                        <span className="truncate">{name}</span>
+                        <NameEmoji id={who?.emoji} />
                       </span>
                     </span>
                     <span className="shrink-0 font-mono text-[10px] text-burn">

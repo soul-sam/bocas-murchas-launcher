@@ -12,6 +12,7 @@ import { queueLabel } from '@/lib/activity-context'
 import { BetForm, PoolBars } from '@/components/social/BetPopover'
 import { formatElapsed } from '@/components/social/ActivityLine'
 import { cn } from '@/lib/utils'
+import { NameEmoji } from '@/components/social/NameEmoji'
 
 /**
  * CARTÃO DE APOSTA.
@@ -124,6 +125,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
                   <span style={who?.profileColor ? { color: who.profileColor } : undefined}>
                     {who?.displayName ?? 'alguém'}
                   </span>
+                  <NameEmoji id={who?.emoji} />
                   <span className={bet.prediction === 'win' ? 'text-acid' : 'text-destructive'}>
                     {bet.amount} {bet.prediction === 'win' ? 'W' : 'L'}
                   </span>
@@ -151,8 +153,9 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
           className="h-8 w-8"
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-sm leading-tight" style={color ? { color } : undefined}>
-            {name}
+          <p className="flex items-center gap-1 font-display text-sm leading-tight" style={color ? { color } : undefined}>
+            <span className="truncate">{name}</span>
+            <NameEmoji id={player?.emoji} />
           </p>
           <p className="flex items-center gap-1 truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
             <GameIcon className="h-2.5 w-2.5 shrink-0" />

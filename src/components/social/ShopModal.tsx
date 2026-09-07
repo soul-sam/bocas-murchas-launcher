@@ -1,8 +1,9 @@
 import * as React from 'react'
-import { X, Coins, Loader2, Check, ShoppingBag, Tag, Sparkles, Frame } from 'lucide-react'
+import { X, Coins, Loader2, Check, ShoppingBag, Tag, Sparkles, Frame, Smile } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
 import {
+  cosmeticEmoji,
   formatCompact,
   RARITY_COLOR,
   RARITY_LABEL,
@@ -15,9 +16,11 @@ import { useOverlays } from '@/lib/overlay-context'
 import { useGamification } from '@/lib/gamification-context'
 import { cn } from '@/lib/utils'
 import { NameEffect } from './NameEffect'
+import { NameEmoji } from './NameEmoji'
 
 /**
- * LOJINHA — gastar murchos em título, efeito de nome e moldura de avatar.
+ * LOJINHA — gastar murchos em título, efeito de nome, moldura de avatar e
+ * emoji do lado do nome (`Nome · 😎 · Título`).
  *
  * Camada própria (div fixed + clique fora fecha), NÃO Radix Dialog: ela mora
  * em GlobalOverlays mas quem abre pode estar numa tela que some, e camada
@@ -31,7 +34,8 @@ import { NameEffect } from './NameEffect'
 const TABS: { type: CosmeticType; label: string; Icon: typeof Tag }[] = [
   { type: 'title', label: 'Títulos', Icon: Tag },
   { type: 'nameEffect', label: 'Efeitos', Icon: Sparkles },
-  { type: 'avatarFrame', label: 'Molduras', Icon: Frame }
+  { type: 'avatarFrame', label: 'Molduras', Icon: Frame },
+  { type: 'emoji', label: 'Emojis', Icon: Smile }
 ]
 
 const RARITY_ORDER: Record<string, number> = { common: 0, rare: 1, epic: 2, legendary: 3 }
@@ -40,7 +44,7 @@ export function ShopModal() {
   const { shopOpen: open, closeShop: close } = useOverlays()
   const { user } = useAuth()
   const { byId } = useMembers()
-  const { shop, loadShop, buy, equip, profile } = useGamification()
+  const { shop, loadShop, buy, equip, profile, catalog } = useGamification()
 
   const [tab, setTab] = React.useState<CosmeticType>('title')
   const [hovered, setHovered] = React.useState<ShopItem | null>(null)
@@ -82,6 +86,8 @@ export function ShopModal() {
     hovered?.type === 'title' ? hovered.name : titleName(shop?.items, me.title)
   const previewEffect = hovered?.type === 'nameEffect' ? hovered.id : me.nameEffect
   const previewFrame = hovered?.type === 'avatarFrame' ? hovered.id : me.avatarFrame
+  const previewEmoji =
+    hovered?.type === 'emoji' ? cosmeticEmoji(hovered) : cosmeticEmoji(catalog[me.emoji ?? ''])
 
   const handleBuy = async (item: ShopItem): Promise<void> => {
     setBusy(item.id)
@@ -166,6 +172,7 @@ export function ShopModal() {
               <NameEffect effect={previewEffect} className="truncate">
                 {me.displayName}
               </NameEffect>
+              <NameEmoji glyph={previewEmoji} size="md" />
               {previewTitle && (
                 <span className="shrink-0 rounded-brutal border border-burn/40 px-1 font-mono text-[9px] uppercase leading-4 tracking-widest text-burn">
                   {previewTitle}
@@ -301,6 +308,12 @@ function ItemTile({
         )}
         {item.type === 'avatarFrame' && (
           <UserAvatar src={me.avatar} name={me.name} frame={item.id} className="h-9 w-9 border-2" />
+        )}
+        {item.type === 'emoji' && (
+          <span className="flex items-center gap-1.5 truncate font-display text-sm" style={{ color: me.color }}>
+            <span className="truncate">{me.name}</span>
+            <NameEmoji glyph={cosmeticEmoji(item)} className="text-2xl" />
+          </span>
         )}
       </div>
 

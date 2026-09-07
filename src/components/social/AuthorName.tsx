@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { useMembers } from '@/lib/members-context'
 import { useGamification } from '@/lib/gamification-context'
 import { NameEffect } from './NameEffect'
+import { NameEmoji } from './NameEmoji'
 
 /**
  * Nome de quem escreveu, como aparece no cabeçalho da mensagem.
@@ -47,6 +48,8 @@ export function AuthorName({
       >
         {displayName}
       </NameEffect>
+
+      <NameEmoji id={member?.emoji} />
 
       {title && (
         <span

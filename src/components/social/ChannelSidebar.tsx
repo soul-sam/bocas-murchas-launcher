@@ -41,6 +41,8 @@ import { useHotkeys } from '@/lib/hotkeys-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { useActivity } from '@/lib/activity-context'
+import { useMembers } from '@/lib/members-context'
+import { NameEmoji } from './NameEmoji'
 import { ActivityLine } from './ActivityLine'
 import { OpenPartiesStrip } from './OpenPartiesStrip'
 
@@ -69,6 +71,8 @@ export function ChannelSidebar({
   onOpenSoundboard
 }: ChannelSidebarProps) {
   const { user, token, applyUser } = useAuth()
+  // Emoji equipado de quem está na call: o VoiceUser do socket é só id/nome/avatar.
+  const { byId: memberById } = useMembers()
   const {
     textChannels,
     voiceChannels,
@@ -373,6 +377,7 @@ export function ChannelSidebar({
                               className="h-8 w-8 shrink-0 rounded-full"
                             />
                             <span className="truncate">{occupant.displayName}</span>
+                            <NameEmoji id={memberById[occupant.id]?.emoji} />
                             {isSharing && (
                               <span className="ml-auto flex shrink-0 items-center gap-0.5 text-destructive">
                                 <ScreenShare className="h-3.5 w-3.5" aria-label="compartilhando tela" />
@@ -503,10 +508,11 @@ export function ChannelSidebar({
               />
               <span className="min-w-0 flex-1">
                 <span
-                  className="block truncate text-xs font-medium"
+                  className="flex items-center gap-1 text-xs font-medium"
                   style={user?.profileColor ? { color: user.profileColor } : undefined}
                 >
-                  {user?.displayName}
+                  <span className="truncate">{user?.displayName}</span>
+                  <NameEmoji id={user?.emoji} />
                 </span>
                 {myActivity ? (
                   <ActivityLine activity={myActivity} />

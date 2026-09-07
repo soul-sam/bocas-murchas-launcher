@@ -12,6 +12,7 @@ import { useGamification } from '@/lib/gamification-context'
 import { cn } from '@/lib/utils'
 import { ActivityLine } from './ActivityLine'
 import { NameEffect } from './NameEffect'
+import { NameEmoji } from './NameEmoji'
 import { LevelRing } from './LevelRing'
 import { BetPopover } from './BetPopover'
 
@@ -162,6 +163,7 @@ export function ProfileCard({
             <NameEffect effect={member.nameEffect} className="truncate">
               {member.displayName}
             </NameEffect>
+            <NameEmoji id={member.emoji} size="md" />
             {member.role === 'admin' && (
               <Shield className="h-3.5 w-3.5 shrink-0 text-burn" aria-label="admin" />
             )}

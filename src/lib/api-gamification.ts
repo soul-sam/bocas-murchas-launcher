@@ -25,7 +25,7 @@ import { request, type GameSessionSummary } from './api'
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
 
-export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame'
+export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji'
 
 export interface Badge {
   id: string
@@ -40,6 +40,7 @@ export interface EquippedCosmetics {
   title: string | null
   nameEffect: string | null
   avatarFrame: string | null
+  emoji: string | null
 }
 
 export interface GamificationProfile {
@@ -322,6 +323,15 @@ export function cosmeticKey(id: string | null | undefined): string | null {
   if (!id) return null
   const colon = id.indexOf(':')
   return colon >= 0 ? id.slice(colon + 1) : id
+}
+
+/**
+ * Glifo do cosmético de emoji (`emoji:oculos` → "😎"). Vem de `data.emoji`
+ * do catálogo; sem catálogo não dá pra adivinhar, então devolve null.
+ */
+export function cosmeticEmoji(item: Pick<ShopItem, 'data'> | undefined): string | null {
+  const glyph = item?.data?.emoji
+  return typeof glyph === 'string' && glyph ? glyph : null
 }
 
 /** Nome legível a partir só do id, quando o catálogo ainda não chegou. */

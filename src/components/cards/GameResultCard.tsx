@@ -7,6 +7,7 @@ import { formatCompact, type GameCardMeta } from '@/lib/api-gamification'
 import { useMembers } from '@/lib/members-context'
 import { queueLabel } from '@/lib/activity-context'
 import { cn } from '@/lib/utils'
+import { NameEmoji } from '@/components/social/NameEmoji'
 
 /**
  * CARTÃO DE PÓS-JOGO.
@@ -130,6 +131,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
                         >
                           {who?.displayName ?? 'alguém'}
                         </span>
+                        <NameEmoji id={who?.emoji} />
                         <span className="text-muted-foreground">
                           {wager.amount} em {wager.prediction === 'win' ? 'vitória' : 'derrota'}
                         </span>
@@ -163,6 +165,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
             <span className="truncate font-display text-sm" style={playerColor ? { color: playerColor } : undefined}>
               {playerName}
             </span>
+            <NameEmoji id={player?.emoji} />
             {metadata.champion && (
               <span className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 de {metadata.champion}

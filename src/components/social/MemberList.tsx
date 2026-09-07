@@ -12,6 +12,7 @@ import { useGamification } from '@/lib/gamification-context'
 import { ProfileCard } from './ProfileCard'
 import { ActivityLine } from './ActivityLine'
 import { NameEffect } from './NameEffect'
+import { NameEmoji } from './NameEmoji'
 import { BetPopover } from './BetPopover'
 
 /**
@@ -200,6 +201,7 @@ function Group({
                       <NameEffect effect={member.nameEffect} className="truncate">
                         {member.displayName}
                       </NameEffect>
+                      <NameEmoji id={member.emoji} />
                       {member.role === 'admin' && (
                         <Shield className="h-3 w-3 shrink-0 text-burn" aria-label="admin" />
                       )}
