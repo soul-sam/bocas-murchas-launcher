@@ -43,7 +43,7 @@ export function AppRail() {
   }
 
   return (
-    <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-[#1a1a1a] bg-[#080808] py-2">
+    <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-line bg-void py-2">
       <RailLink
         to="/"
         label="Social"
@@ -77,13 +77,13 @@ export function AppRail() {
         className={cn(
           'relative rounded-brutal p-2.5 transition-colors',
           leaderboardOpen && onSocial
-            ? 'bg-acid/10 text-acid shadow-[inset_2px_0_0_#6AFF00]'
+            ? 'bg-acid/10 text-acid shadow-[inset_2px_0_0_hsl(var(--acid))]'
             : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
         )}
       >
         <Trophy className="h-5 w-5" />
         {profile && (
-          <span className="absolute -bottom-0.5 -right-0.5 min-w-4 rounded-full border border-acid-dark bg-void px-1 text-center font-mono text-[9px] font-bold leading-4 text-acid">
+          <span className="absolute -bottom-0.5 -right-0.5 min-w-4 rounded-full border border-acid-dark bg-void px-1 text-center font-mono text-[11px] font-bold leading-4 text-foreground">
             {profile.level}
           </span>
         )}
@@ -93,7 +93,7 @@ export function AppRail() {
       {streak >= 2 && (
         <span
           title={`Streak de check-in: ${streak} dias seguidos`}
-          className="flex items-center gap-0.5 rounded-brutal px-1 font-mono text-[10px] font-bold text-burn"
+          className="flex items-center gap-0.5 rounded-brutal px-1 font-mono text-[11.5px] font-bold text-burn"
         >
           <Flame className="h-3 w-3" />
           {streak}
@@ -105,7 +105,7 @@ export function AppRail() {
         title="Atalhos (Ctrl + /)"
         aria-label="Atalhos"
         onClick={toggleShortcuts}
-        className="mt-auto rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-acid"
+        className="mt-auto rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
       >
         <Keyboard className="h-4 w-4" />
       </button>
@@ -146,7 +146,7 @@ function RailLink({
         cn(
           'relative rounded-brutal p-2.5 transition-colors',
           isActive
-            ? 'bg-acid/10 text-acid shadow-[inset_2px_0_0_#6AFF00]'
+            ? 'bg-acid/10 text-acid shadow-[inset_2px_0_0_hsl(var(--acid))]'
             : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
         )
       }
@@ -155,8 +155,8 @@ function RailLink({
       {!!badge && badge > 0 && (
         <span
           className={cn(
-            'absolute -right-0.5 -top-0.5 min-w-4 rounded-full px-1 text-center font-mono text-[9px] font-bold leading-4 text-dirty-white',
-            urgent ? 'bg-destructive' : 'bg-[#2a2a2a]'
+            'absolute -right-0.5 -top-0.5 min-w-4 rounded-full px-1 text-center font-mono text-[11px] font-bold leading-4 text-dirty-white',
+            urgent ? 'bg-destructive' : 'bg-surface-strong'
           )}
         >
           {badge > 99 ? '99+' : badge}

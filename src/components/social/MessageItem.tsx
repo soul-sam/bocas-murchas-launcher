@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { THEME_LABEL } from '../../../electron/preload/types'
 import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react'
 import {
   Reply,
@@ -94,6 +95,8 @@ export function MessageItem({
   const { byId } = useMembers()
   const { openUserMenu, openLightbox } = useOverlays()
   const { settings } = useSettings()
+  // Seletor de emoji e de terceiros: recebe claro/escuro conforme o tema.
+  const pickerTheme = THEME_LABEL[settings.theme].light ? Theme.LIGHT : Theme.DARK
   const { emojis, byName } = useEmojis()
   const [draft, setDraft] = React.useState(message.content)
   const [copied, setCopied] = React.useState(false)
@@ -186,7 +189,7 @@ export function MessageItem({
       {!compact && (
         <div className="w-10 shrink-0 pt-0.5">
           {grouped ? (
-            <span className="hidden pt-1 text-right font-mono text-[10px] leading-5 text-muted-foreground group-hover:block">
+            <span className="hidden pt-1 text-right font-mono text-[11.5px] leading-5 text-muted-foreground group-hover:block">
               {formatTime(message.createdAt)}
             </span>
           ) : (
@@ -204,7 +207,10 @@ export function MessageItem({
         </div>
       )}
 
-      <div className="min-w-0 flex-1">
+      {/* max-w-[72ch]: em monitor largo a linha ia ate a borda e a leitura
+          cansava tanto quanto o neon. O bloco continua ocupando a largura
+          (flex-1) pra que hover/reacoes nao mudem de lugar; so o texto para. */}
+      <div className="min-w-0 max-w-[72ch] flex-1">
         {message.replyTo && (
           <button
             type="button"
@@ -213,7 +219,7 @@ export function MessageItem({
             title={onJumpTo ? 'Ir pra mensagem' : 'Mensagem antiga demais pra pular'}
             className={cn(
               'mb-0.5 flex w-full items-center gap-1 truncate text-left text-[11px] text-muted-foreground',
-              onJumpTo && 'transition-colors hover:text-acid'
+              onJumpTo && 'transition-colors hover:text-foreground'
             )}
           >
             <CornerUpRight className="h-3 w-3 shrink-0" />
@@ -228,7 +234,7 @@ export function MessageItem({
           <div className="flex min-w-0 items-baseline gap-1.5">
             <span
               title={formatFullDate(message.createdAt)}
-              className="shrink-0 font-mono text-[10px] text-muted-foreground"
+              className="shrink-0 font-mono text-[11.5px] text-muted-foreground"
             >
               {formatTime(message.createdAt)}
             </span>
@@ -266,12 +272,12 @@ export function MessageItem({
                 />
                 <span
                   title={formatFullDate(message.createdAt)}
-                  className="font-mono text-[10px] text-muted-foreground"
+                  className="font-mono text-[11.5px] text-muted-foreground"
                 >
                   {formatTime(message.createdAt)}
                 </span>
                 {message.isPinned && (
-                  <span className="flex items-center gap-0.5 font-mono text-[9px] uppercase tracking-widest text-burn">
+                  <span className="flex items-center gap-0.5 text-[11px] text-burn">
                     <Pin className="h-2.5 w-2.5" />
                     fixada
                   </span>
@@ -305,7 +311,7 @@ export function MessageItem({
                   'flex items-center gap-1 rounded-brutal border px-1.5 py-0.5 text-xs transition-colors',
                   info.mine
                     ? 'border-acid bg-acid/15 text-acid'
-                    : 'border-[#1a1a1a] bg-void-light/60 text-muted-foreground hover:border-acid/50'
+                    : 'border-line bg-void-light/60 text-muted-foreground hover:border-acid/50'
                 )}
               >
                 {CUSTOM_REACTION.test(emoji) && byName.has(emoji.slice(1, -1)) ? (
@@ -313,7 +319,7 @@ export function MessageItem({
                 ) : (
                   <span>{emoji}</span>
                 )}
-                <span className="font-mono text-[10px]">{info.count}</span>
+                <span className="font-mono text-[11.5px]">{info.count}</span>
               </button>
             ))}
           </div>
@@ -324,7 +330,7 @@ export function MessageItem({
       <div
         className={cn(
           'absolute right-3 top-0 flex items-center gap-0.5 rounded-brutal sm:right-4',
-          'border border-[#1a1a1a] bg-void p-0.5 opacity-0 shadow-lg transition-opacity',
+          'border border-line bg-void p-0.5 opacity-0 shadow-lg transition-opacity',
           'group-hover:opacity-100 focus-within:opacity-100'
         )}
       >
@@ -335,7 +341,7 @@ export function MessageItem({
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-auto p-1.5">
-            <div className="mb-1 flex gap-0.5 border-b border-[#1a1a1a] pb-1.5">
+            <div className="mb-1 flex gap-0.5 border-b border-line pb-1.5">
               {QUICK_EMOJIS.map((emoji) => (
                 <button
                   key={emoji}
@@ -352,7 +358,7 @@ export function MessageItem({
                 Emoji do servidor reage como `:nome:` — a mesma string do
                 texto, então o chip desenha com o mesmo componente. */}
             <EmojiPicker
-              theme={Theme.DARK}
+              theme={pickerTheme}
               emojiStyle={EmojiStyle.NATIVE}
               lazyLoadEmojis
               width={300}
@@ -488,7 +494,7 @@ function MessageBody({
         <div className="flex flex-wrap items-baseline">
           <RichText content={message.content} jumbo={jumbo} />
           {message.isEdited && (
-            <span className="ml-1.5 shrink-0 font-mono text-[9px] text-muted-foreground">
+            <span className="ml-1.5 shrink-0 font-mono text-[11px] text-muted-foreground">
               (editada)
             </span>
           )}
@@ -510,7 +516,7 @@ function MessageBody({
           type="button"
           onClick={() => onOpenImage(attachment)}
           title="Abrir imagem"
-          className="mt-1.5 block w-fit overflow-hidden rounded-brutal border border-[#1a1a1a] transition-colors hover:border-acid/50"
+          className="mt-1.5 block w-fit overflow-hidden rounded-brutal border border-line transition-colors hover:border-acid/50"
         >
           <img
             src={attachment}
@@ -558,13 +564,13 @@ function FileAttachment({
       type="button"
       onClick={() => href && openExternal(href)}
       title={`Baixar ${name}`}
-      className="group/file mt-1.5 flex w-fit max-w-sm items-center gap-2.5 rounded-brutal border border-[#1f1f1f] bg-void-light/40 px-3 py-2 text-left transition-colors hover:border-acid/50 hover:bg-void-light/70"
+      className="group/file mt-1.5 flex w-fit max-w-sm items-center gap-2.5 rounded-brutal border border-line bg-void-light/40 px-3 py-2 text-left transition-colors hover:border-acid/50 hover:bg-void-light/70"
     >
-      <FileText className="h-5 w-5 shrink-0 text-acid" />
+      <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
 
       <span className="min-w-0 flex-1">
         <span className="block truncate text-xs text-foreground">{name}</span>
-        <span className="block font-mono text-[10px] text-muted-foreground">
+        <span className="block font-mono text-[11.5px] text-muted-foreground">
           {formatFileSize(size)}
         </span>
       </span>
@@ -582,4 +588,4 @@ function formatFileSize(bytes: number): string {
 }
 
 const actionClass =
-  'rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid'
+  'rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'

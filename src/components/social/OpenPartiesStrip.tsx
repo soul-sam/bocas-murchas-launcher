@@ -42,7 +42,7 @@ export function OpenPartiesStrip() {
   }
 
   return (
-    <div className="shrink-0 space-y-1 border-t border-[#1a1a1a] px-2 py-2">
+    <div className="shrink-0 space-y-1 border-t border-line px-2 py-2">
       {parties.map((party) => {
         const me = user?.id
         const inside = !!me && party.members.some((m) => m.id === me)
@@ -70,11 +70,11 @@ export function OpenPartiesStrip() {
                 : `${party.createdBy.displayName} chamou pra ${gameLabel(party.game)}`
             }
             className={cn(
-              'flex w-full items-center gap-2 rounded-brutal border px-2 py-1.5 text-left font-mono text-[10px] uppercase tracking-widest transition-colors',
+              'flex w-full items-center gap-2 rounded-brutal border px-2 py-1.5 text-left font-mono text-[11.5px] uppercase tracking-widest transition-colors',
               inside
                 ? 'border-acid/50 bg-acid/[0.06] text-acid hover:bg-acid/15'
                 : full
-                  ? 'border-[#2a2a2a] text-muted-foreground'
+                  ? 'border-line-strong text-muted-foreground'
                   : 'border-burn/50 bg-burn/[0.06] text-burn hover:bg-burn/15',
               busy && 'opacity-60'
             )}

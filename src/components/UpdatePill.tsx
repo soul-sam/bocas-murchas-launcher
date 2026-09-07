@@ -142,9 +142,9 @@ export function UpdatePill() {
 
 const TONES = {
   burn: 'border-burn/70 text-burn hover:bg-burn/15',
-  acid: 'border-acid/70 text-acid hover:bg-acid/15 shadow-[0_0_12px_rgba(106,255,0,0.2)]',
+  acid: 'border-acid/70 text-acid hover:bg-acid/15 shadow-[0_0_12px_rgb(var(--neon-rgb)/0.2)]',
   danger: 'border-destructive/70 text-destructive hover:bg-destructive/15',
-  muted: 'border-[#1a1a1a] text-muted-foreground'
+  muted: 'border-line text-muted-foreground'
 } as const
 
 function Pill({
@@ -162,7 +162,7 @@ function Pill({
 }) {
   const className = cn(
     'app-no-drag flex items-center gap-1.5 rounded-brutal border px-2 py-0.5',
-    'font-mono text-[10px] uppercase tracking-widest transition-colors',
+    'font-mono text-[11.5px] uppercase tracking-widest transition-colors',
     TONES[tone],
     onClick ? 'cursor-pointer' : 'cursor-default',
     disabled && 'pointer-events-none opacity-60'

@@ -110,7 +110,7 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
         </DialogHeader>
 
         <div className="mb-3 flex shrink-0 items-center gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-brutal border-2 border-[#1a1a1a] bg-void px-2 transition-colors focus-within:border-acid/60">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-brutal border-2 border-line bg-void px-2 transition-colors focus-within:border-acid/60">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               value={filter}
@@ -126,7 +126,7 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
             disabled={loading}
             title="Atualizar a lista"
             aria-label="Atualizar a lista"
-            className="shrink-0 rounded-brutal border-2 border-[#1a1a1a] p-2 text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid disabled:opacity-40"
+            className="shrink-0 rounded-brutal border-2 border-line p-2 text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground disabled:opacity-40"
           >
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
           </button>
@@ -136,7 +136,7 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
           {loading && sources.length === 0 ? (
             <div className="flex h-40 items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="font-mono text-xs uppercase tracking-widest">
+              <span className="text-xs">
                 Procurando janelas…
               </span>
             </div>
@@ -171,20 +171,20 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
           )}
         </div>
 
-        <div className="mt-4 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-[#1a1a1a] pt-4">
+        <div className="mt-4 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-4">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={withAudio}
               onChange={(e) => setWithAudio(e.target.checked)}
-              className="h-4 w-4 accent-[#6AFF00]"
+              className="h-4 w-4 accent-acid"
             />
             <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
             <span>Levar o som do sistema</span>
           </label>
 
           <label className="ml-auto flex items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="text-[11.5px] text-muted-foreground">
               Qualidade
             </span>
             <select
@@ -200,7 +200,7 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
             </select>
           </label>
 
-          <p className="w-full font-mono text-[10px] text-muted-foreground">
+          <p className="w-full font-mono text-[11.5px] text-muted-foreground">
             {QUALITY_HINT[quality]}
           </p>
         </div>
@@ -244,10 +244,10 @@ function SourceGroup({
 }) {
   return (
     <section className="mb-5">
-      <h3 className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <h3 className="mb-2 flex items-center gap-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
         {icon}
         {label}
-        <span className="text-[9px] opacity-60">— {sources.length}</span>
+        <span className="text-[11px] opacity-60">— {sources.length}</span>
       </h3>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -261,8 +261,8 @@ function SourceGroup({
             className={cn(
               'group overflow-hidden rounded-brutal border-2 text-left transition-all',
               selected === source.id
-                ? 'border-acid shadow-[0_0_18px_rgba(106,255,0,0.25)]'
-                : 'border-[#1a1a1a] hover:border-acid/50'
+                ? 'border-acid shadow-[0_0_18px_rgb(var(--neon-rgb)/0.25)]'
+                : 'border-line hover:border-acid/50'
             )}
           >
             <img

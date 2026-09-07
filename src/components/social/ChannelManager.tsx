@@ -170,7 +170,7 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
             return (
               <div
                 key={channel.id}
-                className="flex items-center gap-2 rounded-brutal border border-[#1a1a1a] bg-void-light/30 px-2 py-1.5"
+                className="flex items-center gap-2 rounded-brutal border border-line bg-void-light/30 px-2 py-1.5"
               >
                 <span className="shrink-0 text-muted-foreground">{meta.icon}</span>
 
@@ -191,7 +191,7 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
                     <span className="block truncate text-sm text-foreground">
                       {channel.name}
                     </span>
-                    <span className="block font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                    <span className="block text-[11px] text-muted-foreground">
                       {meta.label}
                       {channel._count ? ` · ${channel._count.messages} msg` : ''}
                     </span>
@@ -262,7 +262,7 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
 
         {error && <p className="mt-2 shrink-0 text-xs text-destructive">{error}</p>}
 
-        <div className="mt-3 flex shrink-0 items-center gap-2 border-t border-[#1a1a1a] pt-3">
+        <div className="mt-3 flex shrink-0 items-center gap-2 border-t border-line pt-3">
           {confirmDelete && (
             <p className="flex-1 text-[11px] leading-tight text-destructive">
               Apagar o canal apaga todas as mensagens dele. Não tem volta.
@@ -311,7 +311,7 @@ function IconButton({
         'rounded-brutal p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-30',
         danger
           ? 'text-muted-foreground hover:bg-destructive/15 hover:text-destructive'
-          : 'text-muted-foreground hover:bg-muted hover:text-acid'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
       )}
     >
       {children}

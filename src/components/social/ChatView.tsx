@@ -198,7 +198,7 @@ export function ChatView() {
   if (!activeChannel) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Escolha um canal
         </p>
       </div>
@@ -217,14 +217,14 @@ export function ChatView() {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[#1a1a1a] px-3 sm:px-4">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3 sm:px-4">
         {sidebarIsDrawer && (
           <button
             type="button"
             onClick={toggleSidebar}
             title="Canais"
             aria-label="Abrir canais"
-            className="-ml-1 shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-acid"
+            className="-ml-1 shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
           >
             <PanelLeftOpen className="h-4 w-4" />
           </button>
@@ -250,7 +250,7 @@ export function ChatView() {
 
         {activeChannel.description && (
           <>
-            <span className="hidden h-4 w-px shrink-0 bg-[#1a1a1a] md:block" />
+            <span className="hidden h-4 w-px shrink-0 bg-surface-raised md:block" />
             <p className="hidden truncate text-xs text-muted-foreground md:block">
               {activeChannel.description}
             </p>
@@ -313,7 +313,7 @@ export function ChatView() {
       >
         {loadingMessages && messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-acid" />
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center">
@@ -344,7 +344,7 @@ export function ChatView() {
           // porcentagem dentro de um item flex sem altura explícita.
           <div className="mt-auto">
             {hasMore && (
-              <p className="pb-2 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <p className="pb-2 text-center text-[11.5px] text-muted-foreground">
                 role pra cima pra carregar mais
               </p>
             )}
@@ -398,7 +398,7 @@ export function ChatView() {
           type="button"
           onClick={() => scrollToBottom(true)}
           title="Ir pro fim da conversa"
-          className="absolute bottom-24 right-4 z-10 flex items-center gap-1.5 rounded-brutal border-2 border-acid-dark bg-void px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest text-acid shadow-[0_0_20px_rgba(0,0,0,0.6)] transition-colors hover:border-acid"
+          className="absolute bottom-24 right-4 z-10 flex items-center gap-1.5 rounded-brutal border-2 border-acid-dark bg-void px-2.5 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-acid shadow-[0_0_20px_rgba(0,0,0,0.6)] transition-colors hover:border-acid"
         >
           <ArrowDown className="h-3.5 w-3.5" />
           fim
@@ -407,7 +407,7 @@ export function ChatView() {
 
       <div className="h-5 shrink-0 px-4">
         {typing.length > 0 && (
-          <p className="truncate font-mono text-[10px] uppercase tracking-widest text-acid">
+          <p className="truncate text-[11.5px] text-acid-text">
             {typing.map((t) => t.displayName).join(', ')}{' '}
             {typing.length === 1 ? 'está digitando' : 'estão digitando'}
             <span className="terminal-cursor" />
@@ -440,11 +440,11 @@ export function ChatView() {
 function DayDivider({ label }: { label: string }) {
   return (
     <div className="my-3 flex items-center gap-2 px-4">
-      <span className="h-px flex-1 bg-[#1a1a1a]" />
-      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+      <span className="h-px flex-1 bg-surface-raised" />
+      <span className="text-[11px] text-muted-foreground">
         {label}
       </span>
-      <span className="h-px flex-1 bg-[#1a1a1a]" />
+      <span className="h-px flex-1 bg-surface-raised" />
     </div>
   )
 }
@@ -453,7 +453,7 @@ function UnreadDivider() {
   return (
     <div className="mt-3 flex items-center gap-2 px-4">
       <span className="h-px flex-1 bg-destructive/70" />
-      <span className="rounded-brutal bg-destructive px-1.5 font-mono text-[9px] uppercase tracking-widest text-dirty-white">
+      <span className="rounded-brutal bg-destructive px-1.5 text-[11px] text-dirty-white">
         novas
       </span>
     </div>

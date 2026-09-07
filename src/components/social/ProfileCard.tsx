@@ -3,7 +3,9 @@ import { Zap, Shield, ExternalLink, Coins, Flame, Swords, Cake, Clock } from 'lu
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { UserAvatar } from '@/components/ui/avatar'
 import { parseFavoriteGames, parseLinks, resolveAssetUrl } from '@/lib/api'
-import { formatCompact, type GamificationProfile } from '@/lib/api-gamification'
+import { formatCompact, type GamificationProfile,
+  DEFAULT_NAME_COLOR
+} from '@/lib/api-gamification'
 import { BadgeChip, TitleTag } from '@/lib/cosmetic-icons'
 import { CargoChip } from '@/lib/cargo-icons'
 import { useCargos } from '@/lib/cargos-context'
@@ -61,7 +63,7 @@ export function ProfileCard({
   const [remote, setRemote] = React.useState<GamificationProfile | null>(null)
 
   const isSelf = member.id === user?.id
-  const color = member.profileColor ?? '#6AFF00'
+  const color = member.profileColor ?? DEFAULT_NAME_COLOR
   const links = parseLinks(member.links)
   const status = member.isOnline ? (member.status ?? 'online') : 'offline'
   const activity = member.isOnline ? activityOf(member.id) : undefined
@@ -142,7 +144,7 @@ export function ProfileCard({
                     title={`Apostar murchos na partida de ${member.displayName}`}
                     className={cn(
                       'flex items-center gap-1 rounded-brutal border-2 border-acid-dark px-2 py-1',
-                      'font-mono text-[10px] uppercase tracking-widest text-acid',
+                      'font-mono text-[11.5px] uppercase tracking-widest text-acid',
                       'transition-colors hover:bg-acid/15 disabled:cursor-not-allowed disabled:opacity-40'
                     )}
                   >
@@ -159,7 +161,7 @@ export function ProfileCard({
                   title="Cutucar (treme a tela dessa pessoa)"
                   className={cn(
                     'flex items-center gap-1 rounded-brutal border-2 border-burn/60 px-2 py-1',
-                    'font-mono text-[10px] uppercase tracking-widest text-burn',
+                    'font-mono text-[11.5px] uppercase tracking-widest text-burn',
                     'transition-colors hover:bg-burn/15'
                   )}
                 >
@@ -183,7 +185,7 @@ export function ProfileCard({
             )}
           </p>
 
-          <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
             <span className="truncate">
               @{member.username}
               {member.pronouns && ` · ${member.pronouns}`}
@@ -214,13 +216,13 @@ export function ProfileCard({
 
           {activity && (
             <div className="mt-2 rounded-brutal border border-burn/40 bg-burn/[0.06] px-2 py-1.5">
-              <ActivityLine activity={activity} className="text-[10px]" />
+              <ActivityLine activity={activity} className="text-[11.5px]" />
             </div>
           )}
 
           {riotId && (
             <p
-              className="mt-1.5 flex items-center gap-1 font-mono text-[10px] text-muted-foreground"
+              className="mt-1.5 flex items-center gap-1 font-mono text-[11.5px] text-muted-foreground"
               title="Riot ID lido do cliente do LoL"
             >
               <Swords className="h-3 w-3 shrink-0" aria-hidden />
@@ -229,7 +231,7 @@ export function ProfileCard({
           )}
 
           {member.customStatus && (
-            <p className="mt-2 rounded-brutal border border-[#1a1a1a] bg-void/60 px-2 py-1 text-xs text-foreground">
+            <p className="mt-2 rounded-brutal border border-line bg-void/60 px-2 py-1 text-xs text-foreground">
               {member.customStatus}
             </p>
           )}
@@ -256,7 +258,7 @@ export function ProfileCard({
             </div>
           )}
 
-          <p className="mt-3 border-t border-[#1a1a1a] pt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="mt-3 border-t border-line pt-2 text-[11.5px] text-muted-foreground">
             {STATUS_LABEL[status] ?? status}
           </p>
         </div>
@@ -295,7 +297,7 @@ function PersonalLine({
   if (!localTime && !birthdayLabel && games.length === 0) return null
 
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[10px] text-muted-foreground">
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[11.5px] text-muted-foreground">
       {localTime && (
         <span
           className="flex items-center gap-1"
@@ -349,22 +351,22 @@ function GamificationBlock({ profile }: { profile: GamificationProfile }) {
   const rest = profile.badges.length - shown.length
 
   return (
-    <div className="mt-2 space-y-1.5 rounded-brutal border border-[#1a1a1a] bg-void/60 px-2 py-1.5">
+    <div className="mt-2 space-y-1.5 rounded-brutal border border-line bg-void/60 px-2 py-1.5">
       <div>
-        <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+        <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
           <span>
-            nível <span className="text-acid">{profile.level}</span>
+            nível <span className="text-acid-text">{profile.level}</span>
           </span>
           <span>
             {formatCompact(profile.levelXp)} / {formatCompact(profile.nextLevelXp)} XP
           </span>
         </div>
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-brutal bg-[#1a1a1a]">
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-brutal bg-surface-raised">
           <div className="xp-fill h-full bg-acid" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
-      <div className="flex items-center gap-3 font-mono text-[10px]">
+      <div className="flex items-center gap-3 font-mono text-[11.5px]">
         <span className="flex items-center gap-1 text-burn" title="Murchos (moeda da casa)">
           <Coins className="h-3 w-3" />
           {formatCompact(profile.coins)}
@@ -393,7 +395,7 @@ function GamificationBlock({ profile }: { profile: GamificationProfile }) {
             />
           ))}
           {rest > 0 && (
-            <span className="font-mono text-[9px] text-muted-foreground">+{rest}</span>
+            <span className="font-mono text-[11px] text-muted-foreground">+{rest}</span>
           )}
         </div>
       )}

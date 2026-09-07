@@ -220,16 +220,16 @@ function FocusedFeed({
             feed.isLocal ? 'text-burn' : 'text-destructive'
           )}
         />
-        <span className="truncate font-mono text-[10px] uppercase tracking-widest text-dirty-white">
+        <span className="truncate text-[11.5px] text-dirty-white">
           {feed.isLocal ? 'você está transmitindo' : feed.name}
         </span>
         {feed.isLocal && info && (
-          <span className="hidden truncate border-l border-[#2a2a2a] pl-1.5 font-mono text-[10px] text-muted-foreground sm:block">
+          <span className="hidden truncate border-l border-line-strong pl-1.5 font-mono text-[11.5px] text-muted-foreground sm:block">
             {info.sourceName}
           </span>
         )}
         {label && (
-          <span className="shrink-0 border-l border-[#2a2a2a] pl-1.5 font-mono text-[10px] text-acid">
+          <span className="shrink-0 border-l border-line-strong pl-1.5 font-mono text-[11.5px] text-foreground">
             {label}
           </span>
         )}
@@ -248,7 +248,7 @@ function FocusedFeed({
               onClick={() => onVolume(muted ? 1 : 0)}
               className={cn(
                 'shrink-0 transition-colors',
-                muted ? 'text-destructive' : 'text-muted-foreground hover:text-acid'
+                muted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
@@ -278,7 +278,7 @@ function FocusedFeed({
             type="button"
             onClick={onStop}
             title="Parar de compartilhar"
-            className="flex items-center gap-1.5 rounded-brutal bg-void/90 px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-destructive transition-colors hover:bg-destructive/20"
+            className="flex items-center gap-1.5 rounded-brutal bg-void/90 px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-destructive transition-colors hover:bg-destructive/20"
           >
             <MonitorX className="h-3.5 w-3.5" />
             Parar
@@ -289,7 +289,7 @@ function FocusedFeed({
           type="button"
           onClick={toggleFullscreen}
           title={fullscreen ? 'Sair da tela cheia' : 'Tela cheia (ou 2 cliques)'}
-          className="rounded-brutal bg-void/90 p-1.5 text-muted-foreground transition-colors hover:text-acid"
+          className="rounded-brutal bg-void/90 p-1.5 text-muted-foreground transition-colors hover:text-foreground"
         >
           {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
         </button>
@@ -306,7 +306,7 @@ function FeedThumb({ feed, onClick }: { feed: ScreenShareFeed; onClick: () => vo
       title={feed.isLocal ? 'Sua transmissão' : `Ver a tela de ${feed.name}`}
       className={cn(
         'group relative aspect-video w-32 shrink-0 overflow-hidden rounded-brutal border-2 bg-black transition-all lg:w-full',
-        'border-[#1a1a1a] opacity-70 hover:border-acid/50 hover:opacity-100'
+        'border-line opacity-70 hover:border-acid/50 hover:opacity-100'
       )}
     >
       <VideoSurface track={feed.track} />
@@ -318,7 +318,7 @@ function FeedThumb({ feed, onClick }: { feed: ScreenShareFeed; onClick: () => vo
             feed.isLocal ? 'text-burn' : 'text-destructive'
           )}
         />
-        <span className="truncate font-mono text-[9px] uppercase tracking-widest text-dirty-white">
+        <span className="truncate text-[11px] text-dirty-white">
           {feed.isLocal ? 'você' : feed.name}
         </span>
       </span>
@@ -357,7 +357,7 @@ export function ScreenStage({
 
       {others.length > 0 && (
         <div className="flex shrink-0 gap-2 overflow-x-auto lg:w-40 lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden">
-          <p className="hidden items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground lg:flex">
+          <p className="hidden items-center gap-1 text-[11px] text-muted-foreground lg:flex">
             <Eye className="h-3 w-3" />
             {others.length} {others.length === 1 ? 'outra tela' : 'outras telas'}
           </p>

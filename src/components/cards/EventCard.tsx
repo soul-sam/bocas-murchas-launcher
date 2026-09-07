@@ -44,8 +44,8 @@ const RSVP_OPTIONS: Array<{
   {
     status: 'no',
     label: 'Não',
-    active: 'border-destructive bg-destructive text-white',
-    idle: 'border-[#2a2a2a] text-muted-foreground hover:border-destructive/50 hover:text-destructive'
+    active: 'border-destructive bg-destructive text-destructive-foreground',
+    idle: 'border-line-strong text-muted-foreground hover:border-destructive/50 hover:text-destructive'
   }
 ]
 
@@ -136,9 +136,9 @@ export function EventCard({ metadata, compact }: CardProps<EventCardMetadata>) {
               onClick={() => void cancel()}
               disabled={busy !== null}
               className={cn(
-                'flex shrink-0 items-center gap-1 rounded-brutal px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+                'flex shrink-0 items-center gap-1 rounded-brutal px-1.5 py-0.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
                 confirming
-                  ? 'bg-destructive text-white'
+                  ? 'bg-destructive text-destructive-foreground'
                   : 'text-muted-foreground hover:text-destructive'
               )}
             >
@@ -164,7 +164,7 @@ export function EventCard({ metadata, compact }: CardProps<EventCardMetadata>) {
 
       <p
         className={cn(
-          'mt-0.5 font-mono text-[10px] uppercase tracking-widest',
+          'mt-0.5 text-[11.5px]',
           cancelled ? 'text-muted-foreground' : started ? 'text-burn' : 'text-acid'
         )}
       >
@@ -189,7 +189,7 @@ export function EventCard({ metadata, compact }: CardProps<EventCardMetadata>) {
               disabled={cancelled || busy !== null}
               onClick={() => void respond(option.status)}
               className={cn(
-                'flex items-center gap-1.5 rounded-brutal border-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors',
+                'flex items-center gap-1.5 rounded-brutal border-2 px-2.5 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
                 active ? option.active : option.idle,
                 (cancelled || busy !== null) && 'cursor-not-allowed opacity-60'
               )}
@@ -218,7 +218,7 @@ export function EventCard({ metadata, compact }: CardProps<EventCardMetadata>) {
       )}
 
       {error && (
-        <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-destructive">
+        <p className="mt-2 text-[11.5px] text-destructive">
           {error}
         </p>
       )}
@@ -243,7 +243,7 @@ function AvatarRow({
 
   return (
     <div className={cn('flex items-center gap-2', dim && 'opacity-60')}>
-      <span className="w-10 shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <span className="w-10 shrink-0 text-[11.5px] text-muted-foreground">
         {label}
       </span>
       <div className="flex -space-x-1.5">
@@ -258,7 +258,7 @@ function AvatarRow({
         ))}
       </div>
       {extra > 0 && (
-        <span className="font-mono text-[10px] text-muted-foreground">+{extra}</span>
+        <span className="font-mono text-[11.5px] text-muted-foreground">+{extra}</span>
       )}
       <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
         {shown

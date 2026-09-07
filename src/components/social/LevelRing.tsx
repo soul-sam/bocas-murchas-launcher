@@ -48,7 +48,7 @@ export function LevelRing({
           height={side}
           rx={6}
           fill="none"
-          stroke="#1a1a1a"
+          stroke="hsl(var(--border-strong))"
           strokeWidth={stroke}
         />
         <rect
@@ -58,7 +58,7 @@ export function LevelRing({
           height={side}
           rx={6}
           fill="none"
-          stroke="#6AFF00"
+          stroke="hsl(var(--acid))"
           strokeWidth={stroke}
           strokeLinecap="square"
           pathLength={100}
@@ -75,7 +75,7 @@ export function LevelRing({
         title={`Nível ${level}`}
         className={cn(
           'absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-brutal border border-acid-dark bg-void px-1.5',
-          'font-mono text-[9px] font-bold leading-4 text-acid'
+          'font-mono text-[11px] font-bold leading-4 text-acid'
         )}
       >
         {level}
@@ -89,7 +89,7 @@ export function LevelBadge({ level, className }: { level: number; className?: st
   return (
     <span
       className={cn(
-        'rounded-full border border-acid-dark bg-void px-1 font-mono text-[9px] font-bold leading-4 text-acid',
+        'rounded-full border border-acid-dark bg-void px-1 font-mono text-[11px] font-bold leading-4 text-acid',
         className
       )}
       title={`Nível ${level}`}

@@ -55,7 +55,7 @@ export function ChessResultCard({ metadata, compact }: CardProps<ChessCardMeta>)
         hasRewards ? (
           <p className="flex items-center gap-3">
             {metadata.xpAwarded > 0 && (
-              <span className="flex items-center gap-1 text-acid">
+              <span className="flex items-center gap-1 text-acid-text">
                 <Zap className="h-2.5 w-2.5" />+{metadata.xpAwarded} XP
               </span>
             )}
@@ -85,7 +85,7 @@ export function ChessResultCard({ metadata, compact }: CardProps<ChessCardMeta>)
             <span className="text-foreground">{metadata.opponent}</span>
             <span className="text-muted-foreground"> ({metadata.opponentRating})</span>
           </p>
-          <p className="font-mono text-[10px] text-muted-foreground">
+          <p className="font-mono text-[11.5px] text-muted-foreground">
             {resultCodeLabel(metadata.resultCode)}
             {metadata.accuracy != null && <> · precisão {metadata.accuracy.toFixed(1)}%</>}
             {!metadata.rated && <> · casual</>}
@@ -94,7 +94,7 @@ export function ChessResultCard({ metadata, compact }: CardProps<ChessCardMeta>)
         <div className="text-right font-mono">
           <p className="text-sm text-foreground">{metadata.ratingAfter}</p>
           {delta != null && (
-            <p className={cn('text-[10px]', delta > 0 ? 'text-acid' : delta < 0 ? 'text-destructive' : 'text-muted-foreground')}>
+            <p className={cn('text-[11.5px]', delta > 0 ? 'text-acid' : delta < 0 ? 'text-destructive' : 'text-muted-foreground')}>
               {delta > 0 ? '+' : ''}
               {delta}
             </p>
@@ -104,7 +104,7 @@ export function ChessResultCard({ metadata, compact }: CardProps<ChessCardMeta>)
       <button
         type="button"
         onClick={() => openExternal(metadata.url)}
-        className="mt-1.5 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-acid"
+        className="mt-1.5 inline-flex items-center gap-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
       >
         <ExternalLink className="h-3 w-3" /> ver partida
       </button>

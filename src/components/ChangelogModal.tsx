@@ -17,7 +17,7 @@ function renderBody(body: string): React.ReactNode {
           return (
             <div
               key={i}
-              className="mt-3 font-display text-sm uppercase tracking-wider text-acid"
+              className="mt-3 font-display text-sm uppercase tracking-wider text-acid-text"
             >
               {line.replace(/^#+\s/, '')}
             </div>
@@ -31,7 +31,7 @@ function renderBody(body: string): React.ReactNode {
           .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
         return (
           <div key={i} className="flex gap-2">
-            {isBullet && <span className="text-acid">›</span>}
+            {isBullet && <span className="text-acid-text">›</span>}
             <span>{cleaned}</span>
           </div>
         )
@@ -82,23 +82,23 @@ export function ChangelogModal() {
       onClick={close}
     >
       <div
-        className="card-acid relative w-full max-w-lg rounded-brutal p-6 scanlines"
+        className="card-acid relative w-full max-w-lg rounded-brutal p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           aria-label="Fechar"
           onClick={() => void close()}
-          className="absolute right-3 top-3 text-muted-foreground hover:text-acid"
+          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="mb-4 flex items-center gap-3">
-          <ScrollText className="h-7 w-7 text-acid drop-shadow-[0_0_8px_rgba(106,255,0,0.6)]" />
+          <ScrollText className="h-7 w-7 text-muted-foreground drop-shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]" />
           <div>
             <h2 className="title-brutal text-2xl">Modpack atualizado</h2>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               {changelog.name ?? changelog.tag} ·{' '}
               {new Date(changelog.publishedAt).toLocaleDateString('pt-BR')}
             </p>

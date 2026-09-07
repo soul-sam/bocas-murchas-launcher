@@ -47,7 +47,7 @@ export function ConversationRail({
   return (
     <nav
       aria-label="Servidor e conversas"
-      className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-[#1a1a1a] bg-[#080808] py-2"
+      className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-line bg-void py-2"
     >
       <RailItem
         active={!dmActive}
@@ -57,19 +57,19 @@ export function ConversationRail({
         <span
           className={cn(
             'flex h-10 w-10 items-center justify-center rounded-brutal border transition-colors',
-            dmActive ? 'border-[#1a1a1a] bg-void-light' : 'border-acid/50 bg-acid/10'
+            dmActive ? 'border-line bg-void-light' : 'border-acid/50 bg-acid/10'
           )}
         >
           <img
             src="bocas-murchas-transp.png"
             alt=""
             aria-hidden
-            className="h-7 w-7 drop-shadow-[0_0_8px_rgba(106,255,0,0.5)]"
+            className="h-7 w-7 drop-shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]"
           />
         </span>
       </RailItem>
 
-      {dmChannels.length > 0 && <span className="h-px w-8 shrink-0 bg-[#1a1a1a]" />}
+      {dmChannels.length > 0 && <span className="h-px w-8 shrink-0 bg-surface-raised" />}
 
       <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
         {dmChannels.map((channel) => {
@@ -93,7 +93,7 @@ export function ConversationRail({
               />
 
               {count > 0 && !active && (
-                <span className="absolute -right-0.5 -top-0.5 min-w-[16px] rounded-full border-2 border-[#080808] bg-destructive px-1 text-center font-mono text-[9px] font-bold leading-[12px] text-dirty-white">
+                <span className="absolute -right-0.5 -top-0.5 min-w-[16px] rounded-full border-2 border-void bg-destructive px-1 text-center font-mono text-[11px] font-bold leading-[12px] text-dirty-white">
                   {count > 9 ? '9+' : count}
                 </span>
               )}

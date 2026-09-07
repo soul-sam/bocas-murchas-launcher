@@ -157,7 +157,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
             <span className="truncate">{name}</span>
             <NameEmoji id={player?.emoji} />
           </p>
-          <p className="flex items-center gap-1 truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+          <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
             <GameIcon className="h-2.5 w-2.5 shrink-0" />
             {detail || (metadata.game === 'minecraft' ? 'Minecraft' : 'LoL')}
           </p>
@@ -167,7 +167,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
       <PoolBars pool={pool} className="mt-2" />
 
       {canBet && (
-        <div className="mt-2 border-t border-[#1a1a1a] pt-2">
+        <div className="mt-2 border-t border-line pt-2">
           <BetForm sessionId={metadata.sessionId} coins={profile?.coins ?? 0} />
         </div>
       )}
@@ -183,7 +183,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
       )}
 
       {!settled && isMine && (
-        <p className="mt-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+        <p className="mt-2 text-[11px] text-muted-foreground">
           é a sua partida — a galera está apostando em você
         </p>
       )}

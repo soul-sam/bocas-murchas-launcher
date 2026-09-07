@@ -194,12 +194,12 @@ function InvitesTab() {
   return (
     <div className="space-y-5">
       <div className="rounded-brutal border-2 border-acid-dark bg-void p-4">
-        <p className="mb-3 font-display text-sm uppercase tracking-widest text-acid">
+        <p className="mb-3 font-display text-sm text-acid-text">
           Gerar novo convite
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="text-[11.5px] text-muted-foreground">
               Usos máximos
             </span>
             <input
@@ -214,7 +214,7 @@ function InvitesTab() {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="text-[11.5px] text-muted-foreground">
               Expira em (dias, 0 = nunca)
             </span>
             <input
@@ -235,11 +235,11 @@ function InvitesTab() {
         </div>
         {justCreated && (
           <div className="mt-3 flex items-center justify-between rounded-brutal border-2 border-acid bg-acid/10 px-3 py-2">
-            <span className="font-mono text-sm tracking-widest text-acid">{justCreated}</span>
+            <span className="font-mono text-sm tracking-widest text-foreground">{justCreated}</span>
             <button
               type="button"
               onClick={() => void copy(justCreated)}
-              className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-acid hover:underline"
+              className="flex items-center gap-1 font-mono text-[11.5px] uppercase tracking-widest text-acid hover:underline"
             >
               <ClipboardCopy className="h-3 w-3" />
               Copiar
@@ -255,13 +255,13 @@ function InvitesTab() {
 
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <p className="font-display text-sm uppercase tracking-widest text-foreground">
+          <p className="font-display text-sm text-foreground">
             Convites existentes
           </p>
           <button
             onClick={() => void refresh()}
             disabled={reloading}
-            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-acid disabled:opacity-50"
+            className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-50"
           >
             {reloading ? 'Atualizando…' : 'Atualizar'}
           </button>
@@ -281,7 +281,7 @@ function InvitesTab() {
           ) : (
             <table className="w-full font-mono text-xs">
               <thead>
-                <tr className="border-b border-border bg-void/60 text-left text-[10px] uppercase tracking-widest text-muted-foreground">
+                <tr className="border-b border-border bg-void/60 text-left text-[11.5px] uppercase tracking-widest text-muted-foreground">
                   <th className="px-3 py-2">Código</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Usos</th>
@@ -294,11 +294,11 @@ function InvitesTab() {
                   const s = inviteState(inv)
                   return (
                     <tr key={inv.id} className="border-b border-border/50 last:border-0">
-                      <td className="px-3 py-2 tracking-widest text-acid">{inv.code}</td>
+                      <td className="px-3 py-2 tracking-widest text-acid-text">{inv.code}</td>
                       <td className="px-3 py-2">
                         <span
                           className={cn(
-                            'inline-flex items-center gap-1 text-[10px] uppercase tracking-wider',
+                            'inline-flex items-center gap-1 text-[11.5px] uppercase tracking-wider',
                             s.tone === 'ok'
                               ? 'text-acid'
                               : s.tone === 'spent'
@@ -433,13 +433,13 @@ function MembersTab() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="text-[11.5px] text-muted-foreground">
           {users ? `${users.length} ${users.length === 1 ? 'pessoa' : 'pessoas'}` : '…'}
         </p>
         <button
           onClick={() => void refresh()}
           disabled={reloading}
-          className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-acid disabled:opacity-50"
+          className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           {reloading ? 'Atualizando…' : 'Atualizar'}
         </button>
@@ -478,36 +478,36 @@ function MembersTab() {
                         </span>
                         <span
                           className={cn(
-                            'shrink-0 rounded-brutal border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest',
+                            'shrink-0 rounded-brutal border px-1.5 py-0.5 text-[11px]',
                             isAdmin
                               ? 'border-acid/60 bg-acid/10 text-acid'
-                              : 'border-[#1a1a1a] text-muted-foreground'
+                              : 'border-line text-muted-foreground'
                           )}
                         >
                           {isAdmin ? 'admin' : 'membro'}
                         </span>
                         {isMe && (
-                          <span className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
                             você
                           </span>
                         )}
                       </div>
-                      <p className="truncate font-mono text-[10px] text-muted-foreground">
+                      <p className="truncate font-mono text-[11.5px] text-muted-foreground">
                         @{member.username} · {member.email}
                       </p>
-                      <p className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      <p className="truncate text-[11.5px] text-muted-foreground">
                         visto {formatRelative(member.lastSeen)}
                         {member.inviteUsed?.code && (
                           <>
                             {' · '}convite{' '}
-                            <span className="text-acid/80">{member.inviteUsed.code}</span>
+                            <span className="text-acid-text-text">{member.inviteUsed.code}</span>
                           </>
                         )}
                       </p>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-0.5">
-                      {busy && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin text-acid" />}
+                      {busy && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
                       {!isMe && (
                         <IconButton
                           title={isAdmin ? 'Rebaixar pra membro' : 'Promover a admin'}
@@ -585,10 +585,10 @@ function MembersTab() {
                   {shownPassword && (
                     <div className="mt-2 flex items-center justify-between gap-3 rounded-brutal border-2 border-acid bg-acid/10 px-3 py-2">
                       <div className="min-w-0">
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-acid/80">
+                        <p className="text-[11px] text-acid-text-text">
                           senha temporária — só aparece agora
                         </p>
-                        <p className="select-all font-mono text-sm tracking-widest text-acid">
+                        <p className="select-all font-mono text-sm tracking-widest text-foreground">
                           {shownPassword}
                         </p>
                       </div>
@@ -601,7 +601,7 @@ function MembersTab() {
                               if (ok) cue('message')
                             })
                           }
-                          className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-acid hover:underline"
+                          className="flex items-center gap-1 font-mono text-[11.5px] uppercase tracking-widest text-acid hover:underline"
                         >
                           <ClipboardCopy className="h-3 w-3" />
                           {copied ? 'Copiado' : 'Copiar'}
@@ -609,7 +609,7 @@ function MembersTab() {
                         <button
                           type="button"
                           onClick={() => setTempPassword(null)}
-                          className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                          className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
                         >
                           Fechar
                         </button>
@@ -695,7 +695,7 @@ function SoundsTab() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="text-[11.5px] text-muted-foreground">
           {sounds
             ? `${sounds.length} sons · ${sounds.filter((s) => s.isBlocked).length} bloqueados`
             : '…'}
@@ -703,7 +703,7 @@ function SoundsTab() {
         <button
           onClick={() => void refresh()}
           disabled={reloading}
-          className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-acid disabled:opacity-50"
+          className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           {reloading ? 'Atualizando…' : 'Atualizar'}
         </button>
@@ -723,7 +723,7 @@ function SoundsTab() {
         ) : (
           <table className="w-full font-mono text-xs">
             <thead>
-              <tr className="border-b border-border bg-void/60 text-left text-[10px] uppercase tracking-widest text-muted-foreground">
+              <tr className="border-b border-border bg-void/60 text-left text-[11.5px] uppercase tracking-widest text-muted-foreground">
                 <th className="px-3 py-2">Som</th>
                 <th className="px-3 py-2">Quem subiu</th>
                 <th className="px-3 py-2 text-right">Tocado</th>
@@ -749,7 +749,7 @@ function SoundsTab() {
                           <span className="block truncate text-sm text-foreground">
                             {sound.name}
                           </span>
-                          <span className="block text-[10px] text-muted-foreground">
+                          <span className="block text-[11.5px] text-muted-foreground">
                             {sound.category} · {(sound.durationMs / 1000).toFixed(1)}s
                           </span>
                         </span>
@@ -844,15 +844,15 @@ function ToolsTab() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-brutal border border-[#1a1a1a] bg-void/60 px-3 py-2">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <div className="rounded-brutal border border-line bg-void/60 px-3 py-2">
+        <p className="text-[11.5px] text-muted-foreground">
           Launcher
         </p>
-        <p className="font-mono text-sm text-acid">v{version ?? '…'}</p>
+        <p className="font-mono text-sm text-foreground">v{version ?? '…'}</p>
       </div>
 
       <section className="space-y-3">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="text-[11.5px] text-muted-foreground">
           Servidor
         </p>
 
@@ -879,7 +879,7 @@ function ToolsTab() {
       </section>
 
       <section className="space-y-3">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="text-[11.5px] text-muted-foreground">
           Este PC
         </p>
         <ToolRow

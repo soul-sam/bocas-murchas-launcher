@@ -162,10 +162,10 @@ export function SearchPanel() {
   }
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-[#1a1a1a] bg-[#0D0D0D]">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[#1a1a1a] px-3">
-        <Search className="h-3.5 w-3.5 shrink-0 text-acid" />
-        <h3 className="flex-1 truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+    <aside className="flex w-72 shrink-0 flex-col border-l border-line bg-void">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
+        <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <h3 className="flex-1 truncate font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
           Buscar
         </h3>
         <button
@@ -173,14 +173,14 @@ export function SearchPanel() {
           onClick={closeSearch}
           title="Fechar"
           aria-label="Fechar busca"
-          className="shrink-0 rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+          className="shrink-0 rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       </header>
 
-      <div className="shrink-0 border-b border-[#1a1a1a] p-2">
-        <div className="flex items-center gap-2 rounded-brutal border-2 border-[#1a1a1a] bg-void px-2 transition-colors focus-within:border-acid/60">
+      <div className="shrink-0 border-b border-line p-2">
+        <div className="flex items-center gap-2 rounded-brutal border-2 border-line bg-void px-2 transition-colors focus-within:border-acid/60">
           <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <input
             ref={inputRef}
@@ -192,7 +192,7 @@ export function SearchPanel() {
             placeholder="O que você procura?"
             className="min-w-0 flex-1 bg-transparent py-1.5 text-sm outline-none placeholder:text-muted-foreground"
           />
-          {loading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-acid" />}
+          {loading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />}
         </div>
 
         {canScope && (
@@ -203,11 +203,11 @@ export function SearchPanel() {
               'mt-2 flex w-full items-center gap-1.5 rounded-brutal border px-2 py-1 text-left transition-colors',
               scoped
                 ? 'border-acid/50 bg-acid/10 text-acid'
-                : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/40'
+                : 'border-line text-muted-foreground hover:border-acid/40'
             )}
           >
             <Filter className="h-3 w-3 shrink-0" />
-            <span className="truncate font-mono text-[10px] uppercase tracking-widest">
+            <span className="truncate text-[11.5px]">
               {scoped ? `só em #${activeChannel?.name}` : 'em tudo que eu vejo'}
             </span>
           </button>
@@ -234,7 +234,7 @@ export function SearchPanel() {
                 key={message.id}
                 type="button"
                 onClick={() => goTo(message)}
-                className="block w-full rounded-brutal border border-[#1a1a1a] bg-void-light/30 p-2 text-left transition-colors hover:border-acid/40"
+                className="block w-full rounded-brutal border border-line bg-void-light/30 p-2 text-left transition-colors hover:border-acid/40"
               >
                 <span className="mb-1 flex items-center gap-1.5">
                   <UserAvatar
@@ -245,7 +245,7 @@ export function SearchPanel() {
                   <span className="truncate text-[11px] font-medium text-foreground">
                     {message.author.displayName}
                   </span>
-                  <span className="ml-auto shrink-0 font-mono text-[9px] text-muted-foreground">
+                  <span className="ml-auto shrink-0 font-mono text-[11px] text-muted-foreground">
                     {formatWhen(message.createdAt)}
                   </span>
                 </span>
@@ -254,7 +254,7 @@ export function SearchPanel() {
                   <Highlighted text={message.content} term={term.trim()} />
                 </span>
 
-                <span className="mt-1 flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                <span className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
                   {message.conversationId ? (
                     <MessageSquare className="h-2.5 w-2.5" />
                   ) : (
@@ -269,7 +269,7 @@ export function SearchPanel() {
       </div>
 
       {results.length > 0 && (
-        <footer className="shrink-0 border-t border-[#1a1a1a] px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+        <footer className="shrink-0 border-t border-line px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
           {results.length} {results.length === 1 ? 'resultado' : 'resultados'}
         </footer>
       )}

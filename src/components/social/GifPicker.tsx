@@ -158,12 +158,12 @@ export function GifPicker({
         <button
           type="button"
           onClick={onCancel}
-          className="flex shrink-0 items-center gap-1 rounded-brutal border-2 border-[#1a1a1a] px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid"
+          className="flex shrink-0 items-center gap-1 rounded-brutal border-2 border-line px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground"
         >
           <ArrowLeft className="h-3 w-3" />
           voltar
         </button>
-        <p className="min-w-0 flex-1 truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground">
           GIF pra {kind === 'avatar' ? 'foto de perfil' : 'capa'}
         </p>
       </div>
@@ -191,7 +191,7 @@ export function GifPicker({
                   key={suggestion}
                   type="button"
                   onClick={() => setQuery(suggestion)}
-                  className="rounded-brutal border border-[#1a1a1a] px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid"
+                  className="rounded-brutal border border-line px-2 py-0.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground"
                 >
                   {suggestion}
                 </button>
@@ -202,7 +202,7 @@ export function GifPicker({
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             {status === 'loading' ? (
               <div className="flex h-40 items-center justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-acid" />
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : status === 'error' ? (
               <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
@@ -211,7 +211,7 @@ export function GifPicker({
                 <button
                   type="button"
                   onClick={() => setAttempt((n) => n + 1)}
-                  className="rounded-brutal border-2 border-[#1a1a1a] px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid"
+                  className="rounded-brutal border-2 border-line px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground"
                 >
                   tentar de novo
                 </button>
@@ -234,7 +234,7 @@ export function GifPicker({
                       type="button"
                       onClick={() => onPick(kind === 'avatar' ? gif.avatarUrl : gif.bannerUrl)}
                       title={gif.description || 'Usar este GIF'}
-                      className="mb-2 block w-full overflow-hidden rounded-brutal border-2 border-[#1a1a1a] transition-colors hover:border-acid focus:border-acid focus:outline-none"
+                      className="mb-2 block w-full overflow-hidden rounded-brutal border-2 border-line transition-colors hover:border-acid focus:border-acid focus:outline-none"
                     >
                       <img
                         // Quem pediu menos animação no sistema vê o quadro
@@ -258,7 +258,7 @@ export function GifPicker({
                     type="button"
                     onClick={() => void loadMore()}
                     disabled={status === 'more'}
-                    className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-brutal border-2 border-[#1a1a1a] py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid disabled:opacity-50"
+                    className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-brutal border-2 border-line py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground disabled:opacity-50"
                   >
                     {status === 'more' && <Loader2 className="h-3 w-3 animate-spin" />}
                     carregar mais
@@ -299,7 +299,7 @@ export function GifPicker({
           disabled={!manualUrl.trim()}
           className={cn(
             'flex shrink-0 items-center gap-1 rounded-brutal border-2 border-acid bg-acid/10 px-2 py-1.5',
-            'font-mono text-[10px] uppercase tracking-widest text-acid transition-colors',
+            'font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors',
             'hover:bg-acid/20 disabled:cursor-not-allowed disabled:opacity-40'
           )}
         >

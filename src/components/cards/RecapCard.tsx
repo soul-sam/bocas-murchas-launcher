@@ -64,7 +64,7 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
       footer={
         badges.length > 0 ? (
           <div>
-            <p className="uppercase tracking-widest">badges novas</p>
+            <p className="">badges novas</p>
             <ul className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 normal-case">
               {badges.map((grant, index) => {
                 const who = byId[grant.userId]
@@ -108,7 +108,7 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                       className="h-6 w-6"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                      <span className="block truncate text-[11px] text-muted-foreground">
                         {award.title}
                       </span>
                       <span className="flex items-center gap-1 font-display text-sm leading-tight" style={color ? { color } : undefined}>
@@ -116,7 +116,7 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                         <NameEmoji id={who?.emoji} />
                       </span>
                     </span>
-                    <span className="shrink-0 font-mono text-[10px] text-burn">
+                    <span className="shrink-0 font-mono text-[11.5px] text-burn">
                       {formatCompact(award.value)} {award.label}
                     </span>
                   </li>
@@ -128,9 +128,9 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
           {totalTiles.length > 0 && (
             <div className="mt-2 grid grid-cols-4 gap-1">
               {totalTiles.map((tile) => (
-                <div key={tile.label} className="rounded-brutal border border-[#1a1a1a] bg-void/60 px-1 py-1 text-center">
+                <div key={tile.label} className="rounded-brutal border border-line bg-void/60 px-1 py-1 text-center">
                   <p className="truncate font-mono text-xs text-foreground">{tile.value}</p>
-                  <p className="truncate font-mono text-[8px] uppercase tracking-widest text-muted-foreground">
+                  <p className="truncate text-[11px] text-muted-foreground">
                     {tile.label}
                   </p>
                 </div>

@@ -34,13 +34,13 @@ export function HomePage() {
             src="bocas-murchas-transp.png"
             alt=""
             aria-hidden
-            className="h-10 w-10 drop-shadow-[0_0_10px_rgba(106,255,0,0.5)]"
+            className="h-10 w-10"
           />
           <div>
             <h1 className="title-brutal brand-wordmark text-3xl">Bocas Murchas</h1>
-            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Logado como{' '}
-              <span className="text-acid">{user?.displayName ?? user?.username}</span>
+              <span className="font-medium text-foreground">{user?.displayName ?? user?.username}</span>
             </p>
           </div>
         </div>
@@ -62,9 +62,19 @@ export function HomePage() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5">
+      {/* A tela existe pra apertar JOGAR: ele vem primeiro, e o que o
+          bloqueia (conta Microsoft, instalacao) vem embaixo como pre-requisito
+          — antes ficava no fim de uma pilha de quatro cards iguais. O status
+          do servidor e informacao, nao acao, e fecha a coluna. */}
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4">
         <UpdateBanner />
-        <ServerStatusCard />
+
+        <PlayCard
+          status={launch.status}
+          readyToPlay={readyToPlay}
+          onLaunch={() => void launch.launch()}
+        />
+
         <MicrosoftAccountCard
           profile={mc.profile}
           onConnect={mc.connect}
@@ -79,11 +89,7 @@ export function HomePage() {
           onRecheck={() => void install.recheck()}
         />
 
-        <PlayCard
-          status={launch.status}
-          readyToPlay={readyToPlay}
-          onLaunch={() => void launch.launch()}
-        />
+        <ServerStatusCard />
       </main>
 
       <ChangelogModal />

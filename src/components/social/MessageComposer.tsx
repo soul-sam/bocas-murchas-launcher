@@ -1,4 +1,6 @@
 import * as React from 'react'
+import { THEME_LABEL } from '../../../electron/preload/types'
+import { useSettings } from '@/lib/settings-context'
 import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react'
 import {
   Send,
@@ -91,6 +93,9 @@ export function MessageComposer({
   onEditLast,
   onDrop
 }: MessageComposerProps) {
+  // O seletor de emoji e de terceiros e nao le os tokens: recebe claro/escuro
+  // conforme o tema ativo.
+  const pickerTheme = THEME_LABEL[useSettings().settings.theme].light ? Theme.LIGHT : Theme.DARK
   const { token, user } = useAuth()
   const { nudgeChannel } = useNudge()
   const { connected: inVoice } = useVoice()
@@ -581,7 +586,7 @@ export function MessageComposer({
     >
       {suggestions.length > 0 && mentionQuery && (
         <div className="mb-1 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.6)]">
-          <p className="border-b border-[#1a1a1a] px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+          <p className="border-b border-line px-2 py-1 text-[11px] text-muted-foreground">
             Cargos e membros — Enter ou Tab pra escolher
           </p>
           {suggestions.map((item, index) => (
@@ -615,7 +620,7 @@ export function MessageComposer({
                   <span className="truncate text-sm" style={{ color: item.cargo.color }}>
                     {item.cargo.name}
                   </span>
-                  <span className="ml-auto shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
                     cargo
                   </span>
                 </>
@@ -629,7 +634,7 @@ export function MessageComposer({
                   />
                   <span className="truncate text-sm">{item.member.displayName}</span>
                   {item.member.username && (
-                    <span className="truncate font-mono text-[10px] text-muted-foreground">
+                    <span className="truncate font-mono text-[11.5px] text-muted-foreground">
                       @{item.member.username}
                     </span>
                   )}
@@ -642,7 +647,7 @@ export function MessageComposer({
 
       {emojiSuggestions.length > 0 && emojiQuery && (
         <div className="mb-1 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.6)]">
-          <p className="border-b border-[#1a1a1a] px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+          <p className="border-b border-line px-2 py-1 text-[11px] text-muted-foreground">
             Emojis do servidor — Enter ou Tab pra escolher
           </p>
           {emojiSuggestions.map((emoji, index) => (
@@ -668,7 +673,7 @@ export function MessageComposer({
 
       {slashSuggestions.length > 0 && (
         <div className="mb-1 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.6)]">
-          <p className="border-b border-[#1a1a1a] px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+          <p className="border-b border-line px-2 py-1 text-[11px] text-muted-foreground">
             Comandos — Enter pra abrir
           </p>
           {slashSuggestions.map((item) => (
@@ -679,9 +684,9 @@ export function MessageComposer({
                 event.preventDefault()
                 runSlashCommand(item.command)
               }}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-foreground transition-colors hover:bg-acid/15 hover:text-acid"
+              className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-foreground transition-colors hover:bg-acid/15 hover:text-foreground"
             >
-              <span className="font-mono text-xs text-acid">{item.command}</span>
+              <span className="font-mono text-xs text-foreground">{item.command}</span>
               <span className="truncate text-[11px] text-muted-foreground">{item.hint}</span>
             </button>
           ))}
@@ -689,7 +694,7 @@ export function MessageComposer({
       )}
 
       {replyTo && (
-        <div className="flex items-center gap-2 rounded-t-brutal border-2 border-b-0 border-[#1a1a1a] bg-void-light/60 px-3 py-1.5">
+        <div className="flex items-center gap-2 rounded-t-brutal border-2 border-b-0 border-line bg-void-light/60 px-3 py-1.5">
           <span className="truncate text-[11px] text-muted-foreground">
             Respondendo a{' '}
             <span className="font-medium text-foreground">
@@ -710,7 +715,7 @@ export function MessageComposer({
       {image && (
         <div
           className={cn(
-            'relative w-fit border-2 border-b-0 border-[#1a1a1a] bg-void-light/60 p-2',
+            'relative w-fit border-2 border-b-0 border-line bg-void-light/60 p-2',
             !replyTo && 'rounded-t-brutal'
           )}
         >
@@ -733,14 +738,14 @@ export function MessageComposer({
       {file && (
         <div
           className={cn(
-            'flex w-fit max-w-full items-center gap-2 border-2 border-b-0 border-[#1a1a1a] bg-void-light/60 px-3 py-2',
+            'flex w-fit max-w-full items-center gap-2 border-2 border-b-0 border-line bg-void-light/60 px-3 py-2',
             !replyTo && 'rounded-t-brutal'
           )}
         >
-          <FileText className="h-4 w-4 shrink-0 text-acid" />
+          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-xs text-foreground">{file.fileName}</span>
-            <span className="block font-mono text-[10px] text-muted-foreground">
+            <span className="block font-mono text-[11.5px] text-muted-foreground">
               {formatSize(file.sizeBytes)}
             </span>
           </span>
@@ -760,7 +765,7 @@ export function MessageComposer({
           'flex items-end gap-1 border-2 bg-void px-2 py-1.5 transition-colors',
           dragging
             ? 'border-acid bg-acid/5'
-            : 'border-[#1a1a1a] focus-within:border-acid/60',
+            : 'border-line focus-within:border-acid/60',
           replyTo || hasAttachment ? 'rounded-b-brutal' : 'rounded-brutal'
         )}
       >
@@ -768,7 +773,7 @@ export function MessageComposer({
 
         <label
           title="Enviar imagem"
-          className="shrink-0 cursor-pointer rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+          className="shrink-0 cursor-pointer rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           {uploading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -789,7 +794,7 @@ export function MessageComposer({
 
         <label
           title="Anexar arquivo (até 50 MB)"
-          className="hidden shrink-0 cursor-pointer rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid sm:block"
+          className="hidden shrink-0 cursor-pointer rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:block"
         >
           <Paperclip className="h-4 w-4" />
           <input
@@ -827,7 +832,7 @@ export function MessageComposer({
         {remaining < 200 && (
           <span
             className={cn(
-              'shrink-0 self-center font-mono text-[10px]',
+              'shrink-0 self-center font-mono text-[11.5px]',
               remaining < 0 ? 'text-destructive' : 'text-muted-foreground'
             )}
           >
@@ -840,13 +845,13 @@ export function MessageComposer({
             <button
               type="button"
               title="Formatação"
-              className="hidden shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid sm:block"
+              className="hidden shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:block"
             >
               <Type className="h-4 w-4" />
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64 p-2">
-            <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="mb-1.5 text-[11.5px] text-muted-foreground">
               Formatação
             </p>
             <div className="grid grid-cols-2 gap-1">
@@ -857,7 +862,7 @@ export function MessageComposer({
               <FormatButton label="Spoiler" hint="||texto||" onClick={() => wrapSelection('||')} />
               <FormatButton label="Código" hint="`texto`" onClick={() => wrapSelection('`')} />
             </div>
-            <p className="mt-2 border-t border-[#1a1a1a] pt-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 border-t border-line pt-1.5 font-mono text-[11.5px] leading-relaxed text-muted-foreground">
               &gt; citação · ```bloco``` · @pessoa · #canal
             </p>
           </PopoverContent>
@@ -868,14 +873,14 @@ export function MessageComposer({
             <button
               type="button"
               title="Emoji"
-              className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+              className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <Smile className="h-4 w-4" />
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-auto overflow-hidden border-0 p-0">
             <EmojiPicker
-              theme={Theme.DARK}
+              theme={pickerTheme}
               emojiStyle={EmojiStyle.NATIVE}
               lazyLoadEmojis
               width={320}
@@ -891,15 +896,15 @@ export function MessageComposer({
                 }
               }}
             />
-            <div className="flex items-center justify-between gap-2 border-t border-[#1a1a1a] bg-void px-3 py-1.5">
-              <span className="truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+            <div className="flex items-center justify-between gap-2 border-t border-line bg-void px-3 py-1.5">
+              <span className="truncate text-[11px] text-muted-foreground">
                 digitar :nome: também vale
               </span>
               <PopoverClose asChild>
                 <button
                   type="button"
                   onClick={() => openManager('emojis')}
-                  className="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-acid"
+                  className="flex shrink-0 items-center gap-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Settings2 className="h-3 w-3" />
                   gerenciar
@@ -971,10 +976,10 @@ function FormatButton({
       type="button"
       onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
-      className="rounded-brutal border border-[#1a1a1a] px-2 py-1 text-left transition-colors hover:border-acid/50 hover:text-acid"
+      className="rounded-brutal border border-line px-2 py-1 text-left transition-colors hover:border-acid/50 hover:text-foreground"
     >
       <span className="block text-[11px]">{label}</span>
-      <span className="block font-mono text-[9px] text-muted-foreground">{hint}</span>
+      <span className="block font-mono text-[11px] text-muted-foreground">{hint}</span>
     </button>
   )
 }

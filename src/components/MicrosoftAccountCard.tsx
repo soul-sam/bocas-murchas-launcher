@@ -54,13 +54,13 @@ export function MicrosoftAccountCard({ profile, onConnect, onDisconnect, busy }:
           className="rounded-brutal border-2 border-acid bg-void shadow-glow-acid"
         />
         <div className="flex-1">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="text-[11.5px] text-muted-foreground">
             Conectado como
           </p>
           <p className="font-display text-xl uppercase tracking-wider text-foreground">
             {profile.name}
           </p>
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-acid">
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-acid-text">
             <UserCheck className="h-3 w-3" />
             Conta Microsoft validada
           </p>

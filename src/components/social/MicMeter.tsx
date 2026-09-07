@@ -42,8 +42,8 @@ export function MicMeter({
         if (open !== lastOpen) {
           lastOpen = open
           bar.classList.toggle('bg-acid', open)
-          bar.classList.toggle('shadow-[0_0_8px_rgba(106,255,0,0.6)]', open)
-          bar.classList.toggle('bg-[#3A3A3A]', !open)
+          bar.classList.toggle('shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]', open)
+          bar.classList.toggle('bg-surface-strong', !open)
         }
       }
       frame = requestAnimationFrame(draw)
@@ -59,7 +59,7 @@ export function MicMeter({
   return (
     <div
       className={cn(
-        'relative h-3 w-full overflow-hidden rounded-brutal border border-[#1a1a1a] bg-void',
+        'relative h-3 w-full overflow-hidden rounded-brutal border border-line bg-void',
         className
       )}
       role="meter"
@@ -67,7 +67,7 @@ export function MicMeter({
     >
       <div
         ref={barRef}
-        className="h-full w-full origin-left bg-[#3A3A3A] transition-none"
+        className="h-full w-full origin-left bg-surface-strong transition-none"
         style={{ transform: 'scaleX(0)' }}
       />
 

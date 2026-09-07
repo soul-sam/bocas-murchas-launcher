@@ -29,11 +29,11 @@ export function SystemCard({ message, metadata }: CardProps<SystemCardMeta>) {
     <CardFrame accent={kind.accent} icon={<Icon className="h-3.5 w-3.5" />} title={kind.label}>
       <div className="flex items-center gap-3">
         {metadata.icon ? (
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-brutal border border-[#1a1a1a] bg-void text-xl leading-none">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-brutal border border-line bg-void text-xl leading-none">
             {metadata.icon}
           </span>
         ) : (
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-brutal border border-[#1a1a1a] bg-void text-acid">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-brutal border border-line bg-void text-acid-text">
             <Icon className="h-4 w-4" />
           </span>
         )}

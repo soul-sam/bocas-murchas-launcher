@@ -22,9 +22,9 @@ export function PartyCallPrompt() {
 
   return (
     <div className="pointer-events-auto fixed bottom-20 right-4 z-40 w-80 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.7)]">
-      <div className="flex items-center gap-2 border-b border-[#1a1a1a] px-3 py-1.5">
-        <Swords className="h-3.5 w-3.5 text-acid" />
-        <span className="flex-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <div className="flex items-center gap-2 border-b border-line px-3 py-1.5">
+        <Swords className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="flex-1 text-[11.5px] text-muted-foreground">
           Lobby do grupo
         </span>
         <button
@@ -59,7 +59,7 @@ export function PartyCallPrompt() {
         <button
           type="button"
           onClick={acceptPendingCall}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-brutal bg-acid px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-void transition-colors hover:bg-acid/90"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-brutal bg-acid px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-void transition-colors hover:bg-acid/90"
         >
           <Headphones className="h-3.5 w-3.5" />
           entrar na call
@@ -67,7 +67,7 @@ export function PartyCallPrompt() {
         <button
           type="button"
           onClick={dismissPendingCall}
-          className="rounded-brutal border border-[#1a1a1a] px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground"
+          className="rounded-brutal border border-line px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground"
         >
           agora não
         </button>

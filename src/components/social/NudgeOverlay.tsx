@@ -36,7 +36,7 @@ export function NudgeOverlay() {
 
       {feedback && (
         <div className="pointer-events-none fixed bottom-6 left-1/2 z-[70] -translate-x-1/2">
-          <div className="rounded-brutal border-2 border-[#1a1a1a] bg-void px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+          <div className="rounded-brutal border-2 border-line bg-void px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
             {feedback}
           </div>
         </div>
@@ -45,7 +45,7 @@ export function NudgeOverlay() {
       {settings.nudgeOptOut && (
         <div
           title="Você desativou cutucadas nas configurações"
-          className="pointer-events-none fixed bottom-3 right-3 z-[60] flex items-center gap-1 rounded-brutal border border-[#1a1a1a] bg-void/90 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+          className="pointer-events-none fixed bottom-3 right-3 z-[60] flex items-center gap-1 rounded-brutal border border-line bg-void/90 px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground"
         >
           <BellOff className="h-3 w-3" />
           cutucadas off

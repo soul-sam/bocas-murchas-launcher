@@ -136,8 +136,8 @@ export function VoiceStage() {
   if (voice.connecting) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
-        <Loader2 className="h-5 w-5 animate-spin text-acid" />
-        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <p className="text-xs text-muted-foreground">
           Entrando em {voice.channel?.name}…
         </p>
       </div>
@@ -161,25 +161,25 @@ export function VoiceStage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[#1a1a1a] px-3 sm:px-4">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3 sm:px-4">
         {sidebarIsDrawer && (
           <button
             type="button"
             onClick={toggleSidebar}
             title="Canais"
             aria-label="Abrir canais"
-            className="-ml-1 shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-acid"
+            className="-ml-1 shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
           >
             <PanelLeftOpen className="h-4 w-4" />
           </button>
         )}
 
-        <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-acid shadow-[0_0_8px_#6AFF00]" />
+        <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-acid shadow-neon-2" />
         <h2 className="truncate font-display text-sm uppercase tracking-wide text-dirty-white">
           {voice.channel.name}
         </h2>
 
-        <span className="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className="flex shrink-0 items-center gap-1 text-[11.5px] text-muted-foreground">
           <Users className="h-3 w-3" />
           {voice.participants.length}
         </span>
@@ -193,7 +193,7 @@ export function VoiceStage() {
                 setWatchFocused(true)
               }}
               title={watch.current.title ?? 'Assistindo junto'}
-              className="flex items-center gap-1.5 rounded-brutal border border-acid/50 bg-acid/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20"
+              className="flex items-center gap-1.5 rounded-brutal border border-acid/50 bg-acid/10 px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20"
             >
               <Tv className="h-3 w-3" />
               {watch.current.playing ? 'assistindo' : 'vídeo pausado'}
@@ -201,7 +201,7 @@ export function VoiceStage() {
           )}
 
           {voice.screenSharing && (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-brutal border border-burn/50 bg-burn/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-burn">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-brutal border border-burn/50 bg-burn/10 px-2 py-0.5 text-[11px] text-burn">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-burn" />
               no ar
             </span>
@@ -267,7 +267,7 @@ export function VoiceStage() {
         )}
 
         {/* Controles */}
-        <div className="flex shrink-0 flex-wrap items-center justify-center gap-1.5 rounded-brutal border-2 border-[#1a1a1a] bg-void/60 p-2 sm:gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-center gap-1.5 rounded-brutal border-2 border-line bg-void/60 p-2 sm:gap-2">
           <ControlButton
             active={voice.micEnabled}
             danger={!voice.micEnabled}
@@ -352,7 +352,7 @@ export function VoiceStage() {
             <Zap className="h-4 w-4" />
           </ControlButton>
 
-          <span className="mx-1 hidden h-6 w-px bg-[#1a1a1a] sm:block" />
+          <span className="mx-1 hidden h-6 w-px bg-surface-raised sm:block" />
 
           <button
             type="button"
@@ -390,13 +390,13 @@ function ScreenSharesBar({ feeds, onShow }: { feeds: ScreenShareFeed[]; onShow: 
     <button
       type="button"
       onClick={onShow}
-      className="flex shrink-0 items-center gap-2 rounded-brutal border-2 border-[#1a1a1a] bg-void/60 px-2 py-1.5 text-left transition-colors hover:border-destructive/50"
+      className="flex shrink-0 items-center gap-2 rounded-brutal border-2 border-line bg-void/60 px-2 py-1.5 text-left transition-colors hover:border-destructive/50"
     >
       <Radio className="h-3.5 w-3.5 shrink-0 animate-pulse text-destructive" />
-      <span className="min-w-0 truncate font-mono text-[10px] uppercase tracking-widest text-dirty-white">
+      <span className="min-w-0 truncate text-[11.5px] text-dirty-white">
         {label}
       </span>
-      <span className="ml-auto flex shrink-0 items-center gap-1 rounded-brutal border border-destructive/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-destructive">
+      <span className="ml-auto flex shrink-0 items-center gap-1 rounded-brutal border border-destructive/60 px-2 py-0.5 text-[11.5px] text-destructive">
         <MonitorUp className="h-3 w-3" />
         ver tela
       </span>
@@ -439,12 +439,12 @@ const ControlButton = React.forwardRef<
           ? 'border-destructive/60 text-destructive hover:bg-destructive/15'
           : active
             ? 'border-acid bg-acid/10 text-acid'
-            : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-acid'
+            : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
       )}
     >
       {children}
       {text && (
-        <span className="font-mono text-[10px] uppercase tracking-widest">{text}</span>
+        <span className="text-[11.5px]">{text}</span>
       )}
     </button>
   )

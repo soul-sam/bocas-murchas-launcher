@@ -43,6 +43,7 @@ export function AuthorName({
     // (nem no modo compacto), e o título não pode mudar isso.
     <span onContextMenu={onContextMenu} className="inline-flex shrink-0 items-baseline gap-1.5">
       <NameEffect
+        animated={false}
         effect={member?.nameEffect}
         className={cn(className)}
         style={{ ...(color ? { color } : {}), ...style }}

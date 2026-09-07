@@ -129,12 +129,12 @@ export function UserContextMenu() {
                 clique, e arrastar um slider dispara clique o tempo todo. */}
             <div className="px-2 pb-1.5 pt-1">
               <div className="mb-1 flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                <span className="text-[11.5px] text-muted-foreground">
                   Volume
                 </span>
                 <span
                   className={cn(
-                    'font-mono text-[10px]',
+                    'font-mono text-[11.5px]',
                     muted ? 'text-destructive' : 'text-muted-foreground'
                   )}
                 >
@@ -149,7 +149,7 @@ export function UserContextMenu() {
                   onClick={() => voice.setUserVolume(userId, muted ? 1 : 0)}
                   className={cn(
                     'shrink-0 transition-colors',
-                    muted ? 'text-destructive' : 'text-muted-foreground hover:text-acid'
+                    muted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
                   {muted ? (
@@ -173,7 +173,7 @@ export function UserContextMenu() {
               </div>
 
               {!inMyCall && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                <p className="mt-1 text-[11px] text-muted-foreground">
                   vale na próxima call
                 </p>
               )}

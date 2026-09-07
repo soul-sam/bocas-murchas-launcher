@@ -91,7 +91,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
             <button
               type="button"
               onClick={() => void join()}
-              className="shrink-0 rounded-brutal border border-acid/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/10"
+              className="shrink-0 rounded-brutal border border-acid/60 px-2 py-0.5 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/10"
             >
               {alreadyThere ? 'ver' : 'entrar'}
             </button>
@@ -109,7 +109,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
         <span className="flex items-center gap-2">
           Assistir junto
           {live && (
-            <span className="flex items-center gap-1 text-acid">
+            <span className="flex items-center gap-1 text-acid-text">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-acid" />
               rolando agora
             </span>
@@ -136,7 +136,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
           type="button"
           onClick={() => openExternal(youtubeWatchUrl(videoId))}
           title="Abrir no YouTube"
-          className="group relative aspect-video w-36 shrink-0 overflow-hidden rounded-brutal border border-[#1a1a1a] bg-black sm:w-44"
+          className="group relative aspect-video w-36 shrink-0 overflow-hidden rounded-brutal border border-line bg-black sm:w-44"
         >
           {!thumbBroken ? (
             <img
@@ -165,7 +165,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
               ringColor={host?.profileColor}
               className="h-5 w-5"
             />
-            <span className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="truncate text-[11.5px] text-muted-foreground">
               {hostName} trouxe
             </span>
           </div>
@@ -177,7 +177,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
                 onClick={() => void join()}
                 disabled={joining}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-brutal border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+                  'flex items-center gap-1.5 rounded-brutal border-2 px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
                   alreadyThere
                     ? 'border-acid bg-acid/10 text-acid hover:bg-acid/20'
                     : 'border-acid/60 text-acid hover:bg-acid/10',
@@ -191,7 +191,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
               <button
                 type="button"
                 onClick={() => openExternal(youtubeWatchUrl(videoId))}
-                className="flex items-center gap-1.5 rounded-brutal border-2 border-[#2a2a2a] px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid"
+                className="flex items-center gap-1.5 rounded-brutal border-2 border-line-strong px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground"
               >
                 <ExternalLink className="h-3 w-3" />
                 Abrir no YouTube

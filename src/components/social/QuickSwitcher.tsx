@@ -203,7 +203,7 @@ export function QuickSwitcher() {
         id: 'cmd:admin',
         label: 'Painel admin',
         hint: 'convites, membros, sons',
-        icon: <Shield className="h-3.5 w-3.5 text-acid" />,
+        icon: <Shield className="h-3.5 w-3.5 text-muted-foreground" />,
         keywords: 'admin painel convites membros sons ferramentas',
         run: openAdmin
       })
@@ -283,7 +283,7 @@ export function QuickSwitcher() {
             }
           }}
           placeholder="Ir pra um canal ou rodar um comando…"
-          className="w-full border-b-2 border-[#1a1a1a] bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
+          className="w-full border-b-2 border-line bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
         />
 
         <div className="max-h-80 overflow-y-auto p-1">
@@ -306,7 +306,7 @@ export function QuickSwitcher() {
                 <span className="shrink-0">{entry.icon}</span>
                 <span className="min-w-0 flex-1 truncate text-sm">{entry.label}</span>
                 {entry.hint && (
-                  <span className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
                     {entry.hint}
                   </span>
                 )}

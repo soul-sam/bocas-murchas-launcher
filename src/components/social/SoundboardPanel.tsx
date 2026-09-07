@@ -65,7 +65,7 @@ export function SoundboardPanel() {
       <header className="flex shrink-0 items-center justify-between gap-2 pb-2">
         <div className="min-w-0">
           <h2 className="title-brutal text-base leading-tight">Soundboard</h2>
-          <p className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="truncate text-[11.5px] text-muted-foreground">
             {inVoice ? 'toca pra sala toda' : 'entra numa call pra tocar'}
           </p>
         </div>
@@ -87,7 +87,7 @@ export function SoundboardPanel() {
             onClick={() => setUploadOpen(true)}
             title="Novo som"
             aria-label="Novo som"
-            className="rounded-brutal border border-[#1a1a1a] p-2 text-foreground transition-colors hover:border-acid/50 hover:bg-acid/10 hover:text-acid"
+            className="rounded-brutal border border-line p-2 text-foreground transition-colors hover:border-acid/50 hover:bg-acid/10 hover:text-foreground"
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -147,10 +147,10 @@ export function SoundboardPanel() {
         )}
       </div>
 
-      <footer className="mt-3 shrink-0 space-y-2 border-t border-[#1a1a1a] pt-3">
+      <footer className="mt-3 shrink-0 space-y-2 border-t border-line pt-3">
         <label className="flex items-center gap-2">
           <Volume2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <span className="text-[11.5px] text-muted-foreground">
             Volume
           </span>
           <input
@@ -162,13 +162,13 @@ export function SoundboardPanel() {
             onChange={(e) => void update({ soundboardVolume: Number(e.target.value) })}
             className="ram-slider ml-auto w-32"
           />
-          <span className="w-8 text-right font-mono text-[10px] text-muted-foreground">
+          <span className="w-8 text-right font-mono text-[11.5px] text-muted-foreground">
             {Math.round(settings.soundboardVolume * 100)}
           </span>
         </label>
 
         {recent.length > 0 && (
-          <p className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="truncate text-[11.5px] text-muted-foreground">
             {recent[0].soundEmoji} {recent[0].soundName} — {recent[0].playedBy}
           </p>
         )}
@@ -197,10 +197,10 @@ function CategoryChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-brutal border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+        'rounded-brutal border px-2 py-0.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
         active
           ? 'border-acid bg-acid/10 text-acid'
-          : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-foreground'
+          : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
       )}
     >
       {children}
@@ -258,7 +258,7 @@ function SoundTile({
         }
         className={cn(
           'flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border px-2.5 text-left transition-all',
-          'border-[#1a1a1a] bg-void-light/40',
+          'border-line bg-void-light/40',
           sound.isBlocked && 'border-dashed',
           disabled
             ? 'cursor-not-allowed opacity-60'
@@ -284,7 +284,7 @@ function SoundTile({
           onClick={onPreview}
           title="Ouvir só eu"
           aria-label="Ouvir só eu"
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <Play className="h-3.5 w-3.5" />
         </button>
@@ -412,7 +412,7 @@ function SoundMenu({
           type="button"
           title={canEdit ? 'Atalho e edição' : 'Atalho'}
           aria-label={canEdit ? 'Atalho e edição' : 'Atalho'}
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
@@ -423,7 +423,7 @@ function SoundMenu({
           <span className="shrink-0 text-xl leading-none">{sound.emoji}</span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium text-foreground">{sound.name}</span>
-            <span className="block font-mono text-[10px] text-muted-foreground">
+            <span className="block font-mono text-[11.5px] text-muted-foreground">
               {(sound.durationMs / 1000).toFixed(1)}s · {sound.playCount}x
               {sound.isBlocked && <span className="text-burn"> · bloqueado</span>}
             </span>
@@ -438,7 +438,7 @@ function SoundMenu({
 
         {canEdit && (
           <>
-            <div className="flex gap-2 border-t border-[#1a1a1a] pt-3">
+            <div className="flex gap-2 border-t border-line pt-3">
               <div className="w-14 space-y-1">
                 <Label htmlFor={`emoji-${sound.id}`}>Emoji</Label>
                 <Input
@@ -482,7 +482,7 @@ function SoundMenu({
             <label className="block space-y-1">
               <span className="flex items-center justify-between">
                 <Label>Volume do som</Label>
-                <span className="font-mono text-[10px] text-acid">{Math.round(volume * 100)}%</span>
+                <span className="font-mono text-[11.5px] text-foreground">{Math.round(volume * 100)}%</span>
               </span>
               <input
                 type="range"
@@ -497,10 +497,10 @@ function SoundMenu({
 
             {error && <p className="text-xs text-destructive">{error}</p>}
 
-            <div className="flex items-center justify-between gap-2 border-t border-[#1a1a1a] pt-2">
+            <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
               <div className="flex items-center gap-1">
                 {confirmDelete ? (
-                  <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-destructive">
+                  <span className="flex items-center gap-1.5 font-mono text-[11.5px] uppercase tracking-wider text-destructive">
                     apagar?
                     <button
                       type="button"
@@ -536,7 +536,7 @@ function SoundMenu({
                     disabled={busy}
                     title={sound.isBlocked ? 'Liberar pra todo mundo' : 'Bloquear pra todo mundo'}
                     className={cn(
-                      'flex items-center gap-1 rounded-brutal px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors',
+                      'flex items-center gap-1 rounded-brutal px-1.5 py-1 font-mono text-[11.5px] uppercase tracking-wider transition-colors',
                       sound.isBlocked
                         ? 'text-acid hover:bg-acid/10'
                         : 'text-muted-foreground hover:bg-burn/10 hover:text-burn'
@@ -665,12 +665,12 @@ function UploadSoundDialog({
               // .ogg/.opus/.m4a e o arquivo ficava cinza no seletor.
               accept="audio/*,.mp3,.ogg,.opus,.wav,.webm,.m4a,.aac,.flac"
               onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
-              className="input-terminal w-full rounded-brutal p-2 text-xs file:mr-2 file:rounded-brutal file:border-0 file:bg-acid file:px-2 file:py-1 file:text-[10px] file:font-bold file:uppercase file:text-void"
+              className="input-terminal w-full rounded-brutal p-2 text-xs file:mr-2 file:rounded-brutal file:border-0 file:bg-acid file:px-2 file:py-1 file:text-[11.5px] file:font-bold file:uppercase file:text-void"
             />
             {duration !== null && (
               <p
                 className={cn(
-                  'font-mono text-[10px] uppercase tracking-widest',
+                  'text-[11.5px]',
                   duration > MAX_DURATION_MS ? 'text-destructive' : 'text-muted-foreground'
                 )}
               >

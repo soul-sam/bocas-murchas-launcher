@@ -74,7 +74,7 @@ export function ConnectionBars({
             style={{ height }}
             className={cn(
               'w-[3px] rounded-[1px] transition-colors',
-              index < lit ? color : 'bg-[#2a2a2a]'
+              index < lit ? color : 'bg-surface-strong'
             )}
           />
         ))}
@@ -87,7 +87,7 @@ export function ConnectionBars({
       {pingMs !== null && (
         <span
           className={cn(
-            'w-9 shrink-0 text-right font-mono text-[9px] tabular-nums',
+            'w-9 shrink-0 text-right font-mono text-[11px] tabular-nums',
             quality === 'poor'
               ? 'text-burn'
               : quality === 'lost'

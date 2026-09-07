@@ -87,7 +87,7 @@ export function BetPopover({
               Apostar em {name}
             </p>
             {detail && (
-              <p className="truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+              <p className="truncate text-[11px] text-muted-foreground">
                 {detail}
               </p>
             )}
@@ -97,7 +97,7 @@ export function BetPopover({
         <PoolBars pool={game.pool} className="mb-3" />
 
         {isMine ? (
-          <p className="rounded-brutal border border-[#1a1a1a] bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
+          <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
             Não dá pra apostar no próprio jogo. Vai lá ganhar.
           </p>
         ) : game.myWager ? (
@@ -133,8 +133,8 @@ export function PoolBars({ pool, className }: { pool: WagerPool; className?: str
 
   return (
     <div className={className}>
-      <div className="mb-1 flex items-center justify-between font-mono text-[9px] uppercase tracking-widest">
-        <span className="flex items-center gap-1 text-acid">
+      <div className="mb-1 flex items-center justify-between font-mono text-[11px] uppercase tracking-widest">
+        <span className="flex items-center gap-1 text-acid-text">
           <TrendingUp className="h-2.5 w-2.5" />
           vitória · {formatCompact(win)}
         </span>
@@ -143,7 +143,7 @@ export function PoolBars({ pool, className }: { pool: WagerPool; className?: str
           <TrendingDown className="h-2.5 w-2.5" />
         </span>
       </div>
-      <div className="flex h-1.5 w-full overflow-hidden rounded-brutal bg-[#1a1a1a]">
+      <div className="flex h-1.5 w-full overflow-hidden rounded-brutal bg-surface-raised">
         <div
           className={cn('h-full transition-[width] duration-500', total > 0 ? 'bg-acid' : 'bg-acid/30')}
           style={{ width: `${winPct}%` }}
@@ -153,7 +153,7 @@ export function PoolBars({ pool, className }: { pool: WagerPool; className?: str
           style={{ width: `${100 - winPct}%` }}
         />
       </div>
-      <p className="mt-1 text-center font-mono text-[9px] text-muted-foreground">
+      <p className="mt-1 text-center font-mono text-[11px] text-muted-foreground">
         {total > 0 ? `pool ${formatCompact(total)} murchos` : 'ninguém apostou ainda'}
       </p>
     </div>
@@ -244,10 +244,10 @@ export function BetForm({
               setCustom('')
             }}
             className={cn(
-              'flex-1 rounded-brutal border px-1 py-1 font-mono text-[10px] transition-colors',
+              'flex-1 rounded-brutal border px-1 py-1 font-mono text-[11.5px] transition-colors',
               !custom && amount === preset
                 ? 'border-burn bg-burn/15 text-burn'
-                : 'border-[#1a1a1a] text-muted-foreground hover:border-burn/50 hover:text-foreground'
+                : 'border-line text-muted-foreground hover:border-burn/50 hover:text-foreground'
             )}
           >
             {preset}
@@ -261,13 +261,13 @@ export function BetForm({
           onChange={(e) => setCustom(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
           placeholder="outro"
           className={cn(
-            'input-terminal w-14 rounded-brutal px-1 py-1 text-center text-[10px]',
+            'input-terminal w-14 rounded-brutal px-1 py-1 text-center text-[11.5px]',
             custom && !valid && 'border-destructive'
           )}
         />
       </div>
 
-      <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+      <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
         <span className="flex items-center gap-1">
           <Coins className="h-2.5 w-2.5 text-burn" />
           você tem {formatCompact(coins)}
@@ -288,7 +288,7 @@ export function BetForm({
         disabled={!canSubmit}
         className={cn(
           'flex w-full items-center justify-center gap-1.5 rounded-brutal border-2 px-2 py-1.5',
-          'font-mono text-[10px] uppercase tracking-widest transition-colors',
+          'font-mono text-[11.5px] uppercase tracking-widest transition-colors',
           prediction === 'win'
             ? 'border-acid-dark bg-acid/15 text-acid hover:bg-acid/25'
             : 'border-destructive/60 bg-destructive/15 text-destructive hover:bg-destructive/25',
@@ -320,12 +320,12 @@ function SideButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center justify-center gap-1 rounded-brutal border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+        'flex items-center justify-center gap-1 rounded-brutal border px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
         active
           ? tone === 'acid'
             ? 'border-acid bg-acid/15 text-acid'
             : 'border-destructive bg-destructive/15 text-destructive'
-          : 'border-[#1a1a1a] text-muted-foreground hover:text-foreground'
+          : 'border-line text-muted-foreground hover:text-foreground'
       )}
     >
       {icon}

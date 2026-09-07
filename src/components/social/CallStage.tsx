@@ -195,7 +195,7 @@ function Framed({
       <div
         className={cn(
           'relative overflow-hidden rounded-brutal border-2 bg-black',
-          style ?? (speaking ? 'border-acid' : 'border-[#1a1a1a]'),
+          style ?? (speaking ? 'border-acid' : 'border-line'),
           className
         )}
       >
@@ -239,7 +239,7 @@ function ParticipantName({
       <NameEmoji id={member?.emoji} size={emojiSize} />
 
       {participant.isLocal && (
-        <span className="shrink-0 text-[10px] text-muted-foreground">(você)</span>
+        <span className="shrink-0 text-[11.5px] text-muted-foreground">(você)</span>
       )}
       {/* Só o ícone do título: o nome do título não caberia por cima do vídeo
           sem roubar espaço do nome da pessoa, que é o que importa aqui. */}
@@ -282,7 +282,7 @@ function VolumeControl({
         onClick={() => onVolume(muted ? 1 : 0)}
         className={cn(
           'shrink-0 transition-colors',
-          muted ? 'text-destructive' : 'text-muted-foreground hover:text-acid'
+          muted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
         )}
       >
         {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
@@ -306,7 +306,7 @@ function VolumeControl({
       {!compact && (
         <span
           className={cn(
-            'w-7 shrink-0 text-right font-mono text-[9px]',
+            'w-7 shrink-0 text-right font-mono text-[11px]',
             muted ? 'text-destructive' : 'text-muted-foreground'
           )}
         >
@@ -361,7 +361,7 @@ function CameraTile({
           // Sem medida ainda (primeiro quadro): a proporção segura o layout
           // até o ResizeObserver responder.
           !width && 'aspect-video w-full min-w-[176px]',
-          participant.isSpeaking && 'shadow-[0_0_20px_rgba(106,255,0,0.2)]'
+          participant.isSpeaking && 'shadow-[0_0_20px_rgb(var(--neon-rgb)/0.2)]'
         )}
       >
         {/* Espelhado só na própria imagem: é como todo mundo se vê no espelho,
@@ -392,7 +392,7 @@ function CameraTile({
           onClick={onToggleSpotlight}
           title={spotlighted ? 'Voltar pra grade' : 'Colocar em destaque'}
           aria-label={spotlighted ? 'Voltar pra grade' : 'Colocar em destaque'}
-          className="absolute right-2 top-2 rounded-brutal bg-void/90 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-acid focus:opacity-100 group-hover:opacity-100"
+          className="absolute right-2 top-2 rounded-brutal bg-void/90 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus:opacity-100 group-hover:opacity-100"
         >
           {spotlighted ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
         </button>
@@ -436,7 +436,7 @@ function AvatarTile({
         className={cn(
           'flex h-full w-full items-center justify-center bg-void-light/30 transition-shadow',
           !width && 'aspect-video w-full min-w-[176px]',
-          participant.isSpeaking && 'shadow-[0_0_20px_rgba(106,255,0,0.2)]'
+          participant.isSpeaking && 'shadow-[0_0_20px_rgb(var(--neon-rgb)/0.2)]'
         )}
       >
         <UserAvatar
@@ -556,7 +556,7 @@ export function ParticipantChip({
       onContextMenu={onContextMenu}
       className={cn(
         'flex shrink-0 items-center gap-1.5 rounded-brutal border-2 px-2 py-1',
-        participant.isSpeaking ? 'border-acid bg-acid/5' : 'border-[#1a1a1a] bg-void-light/30'
+        participant.isSpeaking ? 'border-acid bg-acid/5' : 'border-line bg-void-light/30'
       )}
     >
       {camera ? (

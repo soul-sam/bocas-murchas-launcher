@@ -125,7 +125,7 @@ function Spoiler({ children }: { children: React.ReactNode }) {
         'rounded-[3px] px-1 transition-colors',
         revealed
           ? 'bg-void-light/60 text-foreground'
-          : 'cursor-pointer select-none bg-[#1f1f1f] text-transparent hover:bg-[#272727]'
+          : 'cursor-pointer select-none bg-surface-raised text-transparent hover:bg-surface-strong'
       )}
     >
       {children}
@@ -171,7 +171,7 @@ function InlineNodes({ nodes }: { nodes: InlineNode[] }) {
             return (
               <code
                 key={index}
-                className="rounded-[3px] border border-[#1f1f1f] bg-[#101010] px-1 py-px font-mono text-[0.85em] text-acid"
+                className="rounded-[3px] border border-line bg-void px-1 py-px font-mono text-[0.85em] text-foreground"
               >
                 {node.value}
               </code>
@@ -274,9 +274,9 @@ function InlineNodes({ nodes }: { nodes: InlineNode[] }) {
 function BlockView({ block }: { block: Block }) {
   if (block.kind === 'codeblock') {
     return (
-      <pre className="my-1 max-w-full overflow-x-auto rounded-brutal border border-[#1f1f1f] bg-[#0A0A0A] p-2.5">
+      <pre className="my-1 max-w-full overflow-x-auto rounded-brutal border border-line bg-void p-2.5">
         {block.lang && (
-          <span className="mb-1 block font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+          <span className="mb-1 block text-[11px] text-muted-foreground">
             {block.lang}
           </span>
         )}

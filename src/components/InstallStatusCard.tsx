@@ -97,8 +97,8 @@ export function InstallStatusCard({ status, ready, onRecheck }: Props) {
     return (
       <div className="card-gradient rounded-brutal px-5 py-3">
         <div className="flex items-center gap-3">
-          <Loader2 className="h-4 w-4 animate-spin text-acid" />
-          <p className="flex-1 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <p className="flex-1 text-xs text-muted-foreground">
             Verificando instalação<span className="terminal-cursor" />
           </p>
         </div>
@@ -110,8 +110,8 @@ export function InstallStatusCard({ status, ready, onRecheck }: Props) {
     return (
       <div className="card-gradient rounded-brutal px-5 py-3">
         <div className="flex items-center gap-3">
-          <CheckCircle2 className="h-4 w-4 text-acid" />
-          <p className="flex-1 font-mono text-xs uppercase tracking-widest text-foreground">
+          <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          <p className="flex-1 text-xs text-foreground">
             Tudo atualizado <span className="text-muted-foreground">— Java + Minecraft + Forge + modpack</span>
           </p>
           <Button variant="ghost" size="sm" onClick={onRecheck} title="Re-verificar SHA-1 de todos os arquivos">
@@ -155,11 +155,11 @@ export function InstallStatusCard({ status, ready, onRecheck }: Props) {
           <p className="font-display text-base uppercase tracking-wider text-foreground">
             {title}
           </p>
-          <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground">
             {sub ?? status.detail ?? 'Preparando…'}
           </p>
         </div>
-        <Loader2 className="h-4 w-4 animate-spin text-acid" />
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
       </div>
 
       <div className="h-2 w-full overflow-hidden rounded-full border border-acid-dark bg-void">
@@ -169,9 +169,9 @@ export function InstallStatusCard({ status, ready, onRecheck }: Props) {
         />
       </div>
 
-      <div className="mt-2 flex justify-between font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <div className="mt-2 flex justify-between font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
         <span className="truncate">{status.detail ?? ''}</span>
-        <span className="ml-2 shrink-0 text-acid">
+        <span className="ml-2 shrink-0 text-acid-text">
           {counts
             ? `${status.current}/${status.total}`
             : status.total

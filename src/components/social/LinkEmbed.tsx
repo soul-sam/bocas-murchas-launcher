@@ -60,7 +60,7 @@ function ImageEmbed({ url }: { url: string }) {
     <button
       type="button"
       onClick={() => openLightbox(url)}
-      className="group w-fit overflow-hidden rounded-brutal border border-[#1f1f1f] transition-colors hover:border-acid/50"
+      className="group w-fit overflow-hidden rounded-brutal border border-line transition-colors hover:border-acid/50"
     >
       <img
         src={url}
@@ -104,10 +104,10 @@ function YoutubeEmbed({ embed }: { embed: Embed }) {
       )}
 
       <span className="flex items-center gap-1.5 px-2.5 py-1.5">
-        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+        <span className="text-[11px] text-muted-foreground">
           {embed.host}
         </span>
-        <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground transition-colors group-hover:text-acid" />
+        <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
       </span>
     </button>
   )
@@ -141,12 +141,12 @@ function GenericEmbed({
         'bg-void-light/40 px-2.5 py-1.5 text-left transition-colors hover:bg-void-light/70'
       )}
     >
-      <span className="shrink-0 text-muted-foreground transition-colors group-hover:text-acid">
+      <span className="shrink-0 text-muted-foreground transition-colors group-hover:text-foreground">
         {icon}
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-mono text-[10px] uppercase tracking-widest text-acid">
+        <span className="block truncate text-[11.5px] text-acid-text">
           {embed.host}
         </span>
         {(path || forceLink) && (
@@ -156,7 +156,7 @@ function GenericEmbed({
         )}
       </span>
 
-      <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground transition-colors group-hover:text-acid" />
+      <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
     </button>
   )
 }

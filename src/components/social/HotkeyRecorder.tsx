@@ -157,7 +157,7 @@ export function HotkeyRecorder({
             ? 'border-acid bg-acid/10 text-acid'
             : problem
               ? 'border-destructive/60 text-destructive'
-              : 'border-[#1a1a1a] text-foreground hover:border-acid/50 hover:text-acid'
+              : 'border-line text-foreground hover:border-acid/50 hover:text-foreground'
         )}
       >
         <Keyboard className="h-3.5 w-3.5 shrink-0" />

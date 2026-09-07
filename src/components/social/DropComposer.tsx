@@ -192,12 +192,12 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
       }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
     >
-      <div className="card-acid relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-brutal scanlines">
+      <div className="card-acid relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-brutal">
         <button
           type="button"
           aria-label="Fechar"
           onClick={onClose}
-          className="absolute right-3 top-3 z-10 rounded-brutal p-1 text-muted-foreground transition-colors hover:text-acid"
+          className="absolute right-3 top-3 z-10 rounded-brutal p-1 text-muted-foreground transition-colors hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>
@@ -206,13 +206,13 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
           <Megaphone className="h-7 w-7 shrink-0 text-burn drop-shadow-[0_0_8px_rgba(242,183,5,0.6)]" />
           <div className="min-w-0">
             <h2 className="title-brutal text-2xl">Drop</h2>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               anúncio animado · cai na tela de todo mundo
             </p>
           </div>
         </header>
 
-        <div className="mx-6 mt-4 grid grid-cols-2 gap-1 rounded-brutal border-2 border-[#1a1a1a] p-1">
+        <div className="mx-6 mt-4 grid grid-cols-2 gap-1 rounded-brutal border-2 border-line p-1">
           <ModeTab
             active={mode === 'quick'}
             onClick={() => setMode('quick')}
@@ -233,7 +233,7 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
               <div className="space-y-1.5">
                 <label
                   htmlFor="drop-quick-message"
-                  className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+                  className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground"
                 >
                   Mensagem (opcional)
                 </label>
@@ -246,7 +246,7 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
                   placeholder="O admin mandou um drop!"
                   className="input-terminal w-full rounded-brutal px-3 py-2 text-sm"
                 />
-                <p className="font-mono text-[9px] text-muted-foreground">
+                <p className="font-mono text-[11px] text-muted-foreground">
                   clica num botão e já vai · some em 5 minutos
                 </p>
               </div>
@@ -259,13 +259,13 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
                     disabled={!!busy}
                     onClick={() => void sendQuick(quick.type)}
                     className={cn(
-                      'group flex flex-col items-center gap-1 rounded-brutal border-2 border-[#1a1a1a] px-2 py-3 transition-all',
-                      'hover:-translate-y-0.5 hover:border-acid/60 hover:shadow-[0_0_20px_rgba(106,255,0,0.15)]',
+                      'group flex flex-col items-center gap-1 rounded-brutal border-2 border-line px-2 py-3 transition-all',
+                      'hover:-translate-y-0.5 hover:border-acid/60 hover:shadow-[0_0_20px_rgb(var(--neon-rgb)/0.15)]',
                       'disabled:cursor-not-allowed disabled:opacity-50'
                     )}
                   >
                     {busy === quick.type ? (
-                      <Loader2 className="h-7 w-7 animate-spin text-acid" />
+                      <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
                     ) : (
                       <span className="text-2xl leading-none transition-transform group-hover:scale-110">
                         {quick.emoji}
@@ -274,7 +274,7 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
                     <span className="font-display text-xs uppercase tracking-wide text-dirty-white">
                       {quick.label}
                     </span>
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                    <span className="text-[11px] text-muted-foreground">
                       {quick.hint}
                     </span>
                   </button>
@@ -284,7 +284,7 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
           ) : (
             <>
               <div className="space-y-1.5">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                <p className="text-[11.5px] text-muted-foreground">
                   Tipo
                 </p>
                 <div className="grid grid-cols-4 gap-1">
@@ -294,10 +294,10 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
                       type="button"
                       onClick={() => setType(option.value)}
                       className={cn(
-                        'flex flex-col items-center gap-1 rounded-brutal border-2 px-2 py-2 text-[10px] font-medium uppercase tracking-wider transition-colors',
+                        'flex flex-col items-center gap-1 rounded-brutal border-2 px-2 py-2 text-[11.5px] font-medium uppercase tracking-wider transition-colors',
                         type === option.value
                           ? option.color
-                          : 'border-[#1a1a1a] text-muted-foreground hover:border-[#2a2a2a] hover:text-foreground'
+                          : 'border-line text-muted-foreground hover:border-line-strong hover:text-foreground'
                       )}
                     >
                       {option.icon}
@@ -310,7 +310,7 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
               <div className="space-y-1.5">
                 <label
                   htmlFor="drop-title"
-                  className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+                  className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground"
                 >
                   Título
                 </label>
@@ -327,7 +327,7 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
               <div className="space-y-1.5">
                 <label
                   htmlFor="drop-content"
-                  className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+                  className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground"
                 >
                   Texto
                 </label>
@@ -340,14 +340,14 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
                   placeholder="Modpack atualizado, bora testar."
                   className="input-terminal w-full resize-none rounded-brutal px-3 py-2 text-sm"
                 />
-                <p className="text-right font-mono text-[9px] text-muted-foreground">
+                <p className="text-right font-mono text-[11px] text-muted-foreground">
                   {content.length}/{MAX_CONTENT}
                 </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <p className="text-[11.5px] text-muted-foreground">
                     Estilo
                   </p>
                   <div className="grid grid-cols-2 gap-1">
@@ -363,7 +363,7 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
                 </div>
 
                 <div className="space-y-1.5">
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <p className="text-[11.5px] text-muted-foreground">
                     Some em
                   </p>
                   <div className="grid grid-cols-2 gap-1">
@@ -383,20 +383,20 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
 
           <label
             className={cn(
-              'flex cursor-pointer items-center justify-between gap-3 rounded-brutal border-2 border-[#1a1a1a] px-3 py-2 transition-colors',
+              'flex cursor-pointer items-center justify-between gap-3 rounded-brutal border-2 border-line px-3 py-2 transition-colors',
               onlyHere && channelId && 'border-acid-dark',
               !channelId && 'cursor-not-allowed opacity-50'
             )}
           >
             <span className="flex min-w-0 items-center gap-2">
               {onlyHere && channelId ? (
-                <Hash className="h-3.5 w-3.5 shrink-0 text-acid" />
+                <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               ) : (
                 <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               )}
               <span className="min-w-0">
                 <span className="block text-xs text-foreground">Só neste canal</span>
-                <span className="block truncate text-[10px] text-muted-foreground">
+                <span className="block truncate text-[11.5px] text-muted-foreground">
                   {!channelId
                     ? 'numa conversa direta o drop é sempre pra todo mundo'
                     : onlyHere
@@ -415,7 +415,7 @@ export function DropComposer({ open, seed, channelId, channelName, onClose }: Dr
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
 
-        <footer className="flex items-center justify-end gap-2 border-t border-[#1a1a1a] px-6 py-3">
+        <footer className="flex items-center justify-end gap-2 border-t border-line px-6 py-3">
           <Button variant="ghost" size="sm" onClick={onClose} disabled={!!busy}>
             Cancelar
           </Button>
@@ -456,7 +456,7 @@ function ModeTab({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center justify-center gap-1.5 rounded-brutal px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+        'flex items-center justify-center gap-1.5 rounded-brutal px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
         active ? 'bg-acid/15 text-acid' : 'text-muted-foreground hover:text-foreground'
       )}
     >
@@ -472,10 +472,10 @@ function Chip({ active, onClick, label }: { active: boolean; onClick: () => void
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-brutal border-2 px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors',
+        'rounded-brutal border-2 px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
         active
           ? 'border-acid bg-acid/15 text-acid'
-          : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-foreground'
+          : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
       )}
     >
       {label}

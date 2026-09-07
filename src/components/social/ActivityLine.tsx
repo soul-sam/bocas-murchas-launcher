@@ -70,7 +70,7 @@ export function ActivityLine({
     <span
       title={activitySummary(activity, now)}
       className={cn(
-        'flex items-center gap-1 truncate font-mono text-[9px] uppercase tracking-widest',
+        'flex items-center gap-1 truncate text-[11px]',
         inGame ? 'text-burn' : 'text-acid/80',
         className
       )}
@@ -79,7 +79,7 @@ export function ActivityLine({
       <span className="truncate">{activitySummary(activity, now)}</span>
       {activity.partyUserIds && activity.partyUserIds.length > 0 && (
         <span
-          className="shrink-0 rounded-brutal bg-acid/15 px-1 text-[8px] text-acid"
+          className="shrink-0 rounded-brutal bg-acid/15 px-1 text-[11px] text-acid"
           title="Gente do grupo no mesmo lobby"
         >
           +{activity.partyUserIds.length}

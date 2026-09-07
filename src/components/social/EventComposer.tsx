@@ -162,22 +162,22 @@ export function EventComposer() {
       <form
         onSubmit={(e) => void handleSubmit(e)}
         onClick={(e) => e.stopPropagation()}
-        className="card-acid scanlines relative w-full max-w-md rounded-brutal p-6"
+        className="card-acid  relative w-full max-w-md rounded-brutal p-6"
       >
         <button
           type="button"
           aria-label="Fechar"
           onClick={close}
-          className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-acid"
+          className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="mb-5 flex items-center gap-3">
-          <CalendarPlus className="h-7 w-7 text-acid drop-shadow-[0_0_8px_rgba(106,255,0,0.6)]" />
+          <CalendarPlus className="h-7 w-7 text-muted-foreground drop-shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]" />
           <div>
             <h2 className="title-brutal text-2xl">Marcar</h2>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               agenda do grupo
             </p>
           </div>
@@ -186,7 +186,7 @@ export function EventComposer() {
         <div className="space-y-4">
           {/* Título */}
           <label className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 block text-[11.5px] text-muted-foreground">
               O quê
             </span>
             <input
@@ -201,7 +201,7 @@ export function EventComposer() {
 
           {/* Jogo */}
           <div>
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 block text-[11.5px] text-muted-foreground">
               Jogo
             </span>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -211,10 +211,10 @@ export function EventComposer() {
                   type="button"
                   onClick={() => setGame(option.id)}
                   className={cn(
-                    'rounded-brutal border-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors',
+                    'rounded-brutal border-2 px-2.5 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
                     game === option.id
                       ? 'border-acid bg-acid/10 text-acid'
-                      : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-foreground'
+                      : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
                   )}
                 >
                   {option.label}
@@ -234,7 +234,7 @@ export function EventComposer() {
 
           {/* Quando */}
           <div>
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 block text-[11.5px] text-muted-foreground">
               Quando
             </span>
             <div className="flex gap-2">
@@ -263,7 +263,7 @@ export function EventComposer() {
             </div>
             <p
               className={cn(
-                'mt-1 min-h-[14px] font-mono text-[10px] uppercase tracking-widest',
+                'mt-1 min-h-[14px] text-[11.5px]',
                 dateProblem
                   ? 'text-destructive'
                   : resolved
@@ -285,7 +285,7 @@ export function EventComposer() {
 
           {/* Nota */}
           <label className="block">
-            <span className="mb-1 flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 flex items-center justify-between text-[11.5px] text-muted-foreground">
               <span>Nota (opcional)</span>
               <span>{note.length}/{NOTE_MAX}</span>
             </span>
@@ -307,7 +307,7 @@ export function EventComposer() {
         )}
 
         <div className="mt-5 flex items-center gap-3">
-          <p className="min-w-0 flex-1 truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground">
             {targetChannel
               ? `o card vai pro #${targetChannel.name}`
               : 'sem canal de texto aberto: fica só na agenda'}
@@ -315,7 +315,7 @@ export function EventComposer() {
           <button
             type="button"
             onClick={close}
-            className="rounded-brutal px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+            className="rounded-brutal px-3 py-2 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
           >
             cancelar
           </button>

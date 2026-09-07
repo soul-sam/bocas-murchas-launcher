@@ -37,20 +37,20 @@ export function MicrosoftDeviceCodeModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/85 p-6 backdrop-blur-sm">
-      <div className="card-acid w-full max-w-md rounded-brutal p-6 scanlines">
+      <div className="card-acid w-full max-w-md rounded-brutal p-6">
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <img
               src="bocas-murchas-transp.png"
               alt=""
               aria-hidden
-              className="h-9 w-9 drop-shadow-[0_0_8px_rgba(106,255,0,0.5)]"
+              className="h-9 w-9 drop-shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]"
             />
             <div>
-              <p className="font-display text-base uppercase tracking-widest text-foreground">
+              <p className="font-display text-base text-foreground">
                 Conectar Microsoft
               </p>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <p className="text-[11.5px] text-muted-foreground">
                 Device Code Flow
               </p>
             </div>
@@ -118,11 +118,11 @@ function AwaitingBody({ code, url, expiresIn, startedAt, copied, onCopy, onOpen 
     <div className="space-y-5">
       <ol className="space-y-3 text-sm text-foreground">
         <li className="flex gap-3">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-brutal border-2 border-acid bg-acid/10 font-mono text-xs font-bold text-acid">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-brutal border-2 border-acid bg-acid/10 font-mono text-xs font-bold text-foreground">
             1
           </span>
           <div className="flex-1">
-            <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               Abre a página de login da Microsoft
             </p>
             <Button onClick={onOpen} variant="secondary" size="sm" className="mt-1.5 w-full">
@@ -133,11 +133,11 @@ function AwaitingBody({ code, url, expiresIn, startedAt, copied, onCopy, onOpen 
         </li>
 
         <li className="flex gap-3">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-brutal border-2 border-acid bg-acid/10 font-mono text-xs font-bold text-acid">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-brutal border-2 border-acid bg-acid/10 font-mono text-xs font-bold text-foreground">
             2
           </span>
           <div className="flex-1">
-            <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               Cola esse código
             </p>
             <div className="mt-1.5 flex items-stretch gap-2">
@@ -153,7 +153,7 @@ function AwaitingBody({ code, url, expiresIn, startedAt, copied, onCopy, onOpen 
       </ol>
 
       <div className="flex items-center justify-between rounded-brutal border-2 border-border bg-muted/20 px-3 py-2">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-acid">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-acid-text">
           <Loader2 className="h-3 w-3 animate-spin" />
           Aguardando login…
         </div>
@@ -180,10 +180,10 @@ function FailureBody({ icon, title, body, actionLabel, onAction, errorCode }: Fa
       <div className="flex items-start gap-3">
         {icon}
         <div className="flex-1">
-          <p className="font-display text-base uppercase tracking-widest text-foreground">{title}</p>
+          <p className="font-display text-base text-foreground">{title}</p>
           <p className="mt-1 break-words text-sm text-muted-foreground">{body}</p>
           {errorCode && (
-            <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="mt-1 text-[11.5px] text-muted-foreground">
               code: {errorCode}
             </p>
           )}

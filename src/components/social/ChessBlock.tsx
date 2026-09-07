@@ -127,8 +127,8 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
   if (!profile) {
     if (!isSelf) return null
     return (
-      <div className="mt-2 rounded-brutal border border-[#1a1a1a] bg-void/60 px-2 py-1.5">
-        <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">♟ chess.com</p>
+      <div className="mt-2 rounded-brutal border border-line bg-void/60 px-2 py-1.5">
+        <p className="text-[11px] text-muted-foreground">♟ chess.com</p>
         <div className="mt-1 flex items-center gap-1">
           <input
             value={username}
@@ -137,18 +137,18 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
               if (e.key === 'Enter' && !busy && username.trim().length >= 3) void onLink()
             }}
             placeholder="seu username"
-            className="h-6 min-w-0 flex-1 rounded-brutal border border-[#1a1a1a] bg-void px-1.5 font-mono text-[11px] outline-none focus:border-acid"
+            className="h-6 min-w-0 flex-1 rounded-brutal border border-line bg-void px-1.5 font-mono text-[11px] outline-none focus:border-acid"
           />
           <button
             type="button"
             disabled={busy || username.trim().length < 3}
             onClick={() => void onLink()}
-            className="flex h-6 items-center gap-1 rounded-brutal border border-acid/50 px-1.5 font-mono text-[10px] uppercase text-acid disabled:opacity-40"
+            className="flex h-6 items-center gap-1 rounded-brutal border border-acid/50 px-1.5 font-mono text-[11.5px] uppercase text-acid disabled:opacity-40"
           >
             <Link2 className="h-3 w-3" /> vincular
           </button>
         </div>
-        {error && <p className="mt-1 font-mono text-[10px] text-destructive">{error}</p>}
+        {error && <p className="mt-1 font-mono text-[11.5px] text-destructive">{error}</p>}
       </div>
     )
   }
@@ -157,12 +157,12 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
   const recent = data.games.slice(0, RECENT_SHOWN)
 
   return (
-    <div className="mt-2 space-y-1.5 rounded-brutal border border-[#1a1a1a] bg-void/60 px-2 py-1.5">
-      <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+    <div className="mt-2 space-y-1.5 rounded-brutal border border-line bg-void/60 px-2 py-1.5">
+      <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
         <button
           type="button"
           onClick={() => openExternal(`https://www.chess.com/member/${profile.username}`)}
-          className="flex items-center gap-1 hover:text-acid"
+          className="flex items-center gap-1 hover:text-foreground"
         >
           ♟ {profile.username} <ExternalLink className="h-2.5 w-2.5" />
         </button>
@@ -173,7 +173,7 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
               title="Atualizar agora"
               disabled={busy || !canSync}
               onClick={() => void onSync()}
-              className="hover:text-acid disabled:opacity-40"
+              className="hover:text-foreground disabled:opacity-40"
             >
               <RefreshCw className={cn('h-3 w-3', busy && 'animate-spin')} />
             </button>
@@ -192,7 +192,7 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
             <span
               key={c}
               title={`${r.w}V ${r.l}D ${r.d}E`}
-              className="rounded-brutal border border-[#1a1a1a] bg-void px-1.5 py-0.5 font-mono text-[10px]"
+              className="rounded-brutal border border-line bg-void px-1.5 py-0.5 font-mono text-[11.5px]"
             >
               <span className="text-muted-foreground">{TIME_CLASS_LABEL[c]} </span>
               <span className="text-foreground">{r.rating}</span>
@@ -210,8 +210,8 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
         </ul>
       )}
 
-      {error && <p className="font-mono text-[10px] text-destructive">{error}</p>}
-      {syncNote && !error && <p className="font-mono text-[10px] text-muted-foreground">{syncNote}</p>}
+      {error && <p className="font-mono text-[11.5px] text-destructive">{error}</p>}
+      {syncNote && !error && <p className="font-mono text-[11.5px] text-muted-foreground">{syncNote}</p>}
     </div>
   )
 }
@@ -220,14 +220,14 @@ function GameRow({ game }: { game: ChessGame }) {
   const color =
     game.result === 'win' ? 'text-acid' : game.result === 'loss' ? 'text-destructive' : 'text-muted-foreground'
   return (
-    <li className="flex items-center gap-1.5 font-mono text-[10px]">
+    <li className="flex items-center gap-1.5 font-mono text-[11.5px]">
       <span className={cn('w-12 shrink-0 uppercase', color)}>{CHESS_RESULT_LABEL[game.result]}</span>
       <span className="w-10 shrink-0 text-muted-foreground">{TIME_CLASS_LABEL[game.timeClass]}</span>
       <span className="min-w-0 flex-1 truncate text-foreground">
         {game.opponent} <span className="text-muted-foreground">({game.opponentRating})</span>
       </span>
       <span className="text-foreground">{game.ratingAfter}</span>
-      <button type="button" onClick={() => openExternal(game.url)} className="text-muted-foreground hover:text-acid">
+      <button type="button" onClick={() => openExternal(game.url)} className="text-muted-foreground hover:text-foreground">
         <ExternalLink className="h-2.5 w-2.5" />
       </button>
     </li>

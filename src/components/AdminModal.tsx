@@ -41,17 +41,17 @@ export function AdminModal() {
         role="dialog"
         aria-modal="true"
         aria-label="Painel admin"
-        className="card-acid flex h-[80vh] w-full max-w-3xl flex-col rounded-brutal p-6 scanlines"
+        className="card-acid flex h-[80vh] w-full max-w-3xl flex-col rounded-brutal p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex shrink-0 items-start justify-between">
           <div className="flex items-center gap-3">
-            <Shield className="h-6 w-6 text-acid drop-shadow-[0_0_8px_rgba(106,255,0,0.5)]" />
+            <Shield className="h-6 w-6 text-muted-foreground drop-shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]" />
             <div>
-              <p className="font-display text-base uppercase tracking-widest text-foreground">
+              <p className="font-display text-base text-foreground">
                 Painel admin
               </p>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <p className="text-[11.5px] text-muted-foreground">
                 convites · membros · sons · ferramentas
               </p>
             </div>

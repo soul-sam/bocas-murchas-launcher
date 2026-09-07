@@ -150,7 +150,7 @@ export function TitleTag({
       title={tooltip}
       className={cn(
         'flex shrink-0 cursor-default items-center gap-1 rounded-brutal border border-burn/40 px-1',
-        'font-mono text-[9px] uppercase leading-4 tracking-widest text-burn',
+        'text-[11px] leading-4 text-burn',
         className
       )}
     >

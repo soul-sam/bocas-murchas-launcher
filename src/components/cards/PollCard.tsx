@@ -278,7 +278,7 @@ export function PollCard({ metadata, compact }: CardProps<PollCardMetadata>) {
               onClick={() => void close()}
               disabled={closing}
               title="Encerrar a enquete pra todo mundo"
-              className="ml-auto shrink-0 rounded-brutal border border-[#2a2a2a] px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-burn hover:text-burn disabled:opacity-50"
+              className="ml-auto shrink-0 rounded-brutal border border-line-strong px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-burn hover:text-burn disabled:opacity-50"
             >
               {closing ? <Loader2 className="h-3 w-3 animate-spin" /> : 'encerrar'}
             </button>
@@ -324,7 +324,7 @@ export function PollCard({ metadata, compact }: CardProps<PollCardMetadata>) {
                     ? 'border-acid bg-acid/5'
                     : leading
                       ? 'border-burn/60'
-                      : 'border-[#1f1f1f] hover:border-acid/50',
+                      : 'border-line hover:border-acid/50',
                   closed ? 'cursor-default' : 'cursor-pointer'
                 )}
               >
@@ -343,11 +343,11 @@ export function PollCard({ metadata, compact }: CardProps<PollCardMetadata>) {
                     className={cn(
                       'flex h-4 w-4 shrink-0 items-center justify-center rounded-brutal border',
                       type === 'single' ? 'rounded-full' : '',
-                      selected ? 'border-acid bg-acid text-void' : 'border-[#3a3a3a]'
+                      selected ? 'border-acid bg-acid text-void' : 'border-line-strong'
                     )}
                   >
                     {busy ? (
-                      <Loader2 className="h-2.5 w-2.5 animate-spin text-acid" />
+                      <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground" />
                     ) : selected ? (
                       <Check className="h-3 w-3" strokeWidth={3} />
                     ) : null}
@@ -365,7 +365,7 @@ export function PollCard({ metadata, compact }: CardProps<PollCardMetadata>) {
                     <VoterStack voters={option.voters} />
                   )}
 
-                  <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">
+                  <span className="shrink-0 font-mono text-[11.5px] tabular-nums text-muted-foreground">
                     <span className={cn(selected && 'text-acid', leading && 'text-burn')}>
                       {percent}%
                     </span>
@@ -379,7 +379,7 @@ export function PollCard({ metadata, compact }: CardProps<PollCardMetadata>) {
       </ul>
 
       {type === 'multiple' && !closed && (
-        <p className="mt-1.5 flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+        <p className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground">
           <ListChecks className="h-3 w-3" /> pode marcar mais de uma
         </p>
       )}
@@ -402,11 +402,11 @@ function VoterStack({ voters }: { voters: PollPerson[] }) {
           key={voter.id}
           src={resolveAssetUrl(voter.avatar)}
           name={voter.displayName}
-          className="h-4 w-4 border-[#0B0B0B] text-[8px]"
+          className="h-4 w-4 border-void text-[11px]"
         />
       ))}
       {rest > 0 && (
-        <span className="ml-1 rounded-brutal bg-void px-1 font-mono text-[9px] text-muted-foreground">
+        <span className="ml-1 rounded-brutal bg-void px-1 font-mono text-[11px] text-muted-foreground">
           +{rest}
         </span>
       )}

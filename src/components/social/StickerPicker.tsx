@@ -45,15 +45,15 @@ export function StickerPicker({
           type="button"
           title="Sticker"
           disabled={disabled}
-          className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid disabled:opacity-50"
+          className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
         >
           <StickerIcon className="h-4 w-4" />
         </button>
       </PopoverTrigger>
 
       <PopoverContent align="end" className="w-[320px] p-0">
-        <div className="flex items-center gap-2 border-b border-[#1a1a1a] px-3 py-2">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <div className="flex items-center gap-2 border-b border-line px-3 py-2">
+          <span className="text-[11.5px] text-muted-foreground">
             Stickers
           </span>
           <button
@@ -62,7 +62,7 @@ export function StickerPicker({
               setOpen(false)
               onManage()
             }}
-            className="ml-auto flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-acid"
+            className="ml-auto flex items-center gap-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
           >
             <Settings2 className="h-3 w-3" />
             gerenciar
@@ -73,13 +73,13 @@ export function StickerPicker({
           <p className="px-4 py-8 text-center text-xs text-muted-foreground">
             Nenhum sticker ainda.
             <br />
-            Clica em <span className="text-acid">gerenciar</span> pra criar o primeiro pack.
+            Clica em <span className="text-acid-text">gerenciar</span> pra criar o primeiro pack.
           </p>
         ) : (
           <>
             {/* Abas dos packs: a capa (primeiro sticker) vira o icone da aba.
                 Rolagem horizontal porque 30 packs nao cabem em 320px. */}
-            <div className="flex gap-1 overflow-x-auto border-b border-[#1a1a1a] px-2 py-1.5">
+            <div className="flex gap-1 overflow-x-auto border-b border-line px-2 py-1.5">
               {packs.map((pack) => {
                 const cover = resolveAssetUrl(pack.coverUrl)
                 const isActive = pack.id === active.id
@@ -93,7 +93,7 @@ export function StickerPicker({
                       'flex h-8 shrink-0 items-center gap-1.5 rounded-brutal border px-1.5 transition-colors',
                       isActive
                         ? 'border-acid bg-acid/15 text-acid'
-                        : 'border-transparent text-muted-foreground hover:border-[#1f1f1f] hover:text-foreground'
+                        : 'border-transparent text-muted-foreground hover:border-line hover:text-foreground'
                     )}
                   >
                     {cover ? (
@@ -108,7 +108,7 @@ export function StickerPicker({
                       <span className="font-display text-sm uppercase">{pack.name.slice(0, 1)}</span>
                     )}
                     {isActive && (
-                      <span className="max-w-[90px] truncate font-mono text-[10px] uppercase tracking-widest">
+                      <span className="max-w-[90px] truncate text-[11.5px]">
                         {pack.name}
                       </span>
                     )}
@@ -120,7 +120,7 @@ export function StickerPicker({
             <div className="max-h-[280px] overflow-y-auto p-2">
               {active.stickers.length === 0 ? (
                 <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-                  Pack vazio. Sobe uns stickers em <span className="text-acid">gerenciar</span>.
+                  Pack vazio. Sobe uns stickers em <span className="text-acid-text">gerenciar</span>.
                 </p>
               ) : (
                 <div className="grid grid-cols-4 gap-1">

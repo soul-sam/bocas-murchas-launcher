@@ -122,13 +122,13 @@ export function PartyComposer() {
       <form
         onSubmit={(e) => void handleSubmit(e)}
         onClick={(e) => e.stopPropagation()}
-        className="card-acid scanlines relative w-full max-w-md rounded-brutal p-6"
+        className="card-acid  relative w-full max-w-md rounded-brutal p-6"
       >
         <button
           type="button"
           aria-label="Fechar"
           onClick={close}
-          className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-acid"
+          className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>
@@ -137,7 +137,7 @@ export function PartyComposer() {
           <Swords className="h-7 w-7 text-burn drop-shadow-[0_0_8px_rgba(242,183,5,0.6)]" />
           <div>
             <h2 className="title-brutal text-2xl">Bora?</h2>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               chamar pra jogar agora
             </p>
           </div>
@@ -146,7 +146,7 @@ export function PartyComposer() {
         <div className="space-y-4">
           {/* Jogo */}
           <div>
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 block text-[11.5px] text-muted-foreground">
               Jogo
             </span>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -156,10 +156,10 @@ export function PartyComposer() {
                   type="button"
                   onClick={() => setGame(option.id)}
                   className={cn(
-                    'rounded-brutal border-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors',
+                    'rounded-brutal border-2 px-2.5 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
                     game === option.id
                       ? 'border-burn bg-burn/10 text-burn'
-                      : 'border-[#1a1a1a] text-muted-foreground hover:border-burn/50 hover:text-foreground'
+                      : 'border-line text-muted-foreground hover:border-burn/50 hover:text-foreground'
                   )}
                 >
                   {option.label}
@@ -179,7 +179,7 @@ export function PartyComposer() {
 
           {/* Vagas */}
           <div>
-            <span className="mb-1 flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 flex items-center justify-between text-[11.5px] text-muted-foreground">
               <span>Vagas</span>
               <span className="text-burn">{slots} no total, contando você</span>
             </span>
@@ -193,7 +193,7 @@ export function PartyComposer() {
                     'rounded-brutal border-2 py-1.5 font-mono text-xs transition-colors',
                     slots === n
                       ? 'border-burn bg-burn text-void'
-                      : 'border-[#1a1a1a] text-muted-foreground hover:border-burn/50 hover:text-foreground'
+                      : 'border-line text-muted-foreground hover:border-burn/50 hover:text-foreground'
                   )}
                 >
                   {n}
@@ -204,7 +204,7 @@ export function PartyComposer() {
 
           {/* Nota */}
           <label className="block">
-            <span className="mb-1 flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 flex items-center justify-between text-[11.5px] text-muted-foreground">
               <span>Uma frase (opcional)</span>
               <span>{note.length}/{NOTE_MAX}</span>
             </span>
@@ -233,7 +233,7 @@ export function PartyComposer() {
         )}
 
         <div className="mt-5 flex items-center gap-3">
-          <p className="min-w-0 flex-1 truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground">
             {targetChannel
               ? `o card vai pro #${targetChannel.name}`
               : 'sem canal de texto aberto: só a faixa da barra'}
@@ -241,7 +241,7 @@ export function PartyComposer() {
           <button
             type="button"
             onClick={close}
-            className="rounded-brutal px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+            className="rounded-brutal px-3 py-2 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
           >
             cancelar
           </button>
@@ -250,8 +250,8 @@ export function PartyComposer() {
             disabled={!canSubmit}
             className={cn(
               'flex items-center gap-2 rounded-brutal border-2 border-burn bg-burn px-4 py-2 font-bold uppercase tracking-wider text-void',
-              'text-xs shadow-[4px_4px_0_0_#D4A005] transition-all',
-              'hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_#D4A005]',
+              'text-xs transition-colors',
+              'hover:brightness-110',
               'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0'
             )}
           >

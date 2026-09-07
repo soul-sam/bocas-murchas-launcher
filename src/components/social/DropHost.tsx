@@ -178,7 +178,7 @@ const TYPE_LOOK: Record<DropType, TypeLook> = {
     border: 'border-acid/60',
     gradient: 'from-acid/20 to-acid/5',
     iconBg: 'bg-acid/20',
-    icon: <Megaphone className="h-5 w-5 text-acid" />,
+    icon: <Megaphone className="h-5 w-5 text-muted-foreground" />,
     bar: 'bg-acid/60'
   },
   alert: {
@@ -264,14 +264,14 @@ function DropBanner({
       <div
         className={cn(
           'relative overflow-hidden rounded-brutal border-2 bg-gradient-to-r backdrop-blur-md',
-          'bg-[#0D0D0D]/90 shadow-[0_8px_40px_rgba(0,0,0,0.7)]',
+          'bg-void/90 shadow-[0_8px_40px_rgba(0,0,0,0.7)]',
           look.border,
           look.gradient,
           animation
         )}
       >
         <div className="pointer-events-none absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(106,255,0,0.35),transparent_70%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgb(var(--neon-rgb)/0.3),transparent_70%)]" />
         </div>
 
         <div className="relative flex items-start gap-3 p-3">
@@ -285,7 +285,7 @@ function DropBanner({
                 {drop.title}
               </h4>
               {drop.channel && (
-                <span className="flex shrink-0 items-center gap-0.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
                   <Hash className="h-2.5 w-2.5" />
                   {drop.channel.name}
                 </span>
@@ -297,12 +297,12 @@ function DropBanner({
             </p>
 
             <div className="mt-2 flex items-center gap-1.5">
-              <UserAvatar src={resolveAssetUrl(avatar)} name={displayName} className="h-4 w-4 text-[8px]" />
-              <span className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <UserAvatar src={resolveAssetUrl(avatar)} name={displayName} className="h-4 w-4 text-[11px]" />
+              <span className="truncate text-[11.5px] text-muted-foreground">
                 {displayName}
               </span>
               {isAdmin && (
-                <span className="rounded-brutal bg-burn/20 px-1 font-mono text-[9px] font-bold uppercase tracking-widest text-burn">
+                <span className="rounded-brutal bg-burn/20 px-1 text-[11px] font-bold text-burn">
                   admin
                 </span>
               )}

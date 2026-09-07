@@ -50,13 +50,13 @@ export function ImageLightbox() {
 
       <div
         onClick={(event) => event.stopPropagation()}
-        className="absolute right-4 top-4 flex items-center gap-1 rounded-brutal border-2 border-[#1a1a1a] bg-void/90 p-1"
+        className="absolute right-4 top-4 flex items-center gap-1 rounded-brutal border-2 border-line bg-void/90 p-1"
       >
         <button
           type="button"
           onClick={() => setZoomed((prev) => !prev)}
           title={zoomed ? 'Diminuir' : 'Tamanho real'}
-          className="rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+          className="rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           {zoomed ? <ZoomOut className="h-4 w-4" /> : <ZoomIn className="h-4 w-4" />}
         </button>
@@ -65,7 +65,7 @@ export function ImageLightbox() {
           type="button"
           onClick={() => openExternal(lightbox)}
           title="Abrir no navegador"
-          className="rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+          className="rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ExternalLink className="h-4 w-4" />
         </button>

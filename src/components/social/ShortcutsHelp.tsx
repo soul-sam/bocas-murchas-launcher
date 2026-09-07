@@ -22,13 +22,13 @@ interface Row {
 function Group({ title, rows }: { title: string; rows: Row[] }) {
   return (
     <section className="mb-4">
-      <h3 className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <h3 className="mb-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
         {title}
       </h3>
       <div className="space-y-1">
         {rows.map((row) => (
           <div key={row.what} className="flex items-baseline gap-3">
-            <kbd className="shrink-0 rounded-brutal border border-[#2a2a2a] bg-void px-1.5 py-0.5 font-mono text-[10px] text-acid">
+            <kbd className="shrink-0 rounded-brutal border border-line-strong bg-void px-1.5 py-0.5 font-mono text-[11.5px] text-acid">
               {row.keys}
             </kbd>
             <span className="text-xs text-muted-foreground">{row.what}</span>
@@ -71,7 +71,7 @@ export function ShortcutsHelp() {
           type="button"
           onClick={closeShortcuts}
           aria-label="Fechar"
-          className="absolute right-3 top-3 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+          className="absolute right-3 top-3 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>
@@ -121,7 +121,7 @@ export function ShortcutsHelp() {
           </div>
         </div>
 
-        <p className="mt-2 border-t border-[#1a1a1a] pt-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+        <p className="mt-2 border-t border-line pt-3 font-mono text-[11.5px] leading-relaxed text-muted-foreground">
           Os atalhos globais valem com o launcher em segundo plano e podem ser
           trocados em Configurações → Atalhos.
         </p>

@@ -63,7 +63,7 @@ export function PrintPage() {
   if (error && !state) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3">
-        <p className="font-mono text-xs uppercase tracking-widest text-destructive">{error}</p>
+        <p className="text-xs text-destructive">{error}</p>
         <Button variant="ghost" size="sm" onClick={() => void refresh()}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Tentar de novo
@@ -78,10 +78,10 @@ export function PrintPage() {
     <div className="flex flex-1 flex-col overflow-auto p-8">
       <header className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Printer className="h-9 w-9 text-acid drop-shadow-[0_0_10px_rgba(106,255,0,0.5)]" />
+          <Printer className="h-9 w-9 text-muted-foreground drop-shadow-[0_0_10px_rgb(var(--neon-rgb)/0.3)]" />
           <div>
             <h1 className="title-brutal text-3xl">Impressora 3D</h1>
-            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {state.printer.model} · rateio do grupo
             </p>
           </div>
@@ -138,7 +138,7 @@ function BlockBanner({ text, reason }: { text: string; reason: string | null }) 
       )}
     >
       <Icon className={cn('h-4 w-4 shrink-0', calm ? 'text-acid' : 'text-burn')} />
-      <span className="font-mono text-xs uppercase tracking-widest">
+      <span className="text-xs">
         {text}
         {reason === 'agent_offline' && (
           <span className="ml-2 normal-case tracking-normal text-muted-foreground">
@@ -186,14 +186,14 @@ function PrinterCard({
 
   const online = printer.agentOnline
   const dotClass = !online
-    ? 'bg-[#3a3a3a]'
+    ? 'bg-surface-strong'
     : // Mesa suja é "online, mas parada esperando gente" — âmbar, não verde.
       // Verde aqui faria a pessoa achar que está tudo andando.
       !printer.bedClear
       ? 'bg-burn shadow-[0_0_10px_rgba(242,183,5,0.7)]'
       : running
-        ? 'bg-acid shadow-[0_0_12px_rgba(106,255,0,0.8)] animate-pulse'
-        : 'bg-acid shadow-[0_0_8px_rgba(106,255,0,0.5)]'
+        ? 'bg-acid shadow-[0_0_12px_rgb(var(--neon-rgb)/0.3)] animate-pulse'
+        : 'bg-acid shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]'
 
   async function act(action: 'pause' | 'resume' | 'stop' | 'bed'): Promise<void> {
     setBusy(action)
@@ -219,7 +219,7 @@ function PrinterCard({
             <span className="font-display text-sm uppercase tracking-wider text-foreground">
               {printer.name}
             </span>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               {!online
                 ? printer.agentLastSeenAt
                   ? `sem contato desde ${new Date(printer.agentLastSeenAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
@@ -234,7 +234,7 @@ function PrinterCard({
         </div>
 
         {printer.lastErrorMessage && (
-          <span className="rounded-brutal border border-destructive/60 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-destructive">
+          <span className="rounded-brutal border border-destructive/60 px-2 py-0.5 text-[11px] text-destructive">
             {printer.lastErrorMessage}
           </span>
         )}
@@ -243,7 +243,7 @@ function PrinterCard({
       {running ? (
         <div className="space-y-2">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="truncate font-display text-base text-acid">{running.title}</span>
+            <span className="truncate font-display text-base text-acid-text">{running.title}</span>
             <span className="shrink-0 font-mono text-xs text-muted-foreground">
               de {running.owner.displayName}
             </span>
@@ -256,8 +256,8 @@ function PrinterCard({
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            <span className="text-acid">{running.progress}%</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
+            <span className="text-acid-text">{running.progress}%</span>
             {running.currLayer !== null && running.totalLayers !== null && (
               <span className="flex items-center gap-1">
                 <Layers className="h-3 w-3" />
@@ -278,7 +278,7 @@ function PrinterCard({
           </div>
         </div>
       ) : (
-        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {printer.bedClear ? 'Nada imprimindo agora.' : 'Peça pronta na mesa, esperando alguém tirar.'}
         </p>
       )}
@@ -287,7 +287,7 @@ function PrinterCard({
           condição a borda superior aparecia sozinha embaixo do card, com a
           impressora livre — uma linha solta que não significa nada. */}
       {canOperate && (!printer.bedClear || running !== null || msg !== null) && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#1a1a1a] pt-3">
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
           {!printer.bedClear && (
             // O botão que destrava a fila. Fica em destaque porque é a única
             // coisa aqui que exige uma pessoa presente na frente da máquina.
@@ -325,7 +325,7 @@ function PrinterCard({
               Parar
             </Button>
           )}
-          {msg && <span className="font-mono text-[10px] text-muted-foreground">{msg}</span>}
+          {msg && <span className="font-mono text-[11.5px] text-muted-foreground">{msg}</span>}
         </div>
       )}
     </div>
@@ -346,7 +346,7 @@ function QuotaCard({ quota }: { quota: PrintQuota }) {
         <span className="font-display text-sm uppercase tracking-wider text-foreground">
           Minhas horas
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className="text-[11.5px] text-muted-foreground">
           janela de {quota.windowDays} dias
         </span>
       </div>
@@ -372,7 +372,7 @@ function QuotaCard({ quota }: { quota: PrintQuota }) {
         />
       </div>
 
-      <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <p className="mt-3 text-[11.5px] text-muted-foreground">
         cota de {formatSeconds(quota.quotaSeconds)}
         {quota.nextReleaseAt && (
           <>
@@ -407,14 +407,14 @@ function Metric({
   return (
     <div>
       <div className={cn('text-lg font-bold', color)}>{value}</div>
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="text-[11.5px] uppercase tracking-widest text-muted-foreground">{label}</div>
     </div>
   )
 }
 
 function NoAccessCard() {
   return (
-    <div className="rounded-brutal border-2 border-dashed border-[#2a2a2a] p-4">
+    <div className="rounded-brutal border-2 border-dashed border-line-strong p-4">
       <p className="font-display text-sm uppercase tracking-wider text-foreground">
         Seu cargo da impressora saiu
       </p>
@@ -474,7 +474,7 @@ function NewJobCard() {
         <span className="font-display text-sm uppercase tracking-wider text-foreground">
           Mandar uma peça
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className="text-[11.5px] text-muted-foreground">
           .gcode ou .gcode.3mf
         </span>
       </div>
@@ -502,9 +502,9 @@ function NewJobCard() {
       >
         <Upload className={cn('h-6 w-6', dragging ? 'text-acid' : 'text-muted-foreground')} />
         {file ? (
-          <span className="max-w-full truncate font-mono text-xs text-acid">{file.name}</span>
+          <span className="max-w-full truncate font-mono text-xs text-foreground">{file.name}</span>
         ) : (
-          <span className="text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <span className="text-center text-[11.5px] text-muted-foreground">
             arrasta o arquivo fatiado aqui
           </span>
         )}
@@ -551,7 +551,7 @@ function NewJobCard() {
         </p>
       )}
 
-      <p className="mt-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+      <p className="mt-3 font-mono text-[11.5px] leading-relaxed text-muted-foreground">
         O tempo e as gramas saem do próprio arquivo — fatia no OrcaSlicer com o
         perfil da Kobra S1. Fatiar STL aqui dentro vem na próxima.
       </p>
@@ -590,13 +590,13 @@ function QueueCard({
     <div className="card-gradient rounded-brutal p-4">
       <div className="mb-3 flex items-baseline justify-between">
         <span className="font-display text-sm uppercase tracking-wider text-foreground">Fila</span>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className="text-[11.5px] text-muted-foreground">
           {queue.length === 0 ? 'vazia' : `${queue.length} na espera`}
         </span>
       </div>
 
       {queue.length === 0 ? (
-        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Fila limpa.
         </p>
       ) : (
@@ -604,7 +604,7 @@ function QueueCard({
           {queue.map((job) => (
             <li
               key={job.id}
-              className="flex items-center gap-3 rounded-brutal border border-[#1a1a1a] bg-void/40 px-3 py-2"
+              className="flex items-center gap-3 rounded-brutal border border-line bg-void/40 px-3 py-2"
             >
               <span
                 className={cn(
@@ -618,13 +618,13 @@ function QueueCard({
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="truncate font-display text-sm text-foreground">{job.title}</span>
-                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                  <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">
                     {job.owner.displayName}
                   </span>
                 </div>
                 {/* A explicação da posição vem PRONTA do servidor — a tela não
                     recalcula a regra de justiça. */}
-                <p className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                <p className="truncate text-[11.5px] text-muted-foreground">
                   {formatSeconds(job.estimatedSeconds)}
                   {job.estimatedGrams ? ` · ${Math.round(job.estimatedGrams)}g` : ''}
                   {job.reasonText ? ` · ${job.reasonText}` : ''}
@@ -632,7 +632,7 @@ function QueueCard({
               </div>
 
               {job.etaStartAt && (
-                <span className="hidden shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:block">
+                <span className="hidden shrink-0 text-[11.5px] text-muted-foreground sm:block">
                   ~{new Date(job.etaStartAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
@@ -688,19 +688,19 @@ function HistoryCard() {
         <span className="font-display text-sm uppercase tracking-wider text-foreground">
           Já impresso
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className="text-[11.5px] text-muted-foreground">
           estimado vs. real
         </span>
       </div>
 
       {jobs.length === 0 ? (
-        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Nada impresso ainda.
         </p>
       ) : (
         <table className="w-full font-mono text-[11px]">
           <thead>
-            <tr className="bg-void/60 text-[9px] uppercase tracking-widest text-muted-foreground">
+            <tr className="bg-void/60 text-[11px] uppercase tracking-widest text-muted-foreground">
               <th className="px-2 py-1 text-left">peça</th>
               <th className="px-2 py-1 text-left">quem</th>
               <th className="px-2 py-1 text-right">estimado</th>
@@ -713,7 +713,7 @@ function HistoryCard() {
               const over =
                 job.billedSeconds !== null && job.billedSeconds > job.estimatedSeconds * 1.2
               return (
-                <tr key={job.id} className="border-t border-[#1a1a1a]">
+                <tr key={job.id} className="border-t border-line">
                   <td className="max-w-[160px] truncate px-2 py-1">
                     <span className={statusTone(job.status)}>{job.title}</span>
                   </td>
@@ -734,7 +734,7 @@ function HistoryCard() {
                     ) : (
                       formatSeconds(job.billedSeconds)
                     )}
-                    {job.refundedSeconds > 0 && <span className="text-acid"> (devolvido)</span>}
+                    {job.refundedSeconds > 0 && <span className="text-acid-text"> (devolvido)</span>}
                   </td>
                   <td className="px-2 py-1 text-right text-muted-foreground">
                     {job.finishedAt

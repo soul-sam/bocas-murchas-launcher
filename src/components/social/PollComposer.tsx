@@ -1,4 +1,6 @@
 import * as React from 'react'
+import { THEME_LABEL } from '../../../electron/preload/types'
+import { useSettings } from '@/lib/settings-context'
 import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react'
 import {
   BarChart3,
@@ -60,6 +62,9 @@ const blankOption = (): OptionDraft => ({ key: nextKey++, text: '', emoji: '' })
 const initialOptions = (): OptionDraft[] => [blankOption(), blankOption()]
 
 export function PollComposer() {
+  // O seletor de emoji e de terceiros e nao le os tokens: recebe claro/escuro
+  // conforme o tema ativo.
+  const pickerTheme = THEME_LABEL[useSettings().settings.theme].light ? Theme.LIGHT : Theme.DARK
   const { pollComposerOpen: open, closePollComposer } = useOverlays()
   const { token } = useAuth()
   const { activeChannelId, activeChannel } = useChat()
@@ -187,21 +192,21 @@ export function PollComposer() {
       }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
     >
-      <div className="card-acid relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-brutal scanlines">
+      <div className="card-acid relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-brutal">
         <button
           type="button"
           aria-label="Fechar"
           onClick={close}
-          className="absolute right-3 top-3 z-10 rounded-brutal p-1 text-muted-foreground transition-colors hover:text-acid"
+          className="absolute right-3 top-3 z-10 rounded-brutal p-1 text-muted-foreground transition-colors hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>
 
         <header className="flex items-center gap-3 px-6 pt-6">
-          <BarChart3 className="h-7 w-7 shrink-0 text-acid drop-shadow-[0_0_8px_rgba(106,255,0,0.6)]" />
+          <BarChart3 className="h-7 w-7 shrink-0 text-muted-foreground drop-shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]" />
           <div className="min-w-0">
             <h2 className="title-brutal text-2xl">Enquete</h2>
-            <p className="flex items-center gap-1 truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="flex items-center gap-1 truncate text-[11.5px] text-muted-foreground">
               {activeChannel && !blocked ? (
                 <>
                   vai pra <Hash className="h-3 w-3" />
@@ -224,7 +229,7 @@ export function PollComposer() {
           <div className="space-y-1.5">
             <label
               htmlFor="poll-question"
-              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+              className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground"
             >
               Pergunta
             </label>
@@ -244,13 +249,13 @@ export function PollComposer() {
               placeholder="Qual vai ser o jogo de sexta?"
               className="input-terminal w-full rounded-brutal px-3 py-2 text-sm disabled:opacity-50"
             />
-            <p className="text-right font-mono text-[9px] text-muted-foreground">
+            <p className="text-right font-mono text-[11px] text-muted-foreground">
               {question.length}/{MAX_QUESTION}
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               Opções · {options.length}/{MAX_OPTIONS}
             </p>
 
@@ -270,7 +275,7 @@ export function PollComposer() {
                           'flex h-9 w-9 shrink-0 items-center justify-center rounded-brutal border-2 transition-colors',
                           option.emoji
                             ? 'border-acid-dark text-lg'
-                            : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-acid',
+                            : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground',
                           'disabled:opacity-50'
                         )}
                       >
@@ -285,13 +290,13 @@ export function PollComposer() {
                             updateOption(index, { emoji: '' })
                             setEmojiFor(null)
                           }}
-                          className="w-full border-b border-[#1a1a1a] bg-void px-3 py-1.5 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-destructive"
+                          className="w-full border-b border-line bg-void px-3 py-1.5 text-left font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-destructive"
                         >
                           tirar o emoji
                         </button>
                       )}
                       <EmojiPicker
-                        theme={Theme.DARK}
+                        theme={pickerTheme}
                         emojiStyle={EmojiStyle.NATIVE}
                         lazyLoadEmojis
                         width={300}
@@ -339,7 +344,7 @@ export function PollComposer() {
                 type="button"
                 onClick={addOption}
                 disabled={!!blocked}
-                className="flex items-center gap-1.5 rounded-brutal px-1 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-acid disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-brutal px-1 py-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
               >
                 <Plus className="h-3 w-3" /> mais uma opção
               </button>
@@ -348,7 +353,7 @@ export function PollComposer() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <p className="text-[11.5px] text-muted-foreground">
                 Tipo de voto
               </p>
               <div className="grid grid-cols-2 gap-1">
@@ -372,12 +377,12 @@ export function PollComposer() {
             </div>
 
             <div className="space-y-1.5">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <p className="text-[11.5px] text-muted-foreground">
                 Quem votou
               </p>
               <label
                 className={cn(
-                  'flex h-full min-h-[3rem] cursor-pointer items-center justify-between gap-3 rounded-brutal border-2 border-[#1a1a1a] px-3 py-2 transition-colors',
+                  'flex h-full min-h-[3rem] cursor-pointer items-center justify-between gap-3 rounded-brutal border-2 border-line px-3 py-2 transition-colors',
                   anonymous && 'border-acid-dark',
                   blocked && 'cursor-not-allowed opacity-50'
                 )}
@@ -391,7 +396,7 @@ export function PollComposer() {
                   />
                   <span className="min-w-0">
                     <span className="block text-xs text-foreground">Anônima</span>
-                    <span className="block truncate text-[10px] text-muted-foreground">
+                    <span className="block truncate text-[11.5px] text-muted-foreground">
                       {anonymous ? 'ninguém vê quem votou' : 'aparece quem votou em quê'}
                     </span>
                   </span>
@@ -402,7 +407,7 @@ export function PollComposer() {
           </div>
 
           <div className="space-y-1.5">
-            <p className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="flex items-center gap-1 text-[11.5px] text-muted-foreground">
               <Clock className="h-3 w-3" /> Prazo
             </p>
             <div className="flex flex-wrap gap-1">
@@ -413,10 +418,10 @@ export function PollComposer() {
                   disabled={!!blocked}
                   onClick={() => setDurationIndex(index)}
                   className={cn(
-                    'rounded-brutal border-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50',
+                    'rounded-brutal border-2 px-2.5 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors disabled:opacity-50',
                     durationIndex === index
                       ? 'border-acid bg-acid/15 text-acid'
-                      : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-foreground'
+                      : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
                   )}
                 >
                   {preset.label}
@@ -428,7 +433,7 @@ export function PollComposer() {
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
 
-        <footer className="flex items-center justify-end gap-2 border-t border-[#1a1a1a] px-6 py-3">
+        <footer className="flex items-center justify-end gap-2 border-t border-line px-6 py-3">
           <Button variant="ghost" size="sm" onClick={close} disabled={busy}>
             Cancelar
           </Button>
@@ -470,14 +475,14 @@ function Choice({
         'flex flex-col items-start gap-0.5 rounded-brutal border-2 px-2.5 py-2 text-left transition-colors disabled:opacity-50',
         active
           ? 'border-acid bg-acid/10 text-acid'
-          : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-foreground'
+          : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
       )}
     >
       <span className="flex items-center gap-1.5 text-xs font-medium">
         {icon}
         {label}
       </span>
-      <span className="text-[10px] opacity-80">{hint}</span>
+      <span className="text-[11.5px] opacity-80">{hint}</span>
     </button>
   )
 }

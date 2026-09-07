@@ -75,12 +75,12 @@ export function MemberList() {
     }
   }, [members, needle, voiceByUser, activities])
 
-  if (loading) return <aside className="w-56 shrink-0 border-l border-[#1a1a1a]" />
+  if (loading) return <aside className="w-56 shrink-0 border-l border-line" />
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-l border-[#1a1a1a] bg-[#0D0D0D]">
-      <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-[#1a1a1a] px-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-brutal border border-[#1a1a1a] px-2 transition-colors focus-within:border-acid/50">
+    <aside className="flex w-56 shrink-0 flex-col border-l border-line bg-void">
+      <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-line px-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-brutal border border-line px-2 transition-colors focus-within:border-acid/50">
           <Search className="h-3 w-3 shrink-0 text-muted-foreground" />
           <input
             value={term}
@@ -105,7 +105,7 @@ export function MemberList() {
           onClick={toggleMembers}
           title="Esconder membros"
           aria-label="Esconder membros"
-          className="shrink-0 rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+          className="shrink-0 rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -155,7 +155,7 @@ function Group({
 
   return (
     <section className="mb-3 px-2">
-      <h3 className="px-2 pb-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <h3 className="px-2 pb-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
         {label} — {members.length}
       </h3>
 
@@ -203,7 +203,7 @@ function Group({
                       className="flex items-center gap-1 truncate text-sm"
                       style={member.profileColor ? { color: member.profileColor } : undefined}
                     >
-                      <NameEffect effect={member.nameEffect} className="truncate">
+                      <NameEffect animated={false} effect={member.nameEffect} className="truncate">
                         {member.displayName}
                       </NameEffect>
                       <NameEmoji id={member.emoji} />
@@ -224,7 +224,7 @@ function Group({
                     {activity ? (
                       <ActivityLine activity={activity} />
                     ) : voice ? (
-                      <span className="flex items-center gap-1 truncate font-mono text-[9px] uppercase tracking-widest text-acid">
+                      <span className="flex items-center gap-1 truncate text-[11px] text-acid-text">
                         <Volume2 className="h-2.5 w-2.5 shrink-0" />
                         na call
                         {voice.sharing && (
@@ -235,12 +235,12 @@ function Group({
                         )}
                       </span>
                     ) : member.customStatus ? (
-                      <span className="block truncate text-[10px] text-muted-foreground">
+                      <span className="block truncate text-[11.5px] text-muted-foreground">
                         {member.customStatus}
                       </span>
                     ) : (
                       title && (
-                        <span className="flex items-center gap-1 truncate font-mono text-[9px] uppercase tracking-widest text-burn/80">
+                        <span className="flex items-center gap-1 truncate text-[11px] text-burn/80">
                           <TitleIcon titleId={member.title} className="h-2.5 w-2.5 shrink-0" />
                           <span className="truncate">{title}</span>
                         </span>

@@ -30,6 +30,7 @@ import {
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 import { resolveAssetUrl, users as usersApi, type Channel, type UserStatus } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useChat } from '@/lib/chat-context'
@@ -48,8 +49,8 @@ import { SoundboardPopover } from './SoundboardPopover'
 import { ConnectionBars } from './ConnectionBars'
 
 const STATUS_OPTIONS: Array<{ value: UserStatus; label: string; color: string }> = [
-  { value: 'online', label: 'Online', color: '#6AFF00' },
-  { value: 'away', label: 'Ausente', color: '#F2B705' },
+  { value: 'online', label: 'Online', color: 'hsl(var(--acid))' },
+  { value: 'away', label: 'Ausente', color: 'hsl(var(--burn))' },
   { value: 'dnd', label: 'Não perturbe', color: '#B33' },
   { value: 'offline', label: 'Invisível', color: '#3A3A3A' }
 ]
@@ -103,31 +104,39 @@ export function ChannelSidebar({
     if (sidebarIsDrawer) closeSidebar()
   }, [sidebarIsDrawer, closeSidebar])
 
+  // Em modo gaveta a barra e um dialogo de verdade: foco preso dentro (Tab
+  // nao vaza pro chat que esta atras do overlay) e Escape fecha.
+  const trapRef = useFocusTrap<HTMLElement>(sidebarIsDrawer && sidebarOpen, closeSidebar)
+
   if (sidebarIsDrawer && !sidebarOpen) return null
 
   const aside = (
     <aside
+      ref={trapRef}
+      role={sidebarIsDrawer ? 'dialog' : undefined}
+      aria-modal={sidebarIsDrawer ? true : undefined}
+      aria-label={sidebarIsDrawer ? 'Canais' : undefined}
       className={cn(
-        'flex w-60 shrink-0 flex-col border-r border-[#1a1a1a] bg-[#0D0D0D]',
+        'flex w-60 shrink-0 flex-col border-r border-line bg-void',
         sidebarIsDrawer && 'absolute inset-y-0 left-14 z-30 shadow-[10px_0_30px_rgba(0,0,0,0.6)]'
       )}
     >
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[#1a1a1a] px-3">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
         <img
           src="bocas-murchas-transp.png"
           alt=""
           aria-hidden
-          className="h-6 w-6 drop-shadow-[0_0_8px_rgba(106,255,0,0.5)]"
+          className="h-6 w-6 drop-shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]"
         />
         <span className="min-w-0 flex-1 truncate font-display text-xs uppercase tracking-[0.15em] text-dirty-white">
-          Bocas <span className="text-acid">Murchas</span>
+          Bocas <span className="text-acid-text">Murchas</span>
         </span>
 
         <span
           title={connected ? 'Conectado' : 'Reconectando…'}
           className={cn(
             'h-1.5 w-1.5 shrink-0 rounded-full',
-            connected ? 'bg-acid shadow-[0_0_6px_#6AFF00]' : 'animate-pulse bg-burn'
+            connected ? 'bg-acid shadow-neon-2' : 'animate-pulse bg-burn'
           )}
         />
 
@@ -147,16 +156,16 @@ export function ChannelSidebar({
       <button
         type="button"
         onClick={openQuickSwitcher}
-        className="mx-2 mt-2 flex shrink-0 items-center gap-2 rounded-brutal border border-[#1a1a1a] px-2 py-1.5 text-left text-muted-foreground transition-colors hover:border-acid/40 hover:text-foreground"
+        className="mx-2 mt-2 flex shrink-0 items-center gap-2 rounded-brutal border border-line px-2 py-1.5 text-left text-muted-foreground transition-colors hover:border-acid/40 hover:text-foreground"
       >
         <Search className="h-3 w-3 shrink-0" />
         <span className="flex-1 truncate text-xs">Ir pra…</span>
-        <kbd className="shrink-0 font-mono text-[9px] uppercase tracking-widest opacity-70">
+        <kbd className="shrink-0 font-mono text-[11px] uppercase tracking-widest opacity-70">
           Ctrl K
         </kbd>
       </button>
 
-      <p className="mx-2 mb-1 mt-1.5 flex shrink-0 items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70">
+      <p className="mx-2 mb-1 mt-1.5 flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground/70">
         <MessageSquare className="h-2.5 w-2.5" />
         botão direito em alguém = conversa (aparece na barra)
       </p>
@@ -171,7 +180,7 @@ export function ChannelSidebar({
                 onClick={onManageChannels}
                 title="Gerenciar canais"
                 aria-label="Gerenciar canais"
-                className="rounded-brutal p-0.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-acid"
+                className="rounded-brutal p-0.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
               >
                 <Settings2 className="h-3 w-3" />
               </button>
@@ -221,7 +230,7 @@ export function ChannelSidebar({
                   <span
                     title={`${pings} ${pings === 1 ? 'menção' : 'menções'}`}
                     className={cn(
-                      'shrink-0 rounded-full bg-destructive px-1.5 font-mono text-[10px] font-bold text-dirty-white',
+                      'shrink-0 rounded-full bg-destructive px-1.5 font-mono text-[11.5px] font-bold text-dirty-white',
                       !muted && 'ml-auto'
                     )}
                   >
@@ -232,7 +241,7 @@ export function ChannelSidebar({
                 {count > 0 && !active && pings === 0 && (
                   <span
                     className={cn(
-                      'shrink-0 rounded-full bg-[#2a2a2a] px-1.5 font-mono text-[10px] font-bold text-dirty-white',
+                      'shrink-0 rounded-full bg-surface-strong px-1.5 font-mono text-[11.5px] font-bold text-dirty-white',
                       !muted && 'ml-auto'
                     )}
                   >
@@ -277,7 +286,7 @@ export function ChannelSidebar({
                   {occupants.length > 0 && (
                     <span
                       className={cn(
-                        'shrink-0 font-mono text-[10px] text-muted-foreground',
+                        'shrink-0 font-mono text-[11.5px] text-muted-foreground',
                         sharing.length === 0 && 'ml-auto'
                       )}
                     >
@@ -287,7 +296,7 @@ export function ChannelSidebar({
                 </button>
 
                 {occupants.length > 0 && (
-                  <ul className="mb-1 ml-4 space-y-0.5 border-l border-[#1a1a1a] pl-2">
+                  <ul className="mb-1 ml-4 space-y-0.5 border-l border-line pl-2">
                     {occupants.map((occupant) => {
                       const isSharing = sharing.includes(occupant.id)
 
@@ -342,11 +351,11 @@ export function ChannelSidebar({
         <div className="shrink-0 border-t border-acid-dark/40 bg-acid/5 px-3 py-2">
           <div className="mb-1.5 flex items-center gap-1.5">
             <ConnectionBars quality={voice.connectionQuality} pingMs={voice.pingMs} />
-            <span className="min-w-0 flex-1 truncate font-mono text-[10px] uppercase tracking-widest text-acid">
+            <span className="min-w-0 flex-1 truncate text-[11.5px] text-acid-text">
               {voice.channel.name}
             </span>
             {pttActive && (
-              <span className="ml-auto shrink-0 font-mono text-[9px] uppercase tracking-widest text-acid">
+              <span className="ml-auto shrink-0 text-[11px] text-acid-text">
                 no ar
               </span>
             )}
@@ -359,7 +368,7 @@ export function ChannelSidebar({
             <div className="mb-1.5 rounded-brutal border border-burn/50 bg-burn/10 px-2 py-1">
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-burn" />
-                <span className="flex-1 truncate font-mono text-[9px] uppercase tracking-widest text-burn">
+                <span className="flex-1 truncate text-[11px] text-burn">
                   transmitindo
                 </span>
                 <button
@@ -374,7 +383,7 @@ export function ChannelSidebar({
               {voice.shareInfo && (
                 <p
                   title={voice.shareInfo.sourceName}
-                  className="truncate font-mono text-[9px] text-muted-foreground"
+                  className="truncate font-mono text-[11px] text-muted-foreground"
                 >
                   {voice.shareInfo.sourceName}
                 </p>
@@ -431,7 +440,7 @@ export function ChannelSidebar({
       <OpenPartiesStrip />
 
       {/* Rodapé do usuário */}
-      <footer className="flex shrink-0 items-center gap-2 border-t border-[#1a1a1a] bg-[#0B0B0B] px-2 py-2">
+      <footer className="flex shrink-0 items-center gap-2 border-t border-line bg-void px-2 py-2">
         {/* modal={false} de proposito: menu modal do Radix escreve
             `pointer-events: none` no <body>, e este aqui abre o editor de
             perfil — duas camadas sobrepostas era um dos caminhos que deixavam o
@@ -461,7 +470,7 @@ export function ChannelSidebar({
                 {myActivity ? (
                   <ActivityLine activity={myActivity} />
                 ) : (
-                  <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                  <span className="block truncate text-[11px] text-muted-foreground">
                     {user?.customStatus || `@${user?.username}`}
                   </span>
                 )}
@@ -554,7 +563,7 @@ function Section({
 }) {
   return (
     <section className="mb-3 px-2">
-      <h3 className="flex items-center gap-1 px-2 pb-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <h3 className="flex items-center gap-1 px-2 pb-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
         <span className="flex-1 truncate">{label}</span>
         {action}
       </h3>
@@ -598,7 +607,7 @@ const DockButton = React.forwardRef<
           ? 'text-destructive hover:bg-destructive/15'
           : active
             ? 'text-acid'
-            : 'text-muted-foreground hover:bg-void-light hover:text-acid'
+            : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
       )}
     >
       {children}

@@ -84,12 +84,12 @@ export function EmojiManager({
         <DialogHeader>
           <DialogTitle>Emojis & stickers</DialogTitle>
           <DialogDescription>
-            o que o servidor tem de <span className="font-mono text-acid">:kekw:</span> e
+            o que o servidor tem de <span className="font-mono text-foreground">:kekw:</span> e
             figurinha
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mb-3 flex shrink-0 gap-1 border-b border-[#1a1a1a]">
+        <div className="mb-3 flex shrink-0 gap-1 border-b border-line">
           <TabButton active={tab === 'emojis'} onClick={() => setTab('emojis')}>
             <Smile className="h-3.5 w-3.5" />
             Emojis
@@ -120,7 +120,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 border-b-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+        'flex items-center gap-1.5 border-b-2 px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
         active
           ? 'border-acid text-acid'
           : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -228,10 +228,10 @@ function EmojisTab() {
   return (
     <>
       {/* Formulario de upload */}
-      <div className="mb-3 flex shrink-0 items-center gap-2 rounded-brutal border border-[#1a1a1a] bg-void-light/30 p-2">
+      <div className="mb-3 flex shrink-0 items-center gap-2 rounded-brutal border border-line bg-void-light/30 p-2">
         <label
           title="Escolher imagem (png, gif, webp ou jpg até 256 KB)"
-          className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-brutal border border-dashed border-[#2a2a2a] transition-colors hover:border-acid/60"
+          className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-brutal border border-dashed border-line-strong transition-colors hover:border-acid/60"
         >
           {preview ? (
             <img src={preview} alt="" className="h-10 w-10 object-contain" />
@@ -269,7 +269,7 @@ function EmojisTab() {
         </Button>
       </div>
 
-      <p className="mb-2 shrink-0 font-mono text-[10px] text-muted-foreground">
+      <p className="mb-2 shrink-0 font-mono text-[11.5px] text-muted-foreground">
         png, gif, webp ou jpg até 256 KB · qualquer um pode subir · {emojis.length}/300
       </p>
 
@@ -292,7 +292,7 @@ function EmojisTab() {
           return (
             <div
               key={emoji.id}
-              className="flex items-center gap-2 rounded-brutal border border-[#1a1a1a] bg-void-light/30 px-2 py-1.5"
+              className="flex items-center gap-2 rounded-brutal border border-line bg-void-light/30 px-2 py-1.5"
             >
               <EmojiImage emoji={emoji} className="h-7 w-7 shrink-0" />
 
@@ -313,7 +313,7 @@ function EmojisTab() {
                   <span className="block truncate font-mono text-sm text-foreground">
                     :{emoji.name}:
                   </span>
-                  <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                  <span className="block truncate text-[11px] text-muted-foreground">
                     {emoji.uploadedBy.displayName}
                   </span>
                 </span>
@@ -425,7 +425,7 @@ function StickersTab() {
   return (
     <>
       {/* Criar pack */}
-      <div className="mb-3 flex shrink-0 items-center gap-2 rounded-brutal border border-[#1a1a1a] bg-void-light/30 p-2">
+      <div className="mb-3 flex shrink-0 items-center gap-2 rounded-brutal border border-line bg-void-light/30 p-2">
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value.slice(0, 32))}
@@ -450,7 +450,7 @@ function StickersTab() {
         </Button>
       </div>
 
-      <p className="mb-2 shrink-0 font-mono text-[10px] text-muted-foreground">
+      <p className="mb-2 shrink-0 font-mono text-[11.5px] text-muted-foreground">
         png, gif ou webp até 1 MB · qualquer um cria pack e sobe sticker · só admin apaga ·{' '}
         {packs.length}/30 packs · {totalStickers}/300 stickers
       </p>
@@ -461,14 +461,14 @@ function StickersTab() {
         {packs.map((pack) => (
           <div
             key={pack.id}
-            className="rounded-brutal border border-[#1a1a1a] bg-void-light/30 p-2"
+            className="rounded-brutal border border-line bg-void-light/30 p-2"
           >
             <div className="mb-2 flex items-center gap-2">
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-display text-sm uppercase tracking-wide text-foreground">
                   {pack.name}
                 </span>
-                <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                <span className="block truncate text-[11px] text-muted-foreground">
                   {pack.stickers.length} sticker{pack.stickers.length === 1 ? '' : 's'}
                   {pack.description ? ` · ${pack.description}` : ''}
                 </span>
@@ -477,7 +477,7 @@ function StickersTab() {
               <label
                 title="Subir sticker neste pack (png, gif ou webp até 1 MB)"
                 className={cn(
-                  'flex cursor-pointer items-center gap-1 rounded-brutal border border-[#1f1f1f] px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid',
+                  'flex cursor-pointer items-center gap-1 rounded-brutal border border-line px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground',
                   busy && 'pointer-events-none opacity-50'
                 )}
               >
@@ -533,7 +533,7 @@ function StickersTab() {
                   <div
                     key={sticker.id}
                     title={sticker.name}
-                    className="group/sticker relative flex aspect-square items-center justify-center rounded-brutal border border-transparent p-1 hover:border-[#1f1f1f]"
+                    className="group/sticker relative flex aspect-square items-center justify-center rounded-brutal border border-transparent p-1 hover:border-line"
                   >
                     <img
                       src={resolveAssetUrl(sticker.url)}
@@ -591,7 +591,7 @@ function IconButton({
       onClick={onClick}
       className={cn(
         'rounded-brutal p-1 text-muted-foreground transition-colors disabled:opacity-40',
-        danger ? 'hover:bg-destructive/15 hover:text-destructive' : 'hover:bg-muted hover:text-acid'
+        danger ? 'hover:bg-destructive/15 hover:text-destructive' : 'hover:bg-muted hover:text-foreground'
       )}
     >
       {children}

@@ -36,9 +36,9 @@ export function InterfaceGuardNotice() {
 
   return (
     <div className="pointer-events-none fixed bottom-4 left-1/2 z-[90] -translate-x-1/2">
-      <div className="flex items-center gap-2 rounded-brutal border-2 border-acid-dark bg-void px-3 py-1.5 shadow-[0_0_24px_rgba(106,255,0,0.2)]">
-        <Unlock className="h-3.5 w-3.5 shrink-0 text-acid" />
-        <span className="font-mono text-[10px] uppercase tracking-widest text-dirty-white">
+      <div className="flex items-center gap-2 rounded-brutal border-2 border-acid-dark bg-void px-3 py-1.5 shadow-[0_0_24px_rgb(var(--neon-rgb)/0.2)]">
+        <Unlock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <span className="text-[11.5px] text-dirty-white">
           {message}
         </span>
       </div>

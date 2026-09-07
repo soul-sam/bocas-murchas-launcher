@@ -39,7 +39,7 @@ const ACCENT: Record<GamificationToast['kind'], { border: string; text: string; 
   badge: { border: 'border-burn/60', text: 'text-burn', Icon: Award },
   coins: { border: 'border-burn/60', text: 'text-burn', Icon: Coins },
   checkin: { border: 'border-burn/60', text: 'text-burn', Icon: Flame },
-  info: { border: 'border-[#2a2a2a]', text: 'text-muted-foreground', Icon: Info },
+  info: { border: 'border-line-strong', text: 'text-muted-foreground', Icon: Info },
   error: { border: 'border-destructive/60', text: 'text-destructive', Icon: TriangleAlert }
 }
 
@@ -55,7 +55,7 @@ function ToastRow({ toast, onDismiss }: { toast: GamificationToast; onDismiss: (
         'toast-in pointer-events-auto flex items-center gap-2 rounded-brutal border-2 bg-void px-2.5 py-1.5',
         'shadow-[0_0_20px_rgba(0,0,0,0.7)]',
         accent.border,
-        loud && 'shadow-[0_0_20px_rgba(106,255,0,0.15)]'
+        loud && 'shadow-[0_0_20px_rgb(var(--neon-rgb)/0.15)]'
       )}
     >
       <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center', accent.text)}>
@@ -78,7 +78,7 @@ function ToastRow({ toast, onDismiss }: { toast: GamificationToast; onDismiss: (
           {toast.title}
         </span>
         {toast.body && (
-          <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+          <span className="block truncate text-[11px] text-muted-foreground">
             {toast.body}
           </span>
         )}

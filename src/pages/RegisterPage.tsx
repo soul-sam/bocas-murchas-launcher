@@ -54,11 +54,11 @@ export function RegisterPage() {
 
   return (
     <div className="flex flex-1 items-center justify-center p-8">
-      <div className="card-acid w-full max-w-md rounded-brutal p-8 scanlines">
+      <div className="card-acid w-full max-w-md rounded-brutal p-8 scanlines-brand">
         <div className="mb-6 flex flex-col items-center gap-2">
           <KeyRound className="h-10 w-10 text-burn drop-shadow-[0_0_15px_rgba(242,183,5,0.6)]" />
           <h1 className="title-brutal text-3xl">Novo Membro</h1>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="text-[11.5px] text-muted-foreground">
             Insira o código de convite do grupo
           </p>
         </div>

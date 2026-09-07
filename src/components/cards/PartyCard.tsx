@@ -130,8 +130,8 @@ export function PartyCard({ metadata }: CardProps<PartyCardMetadata>) {
               onClick={cancel}
               disabled={busy}
               className={cn(
-                'flex shrink-0 items-center gap-1 rounded-brutal px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
-                confirming ? 'bg-destructive text-white' : 'text-muted-foreground hover:text-destructive'
+                'flex shrink-0 items-center gap-1 rounded-brutal px-1.5 py-0.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
+                confirming ? 'bg-destructive text-destructive-foreground' : 'text-muted-foreground hover:text-destructive'
               )}
             >
               <Ban className="h-3 w-3" />
@@ -151,7 +151,7 @@ export function PartyCard({ metadata }: CardProps<PartyCardMetadata>) {
       </p>
       <p
         className={cn(
-          'mt-0.5 font-mono text-[10px] uppercase tracking-widest',
+          'mt-0.5 text-[11.5px]',
           closed ? 'text-muted-foreground' : status === 'full' ? 'text-acid' : 'text-burn'
         )}
       >
@@ -178,7 +178,7 @@ export function PartyCard({ metadata }: CardProps<PartyCardMetadata>) {
             <span
               key={`empty-${i}`}
               aria-hidden
-              className="h-7 w-7 rounded-brutal border-2 border-dashed border-[#2a2a2a]"
+              className="h-7 w-7 rounded-brutal border-2 border-dashed border-line-strong"
             />
           ))}
         {members.length > 0 && (
@@ -252,7 +252,7 @@ export function PartyCard({ metadata }: CardProps<PartyCardMetadata>) {
       {feedback && (
         <p
           className={cn(
-            'mt-2 font-mono text-[10px] uppercase tracking-widest',
+            'mt-2 text-[11.5px]',
             feedback.bad ? 'text-destructive' : 'text-acid'
           )}
         >
@@ -285,7 +285,7 @@ function ActionButton({
         : 'border-acid/50 text-acid hover:bg-acid/10'
       : tone === 'burn'
         ? 'border-burn/60 text-burn hover:bg-burn/15'
-        : 'border-[#2a2a2a] text-muted-foreground hover:border-acid/50 hover:text-foreground'
+        : 'border-line-strong text-muted-foreground hover:border-acid/50 hover:text-foreground'
 
   return (
     <button
@@ -293,7 +293,7 @@ function ActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 rounded-brutal border-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors',
+        'flex items-center gap-1.5 rounded-brutal border-2 px-2.5 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
         styles,
         disabled && 'cursor-not-allowed opacity-60'
       )}

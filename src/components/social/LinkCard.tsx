@@ -126,7 +126,7 @@ export function LinkCard({ link, canDelete, onPatch, onRemoved, onJump }: LinkCa
   return (
     <article
       className={cn(
-        'group overflow-hidden rounded-brutal border border-[#1a1a1a] bg-void-light/30 transition-colors hover:border-acid/40',
+        'group overflow-hidden rounded-brutal border border-line bg-void-light/30 transition-colors hover:border-acid/40',
         removing && 'opacity-50'
       )}
     >
@@ -155,10 +155,10 @@ export function LinkCard({ link, canDelete, onPatch, onRemoved, onJump }: LinkCa
           </span>
         </button>
 
-        <div className="mt-1 flex items-center gap-1.5 font-mono text-[9px] text-muted-foreground">
+        <div className="mt-1 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
           <span
             className={cn(
-              'shrink-0 rounded-[2px] border border-[#1f1f1f] px-1 uppercase tracking-widest',
+              'shrink-0 rounded-[2px] border border-line px-1',
               meta.tone
             )}
           >
@@ -182,10 +182,10 @@ export function LinkCard({ link, canDelete, onPatch, onRemoved, onJump }: LinkCa
             onClick={() => void toggleWant()}
             title={link.wanted ? 'Não quero mais' : 'Quero!'}
             className={cn(
-              'flex items-center gap-1 rounded-brutal border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest transition-colors',
+              'flex items-center gap-1 rounded-brutal border px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-widest transition-colors',
               link.wanted
                 ? 'border-acid/50 bg-acid/10 text-acid'
-                : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/40 hover:text-acid'
+                : 'border-line text-muted-foreground hover:border-acid/40 hover:text-foreground'
             )}
           >
             <ShoppingCart className="h-3 w-3" />
@@ -198,7 +198,7 @@ export function LinkCard({ link, canDelete, onPatch, onRemoved, onJump }: LinkCa
             onClick={() => onJump(link)}
             title="Ir pra mensagem"
             aria-label="Ir pra mensagem"
-            className="rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+            className="rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <MessageSquare className="h-3 w-3" />
           </button>
@@ -208,7 +208,7 @@ export function LinkCard({ link, canDelete, onPatch, onRemoved, onJump }: LinkCa
             onClick={open}
             title="Abrir no navegador"
             aria-label="Abrir no navegador"
-            className="rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+            className="rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <ExternalLink className="h-3 w-3" />
           </button>

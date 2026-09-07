@@ -153,7 +153,7 @@ function UrlForm({
         autoFocus={autoFocus}
         spellCheck={false}
         className={cn(
-          'min-w-0 flex-1 rounded-brutal border-2 border-[#1a1a1a] bg-void px-2 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-acid/60 focus:outline-none',
+          'min-w-0 flex-1 rounded-brutal border-2 border-line bg-void px-2 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-acid/60 focus:outline-none',
           compact ? 'h-7' : 'h-9 px-3'
         )}
       />
@@ -161,7 +161,7 @@ function UrlForm({
         type="submit"
         disabled={!value.trim() || busy !== null}
         className={cn(
-          'flex shrink-0 items-center gap-1.5 rounded-brutal border-2 border-acid bg-acid/10 font-mono text-[10px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20 disabled:cursor-not-allowed disabled:opacity-40',
+          'flex shrink-0 items-center gap-1.5 rounded-brutal border-2 border-acid bg-acid/10 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20 disabled:cursor-not-allowed disabled:opacity-40',
           compact ? 'h-7 px-2' : 'h-9 px-3'
         )}
       >
@@ -175,7 +175,7 @@ function UrlForm({
           disabled={!value.trim() || busy !== null}
           title="Botar na fila (toca depois desse)"
           className={cn(
-            'flex shrink-0 items-center gap-1 rounded-brutal border-2 border-[#1a1a1a] font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid disabled:cursor-not-allowed disabled:opacity-40',
+            'flex shrink-0 items-center gap-1 rounded-brutal border-2 border-line font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40',
             compact ? 'h-7 px-2' : 'h-9 px-3'
           )}
         >
@@ -217,11 +217,11 @@ function EmptyWatch({ collapsed, onClose }: { collapsed: boolean; onClose: () =>
 
   if (collapsed) {
     return (
-      <div className="flex shrink-0 items-center gap-2 rounded-brutal border-2 border-[#1a1a1a] bg-void/60 px-2 py-1.5">
+      <div className="flex shrink-0 items-center gap-2 rounded-brutal border-2 border-line bg-void/60 px-2 py-1.5">
         <Tv className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <UrlForm onSubmit={watch.set} compact />
         {watch.feedback && (
-          <span className="truncate font-mono text-[10px] text-destructive">{watch.feedback}</span>
+          <span className="truncate font-mono text-[11.5px] text-destructive">{watch.feedback}</span>
         )}
         <button
           type="button"
@@ -236,7 +236,7 @@ function EmptyWatch({ collapsed, onClose }: { collapsed: boolean; onClose: () =>
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-brutal border-2 border-dashed border-[#1a1a1a] bg-void/40 p-6 text-center">
+    <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-brutal border-2 border-dashed border-line bg-void/40 p-6 text-center">
       <button
         type="button"
         onClick={onClose}
@@ -246,7 +246,7 @@ function EmptyWatch({ collapsed, onClose }: { collapsed: boolean; onClose: () =>
         <X className="h-4 w-4" />
       </button>
 
-      <Tv className="h-8 w-8 text-acid" />
+      <Tv className="h-8 w-8 text-muted-foreground" />
       <div>
         <p className="title-brutal text-lg">Assistir junto</p>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
@@ -259,7 +259,7 @@ function EmptyWatch({ collapsed, onClose }: { collapsed: boolean; onClose: () =>
 
       <p
         className={cn(
-          'h-4 font-mono text-[10px] uppercase tracking-widest',
+          'h-4 text-[11.5px]',
           watch.feedback ? 'text-destructive' : 'text-transparent'
         )}
       >
@@ -640,12 +640,12 @@ function Player({
                 className="absolute inset-0 flex items-center justify-center bg-transparent focus:outline-none"
               >
                 {ready && !localPlaying && playerState !== YT_STATE.ended && (
-                  <span className="rounded-full bg-void/80 p-4 text-acid shadow-[0_0_24px_rgba(106,255,0,0.35)] transition-transform group-hover:scale-110">
+                  <span className="rounded-full bg-void/80 p-4 text-acid-text shadow-[0_0_24px_rgb(var(--neon-rgb)/0.3)] transition-transform group-hover:scale-110">
                     <Play className="h-8 w-8" />
                   </span>
                 )}
                 {ready && playerState === YT_STATE.ended && (
-                  <span className="rounded-brutal bg-void/80 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <span className="rounded-brutal bg-void/80 px-3 py-2 text-[11.5px] text-muted-foreground">
                     acabou
                   </span>
                 )}
@@ -654,8 +654,8 @@ function Player({
 
             {!ready && !blocked && (
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-void/70">
-                <Loader2 className="h-5 w-5 animate-spin text-acid" />
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <p className="text-[11.5px] text-muted-foreground">
                   carregando o player…
                 </p>
               </div>
@@ -672,7 +672,7 @@ function Player({
                   <button
                     type="button"
                     onClick={() => openExternal(youtubeWatchUrl(session.videoId))}
-                    className="flex items-center gap-1.5 rounded-brutal border-2 border-burn/60 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-burn transition-colors hover:bg-burn/10"
+                    className="flex items-center gap-1.5 rounded-brutal border-2 border-burn/60 px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-burn transition-colors hover:bg-burn/10"
                   >
                     <ExternalLink className="h-3 w-3" />
                     Abrir no YouTube
@@ -681,7 +681,7 @@ function Player({
                     <button
                       type="button"
                       onClick={() => void watch.next()}
-                      className="flex items-center gap-1.5 rounded-brutal border-2 border-[#2a2a2a] px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid"
+                      className="flex items-center gap-1.5 rounded-brutal border-2 border-line-strong px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground"
                     >
                       <SkipForward className="h-3 w-3" />
                       Próximo da fila
@@ -695,7 +695,7 @@ function Player({
               type="button"
               onClick={toggleFullscreen}
               title={fullscreen ? 'Sair da tela cheia' : 'Tela cheia (ou 2 cliques)'}
-              className="absolute right-2 top-2 rounded-brutal bg-void/90 p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-acid focus:opacity-100 group-hover:opacity-100"
+              className="absolute right-2 top-2 rounded-brutal bg-void/90 p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus:opacity-100 group-hover:opacity-100"
             >
               {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             </button>
@@ -709,14 +709,14 @@ function Player({
             type="button"
             onClick={togglePlay}
             title={session.playing ? 'Pausar pra todo mundo' : 'Dar play pra todo mundo'}
-            className="shrink-0 rounded-brutal border border-[#1a1a1a] p-1 text-acid transition-colors hover:bg-acid/10"
+            className="shrink-0 rounded-brutal border border-line p-1 text-acid transition-colors hover:bg-acid/10"
           >
             {session.playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
           </button>
 
-          <Tv className="h-3.5 w-3.5 shrink-0 text-acid" />
+          <Tv className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <span className="min-w-0 truncate text-xs text-foreground">{title}</span>
-          <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+          <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">
             {formatClock(shown)}
             {duration > 0 && ` / ${formatClock(duration)}`}
           </span>
@@ -727,7 +727,7 @@ function Player({
             title={muted ? 'Voltar o som do vídeo' : 'Mutar o vídeo (só pra mim)'}
             className={cn(
               'ml-auto shrink-0 rounded-brutal p-1 transition-colors',
-              muted ? 'text-destructive' : 'text-muted-foreground hover:text-acid'
+              muted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
             )}
           >
             {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
@@ -736,7 +736,7 @@ function Player({
           <button
             type="button"
             onClick={onExpand}
-            className="flex shrink-0 items-center gap-1 rounded-brutal border border-acid/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/10"
+            className="flex shrink-0 items-center gap-1 rounded-brutal border border-acid/60 px-2 py-0.5 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/10"
           >
             <ChevronUp className="h-3 w-3" />
             ver vídeo
@@ -755,8 +755,8 @@ function Player({
         <>
           {/* Cabeçalho: o que é, quem trouxe */}
           <div className="order-1 flex shrink-0 items-center gap-2">
-            <Tv className="h-3.5 w-3.5 shrink-0 text-acid" />
-            <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <Tv className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="shrink-0 text-[11.5px] text-muted-foreground">
               assistindo junto
             </span>
             <span className="min-w-0 truncate text-sm text-foreground" title={title}>
@@ -770,7 +770,7 @@ function Player({
                 ringColor={host?.profileColor}
                 className="h-5 w-5"
               />
-              <span className="hidden font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:inline">
+              <span className="hidden text-[11.5px] text-muted-foreground sm:inline">
                 {hostName} trouxe
               </span>
             </span>
@@ -779,7 +779,7 @@ function Player({
               type="button"
               onClick={() => openExternal(youtubeWatchUrl(session.videoId))}
               title="Abrir no YouTube"
-              className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-acid"
+              className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
             >
               <ExternalLink className="h-3.5 w-3.5" />
             </button>
@@ -794,7 +794,7 @@ function Player({
           </div>
 
           {/* Controles: tudo aqui vale pra sala, menos o volume */}
-          <div className="order-3 flex shrink-0 flex-col gap-1.5 rounded-brutal border-2 border-[#1a1a1a] bg-void/60 p-2">
+          <div className="order-3 flex shrink-0 flex-col gap-1.5 rounded-brutal border-2 border-line bg-void/60 p-2">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -806,7 +806,7 @@ function Player({
                 {session.playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </button>
 
-              <span className="w-12 shrink-0 text-right font-mono text-[10px] text-foreground">
+              <span className="w-12 shrink-0 text-right font-mono text-[11.5px] text-foreground">
                 {formatClock(shown)}
               </span>
 
@@ -831,11 +831,11 @@ function Player({
                 className="mini-slider min-w-0 flex-1 disabled:opacity-40"
               />
 
-              <span className="w-12 shrink-0 font-mono text-[10px] text-muted-foreground">
+              <span className="w-12 shrink-0 font-mono text-[11.5px] text-muted-foreground">
                 {duration > 0 ? formatClock(duration) : '–:––'}
               </span>
 
-              <span className="mx-1 hidden h-5 w-px bg-[#1a1a1a] sm:block" />
+              <span className="mx-1 hidden h-5 w-px bg-surface-raised sm:block" />
 
               <button
                 type="button"
@@ -843,7 +843,7 @@ function Player({
                 title={muted ? 'Voltar o som (só meu)' : 'Mutar o vídeo (só pra mim)'}
                 className={cn(
                   'shrink-0 transition-colors',
-                  muted ? 'text-destructive' : 'text-muted-foreground hover:text-acid'
+                  muted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -863,14 +863,14 @@ function Player({
                 className={cn('mini-slider hidden w-20 shrink-0 sm:block', muted && 'is-muted')}
               />
 
-              <span className="mx-1 hidden h-5 w-px bg-[#1a1a1a] sm:block" />
+              <span className="mx-1 hidden h-5 w-px bg-surface-raised sm:block" />
 
               {queue.length > 0 && (
                 <button
                   type="button"
                   onClick={() => void watch.next()}
                   title={`Próximo da fila: ${queue[0].title ?? queue[0].videoId}`}
-                  className="shrink-0 rounded-brutal border-2 border-[#1a1a1a] p-1.5 text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid"
+                  className="shrink-0 rounded-brutal border-2 border-line p-1.5 text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground"
                 >
                   <SkipForward className="h-4 w-4" />
                 </button>
@@ -884,12 +884,12 @@ function Player({
                   'flex shrink-0 items-center gap-1 rounded-brutal border-2 p-1.5 transition-colors',
                   queueOpen
                     ? 'border-acid bg-acid/10 text-acid'
-                    : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-acid'
+                    : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
                 )}
               >
                 <ListVideo className="h-4 w-4" />
                 {queue.length > 0 && (
-                  <span className="font-mono text-[10px] tabular-nums">{queue.length}</span>
+                  <span className="font-mono text-[11.5px] tabular-nums">{queue.length}</span>
                 )}
               </button>
 
@@ -904,7 +904,7 @@ function Player({
             </div>
 
             {(queueOpen || watch.feedback) && (
-              <div className="flex flex-col gap-1.5 border-t border-[#1a1a1a] pt-1.5">
+              <div className="flex flex-col gap-1.5 border-t border-line pt-1.5">
                 {queueOpen && (
                   <>
                     <UrlForm
@@ -920,13 +920,13 @@ function Player({
                         {queue.map((item, index) => (
                           <li
                             key={`${item.videoId}-${index}`}
-                            className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground"
+                            className="flex items-center gap-2 font-mono text-[11.5px] text-muted-foreground"
                           >
                             <span className="w-4 shrink-0 text-right tabular-nums">{index + 1}.</span>
                             <span className="min-w-0 truncate text-foreground">
                               {item.title ?? item.videoId}
                             </span>
-                            <span className="shrink-0 uppercase tracking-widest">
+                            <span className="shrink-0">
                               {byId[item.addedBy]?.displayName ?? '?'}
                             </span>
                           </li>
@@ -936,7 +936,7 @@ function Player({
                   </>
                 )}
                 {watch.feedback && (
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-destructive">
+                  <p className="text-[11.5px] text-destructive">
                     {watch.feedback}
                   </p>
                 )}

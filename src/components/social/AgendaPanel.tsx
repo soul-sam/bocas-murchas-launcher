@@ -29,7 +29,7 @@ const RSVP_CHIPS: Array<{ status: RsvpStatus; label: string; active: string; idl
   {
     status: 'no',
     label: 'não',
-    active: 'bg-destructive text-white',
+    active: 'bg-destructive text-destructive-foreground',
     idle: 'text-muted-foreground hover:text-destructive'
   }
 ]
@@ -141,16 +141,16 @@ export function AgendaPanel() {
   }
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-[#1a1a1a] bg-[#0D0D0D] xl:w-80">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[#1a1a1a] px-3">
-        <h3 className="flex-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+    <aside className="flex w-72 shrink-0 flex-col border-l border-line bg-void xl:w-80">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
+        <h3 className="flex-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
           Agenda
         </h3>
         <button
           type="button"
           onClick={() => openEventComposer()}
           title="Marcar na agenda (/marcar)"
-          className="flex items-center gap-1 rounded-brutal border border-acid/40 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/10"
+          className="flex items-center gap-1 rounded-brutal border border-acid/40 px-1.5 py-0.5 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/10"
         >
           <CalendarPlus className="h-3 w-3" />
           marcar
@@ -159,7 +159,7 @@ export function AgendaPanel() {
           type="button"
           onClick={close}
           aria-label="Fechar"
-          className="rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+          className="rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -173,7 +173,7 @@ export function AgendaPanel() {
         ) : events.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <p className="text-sm text-muted-foreground">Nada marcado.</p>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               digita /marcar sexta 21h lol no chat
             </p>
             <button
@@ -188,7 +188,7 @@ export function AgendaPanel() {
           <div className="space-y-4">
             {groups.map((group) => (
               <section key={group.key}>
-                <h4 className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-acid">
+                <h4 className="mb-1.5 font-mono text-[11.5px] uppercase tracking-widest text-acid-text">
                   {group.label}
                 </h4>
                 <div className="space-y-1.5">
@@ -208,7 +208,7 @@ export function AgendaPanel() {
                         key={event.id}
                         className={cn(
                           'group rounded-brutal border bg-void/40 px-2 py-2 transition-colors',
-                          started ? 'border-burn/40' : 'border-[#1a1a1a] hover:border-acid/40'
+                          started ? 'border-burn/40' : 'border-line hover:border-acid/40'
                         )}
                       >
                         <div className="flex items-start gap-2">
@@ -230,7 +230,7 @@ export function AgendaPanel() {
                                 {event.title}
                               </span>
                             </p>
-                            <p className="font-mono text-[10px] text-muted-foreground">
+                            <p className="font-mono text-[11.5px] text-muted-foreground">
                               {started ? `começou ${formatRelative(d, now)}` : formatRelative(d, now)}
                               {' · '}
                               {going.length} {going.length === 1 ? 'vai' : 'vão'}
@@ -245,7 +245,7 @@ export function AgendaPanel() {
                               className={cn(
                                 'shrink-0 rounded-brutal p-1 transition-all',
                                 confirmId === event.id
-                                  ? 'bg-destructive text-white opacity-100'
+                                  ? 'bg-destructive text-destructive-foreground opacity-100'
                                   : 'text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100'
                               )}
                             >
@@ -265,13 +265,13 @@ export function AgendaPanel() {
                                     src={resolveAssetUrl(member?.avatar)}
                                     name={member?.displayName ?? '?'}
                                     ringColor={member?.profileColor}
-                                    className="h-5 w-5 border-2 border-[#0D0D0D]"
+                                    className="h-5 w-5 border-2 border-void"
                                   />
                                 )
                               })}
                             </div>
                             {going.length > 5 && (
-                              <span className="font-mono text-[10px] text-muted-foreground">
+                              <span className="font-mono text-[11.5px] text-muted-foreground">
                                 +{going.length - 5}
                               </span>
                             )}
@@ -287,7 +287,7 @@ export function AgendaPanel() {
                                   type="button"
                                   onClick={() => void respond(event, chip.status)}
                                   className={cn(
-                                    'rounded-brutal px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+                                    'rounded-brutal px-1.5 py-0.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
                                     mine === chip.status ? chip.active : chip.idle
                                   )}
                                 >

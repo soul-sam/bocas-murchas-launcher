@@ -103,7 +103,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
             {hasRewards && (
               <p className="flex items-center gap-3">
                 {(metadata.xpAwarded ?? 0) > 0 && (
-                  <span className="flex items-center gap-1 text-acid">
+                  <span className="flex items-center gap-1 text-acid-text">
                     <Zap className="h-2.5 w-2.5" />+{metadata.xpAwarded} XP
                   </span>
                 )}
@@ -116,7 +116,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
             )}
             {wagers.length > 0 && (
               <div>
-                <p className="uppercase tracking-widest">
+                <p className="">
                   {wagers.length} {wagers.length === 1 ? 'aposta' : 'apostas'}
                 </p>
                 <ul className="mt-0.5 space-y-0.5">
@@ -167,7 +167,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
             </span>
             <NameEmoji id={player?.emoji} />
             {metadata.champion && (
-              <span className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <span className="truncate text-[11.5px] text-muted-foreground">
                 de {metadata.champion}
               </span>
             )}
@@ -182,7 +182,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
                 <span className="text-muted-foreground"> / </span>
                 <span className="text-foreground">{assists}</span>
               </p>
-              <p className="pb-0.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <p className="pb-0.5 text-[11.5px] text-muted-foreground">
                 <span className={cn('text-sm', kda >= 4 ? 'text-acid' : kda < 1.5 ? 'text-destructive' : 'text-foreground')}>
                   {kda.toFixed(2)}
                 </span>{' '}
@@ -197,10 +197,10 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
                 <span
                   key={m.label}
                   className={cn(
-                    'rounded-brutal border px-1 font-mono text-[9px] uppercase tracking-widest',
+                    'rounded-brutal border px-1 text-[11px]',
                     m.label === 'penta'
                       ? 'border-burn bg-burn/15 text-burn'
-                      : 'border-[#2a2a2a] text-muted-foreground'
+                      : 'border-line-strong text-muted-foreground'
                   )}
                 >
                   {m.label}
@@ -215,16 +215,16 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
       {stats.length > 0 && (
         <div className="mt-2 grid grid-cols-4 gap-1">
           {stats.map((stat) => (
-            <div key={stat.label} className="rounded-brutal border border-[#1a1a1a] bg-void/60 px-1.5 py-1 text-center">
+            <div key={stat.label} className="rounded-brutal border border-line bg-void/60 px-1.5 py-1 text-center">
               <p className="font-mono text-xs text-foreground">{stat.value}</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{stat.label}</p>
+              <p className="text-[11px] text-muted-foreground">{stat.label}</p>
             </div>
           ))}
         </div>
       )}
 
       {(duration || teammates.length > 0) && (
-        <div className="mt-2 flex items-center gap-3 font-mono text-[10px] text-muted-foreground">
+        <div className="mt-2 flex items-center gap-3 font-mono text-[11.5px] text-muted-foreground">
           {duration && (
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
@@ -233,7 +233,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
           )}
           {teammates.length > 0 && (
             <span className="flex items-center gap-1.5">
-              <span className="uppercase tracking-widest">com</span>
+              <span className="">com</span>
               <span className="flex -space-x-1.5">
                 {teammates.slice(0, 4).map((mate, index) => {
                   const who = byId[mate.userId]
@@ -242,7 +242,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
                       <span
                         key={`${mate.userId}-${index}`}
                         title={mate.riotId ?? mate.userId}
-                        className="flex h-5 w-5 items-center justify-center rounded-brutal border border-[#1a1a1a] bg-void-light text-[9px]"
+                        className="flex h-5 w-5 items-center justify-center rounded-brutal border border-line bg-void-light text-[11px]"
                       >
                         ?
                       </span>

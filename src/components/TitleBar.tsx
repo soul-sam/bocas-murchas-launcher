@@ -15,17 +15,17 @@ export function TitleBar() {
 
   return (
     <div
-      className="app-drag relative flex h-9 shrink-0 items-center justify-between border-b border-[#1a1a1a] bg-[#0B0B0B] pl-3 pr-0 select-none"
+      className="app-drag relative flex h-9 shrink-0 items-center justify-between border-b border-line bg-void pl-3 pr-0 select-none"
       style={{
         backgroundImage:
-          'linear-gradient(90deg, rgba(106,255,0,0.04) 0%, transparent 30%, transparent 70%, rgba(242,183,5,0.03) 100%)'
+          'linear-gradient(90deg, rgb(var(--neon-rgb)/0.04) 0%, transparent 30%, transparent 70%, rgba(242,183,5,0.03) 100%)'
       }}
     >
       <span
         className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
         style={{
           background:
-            'linear-gradient(90deg, transparent, rgba(106,255,0,0.35), transparent)'
+            'linear-gradient(90deg, transparent, rgb(var(--neon-rgb)/0.3), transparent)'
         }}
       />
 
@@ -34,10 +34,10 @@ export function TitleBar() {
           src="bocas-murchas-transp.png"
           alt=""
           aria-hidden
-          className="h-5 w-5 drop-shadow-[0_0_6px_rgba(106,255,0,0.5)]"
+          className="h-5 w-5 drop-shadow-[0_0_6px_rgb(var(--neon-rgb)/0.3)]"
         />
-        <span className="font-display text-[11px] uppercase tracking-[0.2em] text-[#EAEAEA]">
-          Bocas <span className="text-acid">Murchas</span>
+        <span className="font-display text-[11px] uppercase tracking-[0.2em] text-foreground">
+          Bocas <span className="text-acid-text">Murchas</span>
         </span>
         {/* A versao vira o botao de "procurar atualizacoes": e o lugar onde as
             pessoas ja olham quando querem saber se estao desatualizadas. */}
@@ -45,7 +45,7 @@ export function TitleBar() {
           type="button"
           onClick={() => void check()}
           title="Procurar atualizações"
-          className="app-no-drag rounded-brutal px-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-acid"
+          className="app-no-drag rounded-brutal px-1 font-mono text-[11px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
         >
           v{status.currentVersion ?? '—'}
         </button>
@@ -98,7 +98,7 @@ function TitleBarButton({
   const hover =
     variant === 'danger'
       ? 'hover:bg-destructive hover:text-destructive-foreground'
-      : 'hover:bg-[#1a1a1a] hover:text-acid'
+      : 'hover:bg-surface-raised hover:text-foreground'
 
   return (
     <button

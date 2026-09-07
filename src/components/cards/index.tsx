@@ -80,16 +80,16 @@ export function CardFrame({
       : accent === 'destructive'
         ? 'border-destructive/50'
         : accent === 'muted'
-          ? 'border-[#2a2a2a]'
+          ? 'border-line-strong'
           : 'border-acid-dark'
 
   return (
     <div className={`overflow-hidden rounded-brutal border-2 ${border} bg-void-light/40`}>
       {(title || icon) && (
-        <div className="flex items-center gap-2 border-b border-[#1a1a1a] px-3 py-1.5">
-          {icon && <span className="shrink-0 text-acid">{icon}</span>}
+        <div className="flex items-center gap-2 border-b border-line px-3 py-1.5">
+          {icon && <span className="shrink-0 text-acid-text">{icon}</span>}
           {title && (
-            <span className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="truncate text-[11.5px] text-muted-foreground">
               {title}
             </span>
           )}
@@ -97,7 +97,7 @@ export function CardFrame({
       )}
       <div className="px-3 py-2">{children}</div>
       {footer && (
-        <div className="border-t border-[#1a1a1a] px-3 py-1.5 font-mono text-[10px] text-muted-foreground">
+        <div className="border-t border-line px-3 py-1.5 font-mono text-[11.5px] text-muted-foreground">
           {footer}
         </div>
       )}

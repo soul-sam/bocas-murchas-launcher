@@ -36,7 +36,7 @@ export function UpdateBanner() {
             <p className="font-display text-sm uppercase tracking-wider text-burn">
               Baixando v{status.newVersion}
             </p>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               {percent}% — pode continuar usando o launcher
             </p>
           </div>
@@ -59,12 +59,12 @@ export function UpdateBanner() {
   return (
     <div className="mb-4 rounded-brutal border-2 border-acid bg-acid/10 px-4 py-3 shadow-glow-acid">
       <div className="flex items-center gap-3">
-        <Sparkles className="h-4 w-4 text-acid" />
+        <Sparkles className="h-4 w-4 text-muted-foreground" />
         <div className="flex-1">
-          <p className="font-display text-sm uppercase tracking-wider text-acid">
+          <p className="font-display text-sm uppercase tracking-wider text-acid-text">
             Atualização v{status.newVersion} pronta
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="text-[11.5px] text-muted-foreground">
             {seconds !== null
               ? `Reiniciando sozinho em ${seconds}s`
               : status.postponedUntil
@@ -78,7 +78,7 @@ export function UpdateBanner() {
             Adiar 30 min
           </Button>
         )}
-        <Button size="sm" onClick={() => void applyUpdate()}>
+        <Button size="sm" variant="secondary" onClick={() => void applyUpdate()}>
           <RefreshCw className="mr-2 h-3 w-3" />
           Reiniciar agora
         </Button>

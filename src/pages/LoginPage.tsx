@@ -39,11 +39,11 @@ export function LoginPage() {
 
   return (
     <div className="flex flex-1 items-center justify-center p-8">
-      <div className="card-acid w-full max-w-md rounded-brutal p-8 scanlines">
+      <div className="card-acid w-full max-w-md rounded-brutal p-8 scanlines-brand">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <Skull className="h-12 w-12 text-acid drop-shadow-[0_0_15px_rgba(106,255,0,0.6)]" />
+          <Skull className="h-12 w-12 text-muted-foreground drop-shadow-[0_0_15px_rgb(var(--neon-rgb)/0.3)]" />
           <h1 className="title-brutal brand-wordmark text-4xl">Bocas Murchas</h1>
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Launcher v0.1.0 <span className="terminal-cursor" />
           </p>
         </div>
