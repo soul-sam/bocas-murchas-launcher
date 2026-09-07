@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import {
   DEFAULT_SETTINGS,
+  SETTINGS_REVISION,
   type ChatSettings,
   type HotkeySettings,
   type LauncherSettings,
@@ -133,8 +134,16 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
   const rawMin = raw.minRamMb ?? DEFAULTS.minRamMb
   const minRamMb = Math.min(maxRamMb, Math.max(512, Math.round(rawMin)))
 
+  // Revisao 1 → 2: o tema padrao virou Roxo Murcho e a decisao foi "pra
+  // todo mundo" — quem ainda esta na revisao 1 recebe o roxo mesmo que o
+  // arquivo diga grafite (que era o unico valor possivel ate entao). Quem
+  // escolher outro tema depois salva com a revisao nova e nao e mexido.
+  const revision = Number(raw.settingsRevision) || 1
+  const theme = revision < 2 ? 'roxo' : isThemeId(raw.theme) ? raw.theme : DEFAULTS.theme
+
   return {
-    theme: isThemeId(raw.theme) ? raw.theme : DEFAULTS.theme,
+    settingsRevision: SETTINGS_REVISION,
+    theme,
     maxRamMb,
     minRamMb,
     notifyOnJoinLeave: raw.notifyOnJoinLeave ?? DEFAULTS.notifyOnJoinLeave,

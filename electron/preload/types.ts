@@ -287,9 +287,9 @@ export type ThemeId = 'grafite' | 'meia-noite' | 'roxo' | 'papel' | 'acido-claro
 export const THEME_IDS: readonly ThemeId[] = ['grafite', 'meia-noite', 'roxo', 'papel', 'acido-claro']
 
 export const THEME_LABEL: Record<ThemeId, { name: string; hint: string; light: boolean }> = {
-  grafite: { name: 'Grafite', hint: 'Preto neutro. O padrão.', light: false },
+  grafite: { name: 'Grafite', hint: 'Preto neutro.', light: false },
   'meia-noite': { name: 'Meia-Noite', hint: 'Azul-marinho. Mais confortável em call longa.', light: false },
-  roxo: { name: 'Roxo Murcho', hint: 'Roxo profundo, o complemento do verde.', light: false },
+  roxo: { name: 'Roxo Murcho', hint: 'Roxo profundo, o complemento do verde. O padrão.', light: false },
   papel: { name: 'Papel Murcho', hint: 'Claro e neutro, quase sem neon.', light: true },
   'acido-claro': { name: 'Ácido Claro', hint: 'Claro com um resto de verde nos botões.', light: true }
 }
@@ -299,6 +299,13 @@ export function isThemeId(value: unknown): value is ThemeId {
 }
 
 export interface LauncherSettings {
+  /**
+   * Revisao do arquivo de configuracoes. Sobe quando um padrao muda e a
+   * mudanca deve valer pra quem ja tem o arquivo salvo — `normalize()` no
+   * main le a revisao antiga e aplica a migracao.
+   *   1 → 2: tema padrao passou de Grafite pra Roxo Murcho (2026-09-07).
+   */
+  settingsRevision: number
   /** Tema visual (ver ThemeId). */
   theme: ThemeId
   maxRamMb: number
@@ -449,8 +456,11 @@ export const RAM_LIMITS: RamLimits = {
  * settings.json com isso, e o renderer usa como estado inicial pra nao ter que
  * lidar com "settings ainda e null" em todo componente.
  */
+export const SETTINGS_REVISION = 2
+
 export const DEFAULT_SETTINGS: LauncherSettings = {
-  theme: 'grafite',
+  settingsRevision: SETTINGS_REVISION,
+  theme: 'roxo',
   maxRamMb: 4096,
   minRamMb: 1024,
   notifyOnJoinLeave: true,

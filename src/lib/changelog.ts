@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.1.1',
+    headline: 'Roxo Murcho pra todo mundo',
+    items: [
+      'O tema padrão agora é o Roxo Murcho. Quem preferir o preto de antes: Configurações → Início → Tema → Grafite.'
+    ],
+    note: 'Efeito de nome, título, moldura ou emoji que estava equipado sem ter sido comprado na Lojinha foi tirado.'
+  },
+  {
     version: '1.1.0',
     headline: 'Menos neon, mais leitura — e cinco temas',
     items: [
