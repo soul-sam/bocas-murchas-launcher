@@ -21,10 +21,12 @@ import { PartyProvider } from '@/lib/party-context'
 import { GamificationProvider } from '@/lib/gamification-context'
 import { WatchProvider } from '@/lib/watch-context'
 import { EmojiProvider } from '@/lib/emoji-context'
+import { PrintProvider } from '@/lib/print-context'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { HomePage } from '@/pages/HomePage'
 import { SocialPage } from '@/pages/SocialPage'
+import { PrintPage } from '@/pages/PrintPage'
 import { TitleBar } from '@/components/TitleBar'
 import { AppRail } from '@/components/social/AppRail'
 import { NudgeOverlay } from '@/components/social/NudgeOverlay'
@@ -185,7 +187,12 @@ function AuthedLayout() {
                                 {/* Índices de @pessoa e #canal montados uma
                                     vez, não uma vez por mensagem na tela. */}
                                 <RichTextProvider>
-                                  <AuthedShell />
+                                  {/* Impressora 3D: só precisa de socket e
+                                      token, mas fica aqui pra a fila e a cota
+                                      não remontarem ao trocar de aba. */}
+                                  <PrintProvider>
+                                    <AuthedShell />
+                                  </PrintProvider>
                                 </RichTextProvider>
                               </WatchProvider>
                             </PartyProvider>
@@ -238,6 +245,14 @@ export function App() {
 
                           <Route element={<AuthedLayout />}>
                             <Route path="/" element={<SocialPage />} />
+                            <Route
+                              path="/impressao"
+                              element={
+                                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                                  <PrintPage />
+                                </div>
+                              }
+                            />
                             <Route
                               path="/jogo"
                               element={

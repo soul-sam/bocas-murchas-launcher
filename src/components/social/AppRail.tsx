@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { MessagesSquare, Gamepad2, LogOut, Keyboard, Trophy, Flame } from 'lucide-react'
+import { MessagesSquare, Gamepad2, LogOut, Keyboard, Trophy, Flame, Printer } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useChat } from '@/lib/chat-context'
@@ -55,6 +55,10 @@ export function AppRail() {
 
       <RailLink to="/jogo" label="Minecraft">
         <Gamepad2 className="h-5 w-5" />
+      </RailLink>
+
+      <RailLink to="/impressao" label="Impressora 3D">
+        <Printer className="h-5 w-5" />
       </RailLink>
 
       <button
