@@ -256,6 +256,8 @@ const XP_REASON_LABEL: Record<string, string> = {
   fivestack: 'five stack',
   penta: 'PENTAKILL',
   minecraft: 'Minecraft',
+  chess_played: 'partida de xadrez',
+  chess_win: 'vitória no xadrez',
   mission: 'missão',
   recap: 'recap da semana',
   wager: 'aposta',

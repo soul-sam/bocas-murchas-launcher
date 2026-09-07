@@ -49,7 +49,7 @@ export function beginQuit(): void {
   quitting = true
 }
 
-function iconPath(): string {
+export function iconPath(): string {
   // Empacotado, os recursos de build ficam em resources/; em dev, na pasta do repo.
   return app.isPackaged
     ? path.join(process.resourcesPath, 'icon.ico')

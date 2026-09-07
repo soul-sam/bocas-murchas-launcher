@@ -12,7 +12,8 @@ import {
   beginQuit,
   destroyTray,
   shouldCloseToTray,
-  setCloseToTray
+  setCloseToTray,
+  iconPath
 } from './services/tray.js'
 import { loadSettings } from './services/settings.js'
 import { startLolWatcher, stopLolWatcher } from './services/lol.js'
@@ -45,6 +46,9 @@ function createWindow(): BrowserWindow {
     backgroundColor: '#0B0B0B',
     autoHideMenuBar: true,
     title: 'Bocas Murchas',
+    // Empacotado o exe ja carrega o icone; em dev, sem isso a barra de tarefas
+    // mostra o do Electron.
+    icon: iconPath(),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
