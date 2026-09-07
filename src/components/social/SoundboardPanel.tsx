@@ -227,7 +227,9 @@ function SoundTile({
   return (
     <div
       className={cn(
-        'group flex flex-col gap-1.5 rounded-brutal border-2 border-[#1a1a1a] p-2',
+        // min-w-0 + overflow-hidden: item de grid nasce com min-width:auto, e
+        // nome comprido empurrava o cartão pra fora da coluna, em cima do vizinho.
+        'group flex min-w-0 flex-col gap-1.5 overflow-hidden rounded-brutal border-2 border-[#1a1a1a] p-2',
         'transition-colors hover:border-acid/50',
         // Só admin vê som bloqueado — e vê apagado, pra saber que está fora do ar.
         sound.isBlocked && 'border-dashed opacity-50'
@@ -245,16 +247,16 @@ function SoundTile({
               : `Tocar "${sound.name}" pra sala`
         }
         className={cn(
-          'flex items-center gap-2 rounded-brutal px-1 py-1 text-left transition-colors',
+          'flex w-full min-w-0 items-center gap-2 rounded-brutal px-1 py-1 text-left transition-colors',
           disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-acid/10'
         )}
       >
-        <span className="text-xl leading-none">{sound.emoji}</span>
+        <span className="shrink-0 text-xl leading-none">{sound.emoji}</span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-foreground">
             {sound.name}
           </span>
-          <span className="block font-mono text-[10px] text-muted-foreground">
+          <span className="block truncate font-mono text-[10px] text-muted-foreground">
             {sound.isBlocked ? (
               <span className="text-burn">bloqueado · </span>
             ) : null}

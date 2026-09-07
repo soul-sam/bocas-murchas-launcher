@@ -9,6 +9,7 @@ import {
   HeadphoneOff,
   MonitorUp,
   MonitorX,
+  Music,
   PhoneOff,
   Settings,
   Signal,
@@ -56,13 +57,16 @@ interface ChannelSidebarProps {
   onOpenProfile: () => void
   /** Só aparece pra admin. */
   onManageChannels: () => void
+  /** Abre o painel do soundboard na coluna da direita. */
+  onOpenSoundboard: () => void
 }
 
 export function ChannelSidebar({
   onSelectText,
   onSelectVoice,
   onOpenProfile,
-  onManageChannels
+  onManageChannels,
+  onOpenSoundboard
 }: ChannelSidebarProps) {
   const { user, token, applyUser } = useAuth()
   const {
@@ -80,7 +84,7 @@ export function ChannelSidebar({
   const { voiceByChannel, screenShares, connected } = useSocket()
   const { open: openSettings } = useSettings()
   const { pttActive } = useHotkeys()
-  const { openUserMenu, openQuickSwitcher, openAdmin } = useOverlays()
+  const { openUserMenu, openQuickSwitcher, openAdmin, openScreenPicker } = useOverlays()
   const { view, sidebarIsDrawer, sidebarOpen, closeSidebar } = useLayout()
 
   const setStatus = async (status: UserStatus): Promise<void> => {
@@ -359,14 +363,14 @@ export function ChannelSidebar({
                                 : occupant.displayName
                             }
                             className={cn(
-                              'flex w-full items-center gap-1.5 rounded-brutal py-0.5 text-left text-xs text-muted-foreground transition-colors hover:bg-void-light',
+                              'flex w-full items-center gap-2 rounded-brutal py-0.5 pr-1 text-left text-xs text-muted-foreground transition-colors hover:bg-void-light',
                               !isSharing && 'cursor-default'
                             )}
                           >
                             <UserAvatar
                               src={resolveAssetUrl(occupant.avatar)}
                               name={occupant.displayName}
-                              className="h-4 w-4 rounded-full"
+                              className="h-6 w-6 shrink-0 rounded-full"
                             />
                             <span className="truncate">{occupant.displayName}</span>
                             {isSharing && (
@@ -441,15 +445,25 @@ export function ChannelSidebar({
               </DockButton>
             )}
 
+            {/* Abre o seletor direto. Antes só trocava pro palco da call — e
+                quem já estava nele clicava e não acontecia nada. */}
             <DockButton
               label={voice.screenSharing ? 'Parar de compartilhar' : 'Compartilhar tela'}
               active={voice.screenSharing}
               onClick={() => {
-                if (voice.screenSharing) void voice.stopScreenShare()
-                else onSelectVoice(voice.channel!)
+                if (voice.screenSharing) {
+                  void voice.stopScreenShare()
+                  return
+                }
+                onSelectVoice(voice.channel!)
+                openScreenPicker()
               }}
             >
               <MonitorUp className="h-3.5 w-3.5" />
+            </DockButton>
+
+            <DockButton label="Soundboard" onClick={onOpenSoundboard}>
+              <Music className="h-3.5 w-3.5" />
             </DockButton>
 
             <button

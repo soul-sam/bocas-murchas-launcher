@@ -79,6 +79,7 @@ export function SocialPage() {
         onSelectVoice={handleSelectVoice}
         onOpenProfile={openProfileEditor}
         onManageChannels={() => setChannelManagerOpen(true)}
+        onOpenSoundboard={() => setSoundboardOpen((open) => !open)}
       />
 
       <main className="flex min-w-0 flex-1 flex-col">
