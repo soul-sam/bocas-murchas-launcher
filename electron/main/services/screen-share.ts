@@ -104,15 +104,18 @@ export function initScreenShare(target: Session = session.defaultSession): void 
     { useSystemPicker: false }
   )
 
-  // Microfone e captura de tela sao liberados; o resto continua negado.
+  // Microfone, captura de tela e tela cheia sao liberados; o resto continua
+  // negado. Sem 'fullscreen' aqui o requestFullscreen() do renderer (botao de
+  // tela cheia do palco e do WatchStage) nunca resolve — o Chromium pede essa
+  // permissao ao processo principal antes de expandir o elemento.
+  const ALLOWED = new Set(['media', 'display-capture', 'fullscreen'])
   target.setPermissionRequestHandler((_webContents, permission, callback) => {
-    const allowed = permission === 'media' || permission === 'display-capture'
-    callback(allowed)
+    callback(ALLOWED.has(permission))
   })
 
   // O check handler tem uma lista de permissoes mais estreita que a do request
-  // handler: 'display-capture' nao existe aqui, so 'media'.
+  // handler: 'display-capture' nao existe aqui.
   target.setPermissionCheckHandler((_webContents, permission) => {
-    return permission === 'media'
+    return ALLOWED.has(permission)
   })
 }
