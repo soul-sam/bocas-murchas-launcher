@@ -145,7 +145,9 @@ export function TitleTag({
       <span
         className={cn(
           'flex shrink-0 cursor-default items-center rounded-brutal border px-1',
-          'text-[11px] leading-4',
+          // font-sans explícito: a etiqueta fica dentro de nomes em Anton
+          // (prévia da lojinha) e não pode herdar a display — é Inter sempre.
+          'font-sans text-[11px] leading-4',
           className
         )}
         style={{ color, borderColor: `${color}66` }}
