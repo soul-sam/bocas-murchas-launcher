@@ -172,7 +172,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   conversationsRef.current = conversations
 
   const textChannels = React.useMemo(
-    () => channels.filter((c) => c.type === 'text' || c.type === 'announcements'),
+    () =>
+      channels.filter(
+        (c) => c.type === 'text' || c.type === 'announcements' || c.type === 'suggestions'
+      ),
     [channels]
   )
   const voiceChannels = React.useMemo(

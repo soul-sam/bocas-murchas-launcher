@@ -19,6 +19,7 @@ import { useSettings } from './settings-context'
 import { playUiSound, playJoinSound } from './ui-sounds'
 import { useMembers } from './members-context'
 import { createMicProcessor, type MicProcessor } from './audio-processor'
+import { setLauncherSilenced } from './launcher-silence'
 
 /**
  * Chamada de voz e compartilhamento de tela via LiveKit.
@@ -40,6 +41,38 @@ export const SCREEN_QUALITY = {
 } as const
 
 export type ScreenQuality = keyof typeof SCREEN_QUALITY
+
+/**
+ * Constraints do AUDIO da tela — as tres primeiras existem pra DESLIGAR o que
+ * o Chromium liga sozinho.
+ *
+ * Medido nesta maquina: sem pedir nada, a faixa de loopback vem com
+ * `autoGainControl: true`, `noiseSuppression: true` e UM canal. Ou seja, o som
+ * do jogo passava pelo pipeline de VOZ do navegador — o controle automatico
+ * de ganho levantava o sinal em ~13 dB (e portanto bombeia nas partes altas) e
+ * o supressor de ruido comia fundo de trilha e ambiencia. Com os tres
+ * desligados a captura vira copia fiel.
+ *
+ * `channelCount: 2` e honrado (conferido no `getSettings()` da faixa): o
+ * padrao era mono, entao musica e jogo chegavam na call sem imagem estereo.
+ *
+ * `echoCancellation` NAO resolve o eco do proprio launcher, apesar do nome: o
+ * Chromium aceita a constraint, responde que esta ligada e nao aplica nada na
+ * captura de loopback. A medicao esta em lib/launcher-silence.ts.
+ */
+const SCREEN_AUDIO_CONSTRAINTS = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+  channelCount: 2
+} as const
+
+/** Bitrate do audio da tela, no mesmo degrau da imagem. */
+const SCREEN_AUDIO_PRESET: Record<ScreenQuality, { maxBitrate: number }> = {
+  '720p30': { maxBitrate: 64_000 },
+  '1080p30': { maxBitrate: 96_000 },
+  '1080p60': { maxBitrate: 128_000 }
+}
 
 export interface VoiceParticipant {
   identity: string
@@ -81,6 +114,8 @@ export interface ScreenShareInfo {
   sourceName: string
   quality: ScreenQuality
   withAudio: boolean
+  /** O launcher esta mudo por causa desta transmissao. */
+  muteLauncher: boolean
   startedAt: number
 }
 
@@ -478,6 +513,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     setPingMs(null)
     setConnectionQuality('unknown')
     setShareInfo(null)
+    setLauncherSilenced(false)
     setDeafened(false)
     deafenedRef.current = false
 
@@ -587,6 +623,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
             setScreenShares((prev) => prev.filter((s) => !s.isLocal))
             setScreenSharing(false)
             setShareInfo(null)
+            // Fechar a janela transmitida nao pode deixar o launcher mudo pro
+            // resto da noite: e por aqui que a maioria das transmissoes acaba.
+            setLauncherSilenced(false)
             socketRef.current?.emit('screenshare:state', { active: false })
           }
 
@@ -918,7 +957,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const startScreenShare = React.useCallback(
     async (
       sourceId: string,
-      options: { withAudio?: boolean; quality?: ScreenQuality; sourceName?: string } = {}
+      options: {
+        withAudio?: boolean
+        quality?: ScreenQuality
+        sourceName?: string
+        muteLauncher?: boolean
+      } = {}
     ) => {
       const current = roomRef.current
       if (!current) return
@@ -926,15 +970,21 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const withAudio = options.withAudio ?? true
       const quality = options.quality ?? '720p30'
       const preset = SCREEN_QUALITY[quality]
+      const muteLauncher = withAudio && (options.muteLauncher ?? true)
 
       // O main so libera getDisplayMedia se a fonte estiver marcada antes.
       await window.bocas.screen.selectSource(sourceId, withAudio)
+
+      // ANTES de capturar: o silencio precisa valer no primeiro quadro de
+      // audio, senao o aviso de "comecou a transmitir" entra na propria
+      // transmissao. Ver lib/launcher-silence.
+      setLauncherSilenced(muteLauncher)
 
       try {
         await current.localParticipant.setScreenShareEnabled(
           true,
           {
-            audio: withAudio,
+            audio: withAudio ? SCREEN_AUDIO_CONSTRAINTS : false,
             resolution: {
               width: preset.width,
               height: preset.height,
@@ -948,7 +998,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
             },
             // Texto de IDE fica ilegivel se o encoder trocar nitidez por fps.
             degradationPreference: 'maintain-resolution',
-            simulcast: true
+            simulcast: true,
+            // O audio da tela e MUSICA/JOGO, nao voz: o preset da call (48k
+            // mono, que serve pra fala) espremia trilha e efeito. O LiveKit
+            // percebe sozinho que a faixa e estereo (channelCount 2 nas
+            // constraints) e ja desliga DTX e RED, que nao valem pra isso.
+            audioPreset: SCREEN_AUDIO_PRESET[quality]
           }
         )
 
@@ -957,11 +1012,15 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           sourceName: options.sourceName ?? 'Sua tela',
           quality,
           withAudio,
+          muteLauncher,
           startedAt: Date.now()
         })
         socketRef.current?.emit('screenshare:state', { active: true })
       } catch (err) {
         await window.bocas.screen.cancelSelection()
+        // Falhou no meio: o launcher nao pode ficar mudo por causa de uma
+        // transmissao que nem chegou a existir.
+        setLauncherSilenced(false)
         setError(err instanceof Error ? err.message : 'Erro ao compartilhar tela')
         throw err
       }
@@ -973,6 +1032,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     const current = roomRef.current
     if (!current) return
     await current.localParticipant.setScreenShareEnabled(false)
+    setLauncherSilenced(false)
     setScreenSharing(false)
     setShareInfo(null)
     // O feed local sai na hora: esperar o LocalTrackUnpublished deixaria o

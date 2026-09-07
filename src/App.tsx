@@ -13,6 +13,7 @@ import { ChatProvider } from '@/lib/chat-context'
 import { VoiceProvider, useVoice } from '@/lib/voice-context'
 import { SoundboardProvider } from '@/lib/soundboard-context'
 import { NudgeProvider, useNudge } from '@/lib/nudge-context'
+import { AfkProvider } from '@/lib/afk-context'
 import { HotkeysProvider } from '@/lib/hotkeys-context'
 import { OverlayProvider, useOverlays } from '@/lib/overlay-context'
 import { LayoutProvider } from '@/lib/layout-context'
@@ -41,6 +42,7 @@ import { ShortcutsHelp } from '@/components/social/ShortcutsHelp'
 import { ImageLightbox } from '@/components/social/ImageLightbox'
 import { InterfaceGuardNotice } from '@/components/InterfaceGuardNotice'
 import { PollComposer } from '@/components/social/PollComposer'
+import { SuggestionComposer } from '@/components/social/SuggestionComposer'
 import { EventComposer } from '@/components/social/EventComposer'
 import { PartyComposer } from '@/components/social/PartyComposer'
 import { ShopModal } from '@/components/social/ShopModal'
@@ -48,14 +50,19 @@ import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
 import { AdminModal } from '@/components/AdminModal'
 import { WhatsNewModal } from '@/components/WhatsNewModal'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 function LoadingSplash() {
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="font-mono text-sm uppercase tracking-widest text-muted-foreground">
+      {/* Era mono, caixa-alta e espaçado: o "rótulo terminal" que a
+          desintoxicação de set/2026 tirou de 182 lugares e que sobreviveu aqui
+          por estar num <div>, fora do alcance do lint. Frase é Inter em caixa
+          normal; o cursor piscando fica, que é a marca do app. */}
+      <p className="text-sm text-muted-foreground">
         Carregando<span className="terminal-cursor" />
-      </div>
+      </p>
     </div>
   )
 }
@@ -137,6 +144,7 @@ function GlobalOverlays() {
       {/* Compositores de cartão e lojinha: abertos do compositor de mensagens
           e de comandos de barra, que vivem numa tela que some. */}
       <PollComposer />
+      <SuggestionComposer />
       <EventComposer />
       <PartyComposer />
       <ShopModal />
@@ -209,6 +217,10 @@ function AuthedLayout() {
             {/* Presença de jogo depende de chat (canais de voz), voz (entrar
                 na call do 5-stack) e membros (Riot ID -> pessoa). */}
             <ActivityProvider>
+              {/* AFK antes de soundboard/nudge: e o nudge que precisa saber
+                  que voce esta fora pra nao te sacudir, e o AFK precisa da
+                  voz (falar conta como estar presente). */}
+              <AfkProvider>
               <SoundboardProvider>
                 <NudgeProvider>
                   <HotkeysProvider>
@@ -239,6 +251,7 @@ function AuthedLayout() {
                   </HotkeysProvider>
                 </NudgeProvider>
               </SoundboardProvider>
+              </AfkProvider>
             </ActivityProvider>
           </VoiceProvider>
         </ChatProvider>
@@ -250,6 +263,18 @@ function AuthedLayout() {
 
 export function App() {
   return (
+    /**
+     * `delayDuration` 350ms: rápido o bastante pra quem foi ler a dica, lento
+     * o bastante pra não piscar no caminho do mouse até o botão que a pessoa
+     * já sabia qual era. `skipDelayDuration` 300ms faz a fileira de ícones do
+     * cabeçalho se comportar como uma barra só — a segunda dica aparece na
+     * hora, sem esperar de novo.
+     *
+     * `disableHoverableContent`: dica não é lugar de pôr o mouse. Sem isso ela
+     * fica viva enquanto o ponteiro estiver em cima dela e atrapalha o clique
+     * no botão de baixo.
+     */
+    <TooltipProvider delayDuration={350} skipDelayDuration={300} disableHoverableContent>
     <AuthProvider>
       <SettingsProvider>
         <McAuthProvider>
@@ -314,5 +339,6 @@ export function App() {
         </McAuthProvider>
       </SettingsProvider>
     </AuthProvider>
+    </TooltipProvider>
   )
 }

@@ -13,6 +13,7 @@ export type SlashCommand =
   | { kind: 'party'; seed: string }
   | { kind: 'drop'; seed: string }
   | { kind: 'shop' }
+  | { kind: 'suggestion' }
 
 const ALIASES: Record<string, SlashCommand['kind']> = {
   enquete: 'poll',
@@ -25,6 +26,11 @@ const ALIASES: Record<string, SlashCommand['kind']> = {
   bora: 'party',
   party: 'party',
   drop: 'drop',
+  sugestao: 'suggestion',
+  sugestão: 'suggestion',
+  sugerir: 'suggestion',
+  ideia: 'suggestion',
+  bug: 'suggestion',
   loja: 'shop',
   lojinha: 'shop',
   shop: 'shop'
@@ -44,6 +50,8 @@ export function parseSlashCommand(text: string): SlashCommand | null {
       return { kind: 'poll' }
     case 'shop':
       return { kind: 'shop' }
+    case 'suggestion':
+      return { kind: 'suggestion' }
     case 'event':
       return { kind: 'event', seed }
     case 'party':
@@ -59,5 +67,6 @@ export const SLASH_HELP: Array<{ command: string; hint: string }> = [
   { command: '/marcar', hint: 'Marcar na agenda — ex.: /marcar sexta 21h LoL' },
   { command: '/bora', hint: 'Chamar pra jogar agora — ex.: /bora lol' },
   { command: '/drop', hint: 'Anúncio animado (admin)' },
+  { command: '/sugestao', hint: 'Pedir uma coisa nova, ou avisar que quebrou' },
   { command: '/loja', hint: 'Abrir a lojinha' }
 ]

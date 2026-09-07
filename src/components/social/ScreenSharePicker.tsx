@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Monitor, AppWindow, Volume2, Loader2, RefreshCw, Search } from 'lucide-react'
+import { Monitor, AppWindow, Volume2, VolumeX, Info, Loader2, RefreshCw, Search } from 'lucide-react'
 import type { ScreenSource } from '../../../electron/preload/types'
 import {
   Dialog,
@@ -12,6 +12,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { SCREEN_QUALITY, type ScreenQuality } from '@/lib/voice-context'
+import { useSettings } from '@/lib/settings-context'
+import { Hint } from '@/components/ui/tooltip'
 
 const QUALITY_LABEL: Record<ScreenQuality, string> = {
   '720p30': '720p 30fps — leve',
@@ -30,16 +32,25 @@ interface ScreenSharePickerProps {
   onClose: () => void
   onConfirm: (
     sourceId: string,
-    options: { withAudio: boolean; quality: ScreenQuality; sourceName: string }
+    options: {
+      withAudio: boolean
+      quality: ScreenQuality
+      sourceName: string
+      muteLauncher: boolean
+    }
   ) => Promise<void>
 }
 
 export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePickerProps) {
+  const { settings, update } = useSettings()
+
   const [sources, setSources] = React.useState<ScreenSource[]>([])
   const [loading, setLoading] = React.useState(false)
   const [selected, setSelected] = React.useState<string | null>(null)
-  const [withAudio, setWithAudio] = React.useState(true)
-  const [quality, setQuality] = React.useState<ScreenQuality>('720p30')
+  // Semeados com o que ficou salvo da ultima vez — e regravados no confirmar.
+  const [withAudio, setWithAudio] = React.useState(settings.screenShare.withAudio)
+  const [muteLauncher, setMuteLauncher] = React.useState(settings.screenShare.muteLauncher)
+  const [quality, setQuality] = React.useState<ScreenQuality>(settings.screenShare.quality)
   const [filter, setFilter] = React.useState('')
   const [starting, setStarting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -66,7 +77,15 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
   React.useEffect(() => {
     if (!open) return
     setFilter('')
+    // Reabrir volta ao que esta salvo: o arquivo pode ter mudado (outra
+    // janela, outra sessao) desde que este componente montou.
+    setWithAudio(settings.screenShare.withAudio)
+    setMuteLauncher(settings.screenShare.muteLauncher)
+    setQuality(settings.screenShare.quality)
     load(false)
+    // As preferencias entram de proposito fora da lista: relê-las a cada
+    // mudanca de `settings` sobrescreveria o que a pessoa acabou de marcar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, load])
 
   // Deixar uma fonte marcada no main sem usar seria uma permissao pendurada.
@@ -84,7 +103,14 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
     try {
       // O nome vai junto pro palco poder dizer O QUE esta no ar. Sem ele,
       // quem compartilha só sabia que "algo" estava sendo transmitido.
-      await onConfirm(source.id, { withAudio, quality, sourceName: source.name })
+      await onConfirm(source.id, {
+        withAudio,
+        quality,
+        sourceName: source.name,
+        muteLauncher
+      })
+      // Salvo só quando deu certo: erro na captura não é escolha nova.
+      void update({ screenShare: { withAudio, muteLauncher, quality } })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao compartilhar')
@@ -171,7 +197,8 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
           )}
         </div>
 
-        <div className="mt-4 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-4">
+        <div className="mt-4 shrink-0 border-t border-line pt-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -200,9 +227,64 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
             </select>
           </label>
 
-          <p className="w-full font-mono text-[11.5px] text-muted-foreground">
+          {/* Observação é frase, não dado: Inter em caixa normal. */}
+          <p className="w-full text-[11.5px] text-muted-foreground">
             {QUALITY_HINT[quality]}
           </p>
+          </div>
+
+          {/*
+            O SOM DO PRÓPRIO LAUNCHER.
+
+            Sem isto, quem compartilha com som devolve pra call os avisos da
+            interface e uma segunda cópia (atrasada) de cada som do soundboard:
+            o loopback do Windows entrega a mistura final da placa de som, com
+            o launcher dentro — medido em −28 dB, 69 acima do piso de ruído.
+            Não dá pra filtrar depois. Dá pra não tocar.
+
+            A parte que não tem jeito (as vozes) fica escrita aqui embaixo em
+            vez de virar surpresa no meio da transmissão.
+          */}
+          {withAudio && (
+            <div className="mt-3 rounded-brutal border border-line bg-surface-raised/60 p-2.5">
+              <label className="flex cursor-pointer items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={muteLauncher}
+                  onChange={(e) => setMuteLauncher(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-acid"
+                />
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5">
+                    <VolumeX className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    Deixar o Launcher mudo enquanto transmite
+                  </span>
+                  <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
+                    Os avisos daqui e o soundboard param de tocar no SEU fone —
+                    e é por isso que não entram na transmissão. A galera
+                    continua ouvindo tudo no launcher dela.
+                  </span>
+                </span>
+              </label>
+
+              <p className="mt-2 flex items-start gap-1.5 border-t border-line pt-2 text-[11.5px] leading-snug text-muted-foreground">
+                <Info className="mt-px h-3.5 w-3.5 shrink-0" />
+                <span>
+                  As vozes da call vão junto de qualquer jeito — você precisa
+                  continuar ouvindo a conversa, e ela sai pelo mesmo fone que a
+                  captura pega.{' '}
+                  <Hint
+                    label="Por que as vozes não saem"
+                    description="O Windows entrega o áudio já misturado, sem separar por programa. Tirar só o launcher exigiria captura por processo, que o Electron ainda não expõe."
+                  >
+                    <span className="cursor-help underline decoration-dotted underline-offset-2">
+                      por quê?
+                    </span>
+                  </Hint>
+                </span>
+              </p>
+            </div>
+          )}
         </div>
 
         {error && <p className="mt-2 shrink-0 text-xs text-destructive">{error}</p>}

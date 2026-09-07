@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Hint } from '@/components/ui/tooltip'
 import { RARITY_COLOR, type Rarity } from '@/lib/api-gamification'
 import {
   AWARD_GLYPH,
@@ -94,17 +95,18 @@ export function BadgeChip({
   const color = RARITY_COLOR[rarity as Rarity] ?? RARITY_COLOR.common
 
   return (
-    <span
-      title={description ? `${name} — ${description}` : name}
-      aria-label={name}
-      className={cn(
-        'flex h-6 w-6 shrink-0 items-center justify-center rounded-brutal border bg-void',
-        className
-      )}
-      style={{ borderColor: `${color}66`, color }}
-    >
-      <BadgeIcon badgeId={badgeId} className="h-3.5 w-3.5" />
-    </span>
+    <Hint label={name} description={description}>
+      <span
+        aria-label={name}
+        className={cn(
+          'flex h-6 w-6 shrink-0 items-center justify-center rounded-brutal border bg-void',
+          className
+        )}
+        style={{ borderColor: `${color}66`, color }}
+      >
+        <BadgeIcon badgeId={badgeId} className="h-3.5 w-3.5" />
+      </span>
+    </Hint>
   )
 }
 
@@ -136,16 +138,20 @@ export function TitleTag({
   // importante quanto o lendário.
   const color = RARITY_COLOR[titleRarity(titleId)]
   return (
-    <span
-      title={tooltip}
-      className={cn(
-        'flex shrink-0 cursor-default items-center rounded-brutal border px-1',
-        'text-[11px] leading-4',
-        className
-      )}
-      style={{ color, borderColor: `${color}66` }}
-    >
-      <span className="truncate">{name}</span>
-    </span>
+    // A etiqueta é a da v1.1.3 (só texto, cor pela raridade); o que entra aqui
+    // é a dica em volta. `tooltip === name` acontece na lojinha, num item sem
+    // descrição: repetir o nome em cima do nome não é dica, é eco.
+    <Hint label={name} description={tooltip === name ? undefined : tooltip}>
+      <span
+        className={cn(
+          'flex shrink-0 cursor-default items-center rounded-brutal border px-1',
+          'text-[11px] leading-4',
+          className
+        )}
+        style={{ color, borderColor: `${color}66` }}
+      >
+        <span className="truncate">{name}</span>
+      </span>
+    </Hint>
   )
 }

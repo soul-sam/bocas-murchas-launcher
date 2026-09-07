@@ -23,7 +23,7 @@ import { shakeWindow, type NudgeOptions } from './services/nudge.js'
 import { setVoiceState, setCloseToTray } from './services/tray.js'
 import { getLolStatus, refreshLolNow, startLolWatcher, stopLolWatcher } from './services/lol.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
-import { app } from 'electron'
+import { app, powerMonitor } from 'electron'
 
 function serializeError(err: unknown): { message: string; code?: string } {
   if (err instanceof Error) {
@@ -123,6 +123,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('window:minimize', (e) => {
     BrowserWindow.fromWebContents(e.sender)?.minimize()
   })
+
+  // Ocioso do SISTEMA, nao da janela: e o unico jeito de saber que a pessoa
+  // levantou da cadeira. O renderer pergunta de tempo em tempo (ver
+  // lib/afk-context) em vez de a gente empurrar evento — o valor so importa
+  // quando alguem vai decidir algo com ele.
+  ipcMain.handle('app:idle-seconds', async () => powerMonitor.getSystemIdleTime())
 
   ipcMain.handle('window:maximize-toggle', (e) => {
     const w = BrowserWindow.fromWebContents(e.sender)

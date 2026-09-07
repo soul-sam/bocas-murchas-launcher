@@ -93,7 +93,8 @@ const api: BocasAPI = {
   app: {
     applyAutostart: () => ipcRenderer.invoke('app:apply-autostart'),
     launchedAtLogin: () => ipcRenderer.invoke('app:launched-at-login'),
-    version: () => ipcRenderer.invoke('app:version')
+    version: () => ipcRenderer.invoke('app:version'),
+    idleSeconds: () => ipcRenderer.invoke('app:idle-seconds')
   }
 }
 

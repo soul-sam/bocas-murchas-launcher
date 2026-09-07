@@ -74,6 +74,10 @@ interface OverlayContextValue {
   openPollComposer: () => void
   closePollComposer: () => void
 
+  suggestionComposerOpen: boolean
+  openSuggestionComposer: () => void
+  closeSuggestionComposer: () => void
+
   eventComposerOpen: boolean
   /** Texto inicial vindo de um comando tipo "/marcar sexta 21h LoL". */
   eventComposerSeed: string | null
@@ -110,6 +114,7 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
   const [userMenu, setUserMenu] = React.useState<UserMenuTarget | null>(null)
   const [pollComposerOpen, setPollComposerOpen] = React.useState(false)
+  const [suggestionComposerOpen, setSuggestionComposerOpen] = React.useState(false)
   const [eventComposerOpen, setEventComposerOpen] = React.useState(false)
   const [eventComposerSeed, setEventComposerSeed] = React.useState<string | null>(null)
   const [partyComposerOpen, setPartyComposerOpen] = React.useState(false)
@@ -184,6 +189,10 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       openPollComposer: () => setPollComposerOpen(true),
       closePollComposer: () => setPollComposerOpen(false),
 
+      suggestionComposerOpen,
+      openSuggestionComposer: () => setSuggestionComposerOpen(true),
+      closeSuggestionComposer: () => setSuggestionComposerOpen(false),
+
       eventComposerOpen,
       eventComposerSeed,
       openEventComposer: (seed?: string) => {
@@ -221,6 +230,7 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       userMenu,
       openUserMenu,
       pollComposerOpen,
+      suggestionComposerOpen,
       eventComposerOpen,
       eventComposerSeed,
       partyComposerOpen,

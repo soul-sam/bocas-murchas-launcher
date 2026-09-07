@@ -101,7 +101,13 @@ export function MessageComposer({
   const { connected: inVoice } = useVoice()
   const { members } = useMembers()
   const { cargos } = useCargos()
-  const { openPollComposer, openEventComposer, openPartyComposer, openShop } = useOverlays()
+  const {
+    openPollComposer,
+    openEventComposer,
+    openPartyComposer,
+    openShop,
+    openSuggestionComposer
+  } = useOverlays()
   const { emojis } = useEmojis()
 
   const [content, setContent] = React.useState('')
@@ -394,6 +400,9 @@ export function MessageComposer({
         break
       case 'shop':
         openShop()
+        break
+      case 'suggestion':
+        openSuggestionComposer()
         break
       case 'drop':
         if (user?.role !== 'admin' || !onDrop) return false

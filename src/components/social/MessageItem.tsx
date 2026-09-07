@@ -16,6 +16,7 @@ import {
 import { UserAvatar } from '@/components/ui/avatar'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { Hint } from '@/components/ui/tooltip'
 import { resolveAssetUrl, type ChatMessage } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
@@ -302,11 +303,18 @@ export function MessageItem({
         {groupedReactions.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {groupedReactions.map(([emoji, info]) => (
-              <button
+              // Quinze pessoas numa reação viravam uma tira de 700px no title
+              // nativo. Na dica a lista quebra em linhas e caber é problema
+              // dela, não da tela.
+              <Hint
                 key={emoji}
+                label={info.mine ? 'Você reagiu — clique pra tirar' : 'Reagir também'}
+                description={info.who.join(', ')}
+                side="top"
+              >
+              <button
                 type="button"
                 onClick={() => void onReact(message.id, emoji)}
-                title={`${info.who.join(', ')} reagiu com ${emoji}`}
                 className={cn(
                   'flex items-center gap-1 rounded-brutal border px-1.5 py-0.5 text-xs transition-colors',
                   info.mine
@@ -321,6 +329,7 @@ export function MessageItem({
                 )}
                 <span className="font-mono text-[11.5px]">{info.count}</span>
               </button>
+              </Hint>
             ))}
           </div>
         )}
@@ -336,9 +345,11 @@ export function MessageItem({
       >
         <Popover>
           <PopoverTrigger asChild>
-            <button type="button" title="Reagir" className={actionClass}>
-              <SmilePlus className="h-3.5 w-3.5" />
-            </button>
+            <Hint label="Reagir" side="top">
+              <button type="button" aria-label="Reagir" className={actionClass}>
+                <SmilePlus className="h-3.5 w-3.5" />
+              </button>
+            </Hint>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-auto p-1.5">
             <div className="mb-1 flex gap-0.5 border-b border-line pb-1.5">
@@ -376,61 +387,79 @@ export function MessageItem({
           </PopoverContent>
         </Popover>
 
-        <button
-          type="button"
-          title="Responder"
-          onClick={() => onReply(message)}
-          className={actionClass}
-        >
-          <Reply className="h-3.5 w-3.5" />
-        </button>
-
-        {!!message.content && (
+        <Hint label="Responder" side="top">
           <button
             type="button"
-            title="Copiar texto"
-            onClick={copyText}
+            aria-label="Responder"
+            onClick={() => onReply(message)}
             className={actionClass}
           >
-            {copied ? (
-              <Check className="h-3.5 w-3.5 text-acid" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
+            <Reply className="h-3.5 w-3.5" />
           </button>
+        </Hint>
+
+        {!!message.content && (
+          <Hint label={copied ? 'Copiado' : 'Copiar texto'} side="top">
+            <button
+              type="button"
+              aria-label="Copiar texto"
+              onClick={copyText}
+              className={actionClass}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-acid" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </Hint>
         )}
 
         {isAdmin && (
-          <button
-            type="button"
-            title={message.isPinned ? 'Desafixar' : 'Fixar'}
-            onClick={() => void onPin(message.id)}
-            className={actionClass}
+          <Hint
+            label={message.isPinned ? 'Desafixar' : 'Fixar'}
+            description={
+              message.isPinned
+                ? undefined
+                : 'Guarda no painel de fixadas deste canal, pra não sumir no histórico.'
+            }
+            side="top"
           >
-            <Pin className={cn('h-3.5 w-3.5', message.isPinned && 'text-burn')} />
-          </button>
+            <button
+              type="button"
+              aria-label={message.isPinned ? 'Desafixar' : 'Fixar'}
+              onClick={() => void onPin(message.id)}
+              className={actionClass}
+            >
+              <Pin className={cn('h-3.5 w-3.5', message.isPinned && 'text-burn')} />
+            </button>
+          </Hint>
         )}
 
         {isMine && (
-          <button
-            type="button"
-            title="Editar"
-            onClick={() => onStartEdit?.(message.id)}
-            className={actionClass}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
+          <Hint label="Editar" shortcut="↑" side="top">
+            <button
+              type="button"
+              aria-label="Editar"
+              onClick={() => onStartEdit?.(message.id)}
+              className={actionClass}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          </Hint>
         )}
 
         {(isMine || isAdmin) && (
-          <button
-            type="button"
-            title="Apagar"
-            onClick={() => void onDelete(message.id)}
-            className="rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          <Hint label="Apagar" side="top">
+            <button
+              type="button"
+              aria-label="Apagar"
+              onClick={() => void onDelete(message.id)}
+              className="rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </Hint>
         )}
       </div>
     </article>

@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Sticker as StickerIcon, Settings2 } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { Hint } from '@/components/ui/tooltip'
 import { resolveAssetUrl } from '@/lib/api'
 import { useEmojis, type Sticker, type StickerPack } from '@/lib/emoji-context'
 
@@ -84,10 +85,9 @@ export function StickerPicker({
                 const cover = resolveAssetUrl(pack.coverUrl)
                 const isActive = pack.id === active.id
                 return (
+                  <Hint key={pack.id} label={pack.name} description={pack.description}>
                   <button
-                    key={pack.id}
                     type="button"
-                    title={pack.description ? `${pack.name} — ${pack.description}` : pack.name}
                     onClick={() => setActiveId(pack.id)}
                     className={cn(
                       'flex h-8 shrink-0 items-center gap-1.5 rounded-brutal border px-1.5 transition-colors',
@@ -113,6 +113,7 @@ export function StickerPicker({
                       </span>
                     )}
                   </button>
+                  </Hint>
                 )
               })}
             </div>

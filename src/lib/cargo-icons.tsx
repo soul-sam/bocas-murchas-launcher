@@ -22,6 +22,7 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Hint } from '@/components/ui/tooltip'
 import type { Cargo } from '@/lib/api-cargos'
 
 /**
@@ -103,21 +104,22 @@ export function CargoChip({
   compact?: boolean
 }) {
   return (
-    <span
-      title={cargo.description ? `${cargo.name} — ${cargo.description}` : cargo.name}
-      className={cn(
-        'inline-flex shrink-0 cursor-default items-center gap-1 rounded-brutal border px-1',
-        'text-[11px] leading-4',
-        className
-      )}
-      style={{
-        color: cargo.color,
-        borderColor: `${cargo.color}66`,
-        backgroundColor: `${cargo.color}24`
-      }}
-    >
-      <CargoIcon icon={cargo.icon} className="h-2.5 w-2.5 shrink-0" />
-      {!compact && <span className="truncate">{cargo.name}</span>}
-    </span>
+    <Hint label={cargo.name} description={cargo.description}>
+      <span
+        className={cn(
+          'inline-flex shrink-0 cursor-default items-center gap-1 rounded-brutal border px-1',
+          'text-[11px] leading-4',
+          className
+        )}
+        style={{
+          color: cargo.color,
+          borderColor: `${cargo.color}66`,
+          backgroundColor: `${cargo.color}24`
+        }}
+      >
+        <CargoIcon icon={cargo.icon} className="h-2.5 w-2.5 shrink-0" />
+        {!compact && <span className="truncate">{cargo.name}</span>}
+      </span>
+    </Hint>
   )
 }

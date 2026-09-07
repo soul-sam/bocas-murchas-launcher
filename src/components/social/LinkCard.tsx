@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import { Hint } from '@/components/ui/tooltip'
 import { messages as messagesApi, resolveAssetUrl } from '@/lib/api'
 import { links as linksApi, type LinkKind, type SharedLink } from '@/lib/api-links'
 import { openExternal } from '@/lib/rich-text'
@@ -143,10 +144,13 @@ export function LinkCard({ link, canDelete, onPatch, onRemoved, onJump }: LinkCa
       )}
 
       <div className="p-2">
+        {/* O título do card é `line-clamp-2`: a dica é onde cabe a descrição
+            inteira, e o endereço pra quem quer saber pra onde vai antes de
+            clicar. */}
+        <Hint label={link.title || link.domain} description={link.description ?? link.url}>
         <button
           type="button"
           onClick={open}
-          title={link.description ?? link.url}
           className="flex w-full items-start gap-1.5 text-left"
         >
           {!showImage && <meta.Icon className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', meta.tone)} />}
@@ -154,6 +158,7 @@ export function LinkCard({ link, canDelete, onPatch, onRemoved, onJump }: LinkCa
             {link.title || link.domain}
           </span>
         </button>
+        </Hint>
 
         <div className="mt-1 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
           <span

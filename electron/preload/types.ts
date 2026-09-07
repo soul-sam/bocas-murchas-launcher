@@ -146,6 +146,39 @@ export interface VoiceSettings {
 }
 
 /**
+ * COMPARTILHAMENTO DE TELA — o que a pessoa escolheu da ultima vez.
+ *
+ * Ficam salvas porque o seletor perguntava as tres coisas TODA VEZ, sempre com
+ * o mesmo padrao, e quem compartilha tela duas vezes por noite reajustava as
+ * mesmas tres coisas duas vezes por noite.
+ */
+export interface ScreenShareSettings {
+  /** Levar o som do sistema (loopback do Windows) junto com a imagem. */
+  withAudio: boolean
+  /**
+   * Deixar o LAUNCHER mudo enquanto o som do sistema esta no ar.
+   *
+   * O loopback captura a mistura final da placa de som — o proprio launcher
+   * incluso. Sem isso, quem compartilha devolve pra call os avisos da
+   * interface e uma segunda copia (atrasada) de cada som do soundboard. Ver
+   * src/lib/launcher-silence.ts, que tem a medicao e o que foi tentado antes.
+   */
+  muteLauncher: boolean
+  quality: ScreenShareQuality
+}
+
+/**
+ * Qualidade da transmissao. O tipo mora aqui porque a escolha e PERSISTIDA; o
+ * preset em si (resolucao, fps, bitrate) continua no voice-context, que e quem
+ * fala com o LiveKit.
+ */
+export type ScreenShareQuality = '720p30' | '1080p30' | '1080p60'
+
+export function isScreenShareQuality(value: unknown): value is ScreenShareQuality {
+  return value === '720p30' || value === '1080p30' || value === '1080p60'
+}
+
+/**
  * Preferencias do chat.
  *
  * Ficam no settings.json (e nao no servidor) de proposito: sao decisoes de
@@ -333,6 +366,7 @@ export interface LauncherSettings {
   voice: VoiceSettings
   hotkeys: HotkeySettings
   chat: ChatSettings
+  screenShare: ScreenShareSettings
   /**
    * Volume por pessoa na call: userId -> 0..2 (1 = normal, 0 = mudo pra mim).
    *
@@ -346,6 +380,15 @@ export interface LauncherSettings {
   voiceCueVolume: number
   nudgeOptOut: boolean
   nudgeShakeWindow: boolean
+  /**
+   * Minutos sem tocar em teclado/mouse pra o launcher marcar "Volto logo!"
+   * sozinho. 0 desliga o automatico (o botao continua funcionando na mao).
+   *
+   * Ver src/lib/afk-context.tsx: o tempo tambem precisa ter passado desde a
+   * ultima vez que o SEU microfone abriu, senao quem fica na call falando sem
+   * tocar no mouse era marcado como ausente no meio da conversa.
+   */
+  afkAutoMinutes: number
   closeToTray: boolean
 }
 
@@ -503,6 +546,13 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     nudgeChannel: '',
     sounds: {}
   },
+  screenShare: {
+    // Levar o som segue sendo o padrao — e o motivo de compartilhar um jogo.
+    // O que mudou e que agora o launcher nao entra junto na mistura.
+    withAudio: true,
+    muteLauncher: true,
+    quality: '720p30'
+  },
   chat: {
     compact: false,
     showEmbeds: true,
@@ -519,6 +569,9 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   voiceCueVolume: 0.5,
   nudgeOptOut: false,
   nudgeShakeWindow: true,
+  // 10 minutos: tempo de um cafe, e curto o bastante pra o aviso ainda ser
+  // verdade quando alguem for chamar.
+  afkAutoMinutes: 10,
   closeToTray: true
 }
 
@@ -617,6 +670,16 @@ export interface BocasAPI {
     launchedAtLogin: () => Promise<boolean>
     /** Versao do launcher (package.json). */
     version: () => Promise<string>
+    /**
+     * Segundos desde o ultimo toque no TECLADO OU MOUSE — do sistema todo, nao
+     * so desta janela. Vem do `powerMonitor` do Electron.
+     *
+     * E o que permite marcar AFK de verdade: um `blur` da janela so diz que a
+     * pessoa foi pra outro programa (podia estar jogando), e um listener de
+     * mousemove no renderer nao ve nada do que acontece fora da janela — que e
+     * exatamente onde a pessoa esta quando esta AFK.
+     */
+    idleSeconds: () => Promise<number>
   }
 }
 

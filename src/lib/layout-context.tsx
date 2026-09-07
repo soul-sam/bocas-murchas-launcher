@@ -73,6 +73,10 @@ interface LayoutContextValue {
 
   /** Agenda: proximos eventos marcados. */
   agendaOpen: boolean
+  /** O quadro de sugestões, ordenado por voto. */
+  suggestionsOpen: boolean
+  toggleSuggestions: () => void
+  closeSuggestions: () => void
   toggleAgenda: () => void
   closeAgenda: () => void
 
@@ -105,7 +109,14 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
    * achados, agenda e ranking entrando na mesma coluna, virou UM estado com o
    * nome do painel aberto — impossivel dois ficarem abertos ao mesmo tempo.
    */
-  type RightPanel = 'pinned' | 'search' | 'links' | 'agenda' | 'leaderboard' | null
+  type RightPanel =
+    | 'pinned'
+    | 'search'
+    | 'links'
+    | 'agenda'
+    | 'leaderboard'
+    | 'suggestions'
+    | null
   const [panel, setPanel] = React.useState<RightPanel>(null)
   const togglePanel = React.useCallback(
     (name: Exclude<RightPanel, null>) => setPanel((prev) => (prev === name ? null : name)),
@@ -121,6 +132,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   const linksOpen = panel === 'links'
   const agendaOpen = panel === 'agenda'
   const leaderboardOpen = panel === 'leaderboard'
+  const suggestionsOpen = panel === 'suggestions'
 
   // Ctrl+F abre a busca do chat. O Chromium nao tem busca nativa de pagina no
   // Electron, entao a tecla estava sobrando — e e a que todo mundo aperta.
@@ -196,6 +208,9 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       toggleLinks: () => togglePanel('links'),
       closeLinks: () => closePanel('links'),
       agendaOpen,
+      suggestionsOpen,
+      toggleSuggestions: () => togglePanel('suggestions'),
+      closeSuggestions: () => closePanel('suggestions'),
       toggleAgenda: () => togglePanel('agenda'),
       closeAgenda: () => closePanel('agenda'),
       leaderboardOpen,
@@ -213,6 +228,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       searchOpen,
       linksOpen,
       agendaOpen,
+      suggestionsOpen,
       leaderboardOpen,
       togglePanel,
       closePanel,

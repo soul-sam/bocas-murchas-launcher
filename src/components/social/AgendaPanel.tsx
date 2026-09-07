@@ -165,7 +165,7 @@ export function AgendaPanel() {
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="scroll-stable flex-1 overflow-y-auto p-3">
         {loading ? (
           <div className="flex h-32 items-center justify-center text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />

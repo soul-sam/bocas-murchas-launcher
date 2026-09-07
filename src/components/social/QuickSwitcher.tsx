@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Hash,
   Megaphone,
+  Lightbulb,
   Volume2,
   Settings,
   UserCog,
@@ -109,6 +110,8 @@ export function QuickSwitcher() {
         icon:
           channel.type === 'announcements' ? (
             <Megaphone className="h-3.5 w-3.5 text-burn" />
+          ) : channel.type === 'suggestions' ? (
+            <Lightbulb className="h-3.5 w-3.5 text-burn" />
           ) : (
             <Hash className="h-3.5 w-3.5" />
           ),

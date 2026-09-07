@@ -19,6 +19,8 @@
  * são as notas mais curtas e discretas do conjunto (ver ENTER/LEAVE abaixo).
  */
 
+import { isLauncherSilenced } from './launcher-silence'
+
 export type UiSound =
   | 'voice-join'
   | 'voice-leave'
@@ -346,6 +348,9 @@ function audioContext(): AudioContext | null {
  */
 export function playUiSound(name: UiSound, volume: number): void {
   if (volume <= 0) return
+  // Compartilhando o som do sistema: o aviso iria pro loopback e a call
+  // inteira ouviria o ping deste launcher. Ver lib/launcher-silence.
+  if (isLauncherSilenced()) return
 
   const cue = CUES[name]
   if (!cue) return

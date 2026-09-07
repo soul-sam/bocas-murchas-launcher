@@ -14,6 +14,9 @@ import {
   Settings,
   ScreenShare,
   BellOff,
+  VolumeX,
+  Coffee,
+  Lightbulb,
   Search,
   X,
   Eye,
@@ -30,6 +33,7 @@ import {
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { Hint } from '@/components/ui/tooltip'
 import { useFocusTrap } from '@/lib/use-focus-trap'
 import { resolveAssetUrl, users as usersApi, type Channel, type UserStatus } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
@@ -37,6 +41,7 @@ import { useChat } from '@/lib/chat-context'
 import { useVoice } from '@/lib/voice-context'
 import { useSocket } from '@/lib/socket-context'
 import { useSettings } from '@/lib/settings-context'
+import { useAfk } from '@/lib/afk-context'
 import { useHotkeys } from '@/lib/hotkeys-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
@@ -83,10 +88,11 @@ export function ChannelSidebar({
   const voice = useVoice()
   const { mine: myActivity } = useActivity()
   const { voiceByChannel, screenShares, connected } = useSocket()
-  const { open: openSettings } = useSettings()
+  const { open: openSettings, settings } = useSettings()
   const { pttActive } = useHotkeys()
   const { openUserMenu, openQuickSwitcher, openAdmin, openScreenPicker } = useOverlays()
   const { view, sidebarIsDrawer, sidebarOpen, closeSidebar } = useLayout()
+  const { afk, toggle: toggleAfk } = useAfk()
 
   const setStatus = async (status: UserStatus): Promise<void> => {
     if (!token || !user) return
@@ -175,15 +181,20 @@ export function ChannelSidebar({
           label="Texto"
           action={
             user?.role === 'admin' ? (
-              <button
-                type="button"
-                onClick={onManageChannels}
-                title="Gerenciar canais"
-                aria-label="Gerenciar canais"
-                className="rounded-brutal p-0.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
+              <Hint
+                label="Gerenciar canais"
+                description="Criar, renomear, reordenar e apagar canais."
+                side="right"
               >
-                <Settings2 className="h-3 w-3" />
-              </button>
+                <button
+                  type="button"
+                  onClick={onManageChannels}
+                  aria-label="Gerenciar canais"
+                  className="rounded-brutal p-0.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
+                >
+                  <Settings2 className="h-3 w-3" />
+                </button>
+              </Hint>
             ) : undefined
           }
         >
@@ -214,6 +225,8 @@ export function ChannelSidebar({
               >
                 {channel.type === 'announcements' ? (
                   <Megaphone className="h-3.5 w-3.5 shrink-0" />
+                ) : channel.type === 'suggestions' ? (
+                  <Lightbulb className="h-3.5 w-3.5 shrink-0" />
                 ) : (
                   <Hash className="h-3.5 w-3.5 shrink-0" />
                 )}
@@ -299,9 +312,23 @@ export function ChannelSidebar({
                   <ul className="mb-1 ml-4 space-y-0.5 border-l border-line pl-2">
                     {occupants.map((occupant) => {
                       const isSharing = sharing.includes(occupant.id)
+                      // Estar na call e estar NA CADEIRA são coisas diferentes,
+                      // e é essa diferença que faz alguém chamar três vezes sem
+                      // resposta. Ver lib/afk-context.
+                      const member = memberById[occupant.id]
+                      const afkNote =
+                        member?.status === 'away' ? member.customStatus : null
 
                       return (
                         <li key={occupant.id}>
+                          <Hint
+                            label={occupant.displayName}
+                            description={
+                              afkNote ??
+                              (isSharing ? 'Está transmitindo — clique pra ver' : undefined)
+                            }
+                            side="right"
+                          >
                           <button
                             type="button"
                             onContextMenu={(event) => openUserMenu(event, occupant.id)}
@@ -312,11 +339,6 @@ export function ChannelSidebar({
                               onSelectVoice(channel)
                               afterSelect()
                             }}
-                            title={
-                              isSharing
-                                ? `Ver a tela de ${occupant.displayName}`
-                                : occupant.displayName
-                            }
                             className={cn(
                               'flex w-full items-center gap-2.5 rounded-brutal py-1 pr-1 text-left text-sm text-muted-foreground transition-colors hover:bg-void-light',
                               !isSharing && 'cursor-default'
@@ -327,14 +349,23 @@ export function ChannelSidebar({
                               name={occupant.displayName}
                               className="h-8 w-8 shrink-0 rounded-full"
                             />
-                            <span className="truncate">{occupant.displayName}</span>
+                            <span className={cn('truncate', afkNote && 'opacity-60')}>
+                              {occupant.displayName}
+                            </span>
                             <NameEmoji id={memberById[occupant.id]?.emoji} />
+                            {afkNote && (
+                              <Coffee
+                                className="h-3 w-3 shrink-0 text-burn"
+                                aria-label={afkNote}
+                              />
+                            )}
                             {isSharing && (
                               <span className="ml-auto flex shrink-0 items-center gap-0.5 text-destructive">
                                 <ScreenShare className="h-3.5 w-3.5" aria-label="compartilhando tela" />
                               </span>
                             )}
                           </button>
+                          </Hint>
                         </li>
                       )
                     })}
@@ -371,22 +402,40 @@ export function ChannelSidebar({
                 <span className="flex-1 truncate text-[11px] text-burn">
                   transmitindo
                 </span>
-                <button
-                  type="button"
-                  onClick={() => void voice.stopScreenShare()}
-                  title="Parar de compartilhar"
-                  className="shrink-0 rounded-brutal p-0.5 text-burn transition-colors hover:bg-destructive/20 hover:text-destructive"
-                >
-                  <MonitorX className="h-3 w-3" />
-                </button>
+                <Hint label="Parar de compartilhar" side="right">
+                  <button
+                    type="button"
+                    onClick={() => void voice.stopScreenShare()}
+                    aria-label="Parar de compartilhar"
+                    className="shrink-0 rounded-brutal p-0.5 text-burn transition-colors hover:bg-destructive/20 hover:text-destructive"
+                  >
+                    <MonitorX className="h-3 w-3" />
+                  </button>
+                </Hint>
               </div>
               {voice.shareInfo && (
-                <p
-                  title={voice.shareInfo.sourceName}
-                  className="truncate font-mono text-[11px] text-muted-foreground"
+                <Hint label={voice.shareInfo.sourceName} side="right">
+                  <p className="truncate font-mono text-[11px] text-muted-foreground">
+                    {voice.shareInfo.sourceName}
+                  </p>
+                </Hint>
+              )}
+
+              {/* O launcher mudo TEM que estar escrito. Sem isto, a pessoa
+                  aperta um som do soundboard, não ouve nada e conclui que o
+                  soundboard quebrou — quando ele está tocando pra todo mundo,
+                  menos pra ela, de propósito. */}
+              {voice.shareInfo?.muteLauncher && (
+                <Hint
+                  label="O Launcher está mudo"
+                  description="Avisos e soundboard não tocam aqui enquanto você leva o som do sistema — é o que impede que eles entrem na transmissão. A galera ouve normal."
+                  side="right"
                 >
-                  {voice.shareInfo.sourceName}
-                </p>
+                  <p className="mt-0.5 flex cursor-help items-center gap-1 text-[11px] text-muted-foreground">
+                    <VolumeX className="h-3 w-3 shrink-0" />
+                    launcher mudo
+                  </p>
+                </Hint>
               )}
             </div>
           )}
@@ -405,6 +454,9 @@ export function ChannelSidebar({
                 quem já estava nele clicava e não acontecia nada. */}
             <DockButton
               label={voice.screenSharing ? 'Parar de compartilhar' : 'Compartilhar tela'}
+              description={
+                voice.screenSharing ? undefined : 'Escolhe uma janela ou a tela inteira.'
+              }
               active={voice.screenSharing}
               onClick={() => {
                 if (voice.screenSharing) {
@@ -419,19 +471,24 @@ export function ChannelSidebar({
             </DockButton>
 
             <SoundboardPopover align="start">
-              <DockButton label="Soundboard">
+              <DockButton
+                label="Soundboard"
+                description="Os sons do grupo. Todo mundo na call ouve."
+              >
                 <Music className="h-3.5 w-3.5" />
               </DockButton>
             </SoundboardPopover>
 
-            <button
-              type="button"
-              title="Sair da call"
-              onClick={() => void voice.leave()}
-              className="ml-auto rounded-brutal p-1.5 text-destructive transition-colors hover:bg-destructive/15"
-            >
-              <PhoneOff className="h-3.5 w-3.5" />
-            </button>
+            <Hint label="Sair da call" side="top">
+              <button
+                type="button"
+                aria-label="Sair da call"
+                onClick={() => void voice.leave()}
+                className="ml-auto rounded-brutal p-1.5 text-destructive transition-colors hover:bg-destructive/15"
+              >
+                <PhoneOff className="h-3.5 w-3.5" />
+              </button>
+            </Hint>
           </div>
         </div>
       )}
@@ -493,6 +550,11 @@ export function ChannelSidebar({
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={toggleAfk}>
+              <Coffee className="h-3.5 w-3.5 shrink-0" />
+              {afk ? 'Voltei!' : 'Volto logo!'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onOpenProfile}>Editar perfil</DropdownMenuItem>
             {user?.role === 'admin' && (
               <DropdownMenuItem onSelect={openAdmin}>Painel admin</DropdownMenuItem>
@@ -501,8 +563,28 @@ export function ChannelSidebar({
         </DropdownMenu>
 
         <div className="flex shrink-0 items-center">
+          {/* "Volto logo!" fica AQUI, do lado do mic e do fone, e não escondido
+              no menu de status: o valor dele é ser um clique só na hora em que
+              a pessoa está levantando da cadeira. Ver lib/afk-context. */}
+          <DockButton
+            label={afk ? 'Voltei!' : 'Volto logo!'}
+            description={
+              afk
+                ? 'Tira o aviso e devolve seu status. Também sai sozinho quando você mexer na janela.'
+                : 'Avisa a galera que você saiu e desliga as cutucadas até você voltar.'
+            }
+            active={afk}
+            onClick={toggleAfk}
+          >
+            <Coffee className="h-3.5 w-3.5" />
+          </DockButton>
+
           <DockButton
             label={voice.micEnabled ? 'Silenciar' : 'Reativar mic'}
+            description={
+              voice.connected ? undefined : 'Só funciona dentro de uma call.'
+            }
+            shortcut={settings.hotkeys.mute || undefined}
             danger={!voice.micEnabled && voice.connected}
             disabled={!voice.connected}
             onClick={() => void voice.toggleMic()}
@@ -516,6 +598,12 @@ export function ChannelSidebar({
 
           <DockButton
             label={voice.deafened ? 'Voltar a ouvir' : 'Ensurdecer'}
+            description={
+              voice.deafened
+                ? 'Volta o som da call e reativa seu mic.'
+                : 'Corta o som de todo mundo — e o seu mic junto.'
+            }
+            shortcut={settings.hotkeys.deafen || undefined}
             danger={voice.deafened}
             disabled={!voice.connected}
             onClick={voice.toggleDeafen}
@@ -527,7 +615,11 @@ export function ChannelSidebar({
             )}
           </DockButton>
 
-          <DockButton label="Configurações" onClick={openSettings}>
+          <DockButton
+            label="Configurações"
+            description="Microfone, som, atalhos e tema."
+            onClick={openSettings}
+          >
             <Settings className="h-3.5 w-3.5" />
           </DockButton>
         </div>
@@ -582,35 +674,45 @@ const DockButton = React.forwardRef<
   {
     children: React.ReactNode
     label: string
+    description?: string
+    /**
+     * O atalho GLOBAL que a pessoa configurou, não um fixo escrito aqui. Ver
+     * `settings.hotkeys` — mostrar a tecla no botão é o que faz alguém
+     * descobrir que ela existe sem abrir as configurações.
+     */
+    shortcut?: string
     onClick?: () => void
     active?: boolean
     danger?: boolean
     disabled?: boolean
   } & React.ButtonHTMLAttributes<HTMLButtonElement>
 >(function DockButton(
-  { children, label, onClick, active, danger, disabled, ...rest },
+  { children, label, description, shortcut, onClick, active, danger, disabled, ...rest },
   ref
 ) {
   return (
-    <button
-      ref={ref}
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      {...rest}
-      className={cn(
-        'rounded-brutal p-1.5 transition-colors',
-        disabled && 'cursor-not-allowed opacity-40',
-        danger
-          ? 'text-destructive hover:bg-destructive/15'
-          : active
-            ? 'text-acid'
-            : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
-      )}
-    >
-      {children}
-    </button>
+    // A dica fica DENTRO, em volta do <button>: assim o `asChild` do popover
+    // do soundboard continua entregando ref e handlers no botão de verdade.
+    <Hint label={label} description={description} shortcut={shortcut} disabled={disabled}>
+      <button
+        ref={ref}
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        disabled={disabled}
+        {...rest}
+        className={cn(
+          'rounded-brutal p-1.5 transition-colors',
+          disabled && 'cursor-not-allowed opacity-40',
+          danger
+            ? 'text-destructive hover:bg-destructive/15'
+            : active
+              ? 'text-acid'
+              : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
+        )}
+      >
+        {children}
+      </button>
+    </Hint>
   )
 })

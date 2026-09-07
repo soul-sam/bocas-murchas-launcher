@@ -3,6 +3,7 @@ import {
   Hash,
   Volume2,
   Megaphone,
+  Lightbulb,
   Plus,
   Trash2,
   Check,
@@ -40,6 +41,7 @@ const TYPE_META: Record<ChannelType, { icon: React.ReactNode; label: string }> =
   text: { icon: <Hash className="h-3.5 w-3.5" />, label: 'Texto' },
   voice: { icon: <Volume2 className="h-3.5 w-3.5" />, label: 'Voz' },
   announcements: { icon: <Megaphone className="h-3.5 w-3.5" />, label: 'Avisos' },
+  suggestions: { icon: <Lightbulb className="h-3.5 w-3.5" />, label: 'Sugestões' },
   dm: { icon: <Hash className="h-3.5 w-3.5" />, label: 'Conversa' }
 }
 
@@ -154,6 +156,7 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
             <option value="text">Texto</option>
             <option value="voice">Voz</option>
             <option value="announcements">Avisos</option>
+            <option value="suggestions">Sugestões</option>
           </select>
 
           <Button size="sm" onClick={create} disabled={!newName.trim() || busy}>

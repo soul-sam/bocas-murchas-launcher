@@ -5,6 +5,7 @@ import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { useVoice } from './voice-context'
 import { adminApi } from './api-admin'
+import { isLauncherSilenced } from './launcher-silence'
 
 /**
  * Soundboard.
@@ -130,6 +131,11 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
   }, [token, refresh])
 
   const playFile = React.useCallback((url: string, volume: number) => {
+    // Compartilhando o som do sistema: quem está na call já recebeu este som
+    // pelo socket e tocou no launcher dele. Tocar aqui só somaria uma segunda
+    // cópia, atrasada, dentro da transmissão. Ver lib/launcher-silence.
+    if (isLauncherSilenced()) return
+
     // Sons empilhados sem limite viram parede de ruido.
     activeAudioRef.current = activeAudioRef.current.filter((a) => !a.ended && !a.paused)
     if (activeAudioRef.current.length >= MAX_CONCURRENT) {

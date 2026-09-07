@@ -1,4 +1,4 @@
-import { Plus, BarChart3, CalendarPlus, Swords, Megaphone, Store } from 'lucide-react'
+import { Plus, BarChart3, CalendarPlus, Swords, Megaphone, Store, Lightbulb } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useOverlays } from '@/lib/overlay-context'
 import { useAuth } from '@/lib/auth-context'
+import { Hint } from '@/components/ui/tooltip'
 
 /**
  * O "+" do compositor: tudo que não é texto nem anexo.
@@ -19,19 +20,22 @@ import { useAuth } from '@/lib/auth-context'
  * (/enquete, /marcar, /bora, /drop) — ver slash-commands.ts.
  */
 export function ComposerActions({ onDrop }: { onDrop?: () => void }) {
-  const { openPollComposer, openEventComposer, openPartyComposer, openShop } = useOverlays()
+  const { openPollComposer, openEventComposer, openPartyComposer, openShop, openSuggestionComposer } =
+    useOverlays()
   const { user } = useAuth()
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          title="Mais (enquete, marcar, bora…)"
-          className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
+        <Hint label="Mais" description="Enquete, agenda, bora jogar, sugestão, lojinha." side="top">
+          <button
+            type="button"
+            aria-label="Mais opções"
+            className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </Hint>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-52">
         <DropdownMenuLabel>Mandar</DropdownMenuLabel>
@@ -58,6 +62,11 @@ export function ComposerActions({ onDrop }: { onDrop?: () => void }) {
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={openSuggestionComposer}>
+          <Lightbulb className="h-3.5 w-3.5 text-muted-foreground" />
+          Sugestão
+          <span className="ml-auto font-mono text-[11px] text-muted-foreground">/sugestao</span>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={openShop}>
           <Store className="h-3.5 w-3.5" />
           Lojinha

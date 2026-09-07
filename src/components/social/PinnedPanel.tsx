@@ -61,7 +61,7 @@ export function PinnedPanel() {
         </button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="scroll-stable min-h-0 flex-1 overflow-y-auto p-2">
         {loadingPinned && pinned.length === 0 ? (
           <div className="flex h-24 items-center justify-center">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

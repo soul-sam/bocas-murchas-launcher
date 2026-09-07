@@ -8,10 +8,11 @@ import {
   type HotkeySettings,
   type LauncherSettings,
   type LolSettings,
+  type ScreenShareSettings,
   type VoiceSettings,
-  type VoiceMode, isThemeId } from '../../preload/types.js'
+  type VoiceMode, isScreenShareQuality, isThemeId } from '../../preload/types.js'
 
-export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, VoiceSettings, VoiceMode }
+export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, ScreenShareSettings, VoiceSettings, VoiceMode }
 
 const FILE = 'settings.json'
 
@@ -96,6 +97,18 @@ function normalizeChat(raw: Partial<ChatSettings> | undefined): ChatSettings {
   }
 }
 
+function normalizeScreenShare(
+  raw: Partial<ScreenShareSettings> | undefined
+): ScreenShareSettings {
+  const d = DEFAULTS.screenShare
+  const s = raw ?? {}
+  return {
+    withAudio: s.withAudio ?? d.withAudio,
+    muteLauncher: s.muteLauncher ?? d.muteLauncher,
+    quality: isScreenShareQuality(s.quality) ? s.quality : d.quality
+  }
+}
+
 function normalizeLol(raw: Partial<LolSettings> | undefined): LolSettings {
   const d = DEFAULTS.lol
   const l = raw ?? {}
@@ -160,11 +173,15 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     voice: normalizeVoice(raw.voice),
     hotkeys: normalizeHotkeys(raw.hotkeys),
     chat: normalizeChat(raw.chat),
+    screenShare: normalizeScreenShare(raw.screenShare),
     userVolumes: normalizeUserVolumes(raw.userVolumes),
     soundboardVolume: clamp(Number(raw.soundboardVolume), 0, 1, DEFAULTS.soundboardVolume),
     voiceCueVolume: clamp(Number(raw.voiceCueVolume), 0, 1, DEFAULTS.voiceCueVolume),
     nudgeOptOut: raw.nudgeOptOut ?? DEFAULTS.nudgeOptOut,
     nudgeShakeWindow: raw.nudgeShakeWindow ?? DEFAULTS.nudgeShakeWindow,
+    // Teto de 3h: numero absurdo no arquivo (editado na mao) nao pode virar um
+    // automatico que nunca dispara sem explicacao.
+    afkAutoMinutes: Math.round(clamp(Number(raw.afkAutoMinutes), 0, 180, DEFAULTS.afkAutoMinutes)),
     closeToTray: raw.closeToTray ?? DEFAULTS.closeToTray
   }
 }
@@ -197,6 +214,7 @@ export async function updateSettings(patch: Partial<LauncherSettings>): Promise<
     // `mutedChannels` NAO entra no merge: silenciar e dessilenciar precisam
     // poder ENCOLHER a lista, e um spread so sabe crescer.
     chat: { ...current.chat, ...(patch.chat ?? {}) },
+    screenShare: { ...current.screenShare, ...(patch.screenShare ?? {}) },
     // Merge por pessoa: ajustar o volume de UM nao pode apagar o dos outros.
     // Voltar alguem pro 1 remove a chave no normalize logo abaixo.
     userVolumes: { ...current.userVolumes, ...(patch.userVolumes ?? {}) }

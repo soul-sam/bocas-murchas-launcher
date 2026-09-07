@@ -214,7 +214,7 @@ export function SearchPanel() {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="scroll-stable min-h-0 flex-1 overflow-y-auto p-2">
         {term.trim().length < 2 ? (
           <p className="px-2 py-8 text-center text-xs leading-relaxed text-muted-foreground">
             Digite pelo menos 2 letras.

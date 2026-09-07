@@ -2,6 +2,7 @@ import * as React from 'react'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
+import { useAfk } from './afk-context'
 
 /**
  * O "tremer a tela" do MSN.
@@ -43,6 +44,16 @@ const NudgeContext = React.createContext<NudgeContextValue | null>(null)
 export function NudgeProvider({ children }: { children: React.ReactNode }) {
   const { socket } = useSocket()
   const { settings } = useSettings()
+  const { afk } = useAfk()
+
+  /**
+   * Quem está AFK não é cutucado — e essa recusa é TEMPORÁRIA: entra na lista
+   * do servidor sem tocar na preferência salva da pessoa, então voltar do AFK
+   * devolve exatamente o que ela escolheu nas configurações.
+   */
+  const optOut = settings.nudgeOptOut || afk
+  const optOutRef = React.useRef(optOut)
+  optOutRef.current = optOut
 
   const [shaking, setShaking] = React.useState(false)
   const [lastNudge, setLastNudge] = React.useState<IncomingNudge | null>(null)
@@ -75,7 +86,10 @@ export function NudgeProvider({ children }: { children: React.ReactNode }) {
     if (!socket) return
 
     const handleNudge = (data: IncomingNudge): void => {
-      if (settingsRef.current.nudgeOptOut) return
+      // O servidor já pula quem optou por não receber; esta linha é o segundo
+      // portão, pra um cliente adulterado não sacudir a tela de quem pediu
+      // pra ficar em paz.
+      if (optOutRef.current) return
       if (!data?.from) return
 
       setLastNudge(data)
@@ -109,8 +123,8 @@ export function NudgeProvider({ children }: { children: React.ReactNode }) {
   // Mantém o servidor sabendo se aceito cutucada.
   React.useEffect(() => {
     if (!socket) return
-    socket.emit('nudge:setOptOut', settings.nudgeOptOut)
-  }, [socket, settings.nudgeOptOut])
+    socket.emit('nudge:setOptOut', optOut)
+  }, [socket, optOut])
 
   // --- enviar -------------------------------------------------------------
   const handleAck = React.useCallback((response: { ok: boolean; error?: string }) => {

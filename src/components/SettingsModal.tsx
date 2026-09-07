@@ -214,6 +214,33 @@ function ChatTab() {
           </p>
         )}
       </section>
+
+      <section>
+        <SectionTitle>Volto logo (AFK)</SectionTitle>
+
+        <label className="flex items-center gap-3">
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm">Marcar sozinho depois de</span>
+            <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
+              Sem tocar em teclado nem mouse por esse tempo, o launcher avisa a
+              galera que você saiu e desliga as cutucadas. Volta ao normal
+              quando você mexer na janela. Falar na call conta como estar
+              presente.
+            </span>
+          </span>
+          <select
+            value={settings.afkAutoMinutes}
+            onChange={(e) => void update({ afkAutoMinutes: Number(e.target.value) })}
+            className="input-terminal h-8 shrink-0 rounded-brutal px-2 text-xs"
+          >
+            <option value={0}>Nunca</option>
+            <option value={5}>5 minutos</option>
+            <option value={10}>10 minutos</option>
+            <option value={15}>15 minutos</option>
+            <option value={30}>30 minutos</option>
+          </select>
+        </label>
+      </section>
     </div>
   )
 }

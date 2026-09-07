@@ -12,6 +12,7 @@ import { SearchPanel } from '@/components/social/SearchPanel'
 import { ChannelManager } from '@/components/social/ChannelManager'
 import { LinksPanel } from '@/components/social/LinksPanel'
 import { AgendaPanel } from '@/components/social/AgendaPanel'
+import { SuggestionsPanel } from '@/components/social/SuggestionsPanel'
 import { LeaderboardPanel } from '@/components/social/LeaderboardPanel'
 import { useOverlays } from '@/lib/overlay-context'
 
@@ -34,8 +35,17 @@ export function SocialPage() {
   // trocar pra aba do Minecraft, e desmontar uma modal aberta trava o app
   // inteiro (ver lib/interaction-guard.ts).
   const { openProfileEditor } = useOverlays()
-  const { view, setView, membersOpen, pinnedOpen, searchOpen, linksOpen, agendaOpen, leaderboardOpen } =
-    useLayout()
+  const {
+    view,
+    setView,
+    membersOpen,
+    pinnedOpen,
+    searchOpen,
+    linksOpen,
+    agendaOpen,
+    leaderboardOpen,
+    suggestionsOpen
+  } = useLayout()
 
   const [channelManagerOpen, setChannelManagerOpen] = React.useState(false)
 
@@ -109,6 +119,8 @@ export function SocialPage() {
         <LinksPanel />
       ) : agendaOpen ? (
         <AgendaPanel />
+      ) : suggestionsOpen ? (
+        <SuggestionsPanel />
       ) : leaderboardOpen ? (
         <LeaderboardPanel />
       ) : membersOpen && !dmActive ? (

@@ -319,7 +319,7 @@ export const uploads = {
  * por cima de cada conversa direta, pra que a tela de conversa seja
  * literalmente a mesma tela de canal. Ver lib/chat-context.tsx.
  */
-export type ChannelType = 'text' | 'voice' | 'announcements' | 'dm'
+export type ChannelType = 'text' | 'voice' | 'announcements' | 'suggestions' | 'dm'
 
 export interface VoiceUser {
   id: string
@@ -423,6 +423,7 @@ export type CardMessageType =
   | 'watch'
   | 'system'
   | 'chess'
+  | 'suggestion'
 
 export type MessageType = 'text' | 'gif' | 'sticker' | 'image' | 'file' | CardMessageType
 
@@ -435,7 +436,8 @@ export const CARD_MESSAGE_TYPES: ReadonlySet<string> = new Set<CardMessageType>(
   'wager',
   'watch',
   'system',
-  'chess'
+  'chess',
+  'suggestion'
 ])
 
 export function isCardMessage(message: { type: string }): boolean {

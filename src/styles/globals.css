@@ -210,6 +210,38 @@
 
   input, textarea { user-select: text; }
 
+  /* O cursor de digitação era cinza do sistema em cima de um app inteiro de
+     tema próprio. Ninguém repara nele — até ele piscar na cor certa. */
+  input, textarea, [contenteditable] { caret-color: hsl(var(--ring)); }
+
+  /* Bloqueado é bloqueado em todo lugar. A regra existia solta em uns dez
+     componentes (`disabled:cursor-not-allowed`) e faltava em outros tantos, e
+     a diferença aparecia como "esse botão parece clicável e não é". */
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  textarea:disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+
+  /* ------------------------------------------------------------------
+     QUEBRA DE LINHA
+     ------------------------------------------------------------------
+     `pretty` tira a palavra órfã sozinha na última linha e `balance` reparte
+     um título de duas linhas em duas metades parecidas. É o tipo de coisa que
+     ninguém consegue apontar num print, mas que faz um bloco de texto parecer
+     escrito em vez de derramado. Chromium tem os dois desde a 117 — aqui é
+     130. `balance` só vale até seis linhas (limite do próprio navegador), o
+     que é exatamente o tamanho de título e de rótulo. */
+  p, li, dd, figcaption, blockquote {
+    text-wrap: pretty;
+  }
+
+  h1, h2, h3, h4, .title-brutal, .title-acid {
+    text-wrap: balance;
+  }
+
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: hsl(var(--background)); }
   /* Barra de rolagem e cromo, nao conteudo: cinza. O hover neon com brilho
@@ -366,6 +398,20 @@
   }
 }
 
+/* ============================================
+   GUTTER DA BARRA DE ROLAGEM
+   ============================================
+   Painel que cresce até passar da altura ganha barra de rolagem, e os 8px
+   dela empurram o conteúdo inteiro pra esquerda de uma vez. O pulo acontece
+   no meio da leitura — uma mensagem nova na lista de fixadas, um membro que
+   ficou online — e é rápido demais pra alguém entender o que viu.
+
+   `stable` reserva o espaço desde sempre: a barra aparece e some sem mover
+   nada. O preço é 8px reservados num painel que nunca rola, e é barato. */
+.scroll-stable {
+  scrollbar-gutter: stable;
+}
+
 @keyframes terminal-blink {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
@@ -511,6 +557,18 @@
    ficam as animacoes declaradas no tailwind.config.js, que nao passavam por
    filtro nenhum: fundo com scanline correndo, brilho pulsando, card flutuando
    e o banner de drop tremendo sem parar. */
+/* As camadas do Radix (modal, menu, popover, dica) animam pelo
+   tailwindcss-animate, que escreve `animation: enter/exit` nas classes
+   `animate-in`/`animate-out`. A varredura de set/2026 cobriu as animações
+   declaradas no tailwind.config.js e passou reto por estas — que são,
+   justamente, as que aparecem mais vezes por minuto de uso. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-out {
+    animation: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-scan,
   .animate-flicker,

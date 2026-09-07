@@ -2,7 +2,6 @@ import * as React from 'react'
 import {
   Hash,
   Megaphone,
-  Loader2,
   Pin,
   Bell,
   BellOff,
@@ -11,14 +10,20 @@ import {
   ArrowDown,
   Search,
   Link2,
-  CalendarDays
+  CalendarDays,
+  Lightbulb,
+  ListOrdered,
+  Plus
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { Hint } from '@/components/ui/tooltip'
 import { useChat, isDmId, conversationIdOf } from '@/lib/chat-context'
 import { useAuth } from '@/lib/auth-context'
 import { useLayout } from '@/lib/layout-context'
+import { useOverlays } from '@/lib/overlay-context'
+import { Button } from '@/components/ui/button'
 import type { ChatMessage } from '@/lib/api'
 import { MessageItem } from './MessageItem'
 import { MessageComposer } from './MessageComposer'
@@ -84,8 +89,11 @@ export function ChatView() {
     linksOpen,
     toggleLinks,
     agendaOpen,
-    toggleAgenda
+    toggleAgenda,
+    suggestionsOpen,
+    toggleSuggestions
   } = useLayout()
+  const { openSuggestionComposer } = useOverlays()
 
   const [replyTo, setReplyTo] = React.useState<ChatMessage | null>(null)
   const [editingId, setEditingId] = React.useState<string | null>(null)
@@ -206,6 +214,7 @@ export function ChatView() {
   }
 
   const isAnnouncement = activeChannel.type === 'announcements'
+  const isSuggestions = activeChannel.type === 'suggestions'
   const isDm = isDmId(activeChannel.id)
   const muted = isMuted(activeChannel.id)
 
@@ -219,15 +228,16 @@ export function ChatView() {
     <div className="relative flex min-h-0 flex-1 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3 sm:px-4">
         {sidebarIsDrawer && (
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            title="Canais"
-            aria-label="Abrir canais"
-            className="-ml-1 shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
-          >
-            <PanelLeftOpen className="h-4 w-4" />
-          </button>
+          <Hint label="Canais" side="bottom">
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-label="Abrir canais"
+              className="-ml-1 shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </button>
+          </Hint>
         )}
 
         {isDm ? (
@@ -240,6 +250,8 @@ export function ChatView() {
           />
         ) : isAnnouncement ? (
           <Megaphone className="h-4 w-4 shrink-0 text-burn" />
+        ) : isSuggestions ? (
+          <Lightbulb className="h-4 w-4 shrink-0 text-burn" />
         ) : (
           <Hash className="h-4 w-4 shrink-0 text-muted-foreground" />
         )}
@@ -251,22 +263,71 @@ export function ChatView() {
         {activeChannel.description && (
           <>
             <span className="hidden h-4 w-px shrink-0 bg-surface-raised md:block" />
-            <p className="hidden truncate text-xs text-muted-foreground md:block">
-              {activeChannel.description}
-            </p>
+            {/* `truncate` corta a descrição do canal sem avisar, e em janela
+                estreita ela some inteira. A dica é onde ela cabe. */}
+            <Hint label={'#' + activeChannel.name} description={activeChannel.description} side="bottom">
+              <p className="hidden min-w-0 truncate text-xs text-muted-foreground md:block">
+                {activeChannel.description}
+              </p>
+            </Hint>
           </>
         )}
 
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          {/* O canal de sugestões tem os DOIS botões que ele precisa e que
+              nenhum outro canal precisa: o quadro (todas as sugestões, do mais
+              votado pro menos) e o de mandar uma. É o que faz dele um canal
+              personalizado e não um canal de texto com nome bonito. */}
+          {isSuggestions && (
+            <>
+              <HeaderButton
+                label="Quadro"
+                description="Todas as sugestões, da mais votada pra menos, com filtro por status."
+                active={suggestionsOpen}
+                onClick={toggleSuggestions}
+              >
+                <ListOrdered className="h-4 w-4" />
+              </HeaderButton>
+
+              <Hint
+                label="Nova sugestão"
+                description="Uma ideia ou um problema. Leva sua versão do launcher junto."
+                side="bottom"
+              >
+                <button
+                  type="button"
+                  onClick={openSuggestionComposer}
+                  className="ml-1 flex items-center gap-1.5 rounded-brutal border border-acid/60 px-2 py-1 text-[11.5px] font-medium text-acid transition-colors hover:bg-acid/10"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Sugerir
+                </button>
+              </Hint>
+
+              <span className="mx-1 h-4 w-px shrink-0 bg-surface-raised" />
+            </>
+          )}
+
           <HeaderButton
             label={muted ? 'Reativar avisos daqui' : 'Silenciar isto'}
+            description={
+              muted
+                ? 'Volta a contar menção e a tocar aviso deste canal.'
+                : 'Para de tocar aviso e de contar menção deste canal. Continua aparecendo na lista.'
+            }
             active={muted}
             onClick={() => toggleMuteChannel(activeChannel.id)}
           >
             {muted ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
           </HeaderButton>
 
-          <HeaderButton label="Buscar (Ctrl + F)" active={searchOpen} onClick={toggleSearch}>
+          <HeaderButton
+            label="Buscar"
+            description="Procura no histórico deste canal."
+            shortcut="Ctrl + F"
+            active={searchOpen}
+            onClick={toggleSearch}
+          >
             <Search className="h-4 w-4" />
           </HeaderButton>
 
@@ -275,7 +336,8 @@ export function ChatView() {
               ela. */}
           {!isDm && (
             <HeaderButton
-              label="Mensagens fixadas"
+              label="Fixadas"
+              description="As mensagens que alguém marcou pra não se perder."
               active={pinnedOpen}
               onClick={togglePinned}
             >
@@ -285,19 +347,30 @@ export function ChatView() {
 
           {/* Achados e agenda são do grupo, não de uma conversa a dois. */}
           {!isDm && (
-            <HeaderButton label="Achados (links do canal)" active={linksOpen} onClick={toggleLinks}>
+            <HeaderButton
+              label="Achados"
+              description="Todo link que passou por este canal, do mais novo pro mais velho."
+              active={linksOpen}
+              onClick={toggleLinks}
+            >
               <Link2 className="h-4 w-4" />
             </HeaderButton>
           )}
 
           {!isDm && (
-            <HeaderButton label="Agenda do grupo" active={agendaOpen} onClick={toggleAgenda}>
+            <HeaderButton
+              label="Agenda"
+              description="Os eventos marcados pelo grupo e quem confirmou."
+              active={agendaOpen}
+              onClick={toggleAgenda}
+            >
               <CalendarDays className="h-4 w-4" />
             </HeaderButton>
           )}
 
           <HeaderButton
             label={membersOpen ? 'Esconder membros' : 'Mostrar membros'}
+            description="Quem está online, o cargo de cada um e o que estão jogando."
             active={membersOpen}
             onClick={toggleMembers}
           >
@@ -312,9 +385,7 @@ export function ChatView() {
         className="flex min-h-0 flex-1 flex-col overflow-y-auto py-3"
       >
         {loadingMessages && messages.length === 0 ? (
-          <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
+          <MessagesSkeleton />
         ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center">
             {isDm && (
@@ -328,11 +399,20 @@ export function ChatView() {
             <p className="title-brutal text-lg">
               {isDm ? activeChannel.name : '#' + activeChannel.name}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
               {isDm
                 ? 'Começo da conversa. Só vocês dois veem isso aqui.'
-                : 'Ninguém falou nada aqui ainda. Começa você.'}
+                : isSuggestions
+                  ? 'Aqui é onde se pede o que falta e se avisa o que quebrou. Cada sugestão vira um card que a galera vota — e o que tem mais voto é o que vem primeiro.'
+                  : 'Ninguém falou nada aqui ainda. Começa você.'}
             </p>
+
+            {isSuggestions && (
+              <Button size="sm" className="mt-3" onClick={openSuggestionComposer}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Mandar a primeira
+              </Button>
+            )}
           </div>
         ) : (
           // mt-auto empurra as mensagens pro rodapé quando são poucas, como no
@@ -394,15 +474,16 @@ export function ChatView() {
 
       {/* Voltar pro fim: só aparece quando você saiu de lá. */}
       {!atBottom && messages.length > 0 && (
-        <button
-          type="button"
-          onClick={() => scrollToBottom(true)}
-          title="Ir pro fim da conversa"
-          className="absolute bottom-24 right-4 z-10 flex items-center gap-1.5 rounded-brutal border-2 border-acid-dark bg-void px-2.5 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-acid shadow-[0_0_20px_rgba(0,0,0,0.6)] transition-colors hover:border-acid"
-        >
-          <ArrowDown className="h-3.5 w-3.5" />
-          fim
-        </button>
+        <Hint label="Ir pro fim da conversa" side="left">
+          <button
+            type="button"
+            onClick={() => scrollToBottom(true)}
+            className="absolute bottom-24 right-4 z-10 flex items-center gap-1.5 rounded-brutal border border-line-strong bg-surface-raised px-2.5 py-1.5 text-[11.5px] font-medium text-foreground shadow-[0_10px_28px_rgba(0,0,0,0.45)] transition-colors hover:border-acid/60 hover:text-acid"
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+            Fim
+          </button>
+        </Hint>
       )}
 
       <div className="h-5 shrink-0 px-4">
@@ -437,6 +518,47 @@ export function ChatView() {
   )
 }
 
+/**
+ * ESQUELETO DO HISTÓRICO.
+ *
+ * Era um spinner sozinho no meio de uma tela preta. Um spinner diz "espera";
+ * um esqueleto diz "vem conversa aí, nesta forma" — e, o que importa mais, ele
+ * ocupa o mesmo espaço que as mensagens vão ocupar, então a tela não dá um
+ * salto no instante em que elas chegam.
+ *
+ * As larguras são propositalmente desiguais: cinco barras do mesmo tamanho não
+ * parecem conversa, parecem tabela.
+ */
+const SKELETON_ROWS = [
+  { name: 'w-24', lines: ['w-3/5'] },
+  { name: 'w-16', lines: ['w-4/5', 'w-2/5'] },
+  { name: 'w-28', lines: ['w-1/3'] },
+  { name: 'w-20', lines: ['w-3/4', 'w-1/2'] },
+  { name: 'w-24', lines: ['w-2/3'] }
+]
+
+function MessagesSkeleton() {
+  return (
+    <div className="mt-auto animate-pulse px-4 pb-2" aria-hidden>
+      {SKELETON_ROWS.map((row, index) => (
+        <div key={index} className="flex gap-3 py-2">
+          <span className="h-9 w-9 shrink-0 rounded-full bg-surface-raised" />
+          <div className="min-w-0 flex-1 space-y-1.5 pt-1">
+            <span className={cn('block h-2.5 rounded-brutal bg-surface-raised', row.name)} />
+            {row.lines.map((width, line) => (
+              <span
+                key={line}
+                className={cn('block h-2.5 rounded-brutal bg-surface-raised/60', width)}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+      <span className="sr-only">Carregando as mensagens…</span>
+    </div>
+  )
+}
+
 function DayDivider({ label }: { label: string }) {
   return (
     <div className="my-3 flex items-center gap-2 px-4">
@@ -463,28 +585,34 @@ function UnreadDivider() {
 function HeaderButton({
   children,
   label,
+  description,
+  shortcut,
   active,
   onClick
 }: {
   children: React.ReactNode
   label: string
+  /** O que o painel mostra. Seis ícones em fila não explicam nada sozinhos. */
+  description?: string
+  shortcut?: string
   active?: boolean
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-      className={cn(
-        'rounded-brutal p-1.5 transition-colors',
-        active
-          ? 'bg-acid/10 text-acid'
-          : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
-      )}
-    >
-      {children}
-    </button>
+    <Hint label={label} description={description} shortcut={shortcut}>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        className={cn(
+          'rounded-brutal p-1.5 transition-colors',
+          active
+            ? 'bg-acid/10 text-acid'
+            : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
+        )}
+      >
+        {children}
+      </button>
+    </Hint>
   )
 }

@@ -297,7 +297,11 @@ export function LinksPanel() {
         </div>
       </div>
 
-      <div ref={listRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div
+        ref={listRef}
+        onScroll={onScroll}
+        className="scroll-stable min-h-0 flex-1 overflow-y-auto p-2"
+      >
         {loading && items.length === 0 ? (
           <div className="flex h-24 items-center justify-center">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

@@ -50,6 +50,7 @@ export function UserContextMenu() {
   const { userMenu, closeUserMenu, openProfileEditor } = useOverlays()
 
   const target = userMenu ? byId[userMenu.userId] : undefined
+  const targetIsAway = target?.status === 'away'
   const userId = userMenu?.userId ?? ''
 
   const isSelf = !!user && userId === user.id
@@ -209,12 +210,17 @@ export function UserContextMenu() {
             {/* Quem esta na minha call esta online por definicao — a lista de
                 membros pode estar atrasada, e desabilitar por causa dela
                 deixaria o botao morto sem motivo. */}
+            {/* Quem avisou que saiu não é cutucado — e o menu diz isso ANTES
+                do clique. O servidor também recusa, mas descobrir pelo erro é
+                descobrir tarde. Ver lib/afk-context. */}
             <DropdownMenuItem
-              disabled={!target?.isOnline && !inMyCall}
+              disabled={targetIsAway || (!target?.isOnline && !inMyCall)}
               onSelect={() => nudgeUser(userId)}
             >
               <Zap className="h-3.5 w-3.5" />
-              Cutucar
+              <span className="min-w-0 flex-1 truncate">
+                {targetIsAway ? 'Cutucar — saiu' : 'Cutucar'}
+              </span>
             </DropdownMenuItem>
           </>
         )}

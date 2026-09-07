@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Shield, Search, Volume2, ScreenShare, X, Coins } from 'lucide-react'
+import { Shield, Search, Volume2, ScreenShare, X, Coins, Coffee } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { resolveAssetUrl } from '@/lib/api'
@@ -110,7 +110,7 @@ export function MemberList() {
         </button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto py-3">
+      <div className="scroll-stable min-h-0 flex-1 overflow-y-auto py-3">
         {inVoice.length > 0 && (
           <Group label="Em call" members={inVoice} voiceByUser={voiceByUser} activities={activities} />
         )}
@@ -163,6 +163,10 @@ function Group({
           const voice = voiceByUser.get(member.id)
           const activity = member.isOnline ? activities[member.id] : undefined
           const title = cosmeticName(member.title)
+          // "Ausente com recado" é o formato do "Volto logo!": status away +
+          // customStatus. Um "Ausente" marcado na mão com recado próprio
+          // ("no trabalho") entra aqui também — é a mesma informação.
+          const afkNote = member.status === 'away' ? member.customStatus : null
           const cargo = topCargoOf(member.id)
           /**
            * Botão de apostar: só em partida de verdade (não em champ select) e
@@ -220,7 +224,16 @@ function Group({
                         "na call" — e quem esta em call ja esta na secao certa.
                         O título só aparece quando não tem nada mais vivo pra
                         dizer: é enfeite, não informação. */}
-                    {activity ? (
+                    {/* AFK GANHA DE TUDO, inclusive de "na call": alguém
+                        sentado na call mas longe do teclado é exatamente quem
+                        a galera fica chamando sem resposta. Ver
+                        lib/afk-context. */}
+                    {afkNote ? (
+                      <span className="flex items-center gap-1 truncate text-[11px] text-burn/90">
+                        <Coffee className="h-2.5 w-2.5 shrink-0" />
+                        <span className="truncate">{afkNote}</span>
+                      </span>
+                    ) : activity ? (
                       <ActivityLine activity={activity} />
                     ) : voice ? (
                       <span className="flex items-center gap-1 truncate text-[11px] text-acid-text">
