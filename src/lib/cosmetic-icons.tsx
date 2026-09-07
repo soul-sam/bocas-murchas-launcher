@@ -1,32 +1,14 @@
-import {
-  Award,
-  Bird,
-  Clover,
-  Coins,
-  Crown,
-  Dices,
-  Droplet,
-  Flame,
-  Footprints,
-  Handshake,
-  Headphones,
-  Megaphone,
-  MessagesSquare,
-  Mic,
-  Moon,
-  Radio,
-  Shield,
-  Skull,
-  Star,
-  Tag,
-  TrendingDown,
-  Trophy,
-  Utensils,
-  Zap,
-  type LucideIcon
-} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { cosmeticKey, RARITY_COLOR, type Rarity } from '@/lib/api-gamification'
+import {
+  AWARD_GLYPH,
+  BADGE_GLYPH,
+  GENERIC_AWARD,
+  GENERIC_BADGE,
+  GENERIC_TITLE,
+  Glyph,
+  TITLE_GLYPH_SM
+} from '@/lib/cosmetic-glyphs'
 
 /**
  * ÍCONES DOS COSMÉTICOS — badges, títulos e prêmios do recap.
@@ -53,65 +35,16 @@ import { cosmeticKey, RARITY_COLOR, type Rarity } from '@/lib/api-gamification'
  *
  * ID DESCONHECIDO cai num ícone genérico — badge nova criada direto no banco
  * aparece com cara de badge, não com um buraco.
+ *
+ * A ARTE mora em `cosmetic-glyphs.tsx` e é nossa — antes cada badge pegava o
+ * ícone mais parecido da lucide, e dava pra ver: "Cutucador" e "Cutucador da
+ * Semana" eram o mesmo raio, "MVP" e "Campeão de XP" eram a mesma taça. Aqui
+ * ficou só o mapa id→arte e os componentes que a tela usa.
+ *
+ * TÍTULO USA A ARTE `_SM`: a etiqueta desenha o ícone a 10px, e nesse tamanho
+ * a versão detalhada virava borrão.
  */
 
-// ============================================
-// BADGES (ids de lib/gamification/rules.ts na API)
-// ============================================
-
-const BADGE_ICON: Record<string, LucideIcon> = {
-  'primeiro-sangue': Droplet,
-  pentakill: Skull,
-  'streak-7': Flame,
-  'streak-30': Moon,
-  coruja: Bird,
-  dj: Headphones,
-  cutucador: Zap,
-  'tagarela-1000': MessagesSquare,
-  maratonista: Footprints,
-  apostador: Dices,
-  sortudo: Clover,
-  falido: TrendingDown,
-  fivestack: Handshake,
-  // Semanais, concedidas pelo recap de domingo.
-  'mvp-da-semana': Trophy,
-  'feeder-da-semana': Utensils,
-  'boca-de-ouro': Megaphone,
-  'dj-da-semana': Radio,
-  'cutucador-da-semana': Zap
-}
-
-// ============================================
-// TÍTULOS (ids `title:*` da lojinha)
-// ============================================
-
-const TITLE_ICON: Record<string, LucideIcon> = {
-  feeder: Skull,
-  suporte: Shield,
-  'boca-de-ouro': Megaphone,
-  dj: Headphones,
-  cutucador: Zap,
-  coruja: Bird,
-  lenda: Crown
-}
-
-// ============================================
-// PRÊMIOS DO RECAP (keys de modules/recap.ts na API)
-// ============================================
-
-const AWARD_ICON: Record<string, LucideIcon> = {
-  mais_falou: Megaphone,
-  mais_call: Mic,
-  mvp_lol: Trophy,
-  feeder: Utensils,
-  dj: Radio,
-  cutucador: Zap,
-  streak: Flame,
-  rico: Coins,
-  falido: TrendingDown,
-  corujao: Bird,
-  campeao_xp: Star
-}
 
 // ============================================
 // COMPONENTES
@@ -124,8 +57,8 @@ export function BadgeIcon({
   badgeId: string | null | undefined
   className?: string
 }) {
-  const Icon = (badgeId && BADGE_ICON[badgeId]) || Award
-  return <Icon className={className ?? 'h-3.5 w-3.5'} aria-hidden />
+  const art = (badgeId ? BADGE_GLYPH[badgeId] : null) ?? GENERIC_BADGE
+  return <Glyph art={art} className={className ?? 'h-3.5 w-3.5'} />
 }
 
 /** Aceita o id completo (`title:dj`) ou só a chave (`dj`). */
@@ -137,8 +70,8 @@ export function TitleIcon({
   className?: string
 }) {
   const key = cosmeticKey(titleId)
-  const Icon = (key && TITLE_ICON[key]) || Tag
-  return <Icon className={className ?? 'h-2.5 w-2.5'} aria-hidden />
+  const art = (key ? TITLE_GLYPH_SM[key] : null) ?? GENERIC_TITLE
+  return <Glyph art={art} strokeWidth={2.5} className={className ?? 'h-2.5 w-2.5'} />
 }
 
 export function AwardIcon({
@@ -148,8 +81,8 @@ export function AwardIcon({
   awardKey: string | null | undefined
   className?: string
 }) {
-  const Icon = (awardKey && AWARD_ICON[awardKey]) || Trophy
-  return <Icon className={className ?? 'h-4 w-4'} aria-hidden />
+  const art = (awardKey ? AWARD_GLYPH[awardKey] : null) ?? GENERIC_AWARD
+  return <Glyph art={art} className={className ?? 'h-4 w-4'} />
 }
 
 /**
