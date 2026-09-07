@@ -8,8 +8,7 @@ import {
   type LauncherSettings,
   type LolSettings,
   type VoiceSettings,
-  type VoiceMode
-} from '../../preload/types.js'
+  type VoiceMode, isThemeId } from '../../preload/types.js'
 
 export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, VoiceSettings, VoiceMode }
 
@@ -135,6 +134,7 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
   const minRamMb = Math.min(maxRamMb, Math.max(512, Math.round(rawMin)))
 
   return {
+    theme: isThemeId(raw.theme) ? raw.theme : DEFAULTS.theme,
     maxRamMb,
     minRamMb,
     notifyOnJoinLeave: raw.notifyOnJoinLeave ?? DEFAULTS.notifyOnJoinLeave,

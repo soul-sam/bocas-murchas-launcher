@@ -11,7 +11,7 @@ export const Avatar = React.forwardRef<
   <AvatarPrimitive.Root
     ref={ref}
     className={cn(
-      'relative flex h-10 w-10 shrink-0 overflow-hidden rounded-brutal border border-[#1a1a1a]',
+      'relative flex h-10 w-10 shrink-0 overflow-hidden rounded-brutal border border-line',
       className
     )}
     {...props}
@@ -47,10 +47,10 @@ export const AvatarFallback = React.forwardRef<
 AvatarFallback.displayName = 'AvatarFallback'
 
 const STATUS_STYLES: Record<string, string> = {
-  online: 'bg-acid shadow-[0_0_6px_#6AFF00]',
+  online: 'bg-acid shadow-neon-2',
   away: 'bg-burn',
   dnd: 'bg-destructive',
-  offline: 'bg-[#3A3A3A]'
+  offline: 'bg-surface-strong'
 }
 
 /**
@@ -137,7 +137,7 @@ export function UserAvatar({
         <span
           aria-label={status}
           className={cn(
-            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#0B0B0B]',
+            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-void',
             STATUS_STYLES[status] ?? STATUS_STYLES.offline
           )}
         />

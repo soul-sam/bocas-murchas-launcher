@@ -11,6 +11,17 @@ export default {
     extend: {
       colors: {
         border: 'hsl(var(--border))',
+        // `line` e `surface` existem pra que nao volte a aparecer hex de cinza
+        // escrito a mao no meio do JSX. Divisoria e' line; fundo e' surface.
+        line: {
+          DEFAULT: 'hsl(var(--border))',
+          strong: 'hsl(var(--border-strong))'
+        },
+        surface: {
+          DEFAULT: 'hsl(var(--card))',
+          raised: 'hsl(var(--muted))',
+          strong: 'hsl(var(--border-strong))'
+        },
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
@@ -43,52 +54,70 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))'
         },
+        // Todas as cores da marca vem de variaveis (globals.css) — e o que
+        // permite cinco temas sem tocar em componente. Nos temas claros o
+        // "acid" de texto escurece pra passar contraste sobre branco; o halo
+        // continua vindo de --neon-rgb, que cada tema define do seu jeito.
         acid: {
-          DEFAULT: '#6AFF00',
-          dark: '#3A5F0B',
-          glow: '#6AFF00'
+          DEFAULT: 'hsl(var(--acid))',
+          dark: 'hsl(var(--acid-dark))',
+          glow: 'hsl(var(--acid))',
+          // Verde de TEXTO: mais suave que o do botao (10,9:1 em vez de
+          // 14,9:1 no grafite). E o que uma palavra destacada no meio de uma
+          // frase usa; `text-acid` puro fica pra estado ativo e acao.
+          text: 'hsl(var(--acid-text))'
         },
         slime: {
-          DEFAULT: '#6AFF00',
-          dark: '#4CAF00',
-          light: '#8FFF40'
+          DEFAULT: 'hsl(var(--acid))',
+          dark: 'hsl(var(--acid-dark))',
+          light: 'hsl(var(--acid-light))'
         },
         burn: {
-          DEFAULT: '#F2B705',
-          dark: '#D4A005'
+          DEFAULT: 'hsl(var(--burn))',
+          dark: 'hsl(var(--burn-dark))'
         },
         void: {
-          DEFAULT: '#0B0B0B',
-          light: '#151515',
-          card: '#0F0F0F'
+          DEFAULT: 'hsl(var(--background))',
+          light: 'hsl(var(--muted))',
+          card: 'hsl(var(--card))'
         },
         dirty: {
-          white: '#EAEAEA',
-          gray: '#2A2A2A'
+          white: 'hsl(var(--foreground))',
+          gray: 'hsl(var(--border-strong))'
         }
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
-        brutal: '4px'
+        // 6px e o raio de botao/chip na escala nova (2 · 6 · 10 · 14 · 999).
+        // `rounded-brutal` esta em 400 lugares; mudar aqui muda todos.
+        brutal: '6px'
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
-        display: ['Impact', 'Haettenschweiler', 'Arial Narrow Bold', 'sans-serif']
+        sans: ['Inter', 'system-ui', 'Segoe UI', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Consolas', 'monospace'],
+        // Anton e carregada de verdade (ver src/index.html); Impact fica de
+        // terceira opcao pra que, se a fonte web falhar, ainda caia numa
+        // condensada pesada em vez de sans generica.
+        display: ['Anton', 'Arial Narrow', 'Impact', 'sans-serif']
       },
+      // Intensidades de neon padronizadas. N3 e do botao primario (.btn-acid,
+      // em globals.css); aqui ficam N1/N2 pra estado ativo e destaque. As
+      // sombras solidas deslocadas (`brutal`) e o brilho interno sairam: nao
+      // codificavam nada e eram o que mais engordava a interface.
       boxShadow: {
-        'glow-acid': '0 0 20px rgba(106, 255, 0, 0.5), 0 0 40px rgba(106, 255, 0, 0.3)',
-        'glow-burn': '0 0 20px rgba(242, 183, 5, 0.5), 0 0 40px rgba(242, 183, 5, 0.3)',
-        brutal: '4px 4px 0 0 rgba(106, 255, 0, 0.8)',
-        'brutal-sm': '2px 2px 0 0 rgba(106, 255, 0, 0.8)',
-        'inner-glow': 'inset 0 0 20px rgba(106, 255, 0, 0.2)'
+        'neon-1': '0 0 0 1px rgb(var(--neon-rgb) / 0.35)',
+        'neon-2': '0 0 14px rgb(var(--neon-rgb) / 0.20)',
+        'neon-3': '0 0 22px rgb(var(--neon-rgb) / 0.30)',
+        // Nomes antigos, mapeados pra N2 — hoje 4 arquivos usam.
+        'glow-acid': '0 0 14px rgb(var(--neon-rgb) / 0.20)',
+        'glow-burn': '0 0 14px rgba(242, 183, 5, 0.20)'
       },
       keyframes: {
         'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 5px rgba(106, 255, 0, 0.5)' },
-          '50%': { boxShadow: '0 0 25px rgba(106, 255, 0, 0.8), 0 0 50px rgba(106, 255, 0, 0.4)' }
+          '0%, 100%': { boxShadow: '0 0 8px rgb(var(--neon-rgb) / 0.18)' },
+          '50%': { boxShadow: '0 0 18px rgb(var(--neon-rgb) / 0.32)' }
         },
         shake: {
           '0%, 100%': { transform: 'translateX(0)' },

@@ -3,23 +3,39 @@ import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
+/**
+ * Quatro pesos de botao, e a tela so pode ter UM do primeiro:
+ *
+ *  default      primario — preenchido neon (.btn-acid). A acao central.
+ *  secondary    contorno — borda 1px, texto principal, sem neon. Alternativa
+ *               legitima ("Reverificar", "Cancelar compra").
+ *  outline      sinonimo de secondary (nome antigo, muitos usos).
+ *  ghost        terciario — so texto; hover ganha fundo. Sair, Config, Fechar.
+ *  destructive  contorno vermelho; preenchimento so no passo de confirmar,
+ *               que e quem chama que decide passando `variant="destructive"`
+ *               com a classe `bg-destructive`.
+ *
+ * O que saiu da base: `uppercase tracking-wider`. Botao diz o verbo em caixa
+ * normal ("Painel admin", nao "PAINEL ADMIN") — a caixa-alta espacada ficou
+ * reservada a rotulo de secao (ver docs/tipografia).
+ */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-brutal text-sm font-bold uppercase tracking-wider ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-brutal text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
           'btn-acid',
         secondary:
-          'bg-secondary text-secondary-foreground border-2 border-acid-dark hover:border-acid hover:shadow-glow-acid',
+          'border border-line-strong bg-transparent text-foreground hover:border-acid/60 hover:bg-acid/5',
         outline:
-          'border-2 border-border bg-transparent text-foreground hover:border-acid hover:text-acid',
+          'border border-line-strong bg-transparent text-foreground hover:border-acid/60 hover:bg-acid/5',
         ghost:
-          'text-foreground hover:bg-muted hover:text-acid',
+          'text-muted-foreground hover:bg-muted hover:text-foreground',
         destructive:
-          'bg-destructive text-destructive-foreground border-2 border-destructive hover:opacity-90',
+          'border border-destructive/60 bg-transparent text-destructive hover:bg-destructive/10',
         link:
-          'text-acid underline-offset-4 hover:underline normal-case'
+          'text-acid underline-offset-4 hover:underline'
       },
       size: {
         default: 'h-10 px-5 py-2',

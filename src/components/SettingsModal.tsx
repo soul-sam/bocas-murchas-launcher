@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { cn } from '@/lib/utils'
 import {
   MemoryStick,
   RotateCcw,
@@ -24,7 +25,7 @@ import { useVoice } from '@/lib/voice-context'
 import { useAudioDevices, useVideoDevices } from '@/lib/use-audio-devices'
 import { playUiSound } from '@/lib/ui-sounds'
 import { GATE_OFF_DB } from '@/lib/audio-processor'
-import { RAM_LIMITS, type LolPhase, type LolStatus } from '../../electron/preload/types'
+import { RAM_LIMITS, type LolPhase, type LolStatus, THEME_IDS, THEME_LABEL, type ThemeId } from '../../electron/preload/types'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -191,7 +192,7 @@ function ChatTab() {
             }
             className="ram-slider flex-1"
           />
-          <span className="w-9 shrink-0 text-right font-mono text-[11px] text-acid">
+          <span className="w-9 shrink-0 text-right font-mono text-[11px] text-foreground">
             {Math.round(settings.voiceCueVolume * 100)}%
           </span>
         </label>
@@ -200,14 +201,14 @@ function ChatTab() {
           o controle pra ouvir uma prévia.
         </p>
 
-        <p className="mt-3 rounded-brutal border border-[#1a1a1a] bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-3 rounded-brutal border border-line bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
           Pra silenciar UM canal só, clique no sininho no topo dele. Canal
           silenciado não conta não-lidas nem avisa — mas menção direta a você
           continua passando.
         </p>
 
         {chat.mutedChannels.length > 0 && (
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="mt-2 text-[11.5px] text-muted-foreground">
             {chat.mutedChannels.length}{' '}
             {chat.mutedChannels.length === 1 ? 'canal silenciado' : 'canais silenciados'}
           </p>
@@ -237,7 +238,7 @@ function VoiceTab() {
         <SectionTitle>Dispositivos</SectionTitle>
 
         {loading && (
-          <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
             procurando…
           </p>
@@ -277,7 +278,7 @@ function VoiceTab() {
             type="button"
             onClick={() => void camera.reveal()}
             disabled={camera.loading}
-            className="flex items-center gap-1.5 rounded-brutal border-2 border-[#1a1a1a] px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-brutal border-2 border-line px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground disabled:opacity-50"
           >
             {camera.loading && <Loader2 className="h-3 w-3 animate-spin" />}
             ver o nome das câmeras (acende o LED por um instante)
@@ -287,7 +288,7 @@ function VoiceTab() {
         <label className="flex items-center justify-between gap-3 pt-1">
           <span className="min-w-0 flex-1">
             <span className="block text-sm">Volume da call</span>
-            <span className="block text-[10px] text-muted-foreground">
+            <span className="block text-[11.5px] text-muted-foreground">
               Vale pra todo mundo. Pra ajustar uma pessoa só, use o slider no card dela.
             </span>
           </span>
@@ -300,7 +301,7 @@ function VoiceTab() {
             onChange={(e) => patch({ outputVolume: Number(e.target.value) })}
             className="ram-slider w-28 shrink-0"
           />
-          <span className="w-8 shrink-0 text-right font-mono text-[10px] text-muted-foreground">
+          <span className="w-8 shrink-0 text-right font-mono text-[11.5px] text-muted-foreground">
             {Math.round(voice.outputVolume * 100)}
           </span>
         </label>
@@ -368,7 +369,7 @@ function VoiceTab() {
           checked={voice.autoGainControl}
           onCheckedChange={(autoGainControl) => patch({ autoGainControl })}
         />
-        <p className="pt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="pt-1 text-[11.5px] text-muted-foreground">
           vale na próxima vez que entrar na call
         </p>
       </section>
@@ -444,7 +445,7 @@ function MicProcessingSection({
       <div className="space-y-1.5">
         <MicMeter getLevel={getMicLevel} isOpen={isMicGateOpen} threshold={threshold} />
         <div className="flex items-center justify-between gap-3">
-          <p className="min-w-0 flex-1 text-[10px] leading-snug text-muted-foreground">
+          <p className="min-w-0 flex-1 text-[11.5px] leading-snug text-muted-foreground">
             {gateOn
               ? 'Fale normal: a barra deve passar do marcador amarelo. Em silêncio, ela tem que ficar cinza — se ficar verde, suba o limiar.'
               : 'Verde = transmitindo. Ligue o gate pra cortar ventilador e teclado quando você não está falando.'}
@@ -460,7 +461,7 @@ function MicProcessingSection({
           </Button>
         </div>
         {micTest.active && (
-          <p className="font-mono text-[10px] uppercase tracking-widest text-acid">
+          <p className="text-[11.5px] text-acid-text">
             você está se ouvindo{connected ? ' — a call não ouve o teste' : ''}
           </p>
         )}
@@ -532,7 +533,7 @@ function LiveSlider({
     <label className="flex items-center justify-between gap-3">
       <span className="min-w-0 flex-1">
         <span className="block text-sm">{label}</span>
-        {hint && <span className="block text-[10px] text-muted-foreground">{hint}</span>}
+        {hint && <span className="block text-[11.5px] text-muted-foreground">{hint}</span>}
       </span>
       <input
         type="range"
@@ -543,7 +544,7 @@ function LiveSlider({
         onChange={(e) => change(Number(e.target.value))}
         className="ram-slider w-28 shrink-0"
       />
-      <span className="w-16 shrink-0 text-right font-mono text-[10px] text-muted-foreground">
+      <span className="w-16 shrink-0 text-right font-mono text-[11.5px] text-muted-foreground">
         {format(local)}
       </span>
     </label>
@@ -613,7 +614,7 @@ function PttKeyPicker({
       className={`h-8 min-w-[7rem] rounded-brutal border-2 px-2 font-mono text-[11px] uppercase tracking-wider transition-colors ${
         recording
           ? 'border-acid bg-acid/10 text-acid'
-          : 'border-[#1a1a1a] text-foreground hover:border-acid/50'
+          : 'border-line text-foreground hover:border-acid/50'
       }`}
     >
       {recording ? 'Aperte…' : value.replace(/^Key|^Digit/, '')}
@@ -638,7 +639,7 @@ function HotkeysTab() {
 
   return (
     <div className="space-y-5 pr-1">
-      <p className="rounded-brutal border border-[#1a1a1a] bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+      <p className="rounded-brutal border border-line bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
         Atalhos globais funcionam com o launcher em segundo plano — dá pra soltar
         um som sem sair do jogo.
       </p>
@@ -650,7 +651,7 @@ function HotkeysTab() {
             Atalhos que não puderam ser registrados
           </p>
           {failed.map((registration) => (
-            <p key={registration.id} className="font-mono text-[10px] text-destructive/80">
+            <p key={registration.id} className="font-mono text-[11.5px] text-destructive/80">
               {formatAccelerator(registration.accelerator)} — {registration.error}
             </p>
           ))}
@@ -686,7 +687,7 @@ function HotkeysTab() {
           value={hotkeys.nudgeChannel}
           onChange={(nudgeChannel) => patch({ nudgeChannel })}
         />
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="text-[11.5px] text-muted-foreground">
           atalho de cada som fica no painel do soundboard
         </p>
       </section>
@@ -749,7 +750,7 @@ function ZoeiraTab() {
           Testar tremor
         </Button>
 
-        <p className="mt-3 rounded-brutal border border-[#1a1a1a] bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-3 rounded-brutal border border-line bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
           Limites do servidor: 15s entre cutucadas na mesma pessoa, 3 por minuto
           por quem envia, e no máximo 5 por minuto em quem recebe — mesmo que
           venham de gente diferente.
@@ -769,11 +770,11 @@ function ZoeiraTab() {
             onChange={(e) => void update({ soundboardVolume: Number(e.target.value) })}
             className="ram-slider flex-1"
           />
-          <span className="w-9 shrink-0 text-right font-mono text-[11px] text-acid">
+          <span className="w-9 shrink-0 text-right font-mono text-[11px] text-foreground">
             {Math.round(settings.soundboardVolume * 100)}%
           </span>
         </label>
-        <p className="rounded-brutal border border-[#1a1a1a] bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+        <p className="rounded-brutal border border-line bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
           Limites do servidor: 1,5s entre sons, 4 por pessoa a cada 20s e 8 no
           canal inteiro no mesmo período.
         </p>
@@ -810,7 +811,7 @@ function GameTab({
               setMaxRamMb(DEFAULT_MAX_MB)
               void update({ maxRamMb: DEFAULT_MAX_MB })
             }}
-            className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-acid"
+            className="flex items-center gap-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
           >
             <RotateCcw className="h-3 w-3" />
             Padrão
@@ -831,18 +832,18 @@ function GameTab({
         />
 
         <div className="mt-2 flex items-end justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <span className="text-[11.5px] text-muted-foreground">
             {formatMb(RAM_LIMITS.min)}
           </span>
-          <span className="font-display text-3xl uppercase tracking-tight text-acid drop-shadow-[0_0_8px_rgba(106,255,0,0.4)]">
+          <span className="font-display text-3xl uppercase tracking-tight text-acid-text drop-shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]">
             {formatMb(maxRamMb)}
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <span className="text-[11.5px] text-muted-foreground">
             {formatMb(RAM_LIMITS.max)}
           </span>
         </div>
 
-        <p className="mt-3 rounded-brutal border border-[#1a1a1a] bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-3 rounded-brutal border border-line bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
           Vale no próximo launch. Não passa de ~50–75% da RAM total do PC.
         </p>
       </section>
@@ -866,7 +867,7 @@ function GameTab({
           checked={settings.soundEnabled}
           onCheckedChange={(soundEnabled) => void update({ soundEnabled })}
         />
-        <p className="pt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="pt-1 text-[11.5px] text-muted-foreground">
           fechar pra bandeja e iniciar com o windows ficam na aba início
         </p>
       </section>
@@ -928,10 +929,15 @@ function StartupTab() {
           </p>
         )}
         {autostart?.supported && (
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="mt-2 text-[11.5px] text-muted-foreground">
             registrado no windows: {autostart.enabled ? 'sim' : 'não'}
           </p>
         )}
+      </section>
+
+      <section>
+        <SectionTitle>Tema</SectionTitle>
+        <ThemePicker value={settings.theme} onChange={(theme) => void update({ theme })} />
       </section>
 
       <section>
@@ -1101,9 +1107,9 @@ function LolTab() {
           />
         </label>
 
-        <div className="rounded-brutal border border-[#1a1a1a] bg-void/60 p-3">
+        <div className="rounded-brutal border border-line bg-void/60 p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               Leitura do cliente
             </p>
             <Button size="sm" variant="outline" onClick={() => void test()} disabled={testing}>
@@ -1152,15 +1158,54 @@ function LolTab() {
 function StatusRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <>
-      <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</dt>
+      <dt className="text-[11.5px] uppercase tracking-widest text-muted-foreground">{label}</dt>
       <dd className="min-w-0 truncate text-foreground">{children}</dd>
     </>
   )
 }
 
+/**
+ * Cinco temas como cinco amostras clicaveis. A amostra mostra o fundo, uma
+ * superficie e o botao primario do tema — o suficiente pra escolher sem
+ * aplicar. `aria-pressed` porque e um grupo de escolha unica.
+ */
+function ThemePicker({ value, onChange }: { value: ThemeId; onChange: (theme: ThemeId) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {THEME_IDS.map((id) => {
+        const meta = THEME_LABEL[id]
+        const on = id === value
+        return (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(id)}
+            className={cn(
+              'flex flex-col gap-2 rounded-brutal border p-2 text-left transition-colors',
+              on ? 'border-acid bg-acid/5' : 'border-line hover:border-line-strong'
+            )}
+          >
+            <span
+              aria-hidden
+              data-theme={id}
+              className="flex h-12 w-full items-end gap-1 rounded-[4px] border border-border bg-background p-1.5"
+            >
+              <span className="h-full flex-1 rounded-[3px] border border-border bg-card" />
+              <span className="h-4 w-7 rounded-[3px] bg-primary" />
+            </span>
+            <span className="text-xs font-semibold text-foreground">{meta.name}</span>
+            <span className="text-[11px] leading-snug text-muted-foreground">{meta.hint}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+    <h3 className="mb-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
       {children}
     </h3>
   )
@@ -1182,7 +1227,7 @@ function ModeButton({
       className={`flex-1 rounded-brutal border-2 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors ${
         active
           ? 'border-acid bg-acid/10 text-acid'
-          : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-foreground'
+          : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
       }`}
     >
       {children}

@@ -3,160 +3,327 @@
 @tailwind utilities;
 
 @layer base {
+  /* ==================================================================
+     TEMAS
+     ==================================================================
+     Cinco folhas com os MESMOS nomes de token. O <html data-theme> escolhe
+     qual vale (settings-context aplica); nenhum componente sabe qual esta
+     ativo. Os valores dos escuros vem da auditoria de set/2026; os claros
+     trocam o verde de texto por um verde-folha que passa AA sobre branco.
+
+     --neon-rgb alimenta os halos (rgb(var(--neon-rgb) / a)) — nos temas
+     claros e o verde escuro, pra que o halo vire uma sombra verde suave em
+     vez de um borrao fluorescente sobre branco. */
+
+  /* ---------- Grafite (padrao) ---------- */
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 92%;
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 92%;
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 92%;
+    --background: 210 7% 6%;
+    --foreground: 216 13% 92%;
+    --card: 210 8% 10%;
+    --card-foreground: 216 13% 92%;
+    --popover: 210 8% 10%;
+    --popover-foreground: 216 13% 92%;
     --primary: 97 100% 50%;
     --primary-foreground: 0 0% 4%;
     --secondary: 90 76% 21%;
-    --secondary-foreground: 0 0% 92%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 55%;
-    --accent: 45 95% 49%;
+    --secondary-foreground: 216 13% 92%;
+    --muted: 210 9% 13%;
+    --muted-foreground: 210 8% 63%;
+    --accent: 42 75% 60%;
     --accent-foreground: 0 0% 4%;
-    --destructive: 0 70% 45%;
-    --destructive-foreground: 0 0% 92%;
-    --border: 0 0% 15%;
-    --input: 0 0% 12%;
+    --destructive: 6 79% 71%;
+    --destructive-foreground: 0 0% 4%;
+    --border: 210 10% 16%;
+    --border-strong: 210 9% 22%;
+    --input: 210 9% 13%;
     --ring: 97 100% 50%;
-    --radius: 4px;
+    --radius: 6px;
+
+    /* marca */
+    --acid: 97 100% 50%;          /* #6AFF00 — botao, estado ativo, foco */
+    --acid-dark: 90 79% 21%;      /* #3A5F0B — borda de estado */
+    --acid-light: 96 100% 63%;    /* #8FFF40 */
+    --acid-text: 92 71% 58%;      /* #8FE04A — verde de TEXTO, mais suave */
+    --neon-rgb: 106 255 0;
+    --burn: 42 75% 60%;           /* #E5B84B */
+    --burn-dark: 45 95% 42%;
+  }
+
+  /* ---------- Meia-Noite ---------- */
+  :root[data-theme='meia-noite'] {
+    --background: 220 49% 8%;
+    --foreground: 216 43% 93%;
+    --card: 220 41% 13%;
+    --card-foreground: 216 43% 93%;
+    --popover: 220 41% 13%;
+    --popover-foreground: 216 43% 93%;
+    --muted: 221 37% 16%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 44 89% 64%;
+    --destructive: 5 100% 75%;
+    --border: 219 37% 21%;
+    --border-strong: 219 34% 27%;
+    --input: 221 37% 16%;
+    --secondary: 218 40% 19%;
+    --acid-text: 96 73% 68%;      /* #9BE870 */
+    --burn: 44 89% 64%;           /* #F5C451 */
+  }
+
+  /* ---------- Roxo Murcho ---------- */
+  :root[data-theme='roxo'] {
+    --background: 268 51% 7%;
+    --foreground: 265 52% 94%;
+    --card: 266 44% 11%;
+    --card-foreground: 265 52% 94%;
+    --popover: 266 44% 11%;
+    --popover-foreground: 265 52% 94%;
+    --muted: 266 42% 15%;
+    --muted-foreground: 263 22% 68%;
+    --accent: 42 100% 68%;
+    --destructive: 351 100% 78%;
+    --border: 268 39% 19%;
+    --border-strong: 266 31% 27%;
+    --input: 266 42% 15%;
+    --secondary: 266 35% 20%;
+    --acid-text: 94 79% 69%;      /* #A6EE70 */
+    --burn: 42 100% 68%;          /* #FFCB5C */
+  }
+
+  /* ---------- Papel Murcho (claro, neutro) ---------- */
+  :root[data-theme='papel'] {
+    color-scheme: light;
+    --background: 75 17% 96%;
+    --foreground: 210 13% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 13% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 13% 9%;
+    --primary: 100 100% 24%;      /* #1F7A00 — 5,5:1 com texto branco */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 95 30% 90%;
+    --secondary-foreground: 210 13% 9%;
+    --muted: 80 20% 91%;
+    --muted-foreground: 155 4% 37%;
+    --accent: 39 100% 27%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 5 80% 36%;     /* #A81E12 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 80 13% 86%;
+    --border-strong: 88 13% 77%;
+    --input: 0 0% 100%;
+    --ring: 100 100% 24%;
+
+    --acid: 100 100% 24%;         /* verde-folha: legivel sobre branco */
+    --acid-dark: 100 30% 70%;     /* borda verde clara */
+    --acid-light: 100 100% 31%;
+    --acid-text: 100 100% 24%;
+    --neon-rgb: 31 122 0;         /* halo vira sombra verde suave */
+    --burn: 39 100% 27%;          /* #8A5A00 */
+    --burn-dark: 39 100% 22%;
+  }
+
+  /* ---------- Acido Claro (claro, com um resto de verde) ---------- */
+  :root[data-theme='acido-claro'] {
+    color-scheme: light;
+    --background: 100 24% 95%;
+    --foreground: 100 24% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 100 24% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 100 24% 8%;
+    --primary: 100 100% 27%;      /* #2E8B00 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 97 25% 90%;
+    --secondary-foreground: 100 24% 8%;
+    --muted: 97 25% 90%;
+    --muted-foreground: 108 8% 35%;
+    --accent: 39 100% 28%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 5 80% 36%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 94 21% 85%;
+    --border-strong: 98 19% 76%;
+    --input: 0 0% 100%;
+    --ring: 100 100% 27%;
+
+    --acid: 100 100% 27%;
+    --acid-dark: 100 35% 68%;
+    --acid-light: 97 100% 35%;
+    --acid-text: 100 100% 24%;
+    --neon-rgb: 106 255 0;        /* o halo continua acido — e o "resto de verde" */
+    --burn: 39 100% 28%;
+    --burn-dark: 39 100% 22%;
   }
 
   * { @apply border-border; }
 
   html { scroll-behavior: smooth; }
 
+  /* O fundo vem do token, nao de um hex fixo: e o que permite trocar de tema
+     sem tocar em componente nenhum.
+
+     A GRADE VERDE DE 50px SAIU. Ela ficava atras de TUDO — inclusive de texto
+     de 11px — e derrubava o contraste efetivo da tela inteira em troca de um
+     efeito que ninguem percebia conscientemente. Sobrou a vinheta radial, que
+     e estatica, mora so no topo e nao passa por baixo de conteudo denso. */
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: 'rlig' 1, 'calt' 1;
-    background-color: #0B0B0B;
     background-image:
-      radial-gradient(ellipse at top, rgba(106, 255, 0, 0.03) 0%, transparent 50%),
-      linear-gradient(rgba(106, 255, 0, 0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(106, 255, 0, 0.02) 1px, transparent 1px);
-    background-size: 100% 100%, 50px 50px, 50px 50px;
+      radial-gradient(ellipse at top, rgb(var(--neon-rgb) / 0.03) 0%, transparent 50%);
     overflow: hidden;
+  }
+
+  /* user-select global impedia copiar mensagem sem passar por menu. Agora o
+     bloqueio vale so pro cromo (barra de titulo, rails, botoes) — conteudo e
+     selecionavel por padrao. */
+  .app-drag,
+  button,
+  [role='button'],
+  [role='tab'],
+  [role='menuitem'] {
     user-select: none;
+  }
+
+  /* Foco visivel em TUDO, nao so na primitiva Button: a maioria das telas usa
+     <button> cru e a navegacao por teclado era invisivel nelas. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
   }
 
   input, textarea { user-select: text; }
 
   ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: #0B0B0B; }
-  ::-webkit-scrollbar-thumb { background: #3A5F0B; border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: #6AFF00; box-shadow: 0 0 10px #6AFF00; }
+  ::-webkit-scrollbar-track { background: hsl(var(--background)); }
+  /* Barra de rolagem e cromo, nao conteudo: cinza. O hover neon com brilho
+     acendia a lateral da tela toda vez que o mouse passava perto. */
+  ::-webkit-scrollbar-thumb { background: hsl(var(--border-strong)); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
 
-  ::selection { background: rgba(106, 255, 0, 0.3); color: #EAEAEA; }
+  ::selection { background: rgb(var(--neon-rgb) / 0.3); color: hsl(var(--foreground)); }
 }
 
 @layer components {
-  .card-gradient {
-    background: linear-gradient(135deg, #0F0F0F 0%, #0B0B0B 100%);
-    border: 1px solid #1a1a1a;
-    box-shadow:
-      4px 4px 0 0 rgba(106, 255, 0, 0.1),
-      inset 0 1px 0 rgba(255,255,255,0.03);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .card-gradient::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(106, 255, 0, 0.3), transparent);
-  }
-
+  /* ------------------------------------------------------------------
+     SUPERFICIES
+     ------------------------------------------------------------------
+     `card-gradient` e `card-acid` eram duas molduras diferentes — uma com
+     gradiente + sombra solida deslocada 4px + filete verde no topo, outra com
+     borda verde 2px + brilho interno. Cada card escolhia a sua e a tela virava
+     uma colecao de molduras. Agora sao a MESMA superficie plana: fundo do
+     token, borda 1px, raio 10. Profundidade vem de elevacao (popover/modal),
+     nao de brilho. Os dois nomes continuam existindo pra nao tocar em 23
+     arquivos; sao sinonimos. */
+  .card-gradient,
   .card-acid {
-    background: linear-gradient(135deg, #0F0F0F 0%, #0B0B0B 100%);
-    border: 2px solid #3A5F0B;
-    box-shadow:
-      0 0 20px rgba(106, 255, 0, 0.1),
-      inset 0 0 30px rgba(106, 255, 0, 0.03);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 10px;
+    position: relative;
   }
 
+  /* ------------------------------------------------------------------
+     BOTAO PRIMARIO (nivel 1 da hierarquia — no maximo UM por tela)
+     ------------------------------------------------------------------
+     Era gradiente + borda 2px + sombra solida 4px + glow, e o hover deslocava
+     o botao. Agora: preenchimento chapado, sem borda, um unico halo (N3) e
+     hover que so muda o halo. O texto vem em caixa normal — a caixa-alta
+     espacada saiu da primitiva de botao (ver button.tsx). */
   .btn-acid {
-    @apply font-bold uppercase tracking-wider;
-    background: linear-gradient(135deg, #6AFF00 0%, #4CAF00 100%);
-    color: #0B0B0B;
-    border: 2px solid #8FFF40;
-    box-shadow:
-      4px 4px 0 0 #3A5F0B,
-      0 0 15px rgba(106, 255, 0, 0.3);
-    transition: all 0.1s ease;
+    @apply font-semibold;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: 0;
+    border-radius: 8px;
+    box-shadow: 0 0 22px rgb(var(--neon-rgb) / 0.30);
+    transition: box-shadow 0.15s ease, filter 0.15s ease, transform 0.1s ease;
   }
 
   .btn-acid:hover:not(:disabled) {
-    transform: translate(-2px, -2px);
-    box-shadow:
-      6px 6px 0 0 #3A5F0B,
-      0 0 25px rgba(106, 255, 0, 0.5);
+    filter: brightness(1.05);
+    box-shadow: 0 0 28px rgb(var(--neon-rgb) / 0.40);
   }
 
   .btn-acid:active:not(:disabled) {
-    transform: translate(2px, 2px);
-    box-shadow:
-      2px 2px 0 0 #3A5F0B,
-      0 0 10px rgba(106, 255, 0, 0.3);
+    transform: translateY(1px);
+    box-shadow: 0 0 14px rgb(var(--neon-rgb) / 0.25);
   }
 
   .btn-acid:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    box-shadow: none;
   }
 
+  /* ------------------------------------------------------------------
+     CAMPOS
+     ------------------------------------------------------------------
+     Texto digitado e texto, nao dado: sai o mono. O foco e um anel de 2px —
+     o halo de 20px que havia aqui somava com o halo do botao ao lado e a
+     tela inteira parecia acesa. */
   .input-terminal {
-    background: #0B0B0B;
-    border: 2px solid #1a1a1a;
-    color: #EAEAEA;
-    font-family: 'JetBrains Mono', monospace;
-    transition: all 0.15s ease;
+    background: hsl(var(--input));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .input-terminal:focus {
-    border-color: #6AFF00;
-    box-shadow:
-      0 0 0 2px rgba(106, 255, 0, 0.2),
-      0 0 20px rgba(106, 255, 0, 0.1);
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px rgb(var(--neon-rgb) / 0.25);
     outline: none;
   }
 
-  .input-terminal::placeholder { color: #444; }
+  .input-terminal::placeholder { color: hsl(var(--muted-foreground)); }
 
+  /* ------------------------------------------------------------------
+     TITULOS
+     ------------------------------------------------------------------
+     `title-brutal` aplicava Impact + caixa-alta + DUAS sombras verdes em 16
+     telas — nome de canal competia com titulo de modal usando o mesmo
+     recurso. Agora e o "Titulo" do padrao tipografico: Inter 700, tracking
+     fechado, caixa normal, sem sombra. A fonte de marca (Anton) so entra
+     quando `.brand-wordmark` vem junto — e ela vem depois neste arquivo,
+     entao ganha na cascata. */
   .title-brutal {
-    @apply font-display uppercase tracking-tight;
-    color: #EAEAEA;
-    text-shadow:
-      2px 2px 0 #3A5F0B,
-      4px 4px 0 rgba(106, 255, 0, 0.3);
+    @apply font-sans font-bold;
+    letter-spacing: -0.02em;
+    color: hsl(var(--foreground));
   }
 
+  /* Wordmark: unico lugar do app onde a fonte de marca aparece. Anton nao tem
+     eixo variavel — o peso ja vem do desenho da fonte. */
   .brand-wordmark {
-    font-family: 'Source Code Pro', 'JetBrains Mono', monospace;
-    font-weight: 650;
-    font-variation-settings: 'wght' 650;
+    font-family: Anton, 'Arial Narrow', Impact, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
   }
 
+  /* `title-acid` era gradiente verde→ambar recortado no texto com
+     drop-shadow. Titulo nao e lugar de neon (nivel 3 da hierarquia). */
   .title-acid {
-    @apply font-bold uppercase tracking-wide;
-    background: linear-gradient(135deg, #6AFF00 0%, #F2B705 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    filter: drop-shadow(0 0 10px rgba(106, 255, 0, 0.5));
+    @apply font-sans font-bold;
+    letter-spacing: -0.02em;
+    color: hsl(var(--foreground));
   }
 
-  .scanlines { position: relative; overflow: hidden; }
+  /* ------------------------------------------------------------------
+     SCANLINES — so onde e vitrine
+     ------------------------------------------------------------------
+     A classe `scanlines` fica como no-op: estava em 9 superficies de
+     trabalho, por cima de formulario e de texto de 11px. A versao com efeito
+     e `scanlines-brand`, usada so em login e cadastro. */
+  .scanlines { position: relative; }
 
-  .scanlines::after {
+  .scanlines-brand { position: relative; overflow: hidden; }
+
+  .scanlines-brand::after {
     content: '';
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    inset: 0;
     background: repeating-linear-gradient(
       0deg,
       transparent,
@@ -169,9 +336,10 @@
 }
 
 @layer utilities {
+  /* Era gradiente verde→ambar recortado no texto. Ficou como cor chapada
+     de acento pra que qualquer uso antigo nao volte a acender a tela. */
   .text-gradient {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #6AFF00 0%, #F2B705 100%);
+    color: hsl(var(--acid-text));
   }
 
   .app-drag {
@@ -192,8 +360,8 @@
   -webkit-appearance: none;
   appearance: none;
   height: 8px;
-  background: #0B0B0B;
-  border: 2px solid #3A5F0B;
+  background: hsl(var(--background));
+  border: 2px solid hsl(var(--acid-dark));
   border-radius: 4px;
   outline: none;
   cursor: pointer;
@@ -205,10 +373,10 @@
   width: 20px;
   height: 20px;
   border-radius: 4px;
-  background: linear-gradient(135deg, #6AFF00 0%, #4CAF00 100%);
-  border: 2px solid #8FFF40;
+  background: hsl(var(--primary));
+  border: 2px solid hsl(var(--acid-light));
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(106, 255, 0, 0.6);
+  box-shadow: 0 0 10px rgb(var(--neon-rgb) / 0.4);
   transition: transform 0.1s ease;
 }
 
@@ -225,8 +393,8 @@
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
-  background: #0B0B0B;
-  border: 1px solid #3A5F0B;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--acid-dark));
   border-radius: 3px;
   outline: none;
   cursor: pointer;
@@ -238,10 +406,10 @@
   width: 10px;
   height: 10px;
   border-radius: 2px;
-  background: #6AFF00;
-  border: 1px solid #8FFF40;
+  background: hsl(var(--primary));
+  border: 1px solid hsl(var(--acid-light));
   cursor: pointer;
-  box-shadow: 0 0 6px rgba(106, 255, 0, 0.5);
+  box-shadow: 0 0 6px rgb(var(--neon-rgb) / 0.4);
 }
 
 /* Volume zerado nao pode parecer "so baixinho" — vira vermelho de mudo. */
@@ -258,7 +426,7 @@
 .terminal-cursor::after {
   content: '█';
   animation: terminal-blink 1s step-end infinite;
-  color: #6AFF00;
+  color: hsl(var(--acid));
 }
 
 
@@ -294,7 +462,7 @@
 @media (prefers-reduced-motion: reduce) {
   .nudge-shake {
     animation: none;
-    outline: 2px solid #F2B705;
+    outline: 2px solid hsl(var(--burn));
     outline-offset: -2px;
   }
 }
@@ -308,14 +476,47 @@
    das mensagens era a que ela pediu. O brilho apaga sozinho pra nao virar um
    destaque permanente. */
 @keyframes flash {
-  0%   { background-color: rgba(106, 255, 0, 0.22); }
-  70%  { background-color: rgba(106, 255, 0, 0.14); }
+  0%   { background-color: rgb(var(--neon-rgb) / 0.22); }
+  70%  { background-color: rgb(var(--neon-rgb) / 0.14); }
   100% { background-color: transparent; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-\[flash_1\.2s_ease-out\] {
     animation: none;
-    box-shadow: inset 2px 0 0 #6AFF00;
+    box-shadow: inset 2px 0 0 hsl(var(--acid));
+  }
+}
+
+
+/* ============================================
+   MENOS ANIMACAO
+   ============================================
+   effects.css ja neutraliza os cosmeticos (.fx-*, moldura neon, toast). Aqui
+   ficam as animacoes declaradas no tailwind.config.js, que nao passavam por
+   filtro nenhum: fundo com scanline correndo, brilho pulsando, card flutuando
+   e o banner de drop tremendo sem parar. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-scan,
+  .animate-flicker,
+  .animate-float,
+  .animate-glow-pulse,
+  .animate-rainbow,
+  .animate-shake,
+  .animate-glitch,
+  .animate-drop-shake,
+  .animate-pulse {
+    animation: none !important;
+  }
+
+  /* Barra de validade do drop: sem animacao ela nasceria em 100% e nunca
+     encolheria — melhor sumir do que mentir o tempo restante. */
+  .animate-shrink-width {
+    animation: none !important;
+    width: 100% !important;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }

@@ -43,7 +43,7 @@ export const DropdownMenuItem = React.forwardRef<
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       danger
         ? 'text-destructive focus:bg-destructive/15 focus:text-destructive'
-        : 'text-foreground focus:bg-muted focus:text-acid',
+        : 'text-foreground focus:bg-muted focus:text-foreground',
       className
     )}
     {...props}
@@ -57,7 +57,7 @@ export const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn('-mx-1 my-1 h-px bg-[#1a1a1a]', className)}
+    className={cn('-mx-1 my-1 h-px bg-surface-raised', className)}
     {...props}
   />
 ))
@@ -70,7 +70,7 @@ export const DropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={cn(
-      'px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground',
+      'px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground',
       className
     )}
     {...props}

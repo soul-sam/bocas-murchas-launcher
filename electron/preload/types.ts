@@ -277,7 +277,30 @@ export interface LolSettings {
   lockfilePath: string
 }
 
+/**
+ * Temas. Cada um e uma folha de tokens em src/styles/globals.css, aplicada
+ * pelo `data-theme` do <html>; nenhum componente sabe qual esta ativo. Tres
+ * escuros e dois claros — ver docs da desintoxicacao visual.
+ */
+export type ThemeId = 'grafite' | 'meia-noite' | 'roxo' | 'papel' | 'acido-claro'
+
+export const THEME_IDS: readonly ThemeId[] = ['grafite', 'meia-noite', 'roxo', 'papel', 'acido-claro']
+
+export const THEME_LABEL: Record<ThemeId, { name: string; hint: string; light: boolean }> = {
+  grafite: { name: 'Grafite', hint: 'Preto neutro. O padrão.', light: false },
+  'meia-noite': { name: 'Meia-Noite', hint: 'Azul-marinho. Mais confortável em call longa.', light: false },
+  roxo: { name: 'Roxo Murcho', hint: 'Roxo profundo, o complemento do verde.', light: false },
+  papel: { name: 'Papel Murcho', hint: 'Claro e neutro, quase sem neon.', light: true },
+  'acido-claro': { name: 'Ácido Claro', hint: 'Claro com um resto de verde nos botões.', light: true }
+}
+
+export function isThemeId(value: unknown): value is ThemeId {
+  return typeof value === 'string' && (THEME_IDS as readonly string[]).includes(value)
+}
+
 export interface LauncherSettings {
+  /** Tema visual (ver ThemeId). */
+  theme: ThemeId
   maxRamMb: number
   minRamMb: number
   notifyOnJoinLeave: boolean
@@ -427,6 +450,7 @@ export const RAM_LIMITS: RamLimits = {
  * lidar com "settings ainda e null" em todo componente.
  */
 export const DEFAULT_SETTINGS: LauncherSettings = {
+  theme: 'grafite',
   maxRamMb: 4096,
   minRamMb: 1024,
   notifyOnJoinLeave: true,

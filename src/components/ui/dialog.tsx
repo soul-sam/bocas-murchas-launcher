@@ -37,7 +37,7 @@ export const DialogContent = React.forwardRef<
       className={cn(
         'card-gradient fixed left-1/2 top-1/2 z-50 flex max-h-[86vh] w-full max-w-lg',
         '-translate-x-1/2 -translate-y-1/2 flex-col rounded-brutal p-6',
-        'border-2 border-acid-dark shadow-[0_0_40px_rgba(106,255,0,0.12)]',
+        'border-2 border-acid-dark shadow-[0_0_40px_rgb(var(--neon-rgb)/0.12)]',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
         'data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95',
@@ -51,7 +51,7 @@ export const DialogContent = React.forwardRef<
         <DialogPrimitive.Close
           className={cn(
             'absolute right-3 top-3 rounded-brutal p-1.5 text-muted-foreground',
-            'transition-colors hover:bg-muted hover:text-acid',
+            'transition-colors hover:bg-muted hover:text-foreground',
             'focus:outline-none focus:ring-2 focus:ring-ring'
           )}
         >
@@ -71,7 +71,7 @@ export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLD
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('mt-5 flex shrink-0 justify-end gap-2 border-t border-[#1a1a1a] pt-4', className)}
+      className={cn('mt-5 flex shrink-0 justify-end gap-2 border-t border-line pt-4', className)}
       {...props}
     />
   )

@@ -144,6 +144,18 @@
   transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+/* Versão parada de qualquer efeito: mesma cor, mesmo gradiente, zero
+   movimento. É o que as listas usam (ver NameEffect `animated={false}`). O
+   glow fixo do texto fica; só a cópia pulsante some. */
+.fx-static,
+.fx-static::after {
+  animation: none !important;
+}
+
+.fx-glow.fx-static::after {
+  opacity: 0.35;
+}
+
 /* Quem pediu menos animação no sistema não leva nome piscando na lista. */
 @media (prefers-reduced-motion: reduce) {
   .fx-glow::after,

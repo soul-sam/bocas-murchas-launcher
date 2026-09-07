@@ -30,6 +30,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  // O tema e um atributo do <html>: as cinco folhas de token em globals.css
+  // escolhem os valores por `data-theme`, e nenhum componente precisa saber
+  // qual esta ativo. Aplicado aqui (e nao no App) pra valer tambem nas telas
+  // de login/cadastro, que ficam fora da casca autenticada.
+  React.useEffect(() => {
+    document.documentElement.dataset.theme = settings.theme
+  }, [settings.theme])
+
   const open = React.useCallback(() => setIsOpen(true), [])
   const close = React.useCallback(() => setIsOpen(false), [])
 

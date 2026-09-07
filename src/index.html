@@ -36,7 +36,21 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://api.bocasmurchas.com.br wss://api.bocasmurchas.com.br https://live.bewhale.com.br wss://live.bewhale.com.br https://api.minecraftservices.com https://crafatar.com https://www.youtube.com; img-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*; media-src 'self' blob: https: http://localhost:* http://127.0.0.1:*; frame-src https://www.youtube-nocookie.com https://www.youtube.com;" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Source+Code+Pro:wght@200..900&display=swap" rel="stylesheet" />
+    <!--
+      Tres familias, tres papeis (ver docs/tipografia.md):
+        Inter          — titulos, corpo e observacoes;
+        JetBrains Mono — SO dado: saldo, versao, latencia, hex, timer, atalho;
+        Anton          — so o wordmark.
+
+      Anton entrou no lugar de Impact. `font-display` apontava pra
+      `Impact, Haettenschweiler, Arial Narrow Bold`, que sao fontes de SISTEMA
+      e nunca foram carregadas: no Windows resolvia em Impact, fora dele caia
+      numa sans generica — o titulo do app tinha cara diferente por SO.
+
+      Source Code Pro saiu: baixava o eixo variavel inteiro (200..900) pra
+      servir uma unica classe (.brand-wordmark), que agora usa Anton.
+    -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Anton&display=swap" rel="stylesheet" />
     <title>Bocas Murchas Launcher</title>
   </head>
   <body>
