@@ -62,30 +62,35 @@ export function SoundboardPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex shrink-0 items-center justify-between gap-2 pb-3">
-        <div>
-          <h2 className="title-brutal text-lg">Soundboard</h2>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <header className="flex shrink-0 items-center justify-between gap-2 pb-2">
+        <div className="min-w-0">
+          <h2 className="title-brutal text-base leading-tight">Soundboard</h2>
+          <p className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             {inVoice ? 'toca pra sala toda' : 'entra numa call pra tocar'}
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1">
           {/* Só o que está tocando AQUI: o servidor não tem "parar" — cada
               launcher toca o arquivo localmente. */}
-          <Button
-            size="sm"
-            variant="ghost"
+          <button
+            type="button"
             onClick={stopAll}
             title="Parar os sons que estão tocando aqui"
+            aria-label="Parar tudo"
+            className="rounded-brutal p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            <Square className="mr-1.5 h-3.5 w-3.5" />
-            Parar tudo
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setUploadOpen(true)}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Novo som
-          </Button>
+            <Square className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setUploadOpen(true)}
+            title="Novo som"
+            aria-label="Novo som"
+            className="rounded-brutal border border-[#1a1a1a] p-2 text-foreground transition-colors hover:border-acid/50 hover:bg-acid/10 hover:text-acid"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
         </div>
       </header>
 
@@ -123,7 +128,7 @@ export function SoundboardPanel() {
             Nenhum som ainda. Sobe o primeiro aí.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-1.5">
             {visible.map((sound) => (
               <SoundTile
                 key={sound.id}
@@ -224,15 +229,20 @@ function SoundTile({
   onPreview: () => void
   onBind: (accelerator: string) => void
 }) {
+  // Menu aberto segura as ações visíveis mesmo com o mouse fora do tile;
+  // sem isso o botão "⋯" some debaixo do popover e parece bug.
+  const [menuOpen, setMenuOpen] = React.useState(false)
+
+  const info = `${(sound.durationMs / 1000).toFixed(1)}s · ${sound.playCount}x${hotkey ? ` · ${hotkey}` : ''}`
+
   return (
     <div
       className={cn(
-        // min-w-0 + overflow-hidden: item de grid nasce com min-width:auto, e
-        // nome comprido empurrava o cartão pra fora da coluna, em cima do vizinho.
-        'group flex min-w-0 flex-col gap-1.5 overflow-hidden rounded-brutal border-2 border-[#1a1a1a] p-2',
-        'transition-colors hover:border-acid/50',
+        // min-w-0: item de grid nasce com min-width:auto, e nome comprido
+        // empurrava o tile pra fora da coluna, em cima do vizinho.
+        'group relative min-w-0',
         // Só admin vê som bloqueado — e vê apagado, pra saber que está fora do ar.
-        sound.isBlocked && 'border-dashed opacity-50'
+        sound.isBlocked && 'opacity-50'
       )}
     >
       <button
@@ -241,48 +251,52 @@ function SoundTile({
         disabled={disabled}
         title={
           sound.isBlocked
-            ? 'Bloqueado — ninguém consegue tocar'
+            ? `Bloqueado — ninguém consegue tocar · ${info}`
             : disabled
               ? 'Entre num canal de voz'
-              : `Tocar "${sound.name}" pra sala`
+              : `Tocar "${sound.name}" pra sala · ${info}`
         }
         className={cn(
-          'flex w-full min-w-0 items-center gap-2 rounded-brutal px-1 py-1 text-left transition-colors',
-          disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-acid/10'
+          'flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border px-2.5 text-left transition-all',
+          'border-[#1a1a1a] bg-void-light/40',
+          sound.isBlocked && 'border-dashed',
+          disabled
+            ? 'cursor-not-allowed opacity-60'
+            : 'hover:border-acid/40 hover:bg-void-light active:scale-[0.97]'
         )}
       >
-        <span className="shrink-0 text-xl leading-none">{sound.emoji}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-foreground">
-            {sound.name}
-          </span>
-          <span className="block truncate font-mono text-[10px] text-muted-foreground">
-            {sound.isBlocked ? (
-              <span className="text-burn">bloqueado · </span>
-            ) : null}
-            {(sound.durationMs / 1000).toFixed(1)}s · {sound.playCount}x
-          </span>
+        <span className="shrink-0 text-lg leading-none">{sound.emoji}</span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+          {sound.name}
         </span>
       </button>
 
-      <div className="flex items-center gap-1">
-        <HotkeyRecorder
-          value={hotkey}
-          onChange={onBind}
-          placeholder="Atalho"
-          className="min-w-0 flex-1"
-        />
-
+      {/* Ações secundárias por cima do canto direito, só no hover: o tile fica
+          limpo como botão e ainda dá pra ouvir sozinho ou editar. */}
+      <div
+        className={cn(
+          'absolute inset-y-1 right-1 flex items-center gap-0.5 rounded-md bg-void-light pl-1 transition-opacity',
+          menuOpen ? 'opacity-100' : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'
+        )}
+      >
         <button
           type="button"
           onClick={onPreview}
           title="Ouvir só eu"
-          className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
+          aria-label="Ouvir só eu"
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
         >
-          <Play className="h-3 w-3" />
+          <Play className="h-3.5 w-3.5" />
         </button>
-
-        {canEdit && <SoundMenu sound={sound} categories={categories} isAdmin={isAdmin} />}
+        <SoundMenu
+          sound={sound}
+          categories={categories}
+          hotkey={hotkey}
+          canEdit={canEdit}
+          isAdmin={isAdmin}
+          onBind={onBind}
+          onOpenChange={setMenuOpen}
+        />
       </div>
     </div>
   )
@@ -300,11 +314,19 @@ function SoundTile({
 function SoundMenu({
   sound,
   categories,
-  isAdmin
+  hotkey,
+  canEdit,
+  isAdmin,
+  onBind,
+  onOpenChange
 }: {
   sound: Sound
   categories: string[]
+  hotkey: string
+  canEdit: boolean
   isAdmin: boolean
+  onBind: (accelerator: string) => void
+  onOpenChange: (open: boolean) => void
 }) {
   const { update, remove, setBlocked } = useSoundboard()
 
@@ -328,6 +350,7 @@ function SoundMenu({
       setConfirmDelete(false)
     }
     setOpen(next)
+    onOpenChange(next)
   }
 
   const dirty =
@@ -387,137 +410,155 @@ function SoundMenu({
       <PopoverTrigger asChild>
         <button
           type="button"
-          title="Editar som"
-          aria-label="Editar som"
-          className={cn(
-            'shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-acid',
-            !open && 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
-          )}
+          title={canEdit ? 'Atalho e edição' : 'Atalho'}
+          aria-label={canEdit ? 'Atalho e edição' : 'Atalho'}
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
         >
-          <MoreHorizontal className="h-3 w-3" />
+          <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
       </PopoverTrigger>
 
       <PopoverContent align="end" className="w-64 space-y-3">
-        <div className="flex gap-2">
-          <div className="w-14 space-y-1">
-            <Label htmlFor={`emoji-${sound.id}`}>Emoji</Label>
-            <Input
-              id={`emoji-${sound.id}`}
-              value={emoji}
-              onChange={(e) => setEmoji(e.target.value.slice(0, 4))}
-              className="h-8 px-1 text-center text-base"
-            />
-          </div>
-          <div className="flex-1 space-y-1">
-            <Label htmlFor={`name-${sound.id}`}>Nome</Label>
-            <Input
-              id={`name-${sound.id}`}
-              value={name}
-              maxLength={24}
-              onChange={(e) => setName(e.target.value)}
-              className="h-8 text-xs"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor={`cat-${sound.id}`}>Categoria</Label>
-          <Input
-            id={`cat-${sound.id}`}
-            value={category}
-            maxLength={24}
-            list={`cats-${sound.id}`}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="geral"
-            className="h-8 text-xs"
-          />
-          {/* Sugere as que já existem — categoria nova é só digitar outra. */}
-          <datalist id={`cats-${sound.id}`}>
-            {categories.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </div>
-
-        <label className="block space-y-1">
-          <span className="flex items-center justify-between">
-            <Label>Volume do som</Label>
-            <span className="font-mono text-[10px] text-acid">{Math.round(volume * 100)}%</span>
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-xl leading-none">{sound.emoji}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-foreground">{sound.name}</span>
+            <span className="block font-mono text-[10px] text-muted-foreground">
+              {(sound.durationMs / 1000).toFixed(1)}s · {sound.playCount}x
+              {sound.isBlocked && <span className="text-burn"> · bloqueado</span>}
+            </span>
           </span>
-          <input
-            type="range"
-            min={0.05}
-            max={1}
-            step={0.05}
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            className="ram-slider w-full"
-          />
-        </label>
-
-        {error && <p className="text-xs text-destructive">{error}</p>}
-
-        <div className="flex items-center justify-between gap-2 border-t border-[#1a1a1a] pt-2">
-          <div className="flex items-center gap-1">
-            {confirmDelete ? (
-              <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-destructive">
-                apagar?
-                <button
-                  type="button"
-                  onClick={() => void handleDelete()}
-                  disabled={busy}
-                  className="font-bold hover:underline"
-                >
-                  sim
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(false)}
-                  className="text-muted-foreground hover:underline"
-                >
-                  não
-                </button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                title="Apagar som"
-                className="rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            )}
-
-            {isAdmin && !confirmDelete && (
-              <button
-                type="button"
-                onClick={() => void toggleBlocked()}
-                disabled={busy}
-                title={sound.isBlocked ? 'Liberar pra todo mundo' : 'Bloquear pra todo mundo'}
-                className={cn(
-                  'flex items-center gap-1 rounded-brutal px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors',
-                  sound.isBlocked
-                    ? 'text-acid hover:bg-acid/10'
-                    : 'text-muted-foreground hover:bg-burn/10 hover:text-burn'
-                )}
-              >
-                <Ban className="h-3.5 w-3.5" />
-                {sound.isBlocked ? 'liberar' : 'bloquear'}
-              </button>
-            )}
-          </div>
-
-          <Button size="sm" onClick={() => void save()} disabled={!dirty || busy}>
-            {busy ? (
-              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-            ) : (
-              <Check className="mr-1.5 h-3 w-3" />
-            )}
-            Salvar
-          </Button>
         </div>
+
+        {/* Atalho é configuração local: qualquer um pode, mesmo sem poder editar o som. */}
+        <div className="space-y-1">
+          <Label>Atalho</Label>
+          <HotkeyRecorder value={hotkey} onChange={onBind} placeholder="Atalho" className="w-full" />
+        </div>
+
+        {canEdit && (
+          <>
+            <div className="flex gap-2 border-t border-[#1a1a1a] pt-3">
+              <div className="w-14 space-y-1">
+                <Label htmlFor={`emoji-${sound.id}`}>Emoji</Label>
+                <Input
+                  id={`emoji-${sound.id}`}
+                  value={emoji}
+                  onChange={(e) => setEmoji(e.target.value.slice(0, 4))}
+                  className="h-8 px-1 text-center text-base"
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <Label htmlFor={`name-${sound.id}`}>Nome</Label>
+                <Input
+                  id={`name-${sound.id}`}
+                  value={name}
+                  maxLength={24}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor={`cat-${sound.id}`}>Categoria</Label>
+              <Input
+                id={`cat-${sound.id}`}
+                value={category}
+                maxLength={24}
+                list={`cats-${sound.id}`}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="geral"
+                className="h-8 text-xs"
+              />
+              {/* Sugere as que já existem — categoria nova é só digitar outra. */}
+              <datalist id={`cats-${sound.id}`}>
+                {categories.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+
+            <label className="block space-y-1">
+              <span className="flex items-center justify-between">
+                <Label>Volume do som</Label>
+                <span className="font-mono text-[10px] text-acid">{Math.round(volume * 100)}%</span>
+              </span>
+              <input
+                type="range"
+                min={0.05}
+                max={1}
+                step={0.05}
+                value={volume}
+                onChange={(e) => setVolume(Number(e.target.value))}
+                className="ram-slider w-full"
+              />
+            </label>
+
+            {error && <p className="text-xs text-destructive">{error}</p>}
+
+            <div className="flex items-center justify-between gap-2 border-t border-[#1a1a1a] pt-2">
+              <div className="flex items-center gap-1">
+                {confirmDelete ? (
+                  <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-destructive">
+                    apagar?
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete()}
+                      disabled={busy}
+                      className="font-bold hover:underline"
+                    >
+                      sim
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="text-muted-foreground hover:underline"
+                    >
+                      não
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    title="Apagar som"
+                    className="rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+
+                {isAdmin && !confirmDelete && (
+                  <button
+                    type="button"
+                    onClick={() => void toggleBlocked()}
+                    disabled={busy}
+                    title={sound.isBlocked ? 'Liberar pra todo mundo' : 'Bloquear pra todo mundo'}
+                    className={cn(
+                      'flex items-center gap-1 rounded-brutal px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors',
+                      sound.isBlocked
+                        ? 'text-acid hover:bg-acid/10'
+                        : 'text-muted-foreground hover:bg-burn/10 hover:text-burn'
+                    )}
+                  >
+                    <Ban className="h-3.5 w-3.5" />
+                    {sound.isBlocked ? 'liberar' : 'bloquear'}
+                  </button>
+                )}
+              </div>
+
+              <Button size="sm" onClick={() => void save()} disabled={!dirty || busy}>
+                {busy ? (
+                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="mr-1.5 h-3 w-3" />
+                )}
+                Salvar
+              </Button>
+            </div>
+          </>
+        )}
       </PopoverContent>
     </Popover>
   )
