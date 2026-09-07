@@ -26,10 +26,11 @@ import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { useWatch } from '@/lib/watch-context'
 import { CallStage, ParticipantChip } from './CallStage'
+import { SoundboardPopover } from './SoundboardPopover'
 import { ScreenStage } from './ScreenStage'
 import { WatchStage } from './WatchStage'
 
-export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void }) {
+export function VoiceStage() {
   const voice = useVoice()
   const { nudgeChannel } = useNudge()
   const { byId } = useMembers()
@@ -321,9 +322,11 @@ export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void 
             )}
           </ControlButton>
 
-          <ControlButton label="Soundboard" onClick={onOpenSoundboard}>
-            <Music className="h-4 w-4" />
-          </ControlButton>
+          <SoundboardPopover align="center">
+            <ControlButton label="Soundboard">
+              <Music className="h-4 w-4" />
+            </ControlButton>
+          </SoundboardPopover>
 
           {/* "Rolando" quando tem vídeo na sala e eu fechei o painel: é a
               única pista de que tem algo pra reabrir. */}
@@ -401,28 +404,34 @@ function ScreenSharesBar({ feeds, onShow }: { feeds: ScreenShareFeed[]; onShow: 
   )
 }
 
-function ControlButton({
-  children,
-  label,
-  text,
-  onClick,
-  active,
-  danger
-}: {
-  children: React.ReactNode
-  label: string
-  /** Rotulo visivel ao lado do icone. Sem ele o botao fica so com o icone. */
-  text?: string
-  onClick: () => void
-  active?: boolean
-  danger?: boolean
-}) {
+/**
+ * `forwardRef` + `...rest` porque este botao tambem serve de gatilho de
+ * popover (o soundboard): o `asChild` do Radix injeta ref e handlers no filho,
+ * e um componente que ignora os dois vira um botao que nao abre nada.
+ */
+const ControlButton = React.forwardRef<
+  HTMLButtonElement,
+  {
+    children: React.ReactNode
+    label: string
+    /** Rotulo visivel ao lado do icone. Sem ele o botao fica so com o icone. */
+    text?: string
+    onClick?: () => void
+    active?: boolean
+    danger?: boolean
+  } & React.ButtonHTMLAttributes<HTMLButtonElement>
+>(function ControlButton(
+  { children, label, text, onClick, active, danger, ...rest },
+  ref
+) {
   return (
     <button
+      ref={ref}
       type="button"
       title={label}
       aria-label={label}
       onClick={onClick}
+      {...rest}
       className={cn(
         'flex items-center gap-1.5 rounded-brutal border-2 p-2 transition-colors',
         text && 'px-3',
@@ -439,4 +448,4 @@ function ControlButton({
       )}
     </button>
   )
-}
+})

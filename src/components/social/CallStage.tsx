@@ -30,10 +30,25 @@ import { VideoSurface } from './ScreenStage'
  *     quebrava e o Radix caía no fallback — que são as duas primeiras letras
  *     do nome. Era isso o "só aparece as iniciais dentro da call".
  *
- * COMO É AGORA: os cards de câmera são dimensionados por medição real do
- * espaço disponível (ver `useTileGrid`), preenchendo o palco. Um clique põe
- * alguém em destaque e joga o resto numa fileira embaixo — que é o que se
- * quer quando alguém está mostrando algo na webcam.
+ * COMO É AGORA (o modelo do Discord): TODO MUNDO na call ocupa um card do
+ * mesmo tamanho na mesma grade, com câmera ou sem. Quem está só na voz recebe
+ * um card 16:9 com o avatar grande no meio; quem abriu a câmera recebe o mesmo
+ * card com o vídeo dentro. O tamanho sai de medição real do espaço
+ * (`bestTileSize`), então dois numa janela larga viram dois cards enormes lado
+ * a lado em vez de dois selinhos no meio do vazio.
+ *
+ * Antes eram DOIS layouts diferentes — grade só pra quem tinha câmera, e cards
+ * verticais de largura fixa pra quem não tinha. Resultado: com ninguém de
+ * câmera aberta (o caso mais comum) o palco inteiro ficava vazio com dois
+ * cartõezinhos de 176px no meio, e quando alguém abria a câmera o layout
+ * inteiro se reorganizava.
+ *
+ * QUANDO TEM TELA COMPARTILHADA (ou vídeo do YouTube) o palco é da tela, e
+ * todo mundo desce pra fileira compacta — quem está compartilhando quer que se
+ * olhe a tela, não os rostos. Isso é decidido pelo VoiceStage, que é quem sabe
+ * o que mais está no palco.
+ *
+ * Um clique põe alguém em destaque e joga o resto na fileira.
  */
 
 /** Proporção de webcam. Todo mundo transmite 16:9. */
@@ -332,8 +347,6 @@ function CameraTile({
   spotlighted: boolean
   onToggleSpotlight: () => void
 }) {
-  const muted = volume === 0
-
   return (
     <div
       onContextMenu={onContextMenu}
@@ -358,51 +371,12 @@ function CameraTile({
           className={cn('object-cover', participant.isLocal && 'scale-x-[-1]')}
         />
 
-        {/* Faixa de baixo: nome sempre visível, volume aparece no hover. Fica
-            POR CIMA do vídeo em vez de embaixo do card — antes o nome roubava
-            uma linha de altura de cada card, e com quatro fileiras isso era
-            um card inteiro de espaço jogado fora. */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-void/95 to-transparent px-2 pb-1.5 pt-6">
-          <ParticipantName
-            participant={participant}
-            member={member}
-            emojiSize="md"
-            className="flex-1 text-sm text-dirty-white"
-          />
-
-          {!participant.micEnabled && (
-            <MicOff className="h-3.5 w-3.5 shrink-0 text-destructive" aria-label="mudo" />
-          )}
-          {muted && (
-            <VolumeX
-              className="h-3.5 w-3.5 shrink-0 text-destructive"
-              aria-label="mutado só pra mim"
-            />
-          )}
-        </div>
-
-        {!participant.isLocal && (
-          <div
-            className={cn(
-              'absolute inset-x-2 bottom-1 flex items-center transition-opacity',
-              // Volume fora do padrão fica SEMPRE visível: sem isso a pessoa
-              // abaixava alguém, esquecia, e depois achava que o coleguinha
-              // estava com problema de microfone.
-              volume !== 1
-                ? 'opacity-100'
-                : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'
-            )}
-          >
-            <div className="flex-1 rounded-brutal bg-void/90 px-1.5 py-0.5">
-              <VolumeControl
-                participant={participant}
-                volume={volume}
-                onVolume={onVolume}
-                compact
-              />
-            </div>
-          </div>
-        )}
+        <TileOverlay
+          participant={participant}
+          member={member}
+          volume={volume}
+          onVolume={onVolume}
+        />
 
         {participant.isScreenSharing && (
           <span
@@ -431,65 +405,130 @@ function CameraTile({
 // CARD SEM CÂMERA
 // ============================================
 
-/** Quem está só na voz. Card em pé, com o avatar grande e a moldura. */
-function AvatarTile({ participant, member, volume, onVolume, onContextMenu }: TileProps) {
-  const muted = volume === 0
+/**
+ * Quem está só na voz: MESMO card 16:9 de quem tem câmera, com o avatar
+ * grande no meio.
+ *
+ * O avatar acompanha o tamanho do card (não é um tamanho fixo em classe): num
+ * card de 900px um avatar de 80px pareceria um selo esquecido no meio. 34% da
+ * altura é o que deixa o rosto legível sem encostar no nome.
+ */
+function AvatarTile({
+  participant,
+  member,
+  volume,
+  onVolume,
+  onContextMenu,
+  width,
+  height
+}: TileProps & { width: number | null; height: number | null }) {
+  const avatarPx = height ? Math.round(height * 0.34) : null
 
   return (
     <div
       onContextMenu={onContextMenu}
-      className={cn(
-        'group flex w-36 shrink-0 flex-col items-center gap-2 rounded-brutal border-2 p-3 transition-all sm:w-44 sm:p-4',
-        participant.isSpeaking
-          ? 'border-acid bg-acid/5 shadow-[0_0_20px_rgba(106,255,0,0.2)]'
-          : 'border-[#1a1a1a] bg-void-light/30'
-      )}
+      className="group relative min-w-0 shrink-0"
+      style={width && height ? { width, height } : undefined}
     >
-      <div className="relative">
+      <Framed
+        frame={member?.avatarFrame}
+        speaking={participant.isSpeaking}
+        className={cn(
+          'flex h-full w-full items-center justify-center bg-void-light/30 transition-shadow',
+          !width && 'aspect-video w-full min-w-[176px]',
+          participant.isSpeaking && 'shadow-[0_0_20px_rgba(106,255,0,0.2)]'
+        )}
+      >
         <UserAvatar
           src={resolveAssetUrl(member?.avatar ?? participant.avatar)}
           name={member?.displayName ?? participant.name}
           ringColor={member?.profileColor}
           speaking={participant.isSpeaking}
           frame={member?.avatarFrame}
-          className="h-16 w-16 border-2 sm:h-20 sm:w-20"
+          className="border-2"
+          style={
+            avatarPx
+              ? { width: avatarPx, height: avatarPx }
+              : { width: 72, height: 72 }
+          }
         />
 
-        {participant.isScreenSharing && (
-          <span
-            title="Compartilhando tela"
-            className="absolute -right-1 -top-1 rounded-full border-2 border-void bg-destructive p-0.5"
-          >
-            <MonitorUp className="h-2.5 w-2.5 text-dirty-white" />
-          </span>
+        <TileOverlay
+          participant={participant}
+          member={member}
+          volume={volume}
+          onVolume={onVolume}
+        />
+      </Framed>
+    </div>
+  )
+}
+
+/**
+ * Faixa de baixo do card: nome, mudo, volume. Igual no card de câmera e no de
+ * avatar — é o que faz os dois parecerem o mesmo componente pra quem olha.
+ *
+ * Fica POR CIMA do conteúdo em vez de embaixo do card: antes o nome roubava
+ * uma linha de altura de cada card, e com quatro fileiras isso somava um card
+ * inteiro de espaço jogado fora.
+ */
+function TileOverlay({
+  participant,
+  member,
+  volume,
+  onVolume
+}: {
+  participant: VoiceParticipant
+  member?: Member
+  volume: number
+  onVolume: (volume: number) => void
+}) {
+  const muted = volume === 0
+
+  return (
+    <>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-void/95 to-transparent px-2 pb-1.5 pt-6">
+        <ParticipantName
+          participant={participant}
+          member={member}
+          emojiSize="md"
+          className="flex-1 text-sm text-dirty-white"
+        />
+
+        {!participant.micEnabled && (
+          <MicOff className="h-3.5 w-3.5 shrink-0 text-destructive" aria-label="mudo" />
+        )}
+        {muted && (
+          <VolumeX
+            className="h-3.5 w-3.5 shrink-0 text-destructive"
+            aria-label="mutado só pra mim"
+          />
         )}
       </div>
 
-      <ParticipantName
-        participant={participant}
-        member={member}
-        emojiSize="md"
-        className="w-full justify-center text-sm text-foreground sm:text-base"
-      />
-
-      <div className="flex h-4 items-center gap-1.5">
-        {!participant.micEnabled && <MicOff className="h-3.5 w-3.5 text-destructive" />}
-        {muted && <VolumeX className="h-3.5 w-3.5 text-destructive" aria-label="mutado" />}
-      </div>
-
-      {/* Nao existe "abaixar meu proprio volume" — eu nao me escuto. */}
       {!participant.isLocal && (
-        <VolumeControl
-          participant={participant}
-          volume={volume}
-          onVolume={onVolume}
+        <div
           className={cn(
-            'w-full transition-opacity',
-            volume !== 1 ? 'opacity-100' : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'
+            'absolute inset-x-2 bottom-1 flex items-center transition-opacity',
+            // Volume fora do padrão fica SEMPRE visível: sem isso a pessoa
+            // abaixava alguém, esquecia, e depois achava que o coleguinha
+            // estava com problema de microfone.
+            volume !== 1
+              ? 'opacity-100'
+              : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'
           )}
-        />
+        >
+          <div className="flex-1 rounded-brutal bg-void/90 px-1.5 py-0.5">
+            <VolumeControl
+              participant={participant}
+              volume={volume}
+              onVolume={onVolume}
+              compact
+            />
+          </div>
+        </div>
       )}
-    </div>
+    </>
   )
 }
 
@@ -595,25 +634,24 @@ export function CallStage({
   onVolume,
   onContextMenu
 }: CallStageProps) {
-  /** Identidade em destaque, quando alguém clicou pra ampliar uma câmera. */
+  /** Identidade em destaque, quando alguém clicou pra ampliar um card. */
   const [spotlight, setSpotlight] = React.useState<string | null>(null)
 
-  const withCamera = participants.filter((p) => cameraOf(p.identity))
-  const withoutCamera = participants.filter((p) => !cameraOf(p.identity))
-
   /**
-   * Câmera em destaque que fechou o vídeo (ou saiu da call) não pode deixar o
-   * palco preso num destaque vazio.
+   * Destaque de quem saiu da call não pode deixar o palco preso num card
+   * vazio. Vale pra qualquer participante, não só pra quem tem câmera —
+   * agora todo card é destacável.
    */
-  const spotlightValid = spotlight !== null && withCamera.some((p) => p.identity === spotlight)
+  const spotlightValid =
+    spotlight !== null && participants.some((p) => p.identity === spotlight)
   React.useEffect(() => {
     if (spotlight !== null && !spotlightValid) setSpotlight(null)
   }, [spotlight, spotlightValid])
 
   const focused = spotlightValid ? spotlight : null
   const gridParticipants = focused
-    ? withCamera.filter((p) => p.identity === focused)
-    : withCamera
+    ? participants.filter((p) => p.identity === focused)
+    : participants
 
   const grid = useTileGrid(gridParticipants.length)
 
@@ -625,24 +663,10 @@ export function CallStage({
     onContextMenu: (event: React.MouseEvent) => onContextMenu(event, participant.identity)
   })
 
-  // Ninguém com câmera: os cards em pé, centralizados, como sempre foi.
-  if (withCamera.length === 0) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-wrap content-center items-center justify-center gap-2 overflow-y-auto sm:gap-3">
-        {participants.map((participant) => (
-          <AvatarTile key={participant.identity} {...tileFor(participant)} />
-        ))}
-      </div>
-    )
-  }
-
-  /**
-   * Com destaque, quem sobrou vai pra fileira compacta junto com quem não tem
-   * câmera — inclusive as outras câmeras, como miniatura clicável.
-   */
+  /** Com alguém em destaque, o resto desce pra fileira compacta. */
   const stripParticipants = focused
-    ? [...withCamera.filter((p) => p.identity !== focused), ...withoutCamera]
-    : withoutCamera
+    ? participants.filter((p) => p.identity !== focused)
+    : []
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -671,21 +695,33 @@ export function CallStage({
               : undefined
           }
         >
-          {gridParticipants.map((participant) => (
-            <CameraTile
-              key={participant.identity}
-              {...tileFor(participant)}
-              camera={cameraOf(participant.identity)!}
-              width={grid.width}
-              height={grid.height}
-              spotlighted={focused === participant.identity}
-              onToggleSpotlight={() =>
-                setSpotlight((current) =>
-                  current === participant.identity ? null : participant.identity
-                )
-              }
-            />
-          ))}
+          {gridParticipants.map((participant) => {
+            const camera = cameraOf(participant.identity)
+            const toggle = (): void =>
+              setSpotlight((current) =>
+                current === participant.identity ? null : participant.identity
+              )
+
+            // Mesmo card, mesmo tamanho: o que muda é o que vai dentro.
+            return camera ? (
+              <CameraTile
+                key={participant.identity}
+                {...tileFor(participant)}
+                camera={camera}
+                width={grid.width}
+                height={grid.height}
+                spotlighted={focused === participant.identity}
+                onToggleSpotlight={toggle}
+              />
+            ) : (
+              <AvatarTile
+                key={participant.identity}
+                {...tileFor(participant)}
+                width={grid.width}
+                height={grid.height}
+              />
+            )
+          })}
         </div>
       </div>
 
@@ -696,11 +732,7 @@ export function CallStage({
               key={participant.identity}
               {...tileFor(participant)}
               camera={cameraOf(participant.identity)}
-              onClick={
-                cameraOf(participant.identity)
-                  ? () => setSpotlight(participant.identity)
-                  : undefined
-              }
+              onClick={() => setSpotlight(participant.identity)}
             />
           ))}
         </div>

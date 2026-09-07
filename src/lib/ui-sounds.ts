@@ -12,16 +12,12 @@
  * O que muda de um aviso pro outro é só a melodia — assim o conjunto soa como
  * uma família, e não como sons avulsos.
  *
- * Exceção: alguém entrar ou sair da call (`voice-join`/`voice-leave`) usa
- * dois mp3 escolhidos pela galera (`assets/sounds`). Pra não repetir a falha
- * antiga, eles entram no bundle como data URI (ver assetsInlineLimit no
- * electron.vite.config.ts) e tocam pelo mesmo AudioContext dos outros
- * avisos. O `volume` recebido vira o ganho direto (sem o fator 0.22 dos
- * sintetizados), controlado pelo slider próprio nas configurações de chat.
+ * Entrar e sair da call (`voice-join`/`voice-leave`) TAMBÉM são sintetizados.
+ * Já foram dois mp3, e o veredito de quem usa foi "horrível": som de arquivo
+ * tem timbre próprio, então ele não pertencia à família dos outros avisos, e
+ * era o aviso que mais toca numa noite — cada pessoa que entra ou sai. Agora
+ * são as notas mais curtas e discretas do conjunto (ver ENTER/LEAVE abaixo).
  */
-
-import voiceJoinUrl from '@/assets/sounds/voice-join.mp3'
-import voiceLeaveUrl from '@/assets/sounds/voice-leave.mp3'
 
 export type UiSound =
   | 'voice-join'
@@ -80,20 +76,34 @@ const E6 = 1318.51
  * ler, sem precisar decorar nada.
  */
 const CUES: Record<UiSound, Cue> = {
-  // Entrar/sair da call vêm de arquivo (FILE_CUES); isto é só o reserva pra
-  // quando o mp3 não decodifica.
+  /**
+   * Alguém entrou ou saiu da call. É o aviso que mais toca numa noite, então é
+   * o mais curto e o mais discreto do conjunto: DUAS NOTAS DE 45ms, seno puro
+   * (sem o brilho da triangular), passa-baixa em 1400 Hz e volume 0.32 — perto
+   * de um "tô" em vez de uma fanfarra. O intervalo é uma quarta, que não soa
+   * nem alegre nem triste; só marca que algo mudou.
+   *
+   * O volume (0.45, igual ao de `user-join`) e o teto do slider proprio nas
+   * configuracoes de chat sao o que resolve a reclamacao: o mp3 antigo tocava
+   * com o ganho do slider DIRETO, sem o fator 0.22 dos sintetizados, e saia
+   * umas dez vezes mais alto que qualquer outro aviso do app.
+   */
   'voice-join': {
-    volume: 0.85,
+    volume: 0.45,
+    cutoff: 1400,
+    type: 'sine',
     notes: [
-      { freq: D5, at: 0, dur: 0.11 },
-      { freq: A5, at: 0.08, dur: 0.22 }
+      { freq: A4, at: 0, dur: 0.045, gain: 0.7 },
+      { freq: D5, at: 0.05, dur: 0.075 }
     ]
   },
   'voice-leave': {
-    volume: 0.85,
+    volume: 0.45,
+    cutoff: 1400,
+    type: 'sine',
     notes: [
-      { freq: A5, at: 0, dur: 0.11 },
-      { freq: D5, at: 0.08, dur: 0.22 }
+      { freq: D5, at: 0, dur: 0.045, gain: 0.7 },
+      { freq: A4, at: 0.05, dur: 0.09 }
     ]
   },
 
@@ -260,81 +270,6 @@ function audioContext(): AudioContext | null {
  * tocam pra todo mundo que está na sala: quem chega e quem já estava ouvem
  * o mesmo som, idem na saída.
  */
-const FILE_CUES: Partial<Record<UiSound, string>> = {
-  'voice-join': voiceJoinUrl,
-  'voice-leave': voiceLeaveUrl
-}
-
-/**
- * Buffers decodificados, um por arquivo. Decodificar a cada toque custa
- * alguns ms e, pior, atrasa o som em relação ao evento; com cache o segundo
- * toque em diante sai na hora.
- */
-const bufferCache = new Map<string, Promise<AudioBuffer | null>>()
-
-/**
- * Bytes do asset.
- *
- * No build o mp3 vira data URI (assetsInlineLimit) e `fetch` de data: é
- * barrado pelo CSP do index.html (connect-src não lista `data:`) — foi por
- * isso que em produção o som nunca tocava, enquanto no dev, que serve o
- * arquivo pelo Vite, funcionava. Data URI a gente decodifica na mão; só o
- * caminho de dev passa pelo fetch.
- */
-async function readBytes(url: string): Promise<ArrayBuffer> {
-  if (url.startsWith('data:')) {
-    const comma = url.indexOf(',')
-    const header = url.slice(0, comma)
-    const payload = url.slice(comma + 1)
-    const binary = header.endsWith(';base64') ? atob(payload) : decodeURIComponent(payload)
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-    return bytes.buffer
-  }
-  const res = await fetch(url)
-  return res.arrayBuffer()
-}
-
-function loadBuffer(audio: AudioContext, url: string): Promise<AudioBuffer | null> {
-  const cached = bufferCache.get(url)
-  if (cached) return cached
-
-  const pending = readBytes(url)
-    .then((bytes) => audio.decodeAudioData(bytes))
-    .catch(() => {
-      // Falhou (asset faltando, formato inválido): esquece pra tentar de novo
-      // no próximo toque, e o chamador cai no sintetizado.
-      bufferCache.delete(url)
-      return null
-    })
-
-  bufferCache.set(url, pending)
-  return pending
-}
-
-/**
- * Toca um arquivo no AudioContext compartilhado. `gain` (0..1) é o volume
- * escolhido pela pessoa; o arquivo já vem normalizado, então 1 = o mais alto
- * que ele tem. Devolve false se não deu pra tocar.
- */
-async function playFile(audio: AudioContext, url: string, gain: number): Promise<boolean> {
-  const buffer = await loadBuffer(audio, url)
-  if (!buffer) return false
-
-  try {
-    const source = audio.createBufferSource()
-    source.buffer = buffer
-    const master = audio.createGain()
-    master.gain.value = Math.min(1, gain)
-    source.connect(master)
-    master.connect(audio.destination)
-    source.start()
-    return true
-  } catch {
-    return false
-  }
-}
-
 /**
  * Toca um aviso. `volume` é o do usuário (0..1); 0 ou menos não toca nada.
  */
@@ -349,14 +284,6 @@ export function playUiSound(name: UiSound, volume: number): void {
 
   // Depois de um tempo ocioso o contexto pode entrar em suspenso.
   if (audio.state === 'suspended') void audio.resume().catch(() => {})
-
-  const file = FILE_CUES[name]
-  if (file) {
-    void playFile(audio, file, volume).then((ok) => {
-      if (!ok) playSynth(audio, cue, volume)
-    })
-    return
-  }
 
   playSynth(audio, cue, volume)
 }

@@ -18,7 +18,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useHotkeys } from '@/lib/hotkeys-context'
 import { useNudge } from '@/lib/nudge-context'
 import { useVoice } from '@/lib/voice-context'
-import { useAudioDevices } from '@/lib/use-audio-devices'
+import { useAudioDevices, useVideoDevices } from '@/lib/use-audio-devices'
 import { playUiSound } from '@/lib/ui-sounds'
 import { GATE_OFF_DB } from '@/lib/audio-processor'
 import { RAM_LIMITS, type LolPhase, type LolStatus } from '../../electron/preload/types'
@@ -221,6 +221,7 @@ function ChatTab() {
 function VoiceTab() {
   const { settings, update, isOpen } = useSettings()
   const { inputs, outputs, loading, error } = useAudioDevices(isOpen)
+  const camera = useVideoDevices(isOpen)
   const voice = settings.voice
 
   const patch = (changes: Partial<typeof voice>): void => {
@@ -252,6 +253,33 @@ function VoiceTab() {
           devices={outputs}
           onChange={(deviceId) => patch({ outputDeviceId: deviceId })}
         />
+
+        <DeviceSelect
+          label="Câmera"
+          value={voice.cameraDeviceId}
+          devices={camera.cameras}
+          onChange={(deviceId) => patch({ cameraDeviceId: deviceId })}
+        />
+
+        {camera.error && <p className="text-xs text-destructive">{camera.error}</p>}
+
+        {/*
+          Nome de câmera só aparece depois que a página teve permissão de
+          câmera, e pedir isso ACENDE O LED — não é coisa pra fazer sozinho
+          quando alguém abre as configurações. O botão existe e a pessoa
+          decide. Quem já ligou a câmera numa call vê os nomes sem isto.
+        */}
+        {camera.needsPermission && (
+          <button
+            type="button"
+            onClick={() => void camera.reveal()}
+            disabled={camera.loading}
+            className="flex items-center gap-1.5 rounded-brutal border-2 border-[#1a1a1a] px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid disabled:opacity-50"
+          >
+            {camera.loading && <Loader2 className="h-3 w-3 animate-spin" />}
+            ver o nome das câmeras (acende o LED por um instante)
+          </button>
+        )}
 
         <label className="flex items-center justify-between gap-3 pt-1">
           <span className="min-w-0 flex-1">
@@ -324,6 +352,12 @@ function VoiceTab() {
           hint="Corta ventilador, teclado e ar-condicionado."
           checked={voice.noiseSuppression}
           onCheckedChange={(noiseSuppression) => patch({ noiseSuppression })}
+        />
+        <SwitchRow
+          label="Cortar ruído grave"
+          hint="Mesa batendo, cadeira rangendo e o resto: o microfone só abre quando o som tem cara de voz, não de estouro grave. Vale na hora. Desligue se a sua voz estiver sendo cortada."
+          checked={voice.rumbleFilter}
+          onCheckedChange={(rumbleFilter) => patch({ rumbleFilter })}
         />
         <SwitchRow
           label="Ganho automático"

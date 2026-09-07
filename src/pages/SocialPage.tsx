@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { X } from 'lucide-react'
 import { useChat } from '@/lib/chat-context'
 import { useVoice } from '@/lib/voice-context'
 import { useLayout } from '@/lib/layout-context'
@@ -11,7 +10,6 @@ import { MemberList } from '@/components/social/MemberList'
 import { PinnedPanel } from '@/components/social/PinnedPanel'
 import { SearchPanel } from '@/components/social/SearchPanel'
 import { ChannelManager } from '@/components/social/ChannelManager'
-import { SoundboardPanel } from '@/components/social/SoundboardPanel'
 import { LinksPanel } from '@/components/social/LinksPanel'
 import { AgendaPanel } from '@/components/social/AgendaPanel'
 import { LeaderboardPanel } from '@/components/social/LeaderboardPanel'
@@ -38,7 +36,6 @@ export function SocialPage() {
   const { view, setView, membersOpen, pinnedOpen, searchOpen, linksOpen, agendaOpen, leaderboardOpen } =
     useLayout()
 
-  const [soundboardOpen, setSoundboardOpen] = React.useState(false)
   const [channelManagerOpen, setChannelManagerOpen] = React.useState(false)
 
   const handleSelectText = React.useCallback(
@@ -79,32 +76,25 @@ export function SocialPage() {
         onSelectVoice={handleSelectVoice}
         onOpenProfile={openProfileEditor}
         onManageChannels={() => setChannelManagerOpen(true)}
-        onOpenSoundboard={() => setSoundboardOpen((open) => !open)}
       />
 
       <main className="flex min-w-0 flex-1 flex-col">
         {view === 'voice' ? (
-          <VoiceStage onOpenSoundboard={() => setSoundboardOpen(true)} />
+          <VoiceStage />
         ) : (
           <ChatView />
         )}
       </main>
 
-      {/* Uma coluna à direita só, disputada por quatro painéis. Empilhar todos
-          numa janela de 1000px não sobraria chat nenhum. */}
-      {soundboardOpen ? (
-        <aside className="flex w-72 shrink-0 flex-col border-l border-[#1a1a1a] bg-[#0D0D0D] p-3 xl:w-80">
-          <button
-            type="button"
-            onClick={() => setSoundboardOpen(false)}
-            title="Fechar soundboard"
-            className="mb-1 self-end rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-acid"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          <SoundboardPanel />
-        </aside>
-      ) : searchOpen && view === 'chat' ? (
+      {/* Uma coluna à direita só, disputada por cinco painéis. Empilhar todos
+          numa janela de 1000px não sobraria chat nenhum.
+
+          O SOUNDBOARD SAIU DESTA DISPUTA: virou um drop-up ancorado no próprio
+          botão (components/social/SoundboardPopover.tsx). Ele era o pior
+          inquilino desta coluna — o botão fica no rodapé da barra ESQUERDA, e o
+          painel abria do outro lado da tela, fechando o que estivesse aberto
+          aqui. */}
+      {searchOpen && view === 'chat' ? (
         <SearchPanel />
       ) : pinnedOpen && view === 'chat' ? (
         <PinnedPanel />

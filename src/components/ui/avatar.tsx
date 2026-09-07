@@ -96,7 +96,8 @@ export function UserAvatar({
   className,
   ringColor,
   speaking,
-  frame
+  frame,
+  style
 }: {
   src?: string
   name: string
@@ -106,6 +107,12 @@ export function UserAvatar({
   speaking?: boolean
   /** Id do cosmético de moldura (`frame:gold`) ou só a chave (`gold`). */
   frame?: string | null
+  /**
+   * Estilo extra no avatar. Existe pro tamanho vindo de MEDIÇÃO, e não de
+   * classe: na call o avatar acompanha o tamanho do card, que é calculado em
+   * pixels em tempo de execução (ver components/social/CallStage.tsx).
+   */
+  style?: React.CSSProperties
 }) {
   const frameStyle = frameClass(frame)
 
@@ -117,7 +124,10 @@ export function UserAvatar({
 
       <Avatar
         className={cn(className, frameStyle, speaking && 'ring-2 ring-acid')}
-        style={ringColor && !speaking && !frameStyle ? { borderColor: ringColor } : undefined}
+        style={{
+          ...(ringColor && !speaking && !frameStyle ? { borderColor: ringColor } : {}),
+          ...style
+        }}
       >
         {src && <AvatarImage src={src} alt="" />}
         <AvatarFallback>{name.slice(0, 2)}</AvatarFallback>

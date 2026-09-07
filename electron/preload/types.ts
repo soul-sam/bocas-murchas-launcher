@@ -120,12 +120,29 @@ export interface VoiceSettings {
   pttKey: string
   inputDeviceId: string
   outputDeviceId: string
+  /**
+   * Webcam escolhida. 'default' = a que o sistema entregar.
+   *
+   * Guardado aqui e nao no LiveKit porque a escolha tem que sobreviver a sair
+   * e voltar da call — e quem tem duas cameras (a do notebook e a boa) trocava
+   * na roleta a cada entrada.
+   */
+  cameraDeviceId: string
   inputGain: number
   outputVolume: number
   noiseGateThreshold: number
   noiseSuppression: boolean
   echoCancellation: boolean
   autoGainControl: boolean
+  /**
+   * Corta estouro de baixa frequencia (mesa, cadeira, ruido de corpo).
+   *
+   * Separado do `noiseSuppression`, que e o filtro do Chromium: aquele limpa
+   * o fundo ENQUANTO a pessoa fala e nao tem opiniao sobre o que abre o gate.
+   * Este manda o gate ignorar estouro cuja energia e quase toda grave — ver
+   * lib/audio-processor.ts.
+   */
+  rumbleFilter: boolean
 }
 
 /**
@@ -428,12 +445,14 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     pttKey: 'Space',
     inputDeviceId: 'default',
     outputDeviceId: 'default',
+    cameraDeviceId: 'default',
     inputGain: 1,
     outputVolume: 1,
     noiseGateThreshold: -50,
     noiseSuppression: true,
     echoCancellation: true,
-    autoGainControl: false
+    autoGainControl: false,
+    rumbleFilter: true
   },
   hotkeys: {
     mute: 'Control+Shift+M',

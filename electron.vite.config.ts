@@ -28,9 +28,6 @@ export default defineConfig({
     plugins: [react()],
     build: {
       outDir: resolve(__dirname, 'out/renderer'),
-      // Os mp3 de entrar/sair da call (~30 KB cada) viram data URI dentro do
-      // bundle: sem arquivo solto pra faltar no pacote.
-      assetsInlineLimit: 128 * 1024,
       rollupOptions: {
         input: resolve(__dirname, 'src/index.html')
       }

@@ -9,7 +9,8 @@ import {
   type RemoteTrack,
   type RemoteTrackPublication,
   type RemoteParticipant,
-  type Participant
+  type Participant,
+  type ConnectionQuality
 } from 'livekit-client'
 import { livekit, type Channel } from './api'
 import { useAuth } from './auth-context'
@@ -97,6 +98,13 @@ interface VoiceContextValue {
   micEnabled: boolean
   cameraEnabled: boolean
   deafened: boolean
+  /**
+   * Ida e volta até o servidor de mídia, em ms. Null antes da primeira
+   * medição (ou quando o navegador não entrega a estatística).
+   */
+  pingMs: number | null
+  /** O que o próprio LiveKit acha da sua conexão. */
+  connectionQuality: 'excellent' | 'good' | 'poor' | 'lost' | 'unknown'
   screenSharing: boolean
   /** Detalhes da SUA transmissao. Null quando voce nao esta compartilhando. */
   shareInfo: ScreenShareInfo | null
@@ -176,6 +184,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const [screenShares, setScreenShares] = React.useState<ScreenShareFeed[]>([])
   const [cameras, setCameras] = React.useState<CameraFeed[]>([])
   const [cameraEnabled, setCameraEnabled] = React.useState(false)
+  const [pingMs, setPingMs] = React.useState<number | null>(null)
+  const [connectionQuality, setConnectionQuality] =
+    React.useState<VoiceContextValue['connectionQuality']>('unknown')
   const [micEnabled, setMicEnabled] = React.useState(false)
   const [deafened, setDeafened] = React.useState(false)
   const [screenSharing, setScreenSharing] = React.useState(false)
@@ -233,8 +244,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const cueVolumeRef = React.useRef(0)
   cueVolumeRef.current = settings.soundEnabled ? settings.soundVolume : 0
 
-  // Entrar/sair da call tem slider proprio (aba Chat): os mp3 sao bem mais
-  // presentes que os bipes sintetizados e a galera quer controlar separado.
+  // Entrar/sair da call tem slider proprio (aba Chat). Ja foi porque eram mp3
+  // muito mais presentes que os bipes; hoje sao sintetizados como o resto, e o
+  // slider fica porque e o aviso que mais toca numa noite — um por pessoa que
+  // entra ou sai — e quem joga com a call cheia quer abaixar SO ele.
   const voiceCueVolumeRef = React.useRef(0)
   voiceCueVolumeRef.current = settings.soundEnabled ? settings.voiceCueVolume : 0
 
@@ -439,6 +452,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     setMicEnabled(false)
     setScreenSharing(false)
     setCameraEnabled(false)
+    setPingMs(null)
+    setConnectionQuality('unknown')
     setShareInfo(null)
     setDeafened(false)
     deafenedRef.current = false
@@ -637,6 +652,20 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           }
         )
 
+        next.on(
+          RoomEvent.ConnectionQualityChanged,
+          (quality: ConnectionQuality, participant: Participant) => {
+            // Só a MINHA: a dos outros não cabe nesta barra, e o que a pessoa
+            // quer saber é se o problema é dela.
+            if (participant.identity !== next.localParticipant.identity) return
+            setConnectionQuality(
+              quality === 'excellent' || quality === 'good' || quality === 'poor' || quality === 'lost'
+                ? quality
+                : 'unknown'
+            )
+          }
+        )
+
         next.on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
           setConnected(state === ConnectionState.Connected)
         })
@@ -672,7 +701,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
             noiseSuppression: settings.voice.noiseSuppression,
             autoGainControl: settings.voice.autoGainControl,
             inputGain: settings.voice.inputGain,
-            noiseGateThreshold: settings.voice.noiseGateThreshold
+            noiseGateThreshold: settings.voice.noiseGateThreshold,
+            rumbleFilter: settings.voice.rumbleFilter
           })
           callProcessorRef.current?.destroy()
           callProcessorRef.current = processor
@@ -764,15 +794,95 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
    * upload de quem transmite, e rosto em 720p nao acrescenta nada sobre 480p —
    * ao contrario da tela, onde texto pequeno exige resolucao.
    */
+  /**
+   * PING E QUALIDADE.
+   *
+   * A qualidade vem de graça: o LiveKit já calcula e avisa por evento. O
+   * NÚMERO em ms não — pra isso é `getStats()` do WebRTC, lendo o par de
+   * candidatos em uso (`candidate-pair` com `state: 'succeeded'`), que é o
+   * único lugar onde o RTT real aparece.
+   *
+   * Por que passar pelo `engine.pcManager`, que é interno do SDK: o
+   * livekit-client 2.x não expõe a RTCPeerConnection nem um `getStats()`
+   * público. A alternativa seria estimar o ping por outro caminho (o socket da
+   * nossa API, por exemplo) — mas aquele mede outro servidor, em outra
+   * máquina, e mostraria um número que não tem nada a ver com a call. Melhor
+   * um acesso interno com guarda do que um número honesto sobre a coisa
+   * errada. Se o SDK mudar por dentro, `pingMs` fica null e a barra volta a
+   * mostrar só a qualidade — nada quebra.
+   *
+   * A cada 3s: RTT muda devagar, e o custo é uma varredura de estatísticas.
+   */
+  React.useEffect(() => {
+    if (!connected) return
+
+    let cancelled = false
+
+    const read = async (): Promise<void> => {
+      const room = roomRef.current
+      if (!room || cancelled) return
+
+      const engine = (room as unknown as {
+        engine?: {
+          pcManager?: {
+            publisher?: { getStats?: () => Promise<RTCStatsReport> }
+            subscriber?: { getStats?: () => Promise<RTCStatsReport> }
+          }
+        }
+      }).engine
+
+      const connections = [engine?.pcManager?.publisher, engine?.pcManager?.subscriber]
+
+      for (const pc of connections) {
+        if (!pc?.getStats) continue
+        try {
+          const report = await pc.getStats()
+          if (cancelled) return
+
+          let rtt: number | null = null
+          report.forEach((entry) => {
+            const stat = entry as { type?: string; state?: string; currentRoundTripTime?: number }
+            if (
+              stat.type === 'candidate-pair' &&
+              stat.state === 'succeeded' &&
+              typeof stat.currentRoundTripTime === 'number'
+            ) {
+              rtt = Math.round(stat.currentRoundTripTime * 1000)
+            }
+          })
+
+          if (rtt !== null) {
+            setPingMs(rtt)
+            return
+          }
+        } catch {
+          // Conexão fechando no meio da leitura: tenta na próxima volta.
+        }
+      }
+    }
+
+    void read()
+    const timer = setInterval(() => void read(), 3_000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [connected])
+
   const toggleCamera = React.useCallback(async () => {
     const current = roomRef.current
     if (!current) return
 
     const next = !current.localParticipant.isCameraEnabled
+    const chosen = voiceSettingsRef.current.cameraDeviceId
 
     try {
       await current.localParticipant.setCameraEnabled(next, {
-        resolution: { width: 640, height: 480, frameRate: 24 }
+        resolution: { width: 640, height: 480, frameRate: 24 },
+        // `deviceId` só quando a pessoa escolheu uma: 'default' significa
+        // "o que o sistema entregar", e mandar isso como deviceId faria o
+        // Chromium procurar um dispositivo chamado literalmente "default".
+        ...(chosen && chosen !== 'default' ? { deviceId: chosen } : {})
       })
       setCameraEnabled(next)
       if (!next) setCameras((prev) => prev.filter((c) => !c.isLocal))
@@ -915,17 +1025,23 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Ganho e limiar valem NA HORA, na call e no avulso: é o único jeito de
-  // ajustar olhando o medidor. Dispositivo e filtros do Chromium continuam
-  // valendo só na próxima entrada — trocar exige readquirir o mic.
+  // Ganho, limiar e corte de grave valem NA HORA, na call e no avulso: é o
+  // único jeito de ajustar olhando o medidor. Dispositivo e filtros do
+  // Chromium continuam valendo só na próxima entrada — trocar exige readquirir
+  // o mic.
   React.useEffect(() => {
     const patch = {
       inputGain: settings.voice.inputGain,
-      noiseGateThreshold: settings.voice.noiseGateThreshold
+      noiseGateThreshold: settings.voice.noiseGateThreshold,
+      rumbleFilter: settings.voice.rumbleFilter
     }
     callProcessorRef.current?.update(patch)
     standaloneProcessorRef.current?.update(patch)
-  }, [settings.voice.inputGain, settings.voice.noiseGateThreshold])
+  }, [
+    settings.voice.inputGain,
+    settings.voice.noiseGateThreshold,
+    settings.voice.rumbleFilter
+  ])
 
   /**
    * Processador avulso: existe enquanto alguém segura o monitor (ou o teste
@@ -950,7 +1066,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       noiseSuppression: voice.noiseSuppression,
       autoGainControl: voice.autoGainControl,
       inputGain: voice.inputGain,
-      noiseGateThreshold: voice.noiseGateThreshold
+      noiseGateThreshold: voice.noiseGateThreshold,
+      rumbleFilter: voice.rumbleFilter
     })
       .then((processor) => {
         // A tela fechou (ou a call entrou) antes do getUserMedia responder.
@@ -1043,6 +1160,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       micEnabled,
       cameraEnabled,
       deafened,
+      pingMs,
+      connectionQuality,
       screenSharing,
       shareInfo,
       userVolumes,

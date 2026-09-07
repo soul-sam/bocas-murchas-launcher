@@ -45,12 +45,14 @@ function normalizeVoice(raw: Partial<VoiceSettings> | undefined): VoiceSettings 
     pttKey: typeof v.pttKey === 'string' && v.pttKey ? v.pttKey : d.pttKey,
     inputDeviceId: typeof v.inputDeviceId === 'string' ? v.inputDeviceId : d.inputDeviceId,
     outputDeviceId: typeof v.outputDeviceId === 'string' ? v.outputDeviceId : d.outputDeviceId,
+    cameraDeviceId: typeof v.cameraDeviceId === 'string' ? v.cameraDeviceId : d.cameraDeviceId,
     inputGain: clamp(Number(v.inputGain), 0, 3, d.inputGain),
     outputVolume: clamp(Number(v.outputVolume), 0, 1, d.outputVolume),
     noiseGateThreshold: clamp(Number(v.noiseGateThreshold), -100, 0, d.noiseGateThreshold),
     noiseSuppression: v.noiseSuppression ?? d.noiseSuppression,
     echoCancellation: v.echoCancellation ?? d.echoCancellation,
-    autoGainControl: v.autoGainControl ?? d.autoGainControl
+    autoGainControl: v.autoGainControl ?? d.autoGainControl,
+    rumbleFilter: v.rumbleFilter ?? d.rumbleFilter
   }
 }
 

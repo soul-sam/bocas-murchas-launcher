@@ -12,7 +12,6 @@ import {
   Music,
   PhoneOff,
   Settings,
-  Signal,
   ScreenShare,
   BellOff,
   Search,
@@ -45,6 +44,8 @@ import { useMembers } from '@/lib/members-context'
 import { NameEmoji } from './NameEmoji'
 import { ActivityLine } from './ActivityLine'
 import { OpenPartiesStrip } from './OpenPartiesStrip'
+import { SoundboardPopover } from './SoundboardPopover'
+import { ConnectionBars } from './ConnectionBars'
 
 const STATUS_OPTIONS: Array<{ value: UserStatus; label: string; color: string }> = [
   { value: 'online', label: 'Online', color: '#6AFF00' },
@@ -59,16 +60,13 @@ interface ChannelSidebarProps {
   onOpenProfile: () => void
   /** Só aparece pra admin. */
   onManageChannels: () => void
-  /** Abre o painel do soundboard na coluna da direita. */
-  onOpenSoundboard: () => void
 }
 
 export function ChannelSidebar({
   onSelectText,
   onSelectVoice,
   onOpenProfile,
-  onManageChannels,
-  onOpenSoundboard
+  onManageChannels
 }: ChannelSidebarProps) {
   const { user, token, applyUser } = useAuth()
   // Emoji equipado de quem está na call: o VoiceUser do socket é só id/nome/avatar.
@@ -399,8 +397,8 @@ export function ChannelSidebar({
       {voice.connected && voice.channel && (
         <div className="shrink-0 border-t border-acid-dark/40 bg-acid/5 px-3 py-2">
           <div className="mb-1.5 flex items-center gap-1.5">
-            <Signal className="h-3 w-3 shrink-0 animate-pulse text-acid" />
-            <span className="truncate font-mono text-[10px] uppercase tracking-widest text-acid">
+            <ConnectionBars quality={voice.connectionQuality} pingMs={voice.pingMs} />
+            <span className="min-w-0 flex-1 truncate font-mono text-[10px] uppercase tracking-widest text-acid">
               {voice.channel.name}
             </span>
             {pttActive && (
@@ -467,9 +465,11 @@ export function ChannelSidebar({
               <MonitorUp className="h-3.5 w-3.5" />
             </DockButton>
 
-            <DockButton label="Soundboard" onClick={onOpenSoundboard}>
-              <Music className="h-3.5 w-3.5" />
-            </DockButton>
+            <SoundboardPopover align="start">
+              <DockButton label="Soundboard">
+                <Music className="h-3.5 w-3.5" />
+              </DockButton>
+            </SoundboardPopover>
 
             <button
               type="button"
@@ -619,28 +619,34 @@ function Section({
   )
 }
 
-function DockButton({
-  children,
-  label,
-  onClick,
-  active,
-  danger,
-  disabled
-}: {
-  children: React.ReactNode
-  label: string
-  onClick: () => void
-  active?: boolean
-  danger?: boolean
-  disabled?: boolean
-}) {
+/**
+ * `forwardRef` + `...rest` porque este botao tambem serve de gatilho de
+ * popover (o soundboard): o `asChild` do Radix injeta ref e handlers no filho,
+ * e um componente que ignora os dois vira um botao que nao abre nada.
+ */
+const DockButton = React.forwardRef<
+  HTMLButtonElement,
+  {
+    children: React.ReactNode
+    label: string
+    onClick?: () => void
+    active?: boolean
+    danger?: boolean
+    disabled?: boolean
+  } & React.ButtonHTMLAttributes<HTMLButtonElement>
+>(function DockButton(
+  { children, label, onClick, active, danger, disabled, ...rest },
+  ref
+) {
   return (
     <button
+      ref={ref}
       type="button"
       title={label}
       aria-label={label}
       onClick={onClick}
       disabled={disabled}
+      {...rest}
       className={cn(
         'rounded-brutal p-1.5 transition-colors',
         disabled && 'cursor-not-allowed opacity-40',
@@ -654,4 +660,4 @@ function DockButton({
       {children}
     </button>
   )
-}
+})
