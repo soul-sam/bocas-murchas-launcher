@@ -276,8 +276,9 @@ export const JOIN_SOUNDS: Record<string, { join: Cue; leave: Cue }> = {
     leave: { volume: 0.9, cutoff: 400, type: 'sawtooth', notes: [{ freq: 65, at: 0, dur: 0.2 }, { freq: 41, at: 0.1, dur: 0.6, gain: 0.7 }] }
   },
   laser: {
-    join: { volume: 0.55, cutoff: 4000, type: 'sawtooth', notes: [{ freq: 1800, at: 0, dur: 0.05 }, { freq: 1200, at: 0.04, dur: 0.05 }, { freq: 700, at: 0.08, dur: 0.06 }, { freq: 400, at: 0.12, dur: 0.1 }] },
-    leave: { volume: 0.55, cutoff: 4000, type: 'sawtooth', notes: [{ freq: 400, at: 0, dur: 0.05 }, { freq: 700, at: 0.04, dur: 0.05 }, { freq: 1200, at: 0.08, dur: 0.06 }, { freq: 1800, at: 0.12, dur: 0.1 }] }
+    // entrar sobe, sair desce — igual aos outros pares
+    join: { volume: 0.55, cutoff: 4000, type: 'sawtooth', notes: [{ freq: 400, at: 0, dur: 0.05 }, { freq: 700, at: 0.04, dur: 0.05 }, { freq: 1200, at: 0.08, dur: 0.06 }, { freq: 1800, at: 0.12, dur: 0.1 }] },
+    leave: { volume: 0.55, cutoff: 4000, type: 'sawtooth', notes: [{ freq: 1800, at: 0, dur: 0.05 }, { freq: 1200, at: 0.04, dur: 0.05 }, { freq: 700, at: 0.08, dur: 0.06 }, { freq: 400, at: 0.12, dur: 0.1 }] }
   },
   choir: {
     join: { volume: 0.5, cutoff: 2000, type: 'triangle', notes: [{ freq: C5, at: 0, dur: 0.7 }, { freq: E5, at: 0.05, dur: 0.65 }, { freq: G5, at: 0.1, dur: 0.6 }, { freq: C6, at: 0.15, dur: 0.55, gain: 0.7 }] },
