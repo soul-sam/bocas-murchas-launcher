@@ -85,13 +85,13 @@ export function CargosTab() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="text-[11.5px] text-muted-foreground">
           {cargos.length} {cargos.length === 1 ? 'cargo' : 'cargos'}
         </p>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setCreating((v) => !v)}
-            className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-acid"
+            className="flex items-center gap-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
           >
             <Plus className="h-3 w-3" />
             Novo cargo
@@ -99,7 +99,7 @@ export function CargosTab() {
           <button
             onClick={() => void reload()}
             disabled={reloading}
-            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-acid disabled:opacity-50"
+            className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-50"
           >
             {reloading ? 'Atualizando…' : 'Atualizar'}
           </button>
@@ -143,7 +143,7 @@ export function CargosTab() {
         ))}
 
         {cargos.length === 0 && (
-          <p className="rounded-brutal border-2 border-dashed border-[#2a2a2a] p-4 text-center font-mono text-xs text-muted-foreground">
+          <p className="rounded-brutal border-2 border-dashed border-line-strong p-4 text-center font-mono text-xs text-muted-foreground">
             Nenhum cargo. Estranho — os do sistema são semeados no boot do
             servidor.
           </p>
@@ -211,7 +211,7 @@ function CargoRow({
             <span className="block truncate text-sm" style={{ color: cargo.color }}>
               {cargo.name}
             </span>
-            <span className="block truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="block truncate text-[11.5px] text-muted-foreground">
               {count} {count === 1 ? 'pessoa' : 'pessoas'}
               {cargo.permissions.length > 0 && ` · ${cargo.permissions.join(' · ')}`}
               {cargo.builtin && ' · do sistema'}
@@ -330,7 +330,7 @@ function CargoForm({
   return (
     <div className="space-y-3 rounded-brutal border-2 border-acid-dark bg-void/60 p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-acid">
+        <p className="text-[11.5px] text-acid">
           {initial ? 'Editando' : 'Cargo novo'}
         </p>
         {/* A amostra é o ponto: cor hex escolhida no escuro engana, e o chip é
@@ -347,7 +347,7 @@ function CargoForm({
           className="w-full rounded-brutal border-2 border-border bg-void px-2 py-1.5 text-sm outline-none focus:border-acid-dark"
         />
         {initial && (
-          <p className="mt-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+          <p className="mt-1 text-[11px] text-muted-foreground">
             Renomear não muda o id ({initial.id}) — quem tem o cargo continua
             tendo.
           </p>
@@ -411,7 +411,7 @@ function CargoForm({
 
       <Field label="O que libera">
         {permissions.length === 0 ? (
-          <p className="font-mono text-[10px] text-muted-foreground">
+          <p className="font-mono text-[11.5px] text-muted-foreground">
             Este servidor não declarou permissão nenhuma. Cargo sem permissão
             ainda serve como crachá.
           </p>
@@ -430,20 +430,20 @@ function CargoForm({
                   }
                   className={cn(
                     'flex w-full items-start gap-2 rounded-brutal border-2 px-2 py-1.5 text-left transition-colors',
-                    on ? 'border-acid-dark bg-acid/[0.06]' : 'border-border hover:border-[#3a3a3a]'
+                    on ? 'border-acid-dark bg-acid/[0.06]' : 'border-border hover:border-line-strong'
                   )}
                 >
                   <span
                     className={cn(
                       'mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[2px] border',
-                      on ? 'border-acid bg-acid text-void' : 'border-[#3a3a3a]'
+                      on ? 'border-acid bg-acid text-void' : 'border-line-strong'
                     )}
                   >
                     {on && <Check className="h-2.5 w-2.5" strokeWidth={4} />}
                   </span>
                   <span className="min-w-0">
                     <span className="block text-xs text-foreground">{perm.label}</span>
-                    <span className="block font-mono text-[10px] leading-snug text-muted-foreground">
+                    <span className="block font-mono text-[11.5px] leading-snug text-muted-foreground">
                       {perm.description}
                     </span>
                   </span>
@@ -460,7 +460,7 @@ function CargoForm({
           onChange={(e) => setPriority(e.target.value.replace(/[^0-9-]/g, ''))}
           className="w-20 rounded-brutal border-2 border-border bg-void px-2 py-1 font-mono text-[11px] outline-none focus:border-acid-dark"
         />
-        <p className="mt-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+        <p className="mt-1 text-[11px] text-muted-foreground">
           Maior aparece primeiro e é o que pinta o nome de quem não escolheu cor
           de perfil.
         </p>
@@ -496,7 +496,7 @@ function CargoForm({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <span className="mb-1 block text-[11.5px] text-muted-foreground">
         {label}
       </span>
       {children}
@@ -544,14 +544,14 @@ function MembersOfCargo({
   return (
     <div className="rounded-brutal border-2 border-border">
       <div className="flex items-center gap-2 border-b-2 border-border/50 px-3 py-2">
-        <p className="flex-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="flex-1 text-[11.5px] text-muted-foreground">
           Quem é <span style={{ color: cargo.color }}>{cargo.name}</span>
         </p>
         <input
           value={term}
           onChange={(e) => setTerm(e.target.value)}
           placeholder="filtrar"
-          className="w-28 rounded-brutal border-2 border-border bg-void px-2 py-1 font-mono text-[10px] outline-none focus:border-acid-dark"
+          className="w-28 rounded-brutal border-2 border-border bg-void px-2 py-1 font-mono text-[11.5px] outline-none focus:border-acid-dark"
         />
       </div>
 
@@ -579,10 +579,10 @@ function MembersOfCargo({
                 }
                 className={cn(
                   'flex shrink-0 items-center gap-1 rounded-brutal border-2 px-2 py-0.5',
-                  'font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-40',
+                  'font-mono text-[11.5px] uppercase tracking-widest transition-colors disabled:opacity-40',
                   on
                     ? 'border-acid-dark bg-acid/10 text-acid hover:border-destructive hover:bg-destructive/10 hover:text-destructive'
-                    : 'border-border text-muted-foreground hover:border-acid-dark hover:text-acid'
+                    : 'border-border text-muted-foreground hover:border-acid-dark hover:text-foreground'
                 )}
               >
                 {on ? (
@@ -606,7 +606,7 @@ function MembersOfCargo({
           está abrindo cota de horas numa máquina que o grupo rachou, e essa
           consequência não pode ficar só no código. */}
       {cargo.permissions.includes('print') && (
-        <p className="border-t-2 border-border/50 px-3 py-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
+        <p className="border-t-2 border-border/50 px-3 py-2 font-mono text-[11.5px] leading-relaxed text-muted-foreground">
           Dar este cargo abre a aba da impressora e a cota de horas de quem
           recebe. Cota, prioridade e aprovação por pessoa ficam na aba{' '}
           <span className="text-acid">Impressora</span>.

@@ -93,7 +93,7 @@ export function IconButton({
       aria-label={title}
       className={cn(
         'rounded-brutal p-1.5 text-muted-foreground transition-colors disabled:opacity-40',
-        danger ? 'hover:bg-destructive/15 hover:text-destructive' : 'hover:bg-muted hover:text-acid'
+        danger ? 'hover:bg-destructive/15 hover:text-destructive' : 'hover:bg-muted hover:text-foreground'
       )}
     >
       {children}
@@ -118,7 +118,7 @@ export function InlineConfirm({
   return (
     <span
       className={cn(
-        'flex items-center gap-2 rounded-brutal border px-2 py-1 font-mono text-[10px] uppercase tracking-wider',
+        'flex items-center gap-2 rounded-brutal border px-2 py-1 font-mono text-[11.5px] uppercase tracking-wider',
         tone === 'danger'
           ? 'border-destructive/60 bg-destructive/10 text-destructive'
           : 'border-burn/60 bg-burn/10 text-burn'

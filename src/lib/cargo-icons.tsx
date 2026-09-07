@@ -107,7 +107,7 @@ export function CargoChip({
       title={cargo.description ? `${cargo.name} — ${cargo.description}` : cargo.name}
       className={cn(
         'inline-flex shrink-0 cursor-default items-center gap-1 rounded-brutal border px-1',
-        'font-mono text-[9px] uppercase leading-4 tracking-widest',
+        'text-[11px] leading-4',
         className
       )}
       style={{

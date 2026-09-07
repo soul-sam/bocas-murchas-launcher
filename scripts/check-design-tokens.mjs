@@ -27,8 +27,8 @@ const RULES = [
     // O vermelho do YouTube (#FF0033) e marca de terceiro e nem esta na lista.
     // effects.css sao COSMETICOS (arco-iris, fogo, moldura acida/dourada):
     // cor fixa ali e conteudo, nao cromo. DEFAULT_NAME_COLOR e um dado que
-    // vai pro servidor, nao um estilo.
-    allowFiles: ['styles/effects.css', 'lib/api-gamification.ts']
+    // vai pro servidor, nao um estilo — idem os presets de cor de cargo.
+    allowFiles: ['styles/effects.css', 'lib/api-gamification.ts', 'components/admin/CargosTab.tsx']
   },
   {
     id: 'raw-neon',

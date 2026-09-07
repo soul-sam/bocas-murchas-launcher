@@ -88,16 +88,16 @@ export function WhatsNewModal() {
           type="button"
           aria-label="Fechar"
           onClick={close}
-          className="absolute right-3 top-3 text-muted-foreground hover:text-acid"
+          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="mb-4 flex items-center gap-3">
-          <Sparkles className="h-7 w-7 text-acid drop-shadow-[0_0_8px_rgba(106,255,0,0.6)]" />
+          <Sparkles className="h-7 w-7 text-acid drop-shadow-[0_0_8px_rgb(var(--neon-rgb)/0.3)]" />
           <div className="min-w-0">
             <h2 className="title-brutal text-2xl">{entry.headline}</h2>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               Launcher v{entry.version}
             </p>
           </div>

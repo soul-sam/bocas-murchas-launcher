@@ -121,13 +121,13 @@ export function PrinterTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="text-[11.5px] text-muted-foreground">
           {state?.printer.name ?? 'Impressora'}
         </p>
         <button
           onClick={() => void load()}
           disabled={reloading}
-          className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-acid disabled:opacity-50"
+          className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           {reloading ? 'Atualizando…' : 'Atualizar'}
         </button>
@@ -138,7 +138,7 @@ export function PrinterTab() {
       {state && <MachineSection printer={state.printer} busy={busy} run={run} />}
 
       <section className="space-y-2">
-        <h3 className="font-mono text-[10px] uppercase tracking-widest text-acid">
+        <h3 className="font-mono text-[11.5px] uppercase tracking-widest text-acid">
           Cota de cada um
         </h3>
         {rows === null ? (
@@ -146,7 +146,7 @@ export function PrinterTab() {
             Carregando<span className="terminal-cursor" />
           </p>
         ) : donos.length === 0 ? (
-          <p className="rounded-brutal border-2 border-dashed border-[#2a2a2a] p-4 font-mono text-xs leading-relaxed text-muted-foreground">
+          <p className="rounded-brutal border-2 border-dashed border-line-strong p-4 font-mono text-xs leading-relaxed text-muted-foreground">
             Ninguém tem o cargo da impressora ainda. Dá o cargo{' '}
             <span className="text-acid">Impressora Murcha</span> na aba Cargos —
             é ele que abre a fila, e a linha de cota aparece aqui em seguida.
@@ -168,7 +168,7 @@ export function PrinterTab() {
 
       {storage && (
         <section className="rounded-brutal border-2 border-border px-3 py-2">
-          <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
             <HardDrive className="h-3 w-3" />
             {storage.files} {storage.files === 1 ? 'arquivo' : 'arquivos'} ·{' '}
             {(storage.bytes / 1024 / 1024).toFixed(0)} MB de{' '}
@@ -204,7 +204,7 @@ function MachineSection({
         <span className="flex-1 text-sm">{printer.model}</span>
         <span
           className={cn(
-            'flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest',
+            'flex items-center gap-1 text-[11.5px]',
             printer.agentOnline ? 'text-acid' : 'text-muted-foreground'
           )}
         >
@@ -218,7 +218,7 @@ function MachineSection({
       <label className="flex items-center justify-between gap-3 py-1">
         <span className="min-w-0">
           <span className="block text-xs text-foreground">Começar peça sozinho</span>
-          <span className="block font-mono text-[10px] leading-snug text-muted-foreground">
+          <span className="block font-mono text-[11.5px] leading-snug text-muted-foreground">
             Desliga quando for mexer na máquina: a fila continua enfileirando e
             nada é despachado.
           </span>
@@ -235,7 +235,7 @@ function MachineSection({
       <div className="flex items-center justify-between gap-3 border-t-2 border-border/50 pt-2">
         <span className="min-w-0">
           <span className="block text-xs text-foreground">Destravar a fila</span>
-          <span className="block font-mono text-[10px] leading-snug text-muted-foreground">
+          <span className="block font-mono text-[11.5px] leading-snug text-muted-foreground">
             Larga o job preso no despacho e volta a impressora pra ociosa. É pro
             caso do agente morrer no pior instante.
           </span>
@@ -335,13 +335,13 @@ function AccessRow({
             {row.requiresApproval && (
               <span
                 title="O upload dessa pessoa está esperando aprovação de admin — a estimativa estourou o real várias vezes. Quase sempre é perfil de fatiamento desalinhado, não má-fé."
-                className="shrink-0 rounded-brutal border border-burn/60 bg-burn/10 px-1 font-mono text-[9px] uppercase tracking-widest text-burn"
+                className="shrink-0 rounded-brutal border border-burn/60 bg-burn/10 px-1 text-[11px] text-burn"
               >
                 aprovação
               </span>
             )}
           </span>
-          <span className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <span className="block text-[11.5px] text-muted-foreground">
             {formatSeconds(row.usedSeconds)} de {formatSeconds(row.effectiveWindowSeconds)}
             {row.windowSeconds === null && ' (padrão)'}
             {row.priority > 0 && ` · prioridade ${row.priority}`}
@@ -357,7 +357,7 @@ function AccessRow({
 
         {/* Barrinha de consumo: é o número que o grupo mais confere, e ler
             "4h37 de 14h" dá menos ideia do que ver a barra. */}
-        <span className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-[#1a1a1a]">
+        <span className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-surface-raised">
           <span
             className={cn('block h-full', usedPct >= 100 ? 'bg-destructive' : 'bg-acid')}
             style={{ width: `${usedPct}%` }}
@@ -402,7 +402,7 @@ function AccessRow({
           <label className="flex items-center justify-between gap-3 border-t-2 border-border/50 pt-2">
             <span className="min-w-0">
               <span className="block text-xs text-foreground">Exigir aprovação no upload</span>
-              <span className="block font-mono text-[10px] leading-snug text-muted-foreground">
+              <span className="block font-mono text-[11.5px] leading-snug text-muted-foreground">
                 Liga sozinho quando a estimativa dessa pessoa estoura o real
                 várias vezes ({row.driftStrikes}{' '}
                 {row.driftStrikes === 1 ? 'vez' : 'vezes'} até agora). É
@@ -423,7 +423,7 @@ function AccessRow({
           </label>
 
           <div className="border-t-2 border-border/50 pt-2">
-            <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="mb-1.5 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
               <Timer className="h-3 w-3" />
               Ajuste manual de horas
             </p>
@@ -463,7 +463,7 @@ function AccessRow({
                 Lançar
               </Button>
             </div>
-            <p className="mt-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+            <p className="mt-1 text-[11px] text-muted-foreground">
               Negativo DÁ hora, positivo tira — é consumo, não saldo. O motivo é
               obrigatório de propósito: cota mexida sem explicação é o começo de
               uma discussão no domingo à noite.
@@ -490,7 +490,7 @@ function SmallField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <span className="mb-1 block text-[11.5px] text-muted-foreground">
         {label}
       </span>
       <input
@@ -501,7 +501,7 @@ function SmallField({
           'rounded-brutal border-2 border-border bg-void px-2 py-1 font-mono text-[11px] outline-none focus:border-acid-dark'
         )}
       />
-      <span className="mt-1 block font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+      <span className="mt-1 block text-[11px] text-muted-foreground">
         {hint}
       </span>
     </label>
