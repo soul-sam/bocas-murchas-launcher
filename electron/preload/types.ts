@@ -16,6 +16,8 @@ export type McAuthProgressEvent =
   | { state: 'expired' }
   | { state: 'cancelled' }
   | { state: 'error'; error: { message: string; code?: string } }
+  /** Sessao guardada deixou de valer e foi apagada: o card volta pra "conectar". */
+  | { state: 'signed-out'; reason: string }
 
 export type McAuthStartResult =
   | { ok: true; code: DeviceCodeInfo }

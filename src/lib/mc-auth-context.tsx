@@ -71,6 +71,11 @@ export function McAuthProvider({ children }: { children: React.ReactNode }) {
             modal: { kind: 'error', message: event.error.message, code: event.error.code }
           }))
           break
+        case 'signed-out':
+          // O main ja apagou a sessao; aqui so tiramos o "conectado" da tela.
+          // O motivo aparece no card de launch, que recebe o mesmo erro.
+          setState((s) => ({ ...s, profile: null, modal: { kind: 'closed' } }))
+          break
       }
     })
 

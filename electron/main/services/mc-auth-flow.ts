@@ -33,6 +33,8 @@ export type AuthProgressEvent =
   | { state: 'expired' }
   | { state: 'cancelled' }
   | { state: 'error'; error: { message: string; code?: string } }
+  /** Sessao guardada deixou de valer e foi apagada: o card volta pra "conectar". */
+  | { state: 'signed-out'; reason: string }
 
 interface ActiveFlow {
   cancelled: boolean
@@ -174,8 +176,22 @@ export async function ensureFreshMcSession(): Promise<{ accessToken: string; pro
     await saveMcProfile(next)
     return { accessToken: session.accessToken, profile: session.profile }
   } catch (err) {
+    /**
+     * Refresh token recusado (`invalid_grant`): expirou, foi revogado, ou foi
+     * emitido pra OUTRO client id — o que acontece com quem conectou a conta
+     * num build antigo e recebeu um launcher com o app Azure novo. Nao ha
+     * como renovar: apagamos a sessao e avisamos o renderer, senao o card
+     * continua dizendo "conectado" e o Jogar falha com um erro AADSTS que
+     * ninguem entende.
+     */
     if (err instanceof MicrosoftAuthError && (err.code === 'invalid_grant' || err.code === 'NO_CLIENT_ID')) {
       await clearMcProfile()
+      const reason =
+        err.code === 'NO_CLIENT_ID'
+          ? err.message
+          : 'A sessão da conta Microsoft expirou. Conecte a conta de novo.'
+      broadcast({ state: 'signed-out', reason })
+      throw new MicrosoftAuthError(reason, err.code)
     }
     throw err
   }
