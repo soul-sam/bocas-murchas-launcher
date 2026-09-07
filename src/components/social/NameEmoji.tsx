@@ -34,7 +34,9 @@ export function NameEmoji({
       aria-label="emoji equipado"
       title="Emoji equipado (lojinha)"
       className={cn(
-        'inline-block shrink-0 cursor-default select-none leading-none',
+        // inline-flex + items-center: emoji centraliza na linha do nome em vez
+        // de sentar na baseline (que o deixa caído em relação ao texto).
+        'inline-flex shrink-0 cursor-default select-none items-center leading-none',
         size === 'sm' ? 'text-[13px]' : 'text-base',
         className
       )}

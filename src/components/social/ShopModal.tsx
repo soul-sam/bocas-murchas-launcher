@@ -184,7 +184,7 @@ export function ShopModal() {
             className="h-11 w-11 border-2"
           />
           <div className="min-w-0 flex-1">
-            <p className="flex items-baseline gap-1.5 font-display text-base leading-tight" style={{ color }}>
+            <p className="flex items-center gap-1.5 font-display text-base leading-tight" style={{ color }}>
               <NameEffect effect={previewEffect} className="truncate">
                 {me.displayName}
               </NameEffect>
@@ -358,7 +358,7 @@ function ItemTile({
         {item.type === 'emoji' && (
           <span className="flex items-center gap-1.5 truncate font-display text-sm" style={{ color: me.color }}>
             <span className="truncate">{me.name}</span>
-            <NameEmoji glyph={cosmeticEmoji(item)} className="text-2xl" />
+            <NameEmoji glyph={cosmeticEmoji(item)} className="text-xl" />
           </span>
         )}
         {item.type === 'joinSound' && onPreview && (
