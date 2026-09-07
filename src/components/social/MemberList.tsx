@@ -10,6 +10,8 @@ import { useSocket, type ActivityEntry } from '@/lib/socket-context'
 import { useLayout } from '@/lib/layout-context'
 import { useGamification } from '@/lib/gamification-context'
 import { TitleIcon } from '@/lib/cosmetic-icons'
+import { CargoChip } from '@/lib/cargo-icons'
+import { useCargos } from '@/lib/cargos-context'
 import { ProfileCard } from './ProfileCard'
 import { ActivityLine } from './ActivityLine'
 import { NameEffect } from './NameEffect'
@@ -147,6 +149,7 @@ function Group({
   const { openUserMenu } = useOverlays()
   const { user } = useAuth()
   const { cosmeticName } = useGamification()
+  const { topCargoOf } = useCargos()
 
   if (members.length === 0) return null
 
@@ -161,6 +164,7 @@ function Group({
           const voice = voiceByUser.get(member.id)
           const activity = member.isOnline ? activities[member.id] : undefined
           const title = cosmeticName(member.title)
+          const cargo = topCargoOf(member.id)
           /**
            * Botão de apostar: só em partida de verdade (não em champ select) e
            * nunca no próprio. Aparece também pra quem está em call e jogando —
@@ -206,6 +210,11 @@ function Group({
                       {member.role === 'admin' && (
                         <Shield className="h-3 w-3 shrink-0 text-burn" aria-label="admin" />
                       )}
+                      {/* Só o cargo de MAIOR prioridade, e só o ícone: a linha
+                          tem 200px e o nome não pode encolher pra caber
+                          crachá. O resto dos cargos está no cartão de perfil,
+                          a um clique. */}
+                      {cargo && <CargoChip cargo={cargo} compact />}
                     </span>
 
                     {/* Jogo ganha da call: "em partida 12:30" diz mais do que

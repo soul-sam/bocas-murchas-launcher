@@ -31,11 +31,20 @@ import { cn } from '@/lib/utils'
 /**
  * Aba da impressora 3D.
  *
- * A aba aparece pra TODO MUNDO, e as leituras (o que está imprimindo, a fila,
- * o histórico) são abertas de propósito — ver o que o outro está imprimindo é
- * metade da graça, e esconder a aba de quem não rachou a impressora só gera
- * "não tá funcionando". Quem não tem acesso vê um card explicando, e não uma
- * tela vazia.
+ * **Quem chega aqui tem o cargo "Impressora Murcha"** — a barra lateral só
+ * mostra a aba pra quem tem, e a rota tem guarda (ver App.tsx). Foi uma
+ * mudança de rumo: antes a aba aparecia pra todo mundo com um card explicando
+ * o rateio, na ideia de que esconder só geraria "não tá funcionando". O grupo
+ * preferiu o contrário — a impressora é de quem rachou, e ela não fica
+ * piscando pra quem não tem nada a ver com ela.
+ *
+ * O `NoAccessCard` ficou, e não é código morto: cobre a janela em que alguém
+ * está com a aba aberta e o admin tira o cargo. Nesse caso a tela explica em
+ * vez de quebrar, e o próximo passo pelo app já não tem mais a aba.
+ *
+ * As leituras (o que está imprimindo, a fila, o histórico) continuam abertas
+ * no servidor de propósito: uma fila que se diz justa só é justa se todos os
+ * donos podem conferir a conta.
  */
 export function PrintPage() {
   const { user } = useAuth()
@@ -407,12 +416,13 @@ function NoAccessCard() {
   return (
     <div className="rounded-brutal border-2 border-dashed border-[#2a2a2a] p-4">
       <p className="font-display text-sm uppercase tracking-wider text-foreground">
-        Você não está na lista da impressora
+        Seu cargo da impressora saiu
       </p>
       <p className="mt-1 font-mono text-xs leading-relaxed text-muted-foreground">
-        A impressora foi comprada em rateio, então quem imprime é quem entrou.
-        Fala com um admin pra te liberar — dá pra continuar vendo a fila e o que
-        a galera está imprimindo aqui de qualquer jeito.
+        A impressora foi comprada em rateio, então quem imprime é quem tem o
+        cargo <span className="text-acid">Impressora Murcha</span>. O seu não
+        está mais aí — fala com um admin. Enquanto isso dá pra acompanhar a
+        fila, e a aba some na próxima vez que você abrir o launcher.
       </p>
     </div>
   )

@@ -22,6 +22,7 @@ import { GamificationProvider } from '@/lib/gamification-context'
 import { WatchProvider } from '@/lib/watch-context'
 import { EmojiProvider } from '@/lib/emoji-context'
 import { PrintProvider } from '@/lib/print-context'
+import { CargosProvider, useCargos } from '@/lib/cargos-context'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { HomePage } from '@/pages/HomePage'
@@ -62,6 +63,32 @@ function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <LoadingSplash />
   if (user) return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
+/**
+ * Rota que exige permissão de cargo.
+ *
+ * Esconder o link da barra não basta: a rota é `#/impressao` numa HashRouter,
+ * fica no histórico da janela e sobrevive a um logout/login com outra conta —
+ * quem já entrou uma vez voltaria pra tela da impressora ao abrir o launcher.
+ *
+ * Enquanto o catálogo de cargos não chegou a resposta é "espera", não "não":
+ * mandar pra home quem TEM o cargo, só porque o fetch não voltou ainda, seria
+ * um chute pra fora da tela no meio do caminho.
+ */
+function RequirePermission({
+  permission,
+  children
+}: {
+  permission: string
+  children: React.ReactNode
+}) {
+  const { can, ready } = useCargos()
+  const { user } = useAuth()
+
+  if (!ready && user?.role !== 'admin') return <LoadingSplash />
+  if (!can(permission)) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -187,12 +214,19 @@ function AuthedLayout() {
                                 {/* Índices de @pessoa e #canal montados uma
                                     vez, não uma vez por mensagem na tela. */}
                                 <RichTextProvider>
-                                  {/* Impressora 3D: só precisa de socket e
-                                      token, mas fica aqui pra a fila e a cota
-                                      não remontarem ao trocar de aba. */}
-                                  <PrintProvider>
-                                    <AuthedShell />
-                                  </PrintProvider>
+                                  {/* Cargos ANTES da impressora: é o cargo
+                                      que decide se a aba existe, e a barra
+                                      lateral pergunta isso no primeiro
+                                      quadro. */}
+                                  <CargosProvider>
+                                    {/* Impressora 3D: só precisa de socket e
+                                        token, mas fica aqui pra a fila e a
+                                        cota não remontarem ao trocar de
+                                        aba. */}
+                                    <PrintProvider>
+                                      <AuthedShell />
+                                    </PrintProvider>
+                                  </CargosProvider>
                                 </RichTextProvider>
                               </WatchProvider>
                             </PartyProvider>
@@ -248,9 +282,11 @@ export function App() {
                             <Route
                               path="/impressao"
                               element={
-                                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                                  <PrintPage />
-                                </div>
+                                <RequirePermission permission="print">
+                                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                                    <PrintPage />
+                                  </div>
+                                </RequirePermission>
                               }
                             />
                             <Route

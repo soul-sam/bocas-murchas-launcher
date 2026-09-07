@@ -5,6 +5,8 @@ import { UserAvatar } from '@/components/ui/avatar'
 import { parseFavoriteGames, parseLinks, resolveAssetUrl } from '@/lib/api'
 import { formatCompact, type GamificationProfile } from '@/lib/api-gamification'
 import { BadgeChip, TitleTag } from '@/lib/cosmetic-icons'
+import { CargoChip } from '@/lib/cargo-icons'
+import { useCargos } from '@/lib/cargos-context'
 import {
   formatBirthday,
   hourDifference,
@@ -65,6 +67,8 @@ export function ProfileCard({
   const activity = member.isOnline ? activityOf(member.id) : undefined
   const riotId = member.riotGameName ? `${member.riotGameName}#${member.riotTagLine ?? ''}` : null
   const title = cosmeticName(member.title)
+  const { cargosOf } = useCargos()
+  const cargos = cargosOf(member.id)
   const inMatch = !isSelf && activity?.phase === 'in-progress'
   const games = parseFavoriteGames(member.favoriteGames)
 
@@ -186,6 +190,18 @@ export function ProfileCard({
             </span>
             {title && <TitleTag titleId={member.title} name={title} />}
           </p>
+
+          {/* CARGOS. Ficam aqui, na identidade, e não junto das badges lá
+              embaixo: badge é o que a pessoa conquistou jogando; cargo é o que
+              ela É no grupo — quem rachou a impressora, quem opera a máquina.
+              Ordem de prioridade, que é a que o servidor manda. */}
+          {cargos.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1">
+              {cargos.map((cargo) => (
+                <CargoChip key={cargo.id} cargo={cargo} />
+              ))}
+            </div>
+          )}
 
           <PersonalLine
             timezone={member.timezone}

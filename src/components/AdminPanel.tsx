@@ -1,11 +1,13 @@
 import * as React from 'react'
 import {
+  BadgeCheck,
   CheckCircle2,
   ClipboardCopy,
   KeyRound,
   Loader2,
   Play,
   Plus,
+  Printer as PrinterIcon,
   RefreshCw,
   ShieldMinus,
   ShieldPlus,
@@ -17,7 +19,6 @@ import {
   XCircle
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { useSettings } from '@/lib/settings-context'
 import { useSoundboard } from '@/lib/soundboard-context'
 import {
   admin,
@@ -28,20 +29,36 @@ import {
   type Sound
 } from '@/lib/api'
 import { adminApi, generateTempPassword, type AdminUser } from '@/lib/api-admin'
-import { playUiSound, type UiSound } from '@/lib/ui-sounds'
+import type { UiSound } from '@/lib/ui-sounds'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  copyText,
+  ErrorBox,
+  errorMessage,
+  formatDate,
+  formatRelative,
+  IconButton,
+  InlineConfirm,
+  useCue
+} from '@/components/admin/shared'
+import { CargosTab } from '@/components/admin/CargosTab'
+import { PrinterTab } from '@/components/admin/PrinterTab'
 import { cn } from '@/lib/utils'
 
 /**
- * Conteúdo do painel admin — as quatro abas. A moldura (camada fixa, fechar
- * com Esc/clique fora) é do AdminModal; aqui só o que vai dentro.
+ * Conteúdo do painel admin. A moldura (camada fixa, fechar com Esc/clique
+ * fora) é do AdminModal; aqui só o que vai dentro.
  *
  * Toda ação destrutiva confirma INLINE, no próprio botão, em vez de abrir
  * outra modal: já estamos numa camada por cima de tudo, e camada em cima de
  * camada é o caminho conhecido pro app travar sem clique (interaction-guard).
+ * As peças que garantem isso moram em admin/shared.tsx.
+ *
+ * Cargos e Impressora vivem em arquivo próprio (admin/): são as duas maiores,
+ * com formulário, e juntas dobrariam este arquivo.
  */
 export function AdminPanel() {
   return (
@@ -54,6 +71,14 @@ export function AdminPanel() {
         <TabsTrigger value="membros">
           <Users className="mr-1.5 inline h-3 w-3" />
           Membros
+        </TabsTrigger>
+        <TabsTrigger value="cargos">
+          <BadgeCheck className="mr-1.5 inline h-3 w-3" />
+          Cargos
+        </TabsTrigger>
+        <TabsTrigger value="impressora">
+          <PrinterIcon className="mr-1.5 inline h-3 w-3" />
+          Impressora
         </TabsTrigger>
         <TabsTrigger value="sons">
           <Volume2 className="mr-1.5 inline h-3 w-3" />
@@ -71,6 +96,12 @@ export function AdminPanel() {
       <TabsContent value="membros" className="pr-1">
         <MembersTab />
       </TabsContent>
+      <TabsContent value="cargos" className="pr-1">
+        <CargosTab />
+      </TabsContent>
+      <TabsContent value="impressora" className="pr-1">
+        <PrinterTab />
+      </TabsContent>
       <TabsContent value="sons" className="pr-1">
         <SoundsTab />
       </TabsContent>
@@ -78,131 +109,6 @@ export function AdminPanel() {
         <ToolsTab />
       </TabsContent>
     </Tabs>
-  )
-}
-
-// ============================================
-// UTILITÁRIOS
-// ============================================
-
-/** Avisos da interface no volume que a pessoa escolheu (0 quando desligado). */
-function useCue(): (name: UiSound) => void {
-  const { settings } = useSettings()
-  const volume = settings.soundEnabled ? settings.soundVolume : 0
-  return React.useCallback((name: UiSound) => playUiSound(name, volume), [volume])
-}
-
-function errorMessage(err: unknown, fallback: string): string {
-  return err instanceof ApiError ? err.message : fallback
-}
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit'
-  })
-}
-
-/** "agora", "há 5 min", "há 3 h", "há 2 d" — depois disso a data mesmo. */
-function formatRelative(iso: string | null | undefined): string {
-  if (!iso) return 'nunca'
-  const diff = Date.now() - new Date(iso).getTime()
-  if (!Number.isFinite(diff)) return '—'
-  const minutes = Math.floor(diff / 60_000)
-  if (minutes < 1) return 'agora'
-  if (minutes < 60) return `há ${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `há ${hours} h`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `há ${days} d`
-  return formatDate(iso)
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    return false
-  }
-}
-
-function ErrorBox({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-3 rounded-brutal border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-destructive">
-      {children}
-    </div>
-  )
-}
-
-function IconButton({
-  title,
-  danger,
-  onClick,
-  disabled,
-  children
-}: {
-  title: string
-  danger?: boolean
-  onClick: () => void
-  disabled?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      aria-label={title}
-      className={cn(
-        'rounded-brutal p-1.5 text-muted-foreground transition-colors disabled:opacity-40',
-        danger ? 'hover:bg-destructive/15 hover:text-destructive' : 'hover:bg-muted hover:text-acid'
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
-/** Confirmação no lugar: "Fazer X? [Sim] [Não]". */
-function InlineConfirm({
-  question,
-  tone = 'warn',
-  busy,
-  onYes,
-  onNo
-}: {
-  question: string
-  tone?: 'warn' | 'danger'
-  busy?: boolean
-  onYes: () => void
-  onNo: () => void
-}) {
-  return (
-    <span
-      className={cn(
-        'flex items-center gap-2 rounded-brutal border px-2 py-1 font-mono text-[10px] uppercase tracking-wider',
-        tone === 'danger'
-          ? 'border-destructive/60 bg-destructive/10 text-destructive'
-          : 'border-burn/60 bg-burn/10 text-burn'
-      )}
-    >
-      <span>{question}</span>
-      <button
-        type="button"
-        onClick={onYes}
-        disabled={busy}
-        className="font-bold underline-offset-2 hover:underline disabled:opacity-50"
-      >
-        {busy ? '…' : 'Sim'}
-      </button>
-      <button type="button" onClick={onNo} disabled={busy} className="hover:underline">
-        Não
-      </button>
-    </span>
   )
 }
 

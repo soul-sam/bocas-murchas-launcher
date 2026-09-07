@@ -6,6 +6,7 @@ import { useChat } from '@/lib/chat-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { useGamification } from '@/lib/gamification-context'
+import { useCargos } from '@/lib/cargos-context'
 
 /**
  * Barra estreita da esquerda: alterna entre o social e o launcher do Minecraft.
@@ -17,6 +18,7 @@ export function AppRail() {
   const { toggleShortcuts } = useOverlays()
   const { leaderboardOpen, toggleLeaderboard } = useLayout()
   const { profile } = useGamification()
+  const { can } = useCargos()
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -57,9 +59,15 @@ export function AppRail() {
         <Gamepad2 className="h-5 w-5" />
       </RailLink>
 
-      <RailLink to="/impressao" label="Impressora 3D">
-        <Printer className="h-5 w-5" />
-      </RailLink>
+      {/* A impressora só existe na barra pra quem tem o cargo "Impressora
+          Murcha" — quem rachou a Kobra. Pra todo mundo mais, a aba não está
+          escondida: ela não faz parte do app. Ver lib/cargos-context.tsx
+          sobre o `can()` ser falso enquanto o catálogo não chegou. */}
+      {can('print') && (
+        <RailLink to="/impressao" label="Impressora 3D">
+          <Printer className="h-5 w-5" />
+        </RailLink>
+      )}
 
       <button
         type="button"
