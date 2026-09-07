@@ -158,32 +158,35 @@
   box-shadow: 0 0 2px #fff, 0 0 8px #d0a2ff, 0 0 16px rgba(176, 124, 255, 0.7);
 }
 
-/* --- lendária: fogo (animada) --- */
+/* --- lendária: Lenda Murcha (animada) --- */
+/* Mesmo desenho da Ametista (borda dupla), em dourado, com o halo respirando
+   devagar. A coroa em cima é um irmão (`frame-fire-ring`) que o UserAvatar
+   desenha — a classe da borda continua servindo pra webcam na call. */
 .frame-fire {
-  border-color: transparent !important;
+  border-style: double !important;
+  border-width: 4px !important;
+  border-color: #ffd000 !important;
+  box-shadow: 0 0 8px rgba(255, 208, 0, 0.5);
+  animation: frame-fire-glow 3s ease-in-out infinite;
 }
 
-/* O anel: quem monta o avatar coloca este irmão logo antes dele.
-   Estilo neon animado: cor sólida com halo, respirando devagar de amarelo
-   pra laranja, um toque de vermelho, e voltando. Sem gradiente correndo, sem
-   flicker — fogo de brasa, não de isqueiro. */
+@keyframes frame-fire-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(255, 208, 0, 0.4); }
+  50%      { box-shadow: 0 0 14px rgba(255, 208, 0, 0.85); }
+}
+
+/* A coroa: centrada no topo, por cima da borda. */
 .frame-fire-ring {
   position: absolute;
-  inset: -3px;
-  border-radius: 6px;
-  background-color: #ffd000;
-  box-shadow: 0 0 2px #fff, 0 0 8px #ffd000, 0 0 16px rgba(255, 208, 0, 0.7);
-  animation: frame-fire-neon 4.5s ease-in-out infinite;
+  top: -8px;
+  left: 50%;
+  width: 15px;
+  height: 15px;
+  transform: translateX(-50%);
+  z-index: 1;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffd000' stroke='%23120c00' stroke-width='1.2' stroke-linejoin='round'><path d='M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5Z'/></svg>") center / contain no-repeat;
+  filter: drop-shadow(0 0 3px rgba(255, 208, 0, 0.8));
   pointer-events: none;
-}
-
-@keyframes frame-fire-neon {
-  0%   { background-color: #ffd000; box-shadow: 0 0 2px #fff, 0 0 8px #ffd000, 0 0 16px rgba(255, 208, 0, 0.7); }
-  35%  { background-color: #ff8a00; box-shadow: 0 0 2px #fff, 0 0 8px #ff8a00, 0 0 16px rgba(255, 138, 0, 0.7); }
-  50%  { background-color: #ff2d00; box-shadow: 0 0 2px #fff, 0 0 8px #ff2d00, 0 0 18px rgba(255, 45, 0, 0.75); }
-  58%  { background-color: #ff8a00; box-shadow: 0 0 2px #fff, 0 0 8px #ff8a00, 0 0 16px rgba(255, 138, 0, 0.7); }
-  78%  { background-color: #ffb000; box-shadow: 0 0 2px #fff, 0 0 8px #ffb000, 0 0 16px rgba(255, 176, 0, 0.7); }
-  100% { background-color: #ffd000; box-shadow: 0 0 2px #fff, 0 0 8px #ffd000, 0 0 16px rgba(255, 208, 0, 0.7); }
 }
 
 /* ============================================
@@ -213,7 +216,7 @@
 /* Quem pediu menos animação no sistema não leva nome piscando na lista. */
 @media (prefers-reduced-motion: reduce) {
   .fx-fire,
-  .frame-fire-ring,
+  .frame-fire,
   .toast-in {
     animation: none;
   }

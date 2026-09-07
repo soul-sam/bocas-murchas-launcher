@@ -83,9 +83,9 @@ export const AVATAR_FRAME_KEYS = Object.keys(FRAME_STYLES)
  * na call, não só no quadradinho do avatar. Sem isso, quem pagou por uma
  * moldura perdia ela justamente na hora em que todo mundo está olhando.
  *
- * A de fogo é a exceção: ela pinta a borda de transparente e o anel de verdade
- * é um irmão posicionado atrás (`frame-fire-ring`, ver styles/effects.css). Quem
- * usa isto precisa saber se tem que desenhar esse irmão — daí as duas funções.
+ * A lendária (`fire`) tem um extra: uma coroa em cima da borda, que é um
+ * irmão posicionado (`frame-fire-ring`, ver styles/effects.css). Quem usa isto
+ * precisa saber se tem que desenhar esse irmão — daí as duas funções.
  */
 export function frameClass(frame: string | null | undefined): string | undefined {
   const key = cosmeticKey(frame)
@@ -126,8 +126,7 @@ export function UserAvatar({
 
   return (
     <div className="relative shrink-0">
-      {/* Anel de fogo fica ATRÁS do avatar: vem antes no DOM e o Avatar é
-          `relative`, então pinta por cima dele. */}
+      {/* Coroa da moldura lendária, por cima da borda (z-index no CSS). */}
       {frameNeedsRing(frame) && <span aria-hidden className="frame-fire-ring" />}
 
       <Avatar
