@@ -196,7 +196,9 @@ export function ShopModal() {
                   titleId={previewTitleId}
                   name={previewTitle}
                   tooltip={hovered?.type === 'title' ? `prévia: ${previewTitle}` : undefined}
-                  className="px-1.5 text-[11.5px] leading-5"
+                  // Texto com texto alinha pela baseline; o emoji, que não tem
+                  // baseline útil, fica centralizado pelo pai.
+                  className="self-baseline px-1.5 text-[11.5px] leading-5"
                 />
               )}
             </p>
