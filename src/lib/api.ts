@@ -373,6 +373,7 @@ export type CardMessageType =
   | 'wager'
   | 'watch'
   | 'system'
+  | 'chess'
 
 export type MessageType = 'text' | 'gif' | 'sticker' | 'image' | 'file' | CardMessageType
 
@@ -384,7 +385,8 @@ export const CARD_MESSAGE_TYPES: ReadonlySet<string> = new Set<CardMessageType>(
   'party',
   'wager',
   'watch',
-  'system'
+  'system',
+  'chess'
 ])
 
 export function isCardMessage(message: { type: string }): boolean {

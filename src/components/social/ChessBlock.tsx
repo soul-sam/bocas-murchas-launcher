@@ -7,7 +7,6 @@ import {
   TIME_CLASS_LABEL,
   type ChessGame,
   type ChessPayload,
-  type ChessProfile,
   type ChessTimeClass
 } from '@/lib/api-chess'
 import { useAuth } from '@/lib/auth-context'
@@ -60,8 +59,8 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
 
   React.useEffect(() => {
     if (!socket || !isSelf) return
-    const onProfile = (profile: ChessProfile) => {
-      setData((prev) => ({ profile, games: prev?.games ?? [] }))
+    const onProfile = () => {
+      // O payload do evento só traz o profile; os games também podem ter mudado, então recarrega tudo.
       void load()
     }
     socket.on('chess:profile', onProfile)

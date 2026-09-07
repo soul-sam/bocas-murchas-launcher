@@ -5,6 +5,7 @@ import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
 import { CHESS_RESULT_LABEL, TIME_CLASS_LABEL, resultCodeLabel, type ChessCardMeta } from '@/lib/api-chess'
 import { useMembers } from '@/lib/members-context'
+import { openExternal } from '@/lib/rich-text'
 import { cn } from '@/lib/utils'
 
 /**
@@ -99,14 +100,13 @@ export function ChessResultCard({ metadata, compact }: CardProps<ChessCardMeta>)
           )}
         </div>
       </div>
-      <a
-        href={metadata.url}
-        target="_blank"
-        rel="noreferrer"
+      <button
+        type="button"
+        onClick={() => openExternal(metadata.url)}
         className="mt-1.5 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-acid"
       >
         <ExternalLink className="h-3 w-3" /> ver partida
-      </a>
+      </button>
     </CardFrame>
   )
 }
