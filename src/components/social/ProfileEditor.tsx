@@ -1,21 +1,16 @@
 import * as React from 'react'
 import {
   Cake,
-  Check,
   Clock,
-  Frame,
   Gamepad2,
   ImageIcon,
   ImagePlus,
   Link as LinkIcon,
   Loader2,
   Plus,
-  Sparkles,
-  Tag,
   Trash2,
   Upload,
-  X,
-  type LucideIcon
+  X
 } from 'lucide-react'
 import {
   Dialog,
@@ -41,7 +36,7 @@ import {
   resolveAssetUrl,
   type ProfileLink
 } from '@/lib/api'
-import type { CosmeticType, ShopItem } from '@/lib/api-gamification'
+import { DEFAULT_NAME_COLOR } from '@/lib/api-gamification'
 import {
   MONTHS,
   daysInMonth,
@@ -60,15 +55,14 @@ import { NameEffect } from './NameEffect'
  * Editor do perfil.
  *
  * Três abas, porque num painel único a pessoa rolava três telas e desistia
- * antes de achar os links: **Identidade** (quem você é), **Aparência**
- * (avatar, capa, cor e os cosméticos) e **Sobre você** (aniversário, fuso,
- * jogos, links).
+ * antes de achar os links: **Identidade** (quem você é), **Aparência** (foto
+ * e capa, e SÓ isso) e **Sobre você** (aniversário, fuso, jogos, links).
  *
- * COSMÉTICOS AQUI TAMBÉM, e não só na Lojinha: título, efeito de nome e
- * moldura são a parte mais visível do perfil, e o lugar onde a pessoa vai
- * mexer neles é "editar perfil" — não uma loja, que é onde se COMPRA. A
- * Lojinha continua sendo onde se compra; aqui só se escolhe o que usar, entre
- * o que já é seu.
+ * APARÊNCIA É FOTO E CAPA. Cor do nome, título, efeito e moldura — tudo que
+ * muda como o nome aparece pra quem está no servidor — vem da Lojinha, e é lá
+ * que se escolhe o que usar (o botão Equipar). Antes havia um seletor de cor
+ * livre aqui e os cosméticos apareciam nas duas telas; a cor virou item de
+ * loja (comum a lendário) e o servidor ignora `profileColor` neste PUT.
  *
  * IMAGEM sobe como arquivo (endpoint /uploads) ou vem de uma URL que o
  * servidor copia (/uploads/from-url) — nunca base64 no JSON, que incharia
@@ -78,17 +72,6 @@ import { NameEffect } from './NameEffect'
  * segunda modal: duas camadas do Radix sobrepostas travavam a interface
  * inteira (ver lib/interaction-guard.ts).
  */
-
-const PRESET_COLORS = [
-  '#6AFF00',
-  '#F2B705',
-  '#FF4D4D',
-  '#4DA6FF',
-  '#B84DFF',
-  '#FF4DA6',
-  '#00E5C0',
-  '#EAEAEA'
-]
 
 /** Os mais usados como botão; o campo continua aceitando qualquer coisa. */
 const PRONOUN_PRESETS = ['ele/dele', 'ela/dela', 'elu/delu', 'ele/ela']
@@ -100,13 +83,11 @@ type GifTarget = 'avatar' | 'banner' | null
 
 export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { token, user, applyUser } = useAuth()
-  const { shop, loadShop, equip } = useGamification()
 
   const [displayName, setDisplayName] = React.useState('')
   const [bio, setBio] = React.useState('')
   const [pronouns, setPronouns] = React.useState('')
   const [customStatus, setCustomStatus] = React.useState('')
-  const [profileColor, setProfileColor] = React.useState<string>('#6AFF00')
   const [avatar, setAvatar] = React.useState<string | null>(null)
   const [banner, setBanner] = React.useState<string | null>(null)
   const [links, setLinks] = React.useState<ProfileLink[]>([])
@@ -160,7 +141,6 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
     setBio(user.bio ?? '')
     setPronouns(user.pronouns ?? '')
     setCustomStatus(user.customStatus ?? '')
-    setProfileColor(user.profileColor ?? '#6AFF00')
     setAvatar(user.avatar ?? null)
     setBanner(user.banner ?? null)
     setLinks(parseLinks(user.links))
@@ -174,15 +154,6 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
     setGifFor(null)
     setTab('identidade')
   }, [open, user])
-
-  /**
-   * O catálogo já é carregado no login pelo contexto, mas rebuscamos ao abrir:
-   * comprar algo na Lojinha e vir direto pra cá tem que mostrar o item novo.
-   */
-  React.useEffect(() => {
-    if (!open) return
-    void loadShop()
-  }, [open, loadShop])
 
   const handleFile = async (kind: 'avatar' | 'banner', file: File | null): Promise<void> => {
     if (!file || !token) return
@@ -234,7 +205,6 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
         bio: bio.trim() || null,
         pronouns: pronouns.trim() || null,
         customStatus: customStatus.trim() || null,
-        profileColor,
         avatar,
         banner,
         // Link sem nome ou sem url é lixo; o servidor descartaria de qualquer jeito.
@@ -274,28 +244,6 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
     setGameDraft('')
   }
 
-  /**
-   * Equipar cosmético salva NA HORA, sem esperar o "Salvar".
-   *
-   * É outra rota (/gamification/equip) e outro conjunto de campos, então
-   * empurrar isso pro botão Salvar significaria duas chamadas que podem
-   * falhar pela metade — e o pior caso seria a pessoa achar que trocou de
-   * moldura quando não trocou. Aqui o efeito é imediato e visível na prévia.
-   */
-  const handleEquip = async (type: CosmeticType, cosmeticId: string | null): Promise<void> => {
-    setError(null)
-    try {
-      await equip(type, cosmeticId)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não deu pra equipar agora.')
-    }
-  }
-
-  const owned = React.useMemo(
-    () => (shop?.items ?? []).filter((item) => item.owned),
-    [shop]
-  )
-
   const birthdayLabel =
     birthMonth && birthDay ? formatBirthday(`${birthMonth}-${birthDay}`) : null
 
@@ -320,7 +268,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
               username={user?.username ?? ''}
               pronouns={pronouns}
               customStatus={customStatus}
-              profileColor={profileColor}
+              profileColor={user?.profileColor ?? DEFAULT_NAME_COLOR}
               avatar={avatar}
               banner={banner}
               title={user?.title}
@@ -365,10 +313,10 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                         // pra "prefiro não dizer" sem ter que apagar texto.
                         onClick={() => setPronouns((current) => (current === preset ? '' : preset))}
                         className={cn(
-                          'rounded-brutal border-2 px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors',
+                          'rounded-brutal border-2 px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
                           pronouns === preset
                             ? 'border-acid bg-acid/10 text-acid'
-                            : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-acid'
+                            : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
                         )}
                       >
                         {preset}
@@ -406,7 +354,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                     onChange={(e) => setBio(e.target.value)}
                     className="input-terminal w-full resize-none rounded-brutal p-2 text-sm"
                   />
-                  <p className="text-right font-mono text-[10px] text-muted-foreground">
+                  <p className="text-right font-mono text-[11.5px] text-muted-foreground">
                     {bio.length}/300
                   </p>
                 </div>
@@ -436,74 +384,10 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label>Cor do perfil</Label>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {PRESET_COLORS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setProfileColor(color)}
-                        title={color}
-                        style={{ backgroundColor: color }}
-                        className={cn(
-                          'h-6 w-6 rounded-brutal border-2 transition-transform',
-                          profileColor === color
-                            ? 'scale-110 border-dirty-white'
-                            : 'border-transparent hover:scale-105'
-                        )}
-                      />
-                    ))}
-                    <input
-                      type="color"
-                      value={profileColor}
-                      onChange={(e) => setProfileColor(e.target.value)}
-                      title="Cor personalizada"
-                      className="h-6 w-8 cursor-pointer rounded-brutal border-2 border-[#1a1a1a] bg-transparent p-0"
-                    />
-                  </div>
-                </div>
-
-                <CosmeticPicker
-                  type="title"
-                  label="Título"
-                  Icon={Tag}
-                  items={owned}
-                  equipped={user?.title ?? null}
-                  onEquip={(id) => void handleEquip('title', id)}
-                  renderSample={(item) => (
-                    <TitleTag titleId={item.id} name={item.name} tooltip={item.name} />
-                  )}
-                />
-                <CosmeticPicker
-                  type="nameEffect"
-                  label="Efeito no nome"
-                  Icon={Sparkles}
-                  items={owned}
-                  equipped={user?.nameEffect ?? null}
-                  onEquip={(id) => void handleEquip('nameEffect', id)}
-                  renderSample={(item) => (
-                    <NameEffect effect={item.id} className="font-display text-sm">
-                      {displayName || 'seu nome'}
-                    </NameEffect>
-                  )}
-                />
-                <CosmeticPicker
-                  type="avatarFrame"
-                  label="Moldura"
-                  Icon={Frame}
-                  items={owned}
-                  equipped={user?.avatarFrame ?? null}
-                  onEquip={(id) => void handleEquip('avatarFrame', id)}
-                  renderSample={(item) => (
-                    <UserAvatar
-                      src={resolveAssetUrl(avatar)}
-                      name={displayName || user?.username || '??'}
-                      frame={item.id}
-                      className="h-7 w-7 border-2"
-                    />
-                  )}
-                />
+                <p className="text-xs leading-snug text-muted-foreground">
+                  Cor do nome, título, efeito e moldura vêm da Lojinha — é lá que
+                  você compra e escolhe o que usar.
+                </p>
               </TabsContent>
 
               {/* --------------------------------------------- SOBRE VOCÊ */}
@@ -565,7 +449,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                       </button>
                     )}
                   </div>
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <p className="text-[11.5px] text-muted-foreground">
                     sem ano — só o dia, pra galera lembrar
                   </p>
                 </div>
@@ -590,12 +474,12 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                     <button
                       type="button"
                       onClick={() => setTimezone(detectTimezone())}
-                      className="shrink-0 rounded-brutal border-2 border-[#1a1a1a] px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid"
+                      className="shrink-0 rounded-brutal border-2 border-line px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground"
                     >
                       usar o meu
                     </button>
                   </div>
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <p className="text-[11.5px] text-muted-foreground">
                     {timezone
                       ? `agora são ${localTimeIn(timezone) ?? '--:--'} pra você`
                       : 'aparece no seu perfil como "que horas são pra essa pessoa"'}
@@ -606,7 +490,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label>Jogos que você joga</Label>
-                    <span className="font-mono text-[10px] text-muted-foreground">
+                    <span className="font-mono text-[11.5px] text-muted-foreground">
                       {games.length}/{MAX_GAMES}
                     </span>
                   </div>
@@ -621,10 +505,10 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                           onClick={() => toggleGame(game.key)}
                           disabled={!on && games.length >= MAX_GAMES}
                           className={cn(
-                            'flex items-center gap-1 rounded-brutal border-2 px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors',
+                            'flex items-center gap-1 rounded-brutal border-2 px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
                             on
                               ? 'border-acid bg-acid/10 text-acid'
-                              : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-acid disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#1a1a1a] disabled:hover:text-muted-foreground'
+                              : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-muted-foreground'
                           )}
                         >
                           <GameIcon game={game.key} className="h-3 w-3" />
@@ -645,7 +529,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                             type="button"
                             onClick={() => toggleGame(game)}
                             title="Tirar da lista"
-                            className="flex items-center gap-1 rounded-brutal border-2 border-acid bg-acid/10 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-acid"
+                            className="flex items-center gap-1 rounded-brutal border-2 border-acid bg-acid/10 px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest text-acid"
                           >
                             <Gamepad2 className="h-3 w-3" />
                             {gameLabel(game)}
@@ -674,7 +558,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                         type="button"
                         onClick={addGameDraft}
                         disabled={!gameDraft.trim()}
-                        className="shrink-0 rounded-brutal border-2 border-[#1a1a1a] p-1.5 text-muted-foreground transition-colors hover:border-acid/50 hover:text-acid disabled:opacity-40"
+                        className="shrink-0 rounded-brutal border-2 border-line p-1.5 text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground disabled:opacity-40"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -690,7 +574,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                       <button
                         type="button"
                         onClick={() => setLinks((prev) => [...prev, { name: '', url: '' }])}
-                        className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-acid"
+                        className="flex items-center gap-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <Plus className="h-3 w-3" />
                         adicionar
@@ -699,7 +583,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                   </div>
 
                   {links.length === 0 ? (
-                    <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    <p className="text-[11.5px] text-muted-foreground">
                       nenhum link
                     </p>
                   ) : (
@@ -731,7 +615,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                       ))}
                     </div>
                   )}
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <p className="text-[11.5px] text-muted-foreground">
                     só http(s) · máximo {MAX_LINKS}
                   </p>
                 </div>
@@ -803,7 +687,7 @@ function ProfilePreview({
   const localTime = localTimeIn(timezone)
 
   return (
-    <div className="shrink-0 overflow-hidden rounded-brutal border-2 border-[#1a1a1a]">
+    <div className="shrink-0 overflow-hidden rounded-brutal border-2 border-line">
       <div
         className="h-20 bg-void-light"
         style={
@@ -837,12 +721,12 @@ function ProfilePreview({
             </NameEffect>
             {titleName && <TitleTag titleId={title} name={titleName} />}
           </p>
-          <p className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="truncate text-[11.5px] text-muted-foreground">
             @{username}
             {pronouns && ` · ${pronouns}`}
           </p>
 
-          <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[10px] text-muted-foreground">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[11.5px] text-muted-foreground">
             {localTime && (
               <span className="flex items-center gap-1">
                 <Clock className="h-2.5 w-2.5" />
@@ -865,7 +749,7 @@ function ProfilePreview({
       </div>
 
       {customStatus && (
-        <p className="mx-3 mb-3 truncate rounded-brutal border border-[#1a1a1a] bg-void/60 px-2 py-1 text-xs text-foreground">
+        <p className="mx-3 mb-3 truncate rounded-brutal border border-line bg-void/60 px-2 py-1 text-xs text-foreground">
           {customStatus}
         </p>
       )}
@@ -902,7 +786,7 @@ function ImageField({
 
       <div
         className={cn(
-          'flex items-center justify-center overflow-hidden rounded-brutal border-2 border-[#1a1a1a] bg-void-light',
+          'flex items-center justify-center overflow-hidden rounded-brutal border-2 border-line bg-void-light',
           wide ? 'h-16' : 'h-16 w-16'
         )}
         style={
@@ -916,7 +800,7 @@ function ImageField({
         }
       >
         {working ? (
-          <Loader2 className="h-4 w-4 animate-spin text-acid" />
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : !value ? (
           <ImageIcon className="h-4 w-4 text-muted-foreground" />
         ) : null}
@@ -925,9 +809,9 @@ function ImageField({
       <div className="flex flex-wrap items-center gap-1">
         <label
           className={cn(
-            'flex cursor-pointer items-center gap-1 rounded-brutal border-2 border-[#1a1a1a] px-2 py-1',
-            'font-mono text-[10px] uppercase tracking-widest text-muted-foreground',
-            'transition-colors hover:border-acid/50 hover:text-acid'
+            'flex cursor-pointer items-center gap-1 rounded-brutal border-2 border-line px-2 py-1',
+            'font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground',
+            'transition-colors hover:border-acid/50 hover:text-foreground'
           )}
         >
           <Upload className="h-3 w-3" />
@@ -943,7 +827,7 @@ function ImageField({
         <button
           type="button"
           onClick={onGif}
-          className="flex items-center gap-1 rounded-brutal border-2 border-acid/60 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/10"
+          className="flex items-center gap-1 rounded-brutal border-2 border-acid/60 px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/10"
         >
           <ImagePlus className="h-3 w-3" />
           gif
@@ -961,91 +845,7 @@ function ImageField({
         )}
       </div>
 
-      <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{hint}</p>
-    </div>
-  )
-}
-
-// ============================================
-// COSMÉTICOS QUE JÁ SÃO SEUS
-// ============================================
-
-/**
- * Escolhe qual cosmético usar entre os que a pessoa já tem.
- *
- * Não vende nada: sem nenhum item do tipo, mostra a linha explicando que isso
- * vem da Lojinha. Trocar aqui salva na hora (ver handleEquip).
- */
-function CosmeticPicker({
-  type,
-  label,
-  Icon,
-  items,
-  equipped,
-  onEquip,
-  renderSample
-}: {
-  type: CosmeticType
-  label: string
-  /** Só enfeite ao lado do rótulo, pra separar as três seções de relance. */
-  Icon: LucideIcon
-  items: ShopItem[]
-  equipped: string | null
-  onEquip: (cosmeticId: string | null) => void
-  /** Como o item aparece no botão — é a prévia de quem decide se vai usar. */
-  renderSample: (item: ShopItem) => React.ReactNode
-}) {
-  const mine = items.filter((item) => item.type === type)
-
-  return (
-    <div className="space-y-1.5">
-      <Label className="flex items-center gap-1.5">
-        <Icon className="h-3 w-3" />
-        {label}
-      </Label>
-
-      {mine.length === 0 ? (
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          nenhum ainda — compra na lojinha
-        </p>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => onEquip(null)}
-            className={cn(
-              'flex items-center gap-1 rounded-brutal border-2 px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
-              equipped === null
-                ? 'border-acid bg-acid/10 text-acid'
-                : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-acid'
-            )}
-          >
-            <X className="h-3 w-3" />
-            nenhum
-          </button>
-
-          {mine.map((item) => {
-            const on = equipped === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onEquip(on ? null : item.id)}
-                title={item.description || item.name}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-brutal border-2 px-2 py-1.5 transition-colors',
-                  on
-                    ? 'border-acid bg-acid/10'
-                    : 'border-[#1a1a1a] hover:border-acid/50'
-                )}
-              >
-                {renderSample(item)}
-                {on && <Check className="h-3 w-3 shrink-0 text-acid" />}
-              </button>
-            )
-          })}
-        </div>
-      )}
+      <p className="text-[11px] text-muted-foreground">{hint}</p>
     </div>
   )
 }

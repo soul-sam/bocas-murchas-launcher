@@ -1,14 +1,19 @@
 import * as React from 'react'
-import { X, Coins, Loader2, Check, ShoppingBag, Tag, Sparkles, Frame, Smile } from 'lucide-react'
+import { X, Coins, Loader2, Check, ShoppingBag, Tag, Sparkles, Frame, Smile, Palette } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
 import {
+  cosmeticColor,
   cosmeticEmoji,
   formatCompact,
   RARITY_COLOR,
+  RARITY_GLYPH,
   RARITY_LABEL,
+  RARITY_STYLE,
   type CosmeticType,
-  type ShopItem
+  type Rarity,
+  type ShopItem,
+  DEFAULT_NAME_COLOR
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
@@ -36,7 +41,8 @@ const TABS: { type: CosmeticType; label: string; Icon: typeof Tag }[] = [
   { type: 'title', label: 'Títulos', Icon: Tag },
   { type: 'nameEffect', label: 'Efeitos', Icon: Sparkles },
   { type: 'avatarFrame', label: 'Molduras', Icon: Frame },
-  { type: 'emoji', label: 'Emojis', Icon: Smile }
+  { type: 'emoji', label: 'Emojis', Icon: Smile },
+  { type: 'nameColor', label: 'Cores', Icon: Palette }
 ]
 
 const RARITY_ORDER: Record<string, number> = { common: 0, rare: 1, epic: 2, legendary: 3 }
@@ -75,7 +81,12 @@ export function ShopModal() {
   if (!open || !user) return null
 
   const me = byId[user.id] ?? user
-  const color = me.profileColor ?? '#6AFF00'
+  // A cor também entra na prévia: passar o mouse numa cor pinta MEU nome com
+  // ela, igual acontece com efeito e moldura.
+  const color =
+    (hovered?.type === 'nameColor' ? cosmeticColor(hovered) : null) ??
+    me.profileColor ??
+    DEFAULT_NAME_COLOR
   const coins = profile?.coins ?? shop?.coins ?? 0
 
   const items = (shop?.items ?? [])
@@ -138,7 +149,7 @@ export function ShopModal() {
           type="button"
           aria-label="Fechar"
           onClick={close}
-          className="absolute right-3 top-3 text-muted-foreground hover:text-acid"
+          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>
@@ -147,7 +158,7 @@ export function ShopModal() {
           <ShoppingBag className="h-7 w-7 text-burn drop-shadow-[0_0_8px_rgba(242,183,5,0.6)]" />
           <div className="min-w-0 flex-1">
             <h2 className="title-brutal text-2xl">Lojinha</h2>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               enfeite pro seu nome, pago em murchos
             </p>
           </div>
@@ -157,12 +168,12 @@ export function ShopModal() {
           >
             <Coins className="h-4 w-4" />
             {formatCompact(coins)}
-            <span className="text-[10px] uppercase tracking-widest opacity-70">murchos</span>
+            <span className="text-[11.5px] opacity-70">murchos</span>
           </div>
         </div>
 
         {/* Prévia: eu, com o que está sob o mouse. */}
-        <div className="mb-4 flex items-center gap-3 rounded-brutal border border-[#1a1a1a] bg-void px-3 py-2">
+        <div className="mb-4 flex items-center gap-3 rounded-brutal border border-line bg-void px-3 py-2">
           <UserAvatar
             src={resolveAssetUrl(me.avatar)}
             name={me.displayName}
@@ -184,7 +195,7 @@ export function ShopModal() {
                 />
               )}
             </p>
-            <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               {hovered ? `prévia: ${hovered.name}` : 'é assim que a galera te vê'}
             </p>
           </div>
@@ -201,10 +212,10 @@ export function ShopModal() {
                 setError(null)
               }}
               className={cn(
-                'flex items-center gap-1.5 rounded-brutal border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors',
+                'flex items-center gap-1.5 rounded-brutal border-2 px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
                 tab === type
                   ? 'border-acid bg-acid/10 text-acid'
-                  : 'border-[#1a1a1a] text-muted-foreground hover:border-acid/50 hover:text-foreground'
+                  : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
               )}
             >
               <Icon className="h-3 w-3" />
@@ -287,17 +298,26 @@ function ItemTile({
   onEquip: () => void
   onUnequip: () => void
 }) {
-  const rarity = RARITY_COLOR[item.rarity] ?? RARITY_COLOR.common
+  const tier = (item.rarity as Rarity) ?? 'common'
+  const rarity = RARITY_COLOR[tier] ?? RARITY_COLOR.common
+  const style = RARITY_STYLE[tier] ?? RARITY_STYLE.common
   const affordable = coins >= item.price
 
   return (
     <div
       onMouseEnter={onHover}
+      /* A borda tingida e o halo VEM DA RARIDADE, e o halo so existe do epico
+         pra cima: se todo card brilhasse, nenhum se destacaria. Equipado troca
+         pra borda verde porque ai o que importa e o estado, nao o tier. */
       className={cn(
-        'flex flex-col gap-2 rounded-brutal border-2 bg-void/60 p-2 transition-colors',
-        item.equipped ? 'border-acid' : 'border-[#1a1a1a] hover:border-[#2a2a2a]'
+        'flex flex-col gap-2.5 rounded-brutal border bg-void/60 p-3 transition-colors',
+        item.equipped ? 'border-acid' : 'hover:border-border'
       )}
-      style={!item.equipped ? { borderColor: `${rarity}55` } : undefined}
+      style={
+        !item.equipped
+          ? { borderColor: style.ring, boxShadow: style.glow === 'none' ? undefined : style.glow }
+          : undefined
+      }
     >
       {/* Amostra do item, do jeito que vai aparecer. */}
       <div className="flex h-12 items-center justify-center rounded-brutal bg-void px-2">
@@ -306,7 +326,7 @@ function ItemTile({
             titleId={item.id}
             name={item.name}
             tooltip={item.description || item.name}
-            className="px-1.5 text-[10px] leading-5"
+            className="px-1.5 text-[11.5px] leading-5"
           />
         )}
         {item.type === 'nameEffect' && (
@@ -323,21 +343,47 @@ function ItemTile({
             <NameEmoji glyph={cosmeticEmoji(item)} className="text-2xl" />
           </span>
         )}
+        {item.type === 'nameColor' && (
+          <span className="flex items-center gap-2 truncate">
+            <span
+              aria-hidden
+              className="h-4 w-4 shrink-0 rounded-full border border-white/20"
+              style={{ background: cosmeticColor(item) ?? undefined }}
+            />
+            <span className="truncate font-display text-base" style={{ color: cosmeticColor(item) ?? undefined }}>
+              {me.name}
+            </span>
+          </span>
+        )}
       </div>
 
-      <div className="min-w-0">
-        <p className="flex items-center gap-1 truncate text-sm font-medium text-foreground">
-          <span className="truncate">{item.name}</span>
-          {item.equipped && <Check className="h-3 w-3 shrink-0 text-acid" aria-label="equipado" />}
-        </p>
-        <p
-          className="font-mono text-[9px] uppercase tracking-widest"
-          style={{ color: rarity }}
+      <div className="flex min-w-0 flex-col gap-1.5">
+        {/* Nome e PRECO na mesma linha. O preco e a informacao de decisao da
+            lojinha e vivia escondido dentro do botao, em 10px caixa-alta
+            espacada. Alinhado a direita em todos os cards, da pra comparar a
+            coluna inteira de cima a baixo sem reler card por card. */}
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="flex min-w-0 items-center gap-1 truncate text-sm font-semibold text-foreground">
+            <span className="truncate">{item.name}</span>
+            {item.equipped && <Check className="h-3 w-3 shrink-0 text-acid" aria-label="equipado" />}
+          </p>
+          <span className="shrink-0 font-mono text-base font-bold tabular-nums text-foreground">
+            {item.price.toLocaleString('pt-BR')}
+          </span>
+        </div>
+
+        {/* O GLIFO faz o trabalho que a cor sozinha nao faz: quem nao distingue
+            roxo de ambar continua lendo o tier. */}
+        <span
+          className="flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
+          style={{ color: rarity, borderColor: style.ring, background: style.wash }}
         >
+          <span aria-hidden>{RARITY_GLYPH[tier]}</span>
           {RARITY_LABEL[item.rarity] ?? item.rarity}
-        </p>
+        </span>
+
         {item.description && (
-          <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+          <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
             {item.description}
           </p>
         )}
@@ -350,7 +396,7 @@ function ItemTile({
             disabled={busy}
             onClick={item.equipped ? onUnequip : onEquip}
             className={cn(
-              'flex w-full items-center justify-center gap-1 rounded-brutal border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50',
+              'flex w-full items-center justify-center gap-1.5 rounded-brutal border px-2 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50',
               item.equipped
                 ? 'border-acid bg-acid/15 text-acid hover:bg-destructive/15 hover:text-destructive hover:border-destructive/60'
                 : 'border-acid-dark text-acid hover:bg-acid/15'
@@ -358,7 +404,7 @@ function ItemTile({
             title={item.equipped ? 'Clique pra tirar' : 'Equipar'}
           >
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : item.equipped ? <Check className="h-3 w-3" /> : null}
-            {item.equipped ? 'equipado' : 'equipar'}
+            {item.equipped ? 'Equipado' : 'Equipar'}
           </button>
         ) : confirming ? (
           <div className="flex gap-1">
@@ -366,35 +412,43 @@ function ItemTile({
               type="button"
               disabled={busy}
               onClick={onBuy}
-              className="flex flex-1 items-center justify-center gap-1 rounded-brutal border border-burn bg-burn/20 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-burn transition-colors hover:bg-burn/30 disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-brutal bg-acid px-2 py-1.5 text-xs font-bold text-void shadow-[0_0_16px_rgb(var(--neon-rgb)/0.25)] transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Coins className="h-3 w-3" />}
-              confirmar
+              Confirmar
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={onCancel}
-              className="rounded-brutal border border-[#1a1a1a] px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+              className="rounded-brutal border border-border px-2 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
             >
-              não
+              Não
             </button>
           </div>
         ) : (
+          // O botao diz o VERBO, nao o numero: o preco ja esta no topo do card.
+          // E fica em contorno, nao preenchido — uma grade de vinte botoes
+          // verdes solidos nao tem hierarquia nenhuma. O preenchimento aparece
+          // so no passo de confirmar, que por construcao e um de cada vez.
           <button
             type="button"
             disabled={!affordable || busy}
             onClick={onAskBuy}
-            title={affordable ? `Comprar por ${item.price} murchos` : `Faltam ${item.price - coins} murchos`}
-            className={cn(
-              'flex w-full items-center justify-center gap-1 rounded-brutal border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors',
+            title={
               affordable
-                ? 'border-burn/60 text-burn hover:bg-burn/15'
-                : 'cursor-not-allowed border-[#1a1a1a] text-muted-foreground opacity-60'
+                ? `Comprar por ${item.price.toLocaleString('pt-BR')} murchos`
+                : `Faltam ${(item.price - coins).toLocaleString('pt-BR')} murchos`
+            }
+            className={cn(
+              'flex w-full items-center justify-center gap-1.5 rounded-brutal border px-2 py-1.5 text-xs font-semibold transition-colors',
+              affordable
+                ? 'border-acid-dark text-acid hover:bg-acid/15'
+                : 'cursor-not-allowed border-border text-muted-foreground opacity-60'
             )}
           >
             <Coins className="h-3 w-3" />
-            {formatCompact(item.price)}
+            {affordable ? 'Comprar' : 'Sem saldo'}
           </button>
         )}
       </div>

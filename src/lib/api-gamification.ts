@@ -25,7 +25,14 @@ import { request, type GameSessionSummary } from './api'
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
 
-export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji'
+export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji' | 'nameColor'
+
+/**
+ * Cor do nome de quem não comprou nenhuma: a cor de texto padrão. Era o verde
+ * da marca, o que fazia TODO nome brilhar igual; agora o verde é um item épico
+ * da lojinha e só aparece em quem pagou por ele.
+ */
+export const DEFAULT_NAME_COLOR = '#EAEAEA'
 
 export interface Badge {
   id: string
@@ -279,12 +286,57 @@ export const RARITY_LABEL: Record<Rarity, string> = {
   legendary: 'lendário'
 }
 
-/** Cor hex por raridade — usada tanto em classe quanto em estilo inline. */
+/**
+ * Cor hex por raridade — usada tanto em classe quanto em estilo inline.
+ *
+ * A escala é FRIA → QUENTE e não encosta nas cores de sistema, de propósito:
+ *  - `rare` era #6AFF00, o mesmo verde do botão primário. Item raro parecia
+ *    controle clicável.
+ *  - `legendary` era #F2B705, o mesmo âmbar de alerta. Item lendário parecia
+ *    aviso de erro.
+ *  - `epic` era #B400FF: 4,1:1 sobre o fundo do app, reprovando WCAG AA — e
+ *    aplicado em rótulo pequeno, o pior lugar possível.
+ *
+ * Todas passam AA sobre #0B0B0B (6,4 / 9,6 / 9,6 / 12,5:1). A progressão de
+ * peso NÃO é carregada só pela cor: vem junto com RARITY_GLYPH e com a
+ * intensidade de brilho definida em RARITY_STYLE.
+ */
 export const RARITY_COLOR: Record<Rarity, string> = {
-  common: '#8C8C8C',
-  rare: '#6AFF00',
-  epic: '#B400FF',
-  legendary: '#F2B705'
+  common: '#9AA3A0',
+  rare: '#3FC1FF',
+  epic: '#D0A2FF',
+  legendary: '#FFC53D'
+}
+
+/**
+ * Identificador que NÃO depende de cor. Quem não distingue roxo de âmbar (ou
+ * está lendo em monocromia) continua lendo o tier pelo glifo.
+ */
+export const RARITY_GLYPH: Record<Rarity, string> = {
+  common: '○',
+  rare: '◆',
+  epic: '✦',
+  legendary: '★'
+}
+
+/**
+ * Peso visual por tier, para card e badge. `ring` é a borda, `wash` o fundo
+ * tingido e `glow` o halo — que só existe do épico pra cima, senão a loja
+ * inteira brilha e nada se destaca.
+ */
+export const RARITY_STYLE: Record<Rarity, { ring: string; wash: string; glow: string }> = {
+  common: { ring: '#3C443A', wash: 'transparent', glow: 'none' },
+  rare: { ring: 'rgba(63, 193, 255, 0.40)', wash: 'rgba(63, 193, 255, 0.08)', glow: 'none' },
+  epic: {
+    ring: 'rgba(208, 162, 255, 0.45)',
+    wash: 'rgba(208, 162, 255, 0.10)',
+    glow: '0 0 14px rgba(208, 162, 255, 0.10)'
+  },
+  legendary: {
+    ring: 'rgba(255, 197, 61, 0.55)',
+    wash: 'rgba(255, 197, 61, 0.12)',
+    glow: '0 0 20px rgba(255, 197, 61, 0.16), inset 0 1px 0 rgba(255, 197, 61, 0.14)'
+  }
 }
 
 export const METRIC_LABEL: Record<LeaderboardMetric, string> = {
@@ -336,6 +388,13 @@ export function cosmeticKey(id: string | null | undefined): string | null {
 export function cosmeticEmoji(item: Pick<ShopItem, 'data'> | undefined): string | null {
   const glyph = item?.data?.emoji
   return typeof glyph === 'string' && glyph ? glyph : null
+}
+
+/** Hex de um cosmético de cor de nome; null se não for um. */
+export function cosmeticColor(item: Pick<ShopItem, 'type' | 'data'> | undefined): string | null {
+  if (item?.type !== 'nameColor') return null
+  const hex = item.data?.color
+  return typeof hex === 'string' && /^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : null
 }
 
 /** Nome legível a partir só do id, quando o catálogo ainda não chegou. */

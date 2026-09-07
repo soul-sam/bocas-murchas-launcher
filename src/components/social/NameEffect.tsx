@@ -28,13 +28,22 @@ export function NameEffect({
   children,
   className,
   style,
-  title
+  title,
+  animated = true
 }: {
   effect: string | null | undefined
   children: React.ReactNode
   className?: string
   style?: React.CSSProperties
   title?: string
+  /**
+   * `false` congela o efeito num quadro so (cor/gradiente ficam, movimento
+   * nao). E o que a lista de membros e o autor de mensagem usam: la o efeito
+   * roda em DEZENAS de nomes ao mesmo tempo e vira movimento periferico
+   * permanente, competindo com o chat. O efeito completo continua no perfil,
+   * na lojinha e na call — onde a pessoa esta olhando pro nome.
+   */
+  animated?: boolean
 }) {
   const key = cosmeticKey(effect)
   const effectClass = key ? EFFECT_CLASS[key] : undefined
@@ -42,7 +51,7 @@ export function NameEffect({
 
   return (
     <span
-      className={cn(effectClass, className)}
+      className={cn(effectClass, effectClass && !animated && 'fx-static', className)}
       style={style}
       title={title}
       data-text={effectClass === 'fx-glow' ? text : undefined}
