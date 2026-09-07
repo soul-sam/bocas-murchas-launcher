@@ -67,6 +67,27 @@ const FRAME_STYLES: Record<string, string> = {
 
 export const AVATAR_FRAME_KEYS = Object.keys(FRAME_STYLES)
 
+/**
+ * A moldura fora do avatar.
+ *
+ * As classes `frame-*` só mexem em borda e sombra, então servem pra qualquer
+ * caixa — e é o que faz a moldura comprada aparecer TAMBÉM em volta da webcam
+ * na call, não só no quadradinho do avatar. Sem isso, quem pagou por uma
+ * moldura perdia ela justamente na hora em que todo mundo está olhando.
+ *
+ * A neon é a exceção: ela pinta a borda de transparente e o anel de verdade é
+ * um irmão posicionado atrás (`frame-neon-ring`, ver styles/effects.css). Quem
+ * usa isto precisa saber se tem que desenhar esse irmão — daí as duas funções.
+ */
+export function frameClass(frame: string | null | undefined): string | undefined {
+  const key = cosmeticKey(frame)
+  return key ? FRAME_STYLES[key] : undefined
+}
+
+export function frameNeedsRing(frame: string | null | undefined): boolean {
+  return cosmeticKey(frame) === 'neon'
+}
+
 /** Avatar com bolinha de status no canto, igual Discord. */
 export function UserAvatar({
   src,
@@ -86,18 +107,17 @@ export function UserAvatar({
   /** Id do cosmético de moldura (`frame:gold`) ou só a chave (`gold`). */
   frame?: string | null
 }) {
-  const frameKey = cosmeticKey(frame)
-  const frameClass = frameKey ? FRAME_STYLES[frameKey] : undefined
+  const frameStyle = frameClass(frame)
 
   return (
     <div className="relative shrink-0">
       {/* Anel neon fica ATRÁS do avatar: vem antes no DOM e o Avatar é
           `relative`, então pinta por cima dele. */}
-      {frameKey === 'neon' && <span aria-hidden className="frame-neon-ring" />}
+      {frameNeedsRing(frame) && <span aria-hidden className="frame-neon-ring" />}
 
       <Avatar
-        className={cn(className, frameClass, speaking && 'ring-2 ring-acid')}
-        style={ringColor && !speaking && !frameClass ? { borderColor: ringColor } : undefined}
+        className={cn(className, frameStyle, speaking && 'ring-2 ring-acid')}
+        style={ringColor && !speaking && !frameStyle ? { borderColor: ringColor } : undefined}
       >
         {src && <AvatarImage src={src} alt="" />}
         <AvatarFallback>{name.slice(0, 2)}</AvatarFallback>

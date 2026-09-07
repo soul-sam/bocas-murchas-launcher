@@ -41,8 +41,13 @@ export interface GamificationToast {
   kind: 'xp' | 'levelup' | 'badge' | 'coins' | 'checkin' | 'info' | 'error'
   title: string
   body?: string
-  /** Emoji ou ícone textual, quando tem. */
-  icon?: string
+  /**
+   * Id da badge, quando o toast é de badge. É daqui que sai o ícone de
+   * verdade (ver lib/cosmetic-icons.tsx) — antes vinha o emoji que o servidor
+   * guarda, que é desenhado pela fonte do sistema e sai diferente em cada
+   * máquina. Os outros tipos de toast usam o ícone do próprio `kind`.
+   */
+  badgeId?: string
   /** Epoch ms de quando sai da tela sozinho. */
   until: number
   /** Só nos de XP: soma e motivos, pra juntar vários blips num toast só. */
@@ -254,9 +259,10 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         if (res.awarded) {
           pushToast({
             kind: 'checkin',
-            icon: '🔥',
             title: 'Check-in!',
-            body: `+${res.awarded.xp} XP · streak ${res.awarded.streak} 🔥`,
+            // O toast de check-in já tem a chama do `kind` no ícone; repetir
+            // o emoji no texto era chama duas vezes na mesma linha.
+            body: `+${res.awarded.xp} XP · streak de ${res.awarded.streak}`,
             ttlMs: 6_000
           })
           sound('coins', true)
@@ -457,7 +463,6 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       setProfile((prev) => (prev ? { ...prev, level: data.level, xp: data.xp ?? prev.xp } : prev))
       pushToast({
         kind: 'levelup',
-        icon: '⬆',
         title: `Nível ${data.level}!`,
         body: 'subiu de nível',
         ttlMs: 6_000
@@ -485,7 +490,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       )
       pushToast({
         kind: 'badge',
-        icon: badge.icon || '🏅',
+        badgeId: badge.id,
         title: badge.name,
         body: badge.description || 'badge nova',
         ttlMs: 6_000
@@ -506,7 +511,6 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       if (data.delta !== 0) {
         pushToast({
           kind: 'coins',
-          icon: '🪙',
           title: `${data.delta > 0 ? '+' : '−'}${Math.abs(data.delta)} murchos`,
           body: xpReasonLabel(data.reason) || undefined
         })

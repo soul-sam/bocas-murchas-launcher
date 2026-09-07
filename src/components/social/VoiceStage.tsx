@@ -11,8 +11,6 @@ import {
   Music,
   Zap,
   Loader2,
-  Volume2,
-  VolumeX,
   Users,
   PanelLeftOpen,
   Video,
@@ -20,17 +18,16 @@ import {
   Tv,
   Radio
 } from 'lucide-react'
-import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
-import { useVoice, type ScreenShareFeed, type VoiceParticipant } from '@/lib/voice-context'
+import { useVoice, type ScreenShareFeed } from '@/lib/voice-context'
 import { useNudge } from '@/lib/nudge-context'
-import { useMembers, type Member } from '@/lib/members-context'
+import { useMembers } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { useWatch } from '@/lib/watch-context'
-import { ScreenStage, VideoSurface } from './ScreenStage'
+import { CallStage, ParticipantChip } from './CallStage'
+import { ScreenStage } from './ScreenStage'
 import { WatchStage } from './WatchStage'
-import { NameEmoji } from './NameEmoji'
 
 export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void }) {
   const voice = useVoice()
@@ -102,6 +99,17 @@ export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void 
     for (const feed of voice.cameras) map.set(feed.identity, feed.track)
     return map
   }, [voice.cameras])
+
+  /**
+   * O palco recebe funções em vez do Map e do dicionário crus: assim ele não
+   * precisa saber de onde sai membro, câmera nem volume, e serve tanto pro
+   * modo grade quanto pra fileira compacta.
+   */
+  const memberOf = React.useCallback((identity: string) => byId[identity], [byId])
+  const cameraOf = React.useCallback(
+    (identity: string) => cameraByIdentity.get(identity),
+    [cameraByIdentity]
+  )
 
   /**
    * Quem está no foco do palco.
@@ -237,8 +245,8 @@ export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void 
                 <ParticipantChip
                   key={participant.identity}
                   participant={participant}
-                  member={byId[participant.identity]}
-                  camera={cameraByIdentity.get(participant.identity)}
+                  member={memberOf(participant.identity)}
+                  camera={cameraOf(participant.identity)}
                   volume={voice.userVolume(participant.identity)}
                   onVolume={(value) => voice.setUserVolume(participant.identity, value)}
                   onContextMenu={(event) => openUserMenu(event, participant.identity)}
@@ -247,19 +255,14 @@ export function VoiceStage({ onOpenSoundboard }: { onOpenSoundboard: () => void 
             </div>
           </>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-wrap content-center items-center justify-center gap-2 overflow-y-auto sm:gap-3">
-            {voice.participants.map((participant) => (
-              <ParticipantTile
-                key={participant.identity}
-                participant={participant}
-                member={byId[participant.identity]}
-                camera={cameraByIdentity.get(participant.identity)}
-                volume={voice.userVolume(participant.identity)}
-                onVolume={(value) => voice.setUserVolume(participant.identity, value)}
-                onContextMenu={(event) => openUserMenu(event, participant.identity)}
-              />
-            ))}
-          </div>
+          <CallStage
+            participants={voice.participants}
+            memberOf={memberOf}
+            cameraOf={cameraOf}
+            volumeOf={voice.userVolume}
+            onVolume={voice.setUserVolume}
+            onContextMenu={openUserMenu}
+          />
         )}
 
         {/* Controles */}
@@ -395,231 +398,6 @@ function ScreenSharesBar({ feeds, onShow }: { feeds: ScreenShareFeed[]; onShow: 
         ver tela
       </span>
     </button>
-  )
-}
-
-/**
- * Card de quem esta na call, com o volume individual.
- *
- * O controle aparece no hover pra nao poluir o palco, MAS fica sempre visivel
- * quando o volume nao esta em 100%: sem isso a pessoa abaixava alguem, esquecia
- * e depois achava que o coleguinha estava com problema de microfone.
- */
-function ParticipantTile({
-  participant,
-  member,
-  camera,
-  volume,
-  onVolume,
-  onContextMenu
-}: {
-  participant: VoiceParticipant
-  member?: Member
-  /** Webcam ligada: o card vira vídeo em vez de avatar. */
-  camera?: Track
-  volume: number
-  onVolume: (volume: number) => void
-  onContextMenu: (event: React.MouseEvent) => void
-}) {
-  const muted = volume === 0
-  const adjusted = volume !== 1
-
-  return (
-    <div
-      onContextMenu={onContextMenu}
-      className={cn(
-        'group flex flex-col items-center gap-2 rounded-brutal border-2 p-3 transition-all sm:p-4',
-        camera ? 'w-52 sm:w-64' : 'w-36 sm:w-44',
-        participant.isSpeaking
-          ? 'border-acid bg-acid/5 shadow-[0_0_20px_rgba(106,255,0,0.2)]'
-          : 'border-[#1a1a1a] bg-void-light/30'
-      )}
-    >
-      <div className="relative">
-        {camera ? (
-          <span
-            className={cn(
-              'block aspect-video w-full overflow-hidden rounded-brutal border-2 bg-black',
-              participant.isSpeaking ? 'border-acid' : 'border-[#1a1a1a]'
-            )}
-          >
-            {/* Espelhado só na própria imagem: é como todo mundo se vê no
-                espelho, e vídeo de webcam invertido incomoda quem se olha. */}
-            <VideoSurface
-              track={camera}
-              className={cn('object-cover', participant.isLocal && 'scale-x-[-1]')}
-            />
-          </span>
-        ) : (
-          <UserAvatar
-            src={member?.avatar ?? participant.avatar}
-            name={participant.name}
-            ringColor={member?.profileColor}
-            speaking={participant.isSpeaking}
-            className="h-16 w-16 sm:h-20 sm:w-20"
-          />
-        )}
-
-        {participant.isScreenSharing && (
-          <span
-            title="Compartilhando tela"
-            className="absolute -right-1 -top-1 rounded-full border-2 border-void bg-destructive p-0.5"
-          >
-            <MonitorUp className="h-2.5 w-2.5 text-dirty-white" />
-          </span>
-        )}
-      </div>
-
-      <p className="flex w-full items-center justify-center gap-1 text-sm text-foreground sm:text-base">
-        <span className="truncate">{participant.name}</span>
-        <NameEmoji id={member?.emoji} size="md" />
-        {participant.isLocal && (
-          <span className="ml-1 text-[11px] text-muted-foreground">(você)</span>
-        )}
-      </p>
-
-      {!participant.micEnabled && <MicOff className="h-3.5 w-3.5 text-destructive" />}
-
-      {/* Nao existe "abaixar meu proprio volume" — eu nao me escuto. */}
-      {!participant.isLocal && (
-        <div
-          className={cn(
-            'flex w-full items-center gap-1.5 transition-opacity',
-            adjusted
-              ? 'opacity-100'
-              : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'
-          )}
-        >
-          <button
-            type="button"
-            title={
-              muted
-                ? `Voltar a ouvir ${participant.name}`
-                : `Mutar ${participant.name} só pra mim`
-            }
-            aria-label={muted ? 'Voltar a ouvir' : 'Mutar só pra mim'}
-            onClick={() => onVolume(muted ? 1 : 0)}
-            className={cn(
-              'shrink-0 transition-colors',
-              muted ? 'text-destructive' : 'text-muted-foreground hover:text-acid'
-            )}
-          >
-            {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-          </button>
-
-          <input
-            type="range"
-            min={0}
-            max={2}
-            step={0.05}
-            value={volume}
-            onChange={(e) => onVolume(Number(e.target.value))}
-            // O duplo clique volta pro padrao: com o maximo em 200% acertar
-            // exatamente 100% arrastando e chato.
-            onDoubleClick={() => onVolume(1)}
-            title={`Volume de ${participant.name}: ${Math.round(volume * 100)}% (2 cliques volta pro padrão)`}
-            aria-label={`Volume de ${participant.name}`}
-            className={cn('mini-slider min-w-0 flex-1', muted && 'is-muted')}
-          />
-
-          <span
-            className={cn(
-              'w-7 shrink-0 text-right font-mono text-[9px]',
-              muted ? 'text-destructive' : 'text-muted-foreground'
-            )}
-          >
-            {Math.round(volume * 100)}
-          </span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** Versao horizontal do card, pra quando o palco esta ocupado por uma tela. */
-function ParticipantChip({
-  participant,
-  member,
-  camera,
-  volume,
-  onVolume,
-  onContextMenu
-}: {
-  participant: VoiceParticipant
-  member?: Member
-  camera?: Track
-  volume: number
-  onVolume: (volume: number) => void
-  onContextMenu: (event: React.MouseEvent) => void
-}) {
-  const muted = volume === 0
-
-  return (
-    <div
-      onContextMenu={onContextMenu}
-      className={cn(
-        'flex shrink-0 items-center gap-1.5 rounded-brutal border-2 px-2 py-1',
-        participant.isSpeaking ? 'border-acid bg-acid/5' : 'border-[#1a1a1a] bg-void-light/30'
-      )}
-    >
-      {camera ? (
-        <span className="block h-6 w-10 shrink-0 overflow-hidden rounded-[3px] bg-black">
-          <VideoSurface
-            track={camera}
-            className={cn('object-cover', participant.isLocal && 'scale-x-[-1]')}
-          />
-        </span>
-      ) : (
-        <UserAvatar
-          src={member?.avatar ?? participant.avatar}
-          name={participant.name}
-          ringColor={member?.profileColor}
-          speaking={participant.isSpeaking}
-          className="h-7 w-7"
-        />
-      )}
-      <span className="max-w-28 truncate text-sm text-foreground">{participant.name}</span>
-      <NameEmoji id={member?.emoji} />
-
-      {participant.isScreenSharing && (
-        <MonitorUp className="h-3 w-3 shrink-0 text-destructive" aria-label="transmitindo" />
-      )}
-      {!participant.micEnabled && <MicOff className="h-3 w-3 shrink-0 text-destructive" />}
-
-      {!participant.isLocal && (
-        <>
-          <button
-            type="button"
-            title={
-              muted
-                ? `Voltar a ouvir ${participant.name}`
-                : `Mutar ${participant.name} só pra mim`
-            }
-            aria-label={muted ? 'Voltar a ouvir' : 'Mutar só pra mim'}
-            onClick={() => onVolume(muted ? 1 : 0)}
-            className={cn(
-              'shrink-0 transition-colors',
-              muted ? 'text-destructive' : 'text-muted-foreground hover:text-acid'
-            )}
-          >
-            {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-          </button>
-
-          <input
-            type="range"
-            min={0}
-            max={2}
-            step={0.05}
-            value={volume}
-            onChange={(e) => onVolume(Number(e.target.value))}
-            onDoubleClick={() => onVolume(1)}
-            title={`Volume de ${participant.name}: ${Math.round(volume * 100)}% (2 cliques volta pro padrão)`}
-            aria-label={`Volume de ${participant.name}`}
-            className={cn('mini-slider hidden w-16 shrink-0 sm:block', muted && 'is-muted')}
-          />
-        </>
-      )}
-    </div>
   )
 }
 

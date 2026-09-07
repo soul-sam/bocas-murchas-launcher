@@ -1,5 +1,6 @@
 import { X, Zap, ArrowUp, Award, Coins, Flame, Info, TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { BadgeIcon } from '@/lib/cosmetic-icons'
 import type { GamificationToast } from '@/lib/gamification-context'
 import '@/styles/effects.css'
 
@@ -58,8 +59,9 @@ function ToastRow({ toast, onDismiss }: { toast: GamificationToast; onDismiss: (
       )}
     >
       <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center', accent.text)}>
-        {toast.icon && toast.kind !== 'xp' && toast.kind !== 'coins' ? (
-          <span className="text-base leading-none">{toast.icon}</span>
+        {/* Badge nova mostra o ícone DELA; o resto usa o ícone do tipo. */}
+        {toast.badgeId ? (
+          <BadgeIcon badgeId={toast.badgeId} className="h-4 w-4" />
         ) : (
           <Icon className="h-3.5 w-3.5" />
         )}

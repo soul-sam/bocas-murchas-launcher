@@ -1,9 +1,17 @@
 import * as React from 'react'
-import { Zap, Shield, ExternalLink, Coins, Flame } from 'lucide-react'
+import { Zap, Shield, ExternalLink, Coins, Flame, Swords, Cake, Clock } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { UserAvatar } from '@/components/ui/avatar'
-import { parseLinks, resolveAssetUrl } from '@/lib/api'
-import { formatCompact, RARITY_COLOR, type GamificationProfile } from '@/lib/api-gamification'
+import { parseFavoriteGames, parseLinks, resolveAssetUrl } from '@/lib/api'
+import { formatCompact, type GamificationProfile } from '@/lib/api-gamification'
+import { BadgeChip, TitleTag } from '@/lib/cosmetic-icons'
+import {
+  formatBirthday,
+  hourDifference,
+  isBirthdayToday,
+  localTimeIn
+} from '@/lib/profile-extras'
+import { GameIcon, gameLabel } from './GameIcon'
 import type { Member } from '@/lib/members-context'
 import { useAuth } from '@/lib/auth-context'
 import { useNudge } from '@/lib/nudge-context'
@@ -58,6 +66,7 @@ export function ProfileCard({
   const riotId = member.riotGameName ? `${member.riotGameName}#${member.riotTagLine ?? ''}` : null
   const title = cosmeticName(member.title)
   const inMatch = !isSelf && activity?.phase === 'in-progress'
+  const games = parseFavoriteGames(member.favoriteGames)
 
   React.useEffect(() => {
     if (!open || isSelf) return
@@ -175,12 +184,14 @@ export function ProfileCard({
               @{member.username}
               {member.pronouns && ` · ${member.pronouns}`}
             </span>
-            {title && (
-              <span className="shrink-0 rounded-brutal border border-burn/40 px-1 leading-4 text-burn">
-                {title}
-              </span>
-            )}
+            {title && <TitleTag titleId={member.title} name={title} />}
           </p>
+
+          <PersonalLine
+            timezone={member.timezone}
+            birthday={member.birthday}
+            games={games}
+          />
 
           {gp && <GamificationBlock profile={gp} />}
           <ChessBlock userId={member.id} isSelf={isSelf} open={open} />
@@ -193,10 +204,11 @@ export function ProfileCard({
 
           {riotId && (
             <p
-              className="mt-1.5 font-mono text-[10px] text-muted-foreground"
+              className="mt-1.5 flex items-center gap-1 font-mono text-[10px] text-muted-foreground"
               title="Riot ID lido do cliente do LoL"
             >
-              ⚔ {riotId}
+              <Swords className="h-3 w-3 shrink-0" aria-hidden />
+              {riotId}
             </p>
           )}
 
@@ -234,6 +246,80 @@ export function ProfileCard({
         </div>
       </PopoverContent>
     </Popover>
+  )
+}
+
+/**
+ * Hora local, aniversário e jogos.
+ *
+ * A HORA vem com a diferença em relação a quem está olhando: saber que são
+ * 04:12 pra alguém só ajuda depois de fazer a conta de cabeça, e a pergunta
+ * real antes de chamar pra call é "ele tá acordado?".
+ *
+ * O ANIVERSÁRIO é comparado no fuso DA PESSOA (ver lib/profile-extras.ts): às
+ * 22h de Lisboa já é o dia seguinte lá, e o aniversário é dela.
+ *
+ * A linha inteira desaparece quando não tem nada pra dizer — perfil de quem
+ * não preencheu nada continua igual ao que era.
+ */
+function PersonalLine({
+  timezone,
+  birthday,
+  games
+}: {
+  timezone?: string | null
+  birthday?: string | null
+  games: string[]
+}) {
+  const localTime = localTimeIn(timezone)
+  const diff = hourDifference(timezone)
+  const birthdayLabel = formatBirthday(birthday)
+  const birthdayToday = isBirthdayToday(birthday, timezone)
+
+  if (!localTime && !birthdayLabel && games.length === 0) return null
+
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[10px] text-muted-foreground">
+      {localTime && (
+        <span
+          className="flex items-center gap-1"
+          title={
+            diff === null
+              ? 'Mesmo fuso que o seu'
+              : `${Math.abs(diff)}h ${diff > 0 ? 'à frente' : 'atrás'} de você`
+          }
+        >
+          <Clock className="h-2.5 w-2.5 shrink-0" />
+          {localTime}
+          {diff !== null && (
+            <span className="opacity-70">
+              ({diff > 0 ? '+' : '−'}
+              {Math.abs(diff)}h)
+            </span>
+          )}
+        </span>
+      )}
+
+      {birthdayLabel && (
+        <span
+          className={cn('flex items-center gap-1', birthdayToday && 'font-bold text-burn')}
+          title={birthdayToday ? 'É HOJE. Dá os parabéns.' : `Aniversário: ${birthdayLabel}`}
+        >
+          <Cake className="h-2.5 w-2.5 shrink-0" />
+          {birthdayToday ? 'é hoje!' : birthdayLabel}
+        </span>
+      )}
+
+      {games.length > 0 && (
+        <span className="flex items-center gap-1.5">
+          {games.map((game) => (
+            <span key={game} className="flex items-center" title={gameLabel(game)}>
+              <GameIcon game={game} className="h-3 w-3" />
+            </span>
+          ))}
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -282,14 +368,13 @@ function GamificationBlock({ profile }: { profile: GamificationProfile }) {
       {profile.badges.length > 0 && (
         <div className="flex flex-wrap items-center gap-1">
           {shown.map((badge) => (
-            <span
+            <BadgeChip
               key={badge.id}
-              title={`${badge.name} — ${badge.description}`}
-              className="flex h-6 w-6 items-center justify-center rounded-brutal border bg-void text-sm leading-none"
-              style={{ borderColor: `${RARITY_COLOR[badge.rarity] ?? RARITY_COLOR.common}66` }}
-            >
-              {badge.icon}
-            </span>
+              badgeId={badge.id}
+              name={badge.name}
+              description={badge.description}
+              rarity={badge.rarity}
+            />
           ))}
           {rest > 0 && (
             <span className="font-mono text-[9px] text-muted-foreground">+{rest}</span>

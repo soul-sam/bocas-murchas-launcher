@@ -9,6 +9,7 @@ import { useOverlays } from '@/lib/overlay-context'
 import { useSocket, type ActivityEntry } from '@/lib/socket-context'
 import { useLayout } from '@/lib/layout-context'
 import { useGamification } from '@/lib/gamification-context'
+import { TitleIcon } from '@/lib/cosmetic-icons'
 import { ProfileCard } from './ProfileCard'
 import { ActivityLine } from './ActivityLine'
 import { NameEffect } from './NameEffect'
@@ -230,8 +231,9 @@ function Group({
                       </span>
                     ) : (
                       title && (
-                        <span className="block truncate font-mono text-[9px] uppercase tracking-widest text-burn/80">
-                          {title}
+                        <span className="flex items-center gap-1 truncate font-mono text-[9px] uppercase tracking-widest text-burn/80">
+                          <TitleIcon titleId={member.title} className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate">{title}</span>
                         </span>
                       )
                     )}

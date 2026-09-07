@@ -106,6 +106,12 @@ export interface AuthUser {
   /** Riot ID lido do cliente do LoL. */
   riotGameName?: string | null
   riotTagLine?: string | null
+  /** Dia do aniversário como "MM-DD". Sem ano — ninguém pediu idade. */
+  birthday?: string | null
+  /** Fuso IANA ("America/Sao_Paulo"), pro perfil mostrar a hora local. */
+  timezone?: string | null
+  /** JSON string de string[] — use parseFavoriteGames(). */
+  favoriteGames?: string | null
 }
 
 // Tipos de presença de jogo, compartilhados com o processo main.
@@ -116,6 +122,22 @@ export type {
   LolStatus,
   LolGameResult
 } from '../../electron/preload/types'
+
+/**
+ * Jogos favoritos, guardados como JSON string igual aos links.
+ *
+ * Mesma tolerância do parseLinks: campo estragado no banco não pode derrubar
+ * o cartão de perfil de quem abre — devolve lista vazia e a vida segue.
+ */
+export function parseFavoriteGames(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((g): g is string => typeof g === 'string') : []
+  } catch {
+    return []
+  }
+}
 
 export function parseLinks(raw: string | null | undefined): ProfileLink[] {
   if (!raw) return []
@@ -180,6 +202,11 @@ export interface ProfilePatch {
   profileColor?: string | null
   links?: ProfileLink[] | null
   customStatus?: string | null
+  /** "MM-DD" ou null pra limpar. */
+  birthday?: string | null
+  /** Fuso IANA ou null pra limpar. */
+  timezone?: string | null
+  favoriteGames?: string[] | null
 }
 
 export const users = {
@@ -256,6 +283,26 @@ export const uploads = {
     const form = new FormData()
     form.append('file', file)
     return upload<UploadedFile>('/uploads/file', form, token)
+  },
+
+  /**
+   * Copia uma imagem de uma URL pro nosso storage e devolve a URL local.
+   *
+   * É por aqui que o GIF escolhido no seletor entra no perfil. O servidor
+   * baixa e guarda em vez de a gente salvar o link do Giphy direto, porque
+   * aquela URL carrega um token com validade — o avatar apareceria quebrado
+   * semanas depois. Ver a rota em routes/uploads.routes.ts.
+   */
+  async fromUrl(
+    token: string,
+    kind: 'avatar' | 'banner',
+    url: string
+  ): Promise<{ url: string; sizeBytes: number; mimeType: string }> {
+    return request('/uploads/from-url', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ kind, url })
+    })
   }
 }
 

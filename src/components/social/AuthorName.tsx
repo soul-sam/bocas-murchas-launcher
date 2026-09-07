@@ -2,6 +2,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/lib/members-context'
 import { useGamification } from '@/lib/gamification-context'
+import { TitleTag } from '@/lib/cosmetic-icons'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 
@@ -49,16 +50,12 @@ export function AuthorName({
         {displayName}
       </NameEffect>
 
+      {/* O emoji ao lado do nome e cosmetico COMPRADO: e conteudo que a
+          pessoa escolheu, nao enfeite da interface — por isso continua emoji
+          mesmo com os icones no resto. */}
       <NameEmoji id={member?.emoji} />
 
-      {title && (
-        <span
-          title="Título equipado (lojinha)"
-          className="shrink-0 cursor-default rounded-brutal border border-burn/40 px-1 font-mono text-[9px] uppercase leading-4 tracking-widest text-burn"
-        >
-          {title}
-        </span>
-      )}
+      {title && <TitleTag titleId={member?.title} name={title} />}
     </span>
   )
 }

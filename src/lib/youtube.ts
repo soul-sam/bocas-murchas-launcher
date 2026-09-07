@@ -201,10 +201,57 @@ export function parsePlayerMessage(event: MessageEvent, expectedId: string): YtM
 }
 
 /**
- * Códigos de erro do player que significam "esse vídeo não toca embutido":
- * 101 e 150 são o dono desabilitando o embed, 100 é vídeo removido/privado.
- * Nesses casos só resta abrir no YouTube de verdade.
+ * O que mostrar na tela pra cada erro do player.
+ *
+ * Texto por código porque um "não deu pra tocar" genérico manda a pessoa ficar
+ * tentando de novo — e cada um desses pede uma atitude diferente: trocar de
+ * vídeo, abrir no YouTube, ou atualizar o launcher.
+ *
+ * O 153 é o mais traiçoeiro, e foi ele que deixou o assistir junto quebrado no
+ * app instalado: significa "requisição sem Referer válido". O player CARREGA,
+ * responde o aperto de mão (`onReady` chega) e só depois manda 153 — sem nunca
+ * mandar `infoDelivery`, que é de onde saem tempo e estado. Resultado: tela
+ * preta eterna, sem erro visível em lugar nenhum. A correção de verdade mora
+ * no processo principal (electron/main/services/embed-referer.ts, que preenche
+ * o Referer); o texto aqui é a rede de segurança, pra pelo menos DIZER o que
+ * aconteceu se o YouTube apertar essa regra de novo.
  */
-export function isEmbedBlockedError(code: number): boolean {
-  return code === 100 || code === 101 || code === 150
+const PLAYER_ERROR: Record<number, { title: string; body: string }> = {
+  2: {
+    title: 'Esse link do YouTube não presta.',
+    body: 'O player recusou o id do vídeo. Cola o link de novo, direto da barra do YouTube.'
+  },
+  5: {
+    title: 'O player do YouTube engasgou.',
+    body: 'Erro do lado deles com esse vídeo. Tenta pôr de novo, ou troca por outro.'
+  },
+  100: {
+    title: 'Esse vídeo não existe mais.',
+    body: 'Foi removido ou virou privado. Só trocando por outro.'
+  },
+  101: {
+    title: 'Esse vídeo não deixa embutir.',
+    body: 'O dono do canal bloqueou o player fora do YouTube. Dá pra abrir lá e sincronizar no grito, ou trocar por outro.'
+  },
+  150: {
+    title: 'Esse vídeo não deixa embutir.',
+    body: 'O dono do canal bloqueou o player fora do YouTube. Dá pra abrir lá e sincronizar no grito, ou trocar por outro.'
+  },
+  153: {
+    title: 'O YouTube recusou o player do launcher.',
+    body: 'Isso é bug do launcher, não do vídeo — e já tem correção. Atualiza o launcher; se continuar, avisa no chat.'
+  }
+}
+
+/** Código desconhecido ainda ganha um texto: melhor o número do que nada. */
+export function playerErrorInfo(
+  code: number | null | undefined
+): { title: string; body: string } | null {
+  if (typeof code !== 'number') return null
+  return (
+    PLAYER_ERROR[code] ?? {
+      title: 'Não deu pra tocar esse vídeo.',
+      body: `O player devolveu o erro ${code}. Abrir no YouTube costuma dizer o motivo.`
+    }
+  )
 }

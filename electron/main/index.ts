@@ -5,6 +5,7 @@ import { registerIpcHandlers } from './ipc.js'
 import { initUpdater, stopUpdater } from './services/updater.js'
 import { startServerStatusPolling } from './services/server-status.js'
 import { initScreenShare } from './services/screen-share.js'
+import { initEmbedReferer } from './services/embed-referer.js'
 import { clearHotkeys } from './services/hotkeys.js'
 import {
   initTray,
@@ -147,6 +148,9 @@ if (!gotTheLock) {
   app.whenReady().then(async () => {
     registerIpcHandlers()
     initScreenShare()
+    // Antes da janela existir: mexe na sessao default, que e a que a janela vai
+    // usar. Depois do primeiro carregamento ja seria tarde pro embed do YouTube.
+    initEmbedReferer()
 
     // Preenche o cache antes da janela existir, senao o primeiro 'close'
     // decidiria com o padrao em vez da preferencia salva.

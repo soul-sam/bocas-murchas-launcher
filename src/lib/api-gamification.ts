@@ -313,7 +313,9 @@ export function formatMetricValue(metric: LeaderboardMetric, value: number): str
     const minutes = Math.round(value % 60)
     return hours > 0 ? `${hours}h${String(minutes).padStart(2, '0')}` : `${minutes} min`
   }
-  if (metric === 'streak') return `${value} 🔥`
+  // Streak sai como número puro: a chama é desenhada como ícone ao lado, em
+  // quem mostra o valor (ver LeaderboardPanel), e não como emoji no texto.
+  if (metric === 'streak') return `${value} d`
   return formatCompact(value)
 }
 

@@ -10,7 +10,8 @@ import {
   ChevronUp,
   Swords,
   Pickaxe,
-  Radio
+  Radio,
+  Medal
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { parseMetadata, resolveAssetUrl } from '@/lib/api'
@@ -19,7 +20,6 @@ import {
   formatCompact,
   formatMetricValue,
   METRIC_LABEL,
-  RARITY_COLOR,
   type LeaderboardEntry,
   type LeaderboardMetric,
   type LeaderboardPeriod,
@@ -32,6 +32,7 @@ import { useOverlays } from '@/lib/overlay-context'
 import { useMembers } from '@/lib/members-context'
 import { useGamification } from '@/lib/gamification-context'
 import { queueLabel } from '@/lib/activity-context'
+import { AwardIcon, BadgeChip, TitleTag } from '@/lib/cosmetic-icons'
 import { cn } from '@/lib/utils'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
@@ -50,7 +51,12 @@ import { formatElapsed } from './ActivityLine'
 
 const METRICS: LeaderboardMetric[] = ['xp', 'coins', 'streak', 'wins', 'voice', 'sounds', 'messages']
 
-const MEDAL = ['🥇', '🥈', '🥉']
+/**
+ * Pódio. Cor em vez de emoji de medalha: 🥇🥈🥉 saem com desenho diferente em
+ * cada versão do Windows e desalinham a coluna, porque cada um tem largura
+ * própria. Aqui os três ocupam o mesmo espaço.
+ */
+const MEDAL_COLOR = ['#F2B705', '#C9C9C9', '#B87333']
 
 export function LeaderboardPanel() {
   const { closeLeaderboard: close } = useLayout()
@@ -148,9 +154,7 @@ function MyCard() {
             </NameEffect>
             <NameEmoji id={me.emoji} size="md" />
           </p>
-          {title && (
-            <p className="truncate font-mono text-[9px] uppercase tracking-widest text-burn">{title}</p>
-          )}
+          {title && <TitleTag titleId={me.title} name={title} className="mt-0.5 inline-flex max-w-full" />}
           <p className="mt-0.5 flex items-center gap-2 font-mono text-[10px]">
             <span className="flex items-center gap-1 text-burn" title="Murchos">
               <Coins className="h-3 w-3" />
@@ -187,14 +191,13 @@ function MyCard() {
       {profile.badges.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1">
           {profile.badges.slice(0, 10).map((badge) => (
-            <span
+            <BadgeChip
               key={badge.id}
-              title={`${badge.name} — ${badge.description}`}
-              className="flex h-6 w-6 items-center justify-center rounded-brutal border bg-void text-sm leading-none"
-              style={{ borderColor: `${RARITY_COLOR[badge.rarity] ?? RARITY_COLOR.common}66` }}
-            >
-              {badge.icon}
-            </span>
+              badgeId={badge.id}
+              name={badge.name}
+              description={badge.description}
+              rarity={badge.rarity}
+            />
           ))}
           {profile.badges.length > 10 && (
             <span className="font-mono text-[9px] text-muted-foreground">+{profile.badges.length - 10}</span>
@@ -265,7 +268,9 @@ function RecapSummary({ recap }: { recap: WeeklyRecap }) {
           const person = byId[award.userId]
           return (
             <li key={award.key} className="flex items-center gap-1.5 text-xs">
-              <span className="w-5 text-center text-sm leading-none">{award.emoji}</span>
+              <span className="flex w-5 shrink-0 items-center justify-center text-burn">
+                <AwardIcon awardKey={award.key} className="h-3.5 w-3.5" />
+              </span>
               <span className="min-w-0 flex-1 truncate">
                 <span className="text-muted-foreground">{award.title}: </span>
                 <span
@@ -397,14 +402,19 @@ function Ranking() {
                     isMe && 'bg-acid/[0.06] shadow-[inset_2px_0_0_#6AFF00]'
                   )}
                 >
-                  <span
-                    className={cn(
-                      'w-6 shrink-0 text-center font-mono text-[10px]',
-                      entry.rank <= 3 ? 'text-base leading-none' : 'text-muted-foreground'
-                    )}
-                  >
-                    {MEDAL[entry.rank - 1] ?? `#${entry.rank}`}
-                  </span>
+                  {entry.rank <= 3 ? (
+                    <span
+                      className="flex w-6 shrink-0 items-center justify-center"
+                      style={{ color: MEDAL_COLOR[entry.rank - 1] }}
+                      title={`${entry.rank}º lugar`}
+                    >
+                      <Medal className="h-4 w-4" aria-hidden />
+                    </span>
+                  ) : (
+                    <span className="w-6 shrink-0 text-center font-mono text-[10px] text-muted-foreground">
+                      #{entry.rank}
+                    </span>
+                  )}
                   <UserAvatar
                     src={resolveAssetUrl(person?.avatar ?? entry.avatar)}
                     name={person?.displayName ?? entry.displayName}

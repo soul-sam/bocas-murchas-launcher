@@ -17,6 +17,7 @@ import { useGamification } from '@/lib/gamification-context'
 import { cn } from '@/lib/utils'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
+import { TitleTag } from '@/lib/cosmetic-icons'
 
 /**
  * LOJINHA — gastar murchos em título, efeito de nome, moldura de avatar e
@@ -84,6 +85,8 @@ export function ShopModal() {
   // Prévia: item sob o mouse ganha do equipado, mas só no slot dele.
   const previewTitle =
     hovered?.type === 'title' ? hovered.name : titleName(shop?.items, me.title)
+  // O id, e nao so o nome: e dele que sai o icone do titulo.
+  const previewTitleId = hovered?.type === 'title' ? hovered.id : me.title
   const previewEffect = hovered?.type === 'nameEffect' ? hovered.id : me.nameEffect
   const previewFrame = hovered?.type === 'avatarFrame' ? hovered.id : me.avatarFrame
   const previewEmoji =
@@ -174,9 +177,11 @@ export function ShopModal() {
               </NameEffect>
               <NameEmoji glyph={previewEmoji} size="md" />
               {previewTitle && (
-                <span className="shrink-0 rounded-brutal border border-burn/40 px-1 font-mono text-[9px] uppercase leading-4 tracking-widest text-burn">
-                  {previewTitle}
-                </span>
+                <TitleTag
+                  titleId={previewTitleId}
+                  name={previewTitle}
+                  tooltip={hovered?.type === 'title' ? `prévia: ${previewTitle}` : undefined}
+                />
               )}
             </p>
             <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
@@ -297,9 +302,12 @@ function ItemTile({
       {/* Amostra do item, do jeito que vai aparecer. */}
       <div className="flex h-12 items-center justify-center rounded-brutal bg-void px-2">
         {item.type === 'title' && (
-          <span className="rounded-brutal border border-burn/40 px-1.5 font-mono text-[10px] uppercase leading-5 tracking-widest text-burn">
-            {item.name}
-          </span>
+          <TitleTag
+            titleId={item.id}
+            name={item.name}
+            tooltip={item.description || item.name}
+            className="px-1.5 text-[10px] leading-5"
+          />
         )}
         {item.type === 'nameEffect' && (
           <span className="truncate font-display text-base" style={{ color: me.color }}>

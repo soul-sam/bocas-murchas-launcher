@@ -6,6 +6,7 @@ import { resolveAssetUrl } from '@/lib/api'
 import { formatCompact, type RecapCardMeta } from '@/lib/api-gamification'
 import { useMembers } from '@/lib/members-context'
 import { NameEmoji } from '@/components/social/NameEmoji'
+import { AwardIcon, BadgeIcon } from '@/lib/cosmetic-icons'
 
 /**
  * CARTÃO DE RECAP SEMANAL.
@@ -69,7 +70,7 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                 const who = byId[grant.userId]
                 return (
                   <li key={`${grant.userId}-${grant.badgeId}-${index}`} className="flex items-center gap-1">
-                    <span className="text-sm leading-none">{grant.icon}</span>
+                    <BadgeIcon badgeId={grant.badgeId} className="h-3 w-3 shrink-0 text-burn" />
                     <span className="text-foreground">{grant.name}</span>
                     <span className="text-muted-foreground">→</span>
                     <span style={who?.profileColor ? { color: who.profileColor } : undefined}>
@@ -96,7 +97,9 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                 const color = who?.profileColor ?? undefined
                 return (
                   <li key={award.key} className="flex items-center gap-2">
-                    <span className="w-6 shrink-0 text-center text-lg leading-none">{award.emoji}</span>
+                    <span className="flex w-6 shrink-0 items-center justify-center text-burn">
+                      <AwardIcon awardKey={award.key} className="h-4 w-4" />
+                    </span>
                     <UserAvatar
                       src={resolveAssetUrl(who?.avatar)}
                       name={name}

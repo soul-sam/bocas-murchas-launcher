@@ -25,8 +25,8 @@ import { useWatch, type WatchAck, type WatchSession } from '@/lib/watch-context'
 import { openExternal } from '@/lib/rich-text'
 import {
   YT_STATE,
-  isEmbedBlockedError,
   parsePlayerMessage,
+  playerErrorInfo,
   sendPlayerCommand,
   sendPlayerListening,
   youtubeEmbedUrl,
@@ -58,9 +58,12 @@ import {
  * cinco `watch:next`). É quem trouxe o vídeo, se ainda está na call; senão o
  * primeiro da lista em ordem de identidade, que é igual em todas as máquinas.
  *
- * ATENÇÃO: alguns vídeos não tocam embutidos — o dono do canal desabilita
- * (erros 101/150) ou o vídeo é privado/removido (100). O player avisa e a
- * gente oferece "abrir no YouTube"; não tem contorno pra isso.
+ * QUANDO O PLAYER ERRA: o `onError` guarda o código e o palco vira uma tela
+ * com o motivo em português e o botão de abrir no YouTube — cada código pede
+ * uma atitude diferente (ver playerErrorInfo em lib/youtube.ts). Vídeo que o
+ * dono bloqueou (101/150) ou que foi removido (100) não tem contorno; já o 153
+ * é bug NOSSO e a correção mora no processo principal
+ * (electron/main/services/embed-referer.ts).
  */
 
 /** Acima disso, em mudança de estado, o player pula pra posição certa. */
@@ -295,7 +298,12 @@ function Player({
   const playerId = React.useMemo(() => `watch-${Math.random().toString(36).slice(2, 10)}`, [])
 
   const [ready, setReady] = React.useState(false)
-  const [blocked, setBlocked] = React.useState(false)
+  /**
+   * Codigo do erro do player, nao um booleano: "nao deu pra tocar" manda a
+   * pessoa tentar de novo pra sempre, enquanto cada codigo pede uma atitude
+   * diferente (trocar de video, abrir no YouTube, atualizar o launcher).
+   */
+  const [errorCode, setErrorCode] = React.useState<number | null>(null)
   const [playerState, setPlayerState] = React.useState<YtPlayerState>(YT_STATE.unstarted)
   const [currentTime, setCurrentTime] = React.useState(0)
   const [duration, setDuration] = React.useState(0)
@@ -417,7 +425,14 @@ function Player({
 
         case 'onError': {
           const code = (message as { info?: unknown }).info
-          if (typeof code === 'number' && isEmbedBlockedError(code)) setBlocked(true)
+          if (typeof code !== 'number' || code <= 0) break
+          /**
+           * QUALQUER erro para o player, não só os de "não deixa embutir": o
+           * player não volta a mandar `infoDelivery` depois de errar, então
+           * insistir só deixaria o spinner girando pra sempre. O texto de cada
+           * código sai de playerErrorInfo (lib/youtube.ts).
+           */
+          setErrorCode(code)
           break
         }
       }
@@ -437,7 +452,7 @@ function Player({
   React.useEffect(() => {
     readyRef.current = false
     setReady(false)
-    setBlocked(false)
+    setErrorCode(null)
     setPlayerTitle(null)
     setDuration(0)
     setCurrentTime(0)
@@ -562,6 +577,8 @@ function Player({
   const sliderMax = duration > 0 ? duration : Math.max(shown + 1, 1)
   const queue = session.queue ?? []
   const iframeSrc = React.useMemo(() => youtubeEmbedUrl(session.videoId), [session.videoId])
+  const blocked = errorCode !== null
+  const errorInfo = playerErrorInfo(errorCode)
 
   /**
    * ESTRUTURA: o contêiner do vídeo é SEMPRE o primeiro filho, nos dois modos
@@ -648,11 +665,8 @@ function Player({
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-void/90 p-4 text-center">
                 <Tv className="h-6 w-6 text-burn" />
                 <div>
-                  <p className="text-sm text-foreground">Esse vídeo não deixa embutir.</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    O dono do canal bloqueou o player fora do YouTube. Dá pra abrir lá e
-                    sincronizar no grito, ou trocar por outro.
-                  </p>
+                  <p className="text-sm text-foreground">{errorInfo?.title}</p>
+                  <p className="mt-1 max-w-sm text-xs text-muted-foreground">{errorInfo?.body}</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
