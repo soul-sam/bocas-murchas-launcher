@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cargosApi, type Cargo, type CargosState } from './api-cargos'
+import { cargoSlug, cargosApi, type Cargo, type CargosState } from './api-cargos'
 import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 
@@ -41,6 +41,13 @@ interface CargosContextValue {
   topCargoOf: (userId: string | null | undefined) => Cargo | null
   /** Permissões efetivas de quem está logado (admin recebe todas). */
   can: (permission: string) => boolean
+  /**
+   * token de menção em minúsculas -> cargo. Tem duas chaves por cargo (o id e
+   * o slug do nome atual), porque renomear não muda o id.
+   */
+  byMentionToken: Map<string, Cargo>
+  /** Os cargos citados num texto que EU tenho — "essa mensagem fala comigo?". */
+  myCargoIds: Set<string>
   /** Já sabemos a resposta? Antes disso `can()` é falso. */
   ready: boolean
   refresh: () => Promise<void>
@@ -114,6 +121,20 @@ export function CargosProvider({ children }: { children: React.ReactNode }) {
     [cargosOf]
   )
 
+  const byMentionToken = React.useMemo(() => {
+    const map = new Map<string, Cargo>()
+    for (const cargo of state.cargos) {
+      map.set(cargo.id.toLowerCase(), cargo)
+      map.set(cargoSlug(cargo.name), cargo)
+    }
+    return map
+  }, [state.cargos])
+
+  const myCargoIds = React.useMemo(
+    () => new Set(user ? cargosOf(user.id).map((c) => c.id) : []),
+    [user, cargosOf]
+  )
+
   const myPermissions = React.useMemo(() => {
     const out = new Set<string>()
     if (!user) return out
@@ -136,8 +157,17 @@ export function CargosProvider({ children }: { children: React.ReactNode }) {
   )
 
   const value = React.useMemo<CargosContextValue>(
-    () => ({ cargos: state.cargos, cargosOf, topCargoOf, can, ready, refresh }),
-    [state.cargos, cargosOf, topCargoOf, can, ready, refresh]
+    () => ({
+      cargos: state.cargos,
+      cargosOf,
+      topCargoOf,
+      byMentionToken,
+      myCargoIds,
+      can,
+      ready,
+      refresh
+    }),
+    [state.cargos, cargosOf, topCargoOf, byMentionToken, myCargoIds, can, ready, refresh]
   )
 
   return <CargosContext.Provider value={value}>{children}</CargosContext.Provider>

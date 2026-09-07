@@ -89,10 +89,15 @@ interface OverlayContextValue {
   openShop: () => void
   closeShop: () => void
 
-  /** Painel admin (convites, membros, sons, ferramentas) como camada global. */
+  /** Painel admin (convites, membros, cargos, impressora, sons) como camada global. */
   adminOpen: boolean
   openAdmin: () => void
   closeAdmin: () => void
+
+  /** Novidades da versão. Abre sozinho depois de atualizar, e à mão nas configurações. */
+  whatsNewOpen: boolean
+  openWhatsNew: () => void
+  closeWhatsNew: () => void
 }
 
 const OverlayContext = React.createContext<OverlayContextValue | null>(null)
@@ -111,6 +116,7 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [partyComposerSeed, setPartyComposerSeed] = React.useState<string | null>(null)
   const [shopOpen, setShopOpen] = React.useState(false)
   const [adminOpen, setAdminOpen] = React.useState(false)
+  const [whatsNewOpen, setWhatsNewOpen] = React.useState(false)
 
   const openUserMenu = React.useCallback((event: React.MouseEvent, userId: string) => {
     event.preventDefault()
@@ -200,7 +206,11 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
 
       adminOpen,
       openAdmin: () => setAdminOpen(true),
-      closeAdmin: () => setAdminOpen(false)
+      closeAdmin: () => setAdminOpen(false),
+
+      whatsNewOpen,
+      openWhatsNew: () => setWhatsNewOpen(true),
+      closeWhatsNew: () => setWhatsNewOpen(false)
     }),
     [
       profileEditorOpen,
@@ -216,7 +226,8 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       partyComposerOpen,
       partyComposerSeed,
       shopOpen,
-      adminOpen
+      adminOpen,
+      whatsNewOpen
     ]
   )
 

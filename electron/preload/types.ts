@@ -284,6 +284,13 @@ export interface LauncherSettings {
   soundEnabled: boolean
   soundVolume: number
   lastSeenModpackTag: string | null
+  /**
+   * Versão do LAUNCHER que a pessoa já viu as novidades. Diferente de
+   * `lastSeenModpackTag`, que é do modpack do Minecraft — são duas telas de
+   * "o que mudou" com donos diferentes: o modpack é publicado pelo grupo, o
+   * launcher pelo release. Ver lib/changelog.ts.
+   */
+  lastSeenVersion: string | null
 
   /** Iniciar junto com o Windows. */
   autostart: boolean
@@ -426,6 +433,7 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   soundEnabled: true,
   soundVolume: 0.5,
   lastSeenModpackTag: null,
+  lastSeenVersion: null,
 
   // Ligado por padrao: o ponto do launcher e estar aberto quando a galera
   // aparece. Quem nao quiser desliga nas configuracoes.

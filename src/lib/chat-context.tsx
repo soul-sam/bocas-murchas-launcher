@@ -13,6 +13,7 @@ import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
 import { collectMentions, mentionsEveryone } from './rich-text'
+import { useCargos } from './cargos-context'
 
 /**
  * Canais de texto, conversas diretas e mensagens.
@@ -285,6 +286,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
    * montada na tela (canal fechado, aba do Minecraft aberta, janela na
    * bandeja), que e justamente quando avisar importa.
    */
+  /**
+   * Cargos em ref, não em dependência: ver o comentário dentro do `isForMe`.
+   */
+  const { byMentionToken, myCargoIds } = useCargos()
+  const cargoTokensRef = React.useRef(byMentionToken)
+  const myCargosRef = React.useRef(myCargoIds)
+  React.useEffect(() => {
+    cargoTokensRef.current = byMentionToken
+    myCargosRef.current = myCargoIds
+  }, [byMentionToken, myCargoIds])
+
   const isForMe = React.useCallback((message: ChatMessage): boolean => {
     const me = userRef.current
     if (!me || !message.content) return false
@@ -297,7 +309,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       me.username.toLowerCase(),
       me.displayName.toLowerCase().split(/\s+/)[0]
     ])
-    return names.some((name) => mine.has(name))
+    if (names.some((name) => mine.has(name))) return true
+
+    // MENÇÃO A CARGO (`@impressora-murcha`): fala com todo mundo que tem o
+    // cargo. Lido do ref e não do contexto direto porque este callback é
+    // criado UMA vez (sem dependências, de propósito: ele é usado dentro dos
+    // handlers de socket, e recriá-lo remontaria a assinatura a cada mudança
+    // de cargo).
+    const meus = myCargosRef.current
+    if (meus.size === 0) return false
+    return names.some((name) => {
+      const cargo = cargoTokensRef.current.get(name)
+      return !!cargo && meus.has(cargo.id)
+    })
   }, [])
 
   // --- eventos de mensagem ------------------------------------------------

@@ -30,6 +30,8 @@ import { useAuth } from '@/lib/auth-context'
 import { useNudge } from '@/lib/nudge-context'
 import { useVoice } from '@/lib/voice-context'
 import { useMembers, type Member } from '@/lib/members-context'
+import { useCargos, type Cargo } from '@/lib/cargos-context'
+import { CargoIcon } from '@/lib/cargo-icons'
 import { useOverlays } from '@/lib/overlay-context'
 import { parseSlashCommand, SLASH_HELP } from '@/lib/slash-commands'
 import { useEmojis, toPickerEmojis, type CustomEmoji, type Sticker } from '@/lib/emoji-context'
@@ -37,6 +39,17 @@ import { ComposerActions } from './ComposerActions'
 import { EmojiImage } from './CustomEmojiImg'
 import { StickerPicker } from './StickerPicker'
 import { EmojiManager, type ManagerTab } from './EmojiManager'
+
+/**
+ * Um candidato do autocompletar de `@`: pessoa ou cargo.
+ *
+ * União marcada em vez de um objeto com campos opcionais porque as duas metades
+ * não têm nada em comum além de virarem texto — e o que entra no texto é
+ * diferente (o `username` da pessoa, o `id` do cargo).
+ */
+type Suggestion =
+  | { kind: 'member'; member: Member }
+  | { kind: 'cargo'; cargo: Cargo }
 
 /** O servidor corta bem depois disso; o aviso aparece antes pra não perder texto. */
 const SOFT_LIMIT = 1_800
@@ -82,6 +95,7 @@ export function MessageComposer({
   const { nudgeChannel } = useNudge()
   const { connected: inVoice } = useVoice()
   const { members } = useMembers()
+  const { cargos } = useCargos()
   const { openPollComposer, openEventComposer, openPartyComposer, openShop } = useOverlays()
   const { emojis } = useEmojis()
 
@@ -142,11 +156,28 @@ export function MessageComposer({
     return { term: match[1].toLowerCase(), start: upToCaret.length - match[1].length - 1 }
   }, [content, caret])
 
-  const suggestions = React.useMemo<Member[]>(() => {
+  /**
+   * Sugestões do `@`: CARGOS primeiro, depois pessoas.
+   *
+   * Cargo em cima e não no fim porque são poucos e é o que ninguém adivinha
+   * sozinho — `@impressora-murcha` chama as cinco pessoas que racharam a
+   * máquina, e sem aparecer aqui essa sintaxe existiria só pra quem leu o
+   * código. Pessoa a galera já sabe que dá pra chamar.
+   */
+  const suggestions = React.useMemo<Suggestion[]>(() => {
     if (!mentionQuery) return []
 
     const term = mentionQuery.term
-    return members
+
+    const cargoHits: Suggestion[] = cargos
+      .filter((cargo) => {
+        if (!term) return true
+        return cargo.id.startsWith(term) || cargo.name.toLowerCase().includes(term)
+      })
+      .slice(0, 3)
+      .map((cargo) => ({ kind: 'cargo', cargo }))
+
+    const memberHits: Suggestion[] = members
       .filter((member) => {
         if (!term) return true
         return (
@@ -157,18 +188,27 @@ export function MessageComposer({
       // Quem está online primeiro: é com quem você provavelmente está falando.
       .sort((a, b) => Number(b.isOnline) - Number(a.isOnline))
       .slice(0, 6)
-  }, [mentionQuery, members])
+      .map((member) => ({ kind: 'member', member }))
+
+    return [...cargoHits, ...memberHits].slice(0, 7)
+  }, [mentionQuery, members, cargos])
 
   React.useEffect(() => {
     setMentionIndex(0)
   }, [mentionQuery?.term])
 
   const applyMention = React.useCallback(
-    (member: Member) => {
+    (choice: Suggestion) => {
       if (!mentionQuery) return
 
       const el = textareaRef.current
-      const handle = member.username || member.displayName.split(/\s+/)[0]
+      // Cargo entra pelo ID (que é slug, sem espaço): `@impressora-murcha`. É
+      // o que o tokenizador de menção reconhece — nome com espaço quebraria na
+      // primeira palavra.
+      const handle =
+        choice.kind === 'cargo'
+          ? choice.cargo.id
+          : choice.member.username || choice.member.displayName.split(/\s+/)[0]
       const next =
         content.slice(0, mentionQuery.start) + '@' + handle + ' ' + content.slice(caret)
       const position = mentionQuery.start + handle.length + 2
@@ -542,17 +582,17 @@ export function MessageComposer({
       {suggestions.length > 0 && mentionQuery && (
         <div className="mb-1 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.6)]">
           <p className="border-b border-[#1a1a1a] px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-            Membros — Enter ou Tab pra escolher
+            Cargos e membros — Enter ou Tab pra escolher
           </p>
-          {suggestions.map((member, index) => (
+          {suggestions.map((item, index) => (
             <button
-              key={member.id}
+              key={item.kind === 'cargo' ? 'c:' + item.cargo.id : 'm:' + item.member.id}
               type="button"
               // onMouseDown e não onClick: o clique tira o foco do textarea
               // antes de o React processar, e a seleção era perdida no caminho.
               onMouseDown={(event) => {
                 event.preventDefault()
-                applyMention(member)
+                applyMention(item)
               }}
               onMouseEnter={() => setMentionIndex(index)}
               className={cn(
@@ -560,17 +600,40 @@ export function MessageComposer({
                 index === mentionIndex ? 'bg-acid/15 text-acid' : 'text-foreground'
               )}
             >
-              <UserAvatar
-                src={resolveAssetUrl(member.avatar)}
-                name={member.displayName}
-                status={member.isOnline ? (member.status ?? 'online') : 'offline'}
-                className="h-5 w-5"
-              />
-              <span className="truncate text-sm">{member.displayName}</span>
-              {member.username && (
-                <span className="truncate font-mono text-[10px] text-muted-foreground">
-                  @{member.username}
-                </span>
+              {item.kind === 'cargo' ? (
+                <>
+                  <span
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-brutal border"
+                    style={{
+                      color: item.cargo.color,
+                      borderColor: `${item.cargo.color}66`,
+                      backgroundColor: `${item.cargo.color}24`
+                    }}
+                  >
+                    <CargoIcon icon={item.cargo.icon} className="h-3 w-3" />
+                  </span>
+                  <span className="truncate text-sm" style={{ color: item.cargo.color }}>
+                    {item.cargo.name}
+                  </span>
+                  <span className="ml-auto shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    cargo
+                  </span>
+                </>
+              ) : (
+                <>
+                  <UserAvatar
+                    src={resolveAssetUrl(item.member.avatar)}
+                    name={item.member.displayName}
+                    status={item.member.isOnline ? (item.member.status ?? 'online') : 'offline'}
+                    className="h-5 w-5"
+                  />
+                  <span className="truncate text-sm">{item.member.displayName}</span>
+                  {item.member.username && (
+                    <span className="truncate font-mono text-[10px] text-muted-foreground">
+                      @{item.member.username}
+                    </span>
+                  )}
+                </>
               )}
             </button>
           ))}

@@ -12,11 +12,14 @@ import {
   Power,
   Swords,
   Headphones,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react'
 import { useSettings } from '@/lib/settings-context'
 import { useHotkeys } from '@/lib/hotkeys-context'
 import { useNudge } from '@/lib/nudge-context'
+import { useOverlays } from '@/lib/overlay-context'
+import { useUpdater } from '@/lib/updater-context'
 import { useVoice } from '@/lib/voice-context'
 import { useAudioDevices, useVideoDevices } from '@/lib/use-audio-devices'
 import { playUiSound } from '@/lib/ui-sounds'
@@ -877,6 +880,9 @@ function GameTab({
 
 function StartupTab() {
   const { settings, update } = useSettings()
+  const { openWhatsNew } = useOverlays()
+  const { close: closeSettings } = useSettings()
+  const { status } = useUpdater()
   const [autostart, setAutostart] = React.useState<{ enabled: boolean; supported: boolean } | null>(
     null
   )
@@ -936,6 +942,34 @@ function StartupTab() {
           checked={settings.closeToTray}
           onCheckedChange={(closeToTray) => void update({ closeToTray })}
         />
+      </section>
+
+      <section>
+        <SectionTitle>Versão</SectionTitle>
+        {/* O launcher se atualiza sozinho, inclusive com a janela escondida na
+            bandeja: a camada de novidades abre uma vez por versão nova, e
+            quem fechou sem ler (ou quer reler) volta por aqui. */}
+        <div className="flex items-center justify-between gap-3 py-2">
+          <div className="min-w-0">
+            <p className="text-sm text-foreground">Novidades desta versão</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              O que mudou na v{status.currentVersion ?? '—'}, que é a que você
+              está usando.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="shrink-0"
+            onClick={() => {
+              closeSettings()
+              openWhatsNew()
+            }}
+          >
+            <Sparkles className="mr-1.5 h-3 w-3" />
+            Ver
+          </Button>
+        </div>
       </section>
     </div>
   )

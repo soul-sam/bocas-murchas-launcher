@@ -82,3 +82,29 @@ export const cargosApi = {
   revoke: (token: string | null, cargoId: string, userId: string) =>
     request<{ message: string }>(`/cargos/${cargoId}/members/${userId}`, { method: 'DELETE', token })
 }
+
+/**
+ * Slug de um nome de cargo — o mesmo que o servidor gera (`lib/cargos.ts`).
+ *
+ * Existe no cliente pra resolver menção (`@impressora-murcha`) sem ida ao
+ * servidor: o chat pergunta "essa mensagem fala comigo?" no instante em que a
+ * mensagem chega, e uma requisição nesse caminho atrasaria a notificação.
+ *
+ * Renomear um cargo não muda o id, então quem resolve menção testa os DOIS: o
+ * id (slug do nome original) e o slug do nome atual.
+ */
+export function cargoSlug(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+}
+
+/** A menção `@token` cita este cargo? */
+export function cargoMatchesToken(cargo: Cargo, token: string): boolean {
+  const needle = token.toLowerCase()
+  return cargo.id.toLowerCase() === needle || cargoSlug(cargo.name) === needle
+}

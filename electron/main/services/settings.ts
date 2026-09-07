@@ -141,6 +141,7 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     soundEnabled: raw.soundEnabled ?? DEFAULTS.soundEnabled,
     soundVolume: clamp(Number(raw.soundVolume), 0, 1, DEFAULTS.soundVolume),
     lastSeenModpackTag: raw.lastSeenModpackTag ?? DEFAULTS.lastSeenModpackTag,
+    lastSeenVersion: raw.lastSeenVersion ?? DEFAULTS.lastSeenVersion,
 
     autostart: raw.autostart ?? DEFAULTS.autostart,
     startMinimized: raw.startMinimized ?? DEFAULTS.startMinimized,

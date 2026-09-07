@@ -12,6 +12,8 @@ import {
   type InlineNode,
   type InlineStyle
 } from '@/lib/rich-text'
+import { useCargos, type Cargo } from '@/lib/cargos-context'
+import { CargoIcon } from '@/lib/cargo-icons'
 import { CustomEmojiImg } from './CustomEmojiImg'
 
 /**
@@ -37,15 +39,25 @@ interface Lookups {
   users: Map<string, { id: string; displayName: string; color?: string | null }>
   /** nome do canal em minusculas -> id. */
   channels: Map<string, string>
+  /** token de mencao -> cargo. Vem pronto do cargos-context. */
+  cargos: Map<string, Cargo>
+  /** Ids de cargo que EU tenho — pra saber se `@cargo` fala comigo. */
+  myCargoIds: Set<string>
 }
 
-const EMPTY: Lookups = { users: new Map(), channels: new Map() }
+const EMPTY: Lookups = {
+  users: new Map(),
+  channels: new Map(),
+  cargos: new Map(),
+  myCargoIds: new Set()
+}
 
 const LookupContext = React.createContext<Lookups>(EMPTY)
 
 export function RichTextProvider({ children }: { children: React.ReactNode }) {
   const { members } = useMembers()
   const { channels } = useChat()
+  const { byMentionToken, myCargoIds } = useCargos()
 
   const value = React.useMemo<Lookups>(() => {
     const users = new Map<string, { id: string; displayName: string; color?: string | null }>()
@@ -65,8 +77,8 @@ export function RichTextProvider({ children }: { children: React.ReactNode }) {
     const channelMap = new Map<string, string>()
     for (const channel of channels) channelMap.set(channel.name.toLowerCase(), channel.id)
 
-    return { users, channels: channelMap }
-  }, [members, channels])
+    return { users, channels: channelMap, cargos: byMentionToken, myCargoIds }
+  }, [members, channels, byMentionToken, myCargoIds])
 
   return <LookupContext.Provider value={value}>{children}</LookupContext.Provider>
 }
@@ -77,13 +89,20 @@ export function useMentionLookups(): Lookups {
 
 /** "Esta mensagem fala comigo?" — usado pro destaque e pra notificacao. */
 export function useMentionsMe(content: string, myId: string | undefined): boolean {
-  const { users } = useMentionLookups()
+  const { users, cargos, myCargoIds } = useMentionLookups()
 
   return React.useMemo(() => {
     if (!myId || !content) return false
     if (mentionsEveryone(content)) return true
-    return collectMentions(content).some((name) => users.get(name)?.id === myId)
-  }, [content, myId, users])
+    return collectMentions(content).some((name) => {
+      if (users.get(name)?.id === myId) return true
+      // `@impressora-murcha` fala com quem TEM o cargo. Sem isto a menção
+      // pintaria bonito e não destacaria a mensagem de ninguém, que é o
+      // mesmo que não existir.
+      const cargo = cargos.get(name)
+      return !!cargo && myCargoIds.has(cargo.id)
+    })
+  }, [content, myId, users, cargos, myCargoIds])
 }
 
 function Spoiler({ children }: { children: React.ReactNode }) {
@@ -177,13 +196,33 @@ function InlineNodes({ nodes }: { nodes: InlineNode[] }) {
             )
 
           case 'mention': {
-            const hit = lookups.users.get(node.username.toLowerCase())
+            const token = node.username.toLowerCase()
+            const hit = lookups.users.get(token)
             const everyone = /^(everyone|todos|geral|all)$/i.test(node.username)
+            // Pessoa ganha do cargo no empate: se alguem se chamar igual a um
+            // cargo, chamar a PESSOA e o que quem digitou quis dizer.
+            const cargo = hit ? undefined : lookups.cargos.get(token)
 
             // Nome que nao existe fica texto normal, senao qualquer email
             // colado no chat viraria um chip verde sem sentido.
-            if (!hit && !everyone) {
+            if (!hit && !everyone && !cargo) {
               return <React.Fragment key={index}>{node.raw}</React.Fragment>
+            }
+
+            // CARGO citado: chip na cor do cargo, com o icone dele. Chama todo
+            // mundo que tem o cargo (o servidor notifica; ver modules/push.ts).
+            if (cargo) {
+              return (
+                <span
+                  key={index}
+                  title={`${cargo.name} — chama todo mundo com esse cargo`}
+                  className="inline-flex items-center gap-0.5 rounded-[3px] px-1 font-medium"
+                  style={{ color: cargo.color, backgroundColor: `${cargo.color}26` }}
+                >
+                  <CargoIcon icon={cargo.icon} className="h-3 w-3 shrink-0" />
+                  {cargo.name}
+                </span>
+              )
             }
 
             return (

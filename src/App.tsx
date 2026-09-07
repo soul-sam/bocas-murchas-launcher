@@ -47,6 +47,7 @@ import { ShopModal } from '@/components/social/ShopModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
 import { AdminModal } from '@/components/AdminModal'
+import { WhatsNewModal } from '@/components/WhatsNewModal'
 import { cn } from '@/lib/utils'
 
 function LoadingSplash() {
@@ -140,6 +141,9 @@ function GlobalOverlays() {
       <PartyComposer />
       <ShopModal />
       <AdminModal />
+      {/* Novidades da versão: camada própria (sem Radix) porque pode abrir
+          sozinha no primeiro quadro, antes de qualquer clique. */}
+      <WhatsNewModal />
       {/* Banners: drops de admin e "tem gente do grupo no seu lobby". */}
       <DropHost />
       <PartyCallPrompt />
@@ -195,6 +199,11 @@ function AuthedLayout() {
   return (
     <SocketProvider>
       <MembersProvider>
+        {/* Cargos ANTES do chat: é o cargo que decide se `@impressora-murcha`
+            fala com você, e a decisão acontece no instante em que a mensagem
+            chega — antes de qualquer tela montar. Só precisa de auth e socket,
+            que já estão de pé aqui. */}
+        <CargosProvider>
         <ChatProvider>
           <VoiceProvider>
             {/* Presença de jogo depende de chat (canais de voz), voz (entrar
@@ -214,19 +223,12 @@ function AuthedLayout() {
                                 {/* Índices de @pessoa e #canal montados uma
                                     vez, não uma vez por mensagem na tela. */}
                                 <RichTextProvider>
-                                  {/* Cargos ANTES da impressora: é o cargo
-                                      que decide se a aba existe, e a barra
-                                      lateral pergunta isso no primeiro
-                                      quadro. */}
-                                  <CargosProvider>
-                                    {/* Impressora 3D: só precisa de socket e
-                                        token, mas fica aqui pra a fila e a
-                                        cota não remontarem ao trocar de
-                                        aba. */}
-                                    <PrintProvider>
-                                      <AuthedShell />
-                                    </PrintProvider>
-                                  </CargosProvider>
+                                  {/* Impressora 3D: só precisa de socket e
+                                      token, mas fica aqui pra a fila e a cota
+                                      não remontarem ao trocar de aba. */}
+                                  <PrintProvider>
+                                    <AuthedShell />
+                                  </PrintProvider>
                                 </RichTextProvider>
                               </WatchProvider>
                             </PartyProvider>
@@ -240,6 +242,7 @@ function AuthedLayout() {
             </ActivityProvider>
           </VoiceProvider>
         </ChatProvider>
+        </CargosProvider>
       </MembersProvider>
     </SocketProvider>
   )
