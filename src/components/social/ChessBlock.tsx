@@ -27,6 +27,15 @@ const RECENT_SHOWN = 5
 const SYNC_COOLDOWN_MS = 60_000
 const CLASSES: ChessTimeClass[] = ['bullet', 'blitz', 'rapid']
 
+/**
+ * O cartão inteiro desmonta toda vez que o popover fecha (Radix
+ * PopoverContent), então um state local de "última sync" voltaria a 0 a
+ * cada reabertura e o botão de atualizar reapareceria liberado antes da
+ * hora. Guardando em módulo o cooldown sobrevive ao unmount — e como o
+ * launcher é por usuário, esse escopo "global" é exatamente por-pessoa.
+ */
+let lastManualSyncAt = 0
+
 export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: boolean; open: boolean }) {
   const { token } = useAuth()
   const { socket } = useSocket()
@@ -34,7 +43,7 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
   const [username, setUsername] = React.useState('')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [syncedAt, setSyncedAt] = React.useState(0)
+  const [, forceTick] = React.useState(0)
 
   const load = React.useCallback(async () => {
     if (!token) return
@@ -60,6 +69,16 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
       socket.off('chess:profile', onProfile)
     }
   }, [socket, isSelf, load])
+
+  // Só o dono do perfil vê o botão de atualizar — enquanto o cooldown corre,
+  // esse tick periódico faz o botão reaparecer liberado sem precisar de
+  // outra interação (fechar/abrir o card, digitar, etc).
+  const hasProfile = Boolean(data?.profile)
+  React.useEffect(() => {
+    if (!hasProfile || !isSelf) return
+    const id = setInterval(() => forceTick((t) => t + 1), 5_000)
+    return () => clearInterval(id)
+  }, [hasProfile, isSelf])
 
   const run = async (fn: () => Promise<void>) => {
     if (!token || busy) return
@@ -91,7 +110,7 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
     run(async () => {
       const res = await chess.sync(token!)
       setData({ profile: res.profile, games: res.games })
-      setSyncedAt(Date.now())
+      lastManualSyncAt = Date.now()
     })
 
   if (!data) return null
@@ -106,7 +125,9 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && void onLink()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !busy && username.trim().length >= 3) void onLink()
+            }}
             placeholder="seu username"
             className="h-6 min-w-0 flex-1 rounded-brutal border border-[#1a1a1a] bg-void px-1.5 font-mono text-[11px] outline-none focus:border-acid"
           />
@@ -124,7 +145,7 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
     )
   }
 
-  const canSync = Date.now() - syncedAt > SYNC_COOLDOWN_MS
+  const canSync = Date.now() - lastManualSyncAt > SYNC_COOLDOWN_MS
   const recent = data.games.slice(0, RECENT_SHOWN)
 
   return (
