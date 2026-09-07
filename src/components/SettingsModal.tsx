@@ -225,7 +225,8 @@ function ChatTab() {
               Sem tocar em teclado nem mouse por esse tempo, o launcher avisa a
               galera que você saiu e desliga as cutucadas. Volta ao normal
               quando você mexer na janela. Falar na call conta como estar
-              presente.
+              presente. O automático não mexe no seu áudio — só o botão, que
+              muta o mic e o som junto.
             </span>
           </span>
           <select

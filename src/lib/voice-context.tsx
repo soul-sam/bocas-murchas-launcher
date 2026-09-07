@@ -20,6 +20,7 @@ import { playUiSound, playJoinSound } from './ui-sounds'
 import { useMembers } from './members-context'
 import { createMicProcessor, type MicProcessor } from './audio-processor'
 import { setLauncherSilenced } from './launcher-silence'
+import { createSpeakingDetector, type SpeakingDetector } from './speaking-detector'
 
 /**
  * Chamada de voz e compartilhamento de tela via LiveKit.
@@ -157,6 +158,8 @@ interface VoiceContextValue {
   toggleMic: () => Promise<void>
   setMic: (enabled: boolean) => Promise<void>
   toggleDeafen: () => void
+  /** Ensurdecer com valor explícito (o AFK usa). */
+  setDeafen: (value: boolean) => void
   toggleCamera: () => Promise<void>
   startScreenShare: (sourceId: string, options?: {
     withAudio?: boolean
@@ -262,6 +265,26 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const [micTestActive, setMicTestActive] = React.useState(false)
   /** Incrementa quando um processador nasce ou morre — o loopback reanexa. */
   const [processorEpoch, setProcessorEpoch] = React.useState(0)
+
+  /**
+   * QUEM ESTÁ FALANDO, medido aqui (ver lib/speaking-detector).
+   *
+   * Fica em ref e não em estado: quem guarda o resultado é a lista de
+   * participantes, que já é estado. O detector só avisa que mudou.
+   */
+  const speakingRef = React.useRef<SpeakingDetector | null>(null)
+  /** Guardado à parte porque o `syncParticipants` roda antes da sala existir. */
+  const roomForSyncRef = React.useRef<Room | null>(null)
+
+  const speakingDetector = React.useCallback((): SpeakingDetector => {
+    if (!speakingRef.current) {
+      speakingRef.current = createSpeakingDetector(() => {
+        const current = roomForSyncRef.current
+        if (current) syncParticipantsRef.current(current)
+      })
+    }
+    return speakingRef.current
+  }, [])
 
   /** Configurações de voz por ref, pros efeitos que não devem reagir a slider. */
   const voiceSettingsRef = React.useRef(settings.voice)
@@ -439,6 +462,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       ...Array.from(current.remoteParticipants.values())
     ]
 
+    const detector = speakingRef.current
+
     setParticipants(
       all.map((p) => {
         const meta = readMetadata(p)
@@ -447,7 +472,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           name: meta.displayName || p.name || p.identity,
           avatar: meta.avatar,
           isLocal: p.identity === current.localParticipant.identity,
-          isSpeaking: p.isSpeaking,
+          // Medição local quando existe (rápida e sem lista de dominantes);
+          // pra quem ainda não tem faixa medida, o sinal do servidor — que é
+          // o comportamento antigo, e é melhor que anel nenhum.
+          isSpeaking: detector?.watching(p.identity)
+            ? detector.isSpeaking(p.identity)
+            : p.isSpeaking,
           micEnabled: p.isMicrophoneEnabled,
           isScreenSharing: p.isScreenShareEnabled,
           cameraEnabled: p.isCameraEnabled
@@ -459,6 +489,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     setScreenSharing(current.localParticipant.isScreenShareEnabled)
     setCameraEnabled(current.localParticipant.isCameraEnabled)
   }, [])
+
+  /**
+   * O detector avisa "mudou quem está falando" fora do React, então precisa de
+   * uma referência sempre atual pra remontar a lista.
+   */
+  const syncParticipantsRef = React.useRef(syncParticipants)
+  syncParticipantsRef.current = syncParticipants
 
   const applyDeafen = React.useCallback(
     (value: boolean) => {
@@ -478,6 +515,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (!current && !leavingRef.current) return
 
     roomRef.current = null
+    roomForSyncRef.current = null
+    // O detector segura um AudioContext e um nó por pessoa: sair da call sem
+    // desmontar isso deixaria o grafo vivo e medindo silêncio pra sempre.
+    speakingRef.current?.destroy()
+    speakingRef.current = null
     leavingRef.current = true
 
     if (current) {
@@ -570,6 +612,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         })
         next.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
           voiceCue('leave', participant.identity)
+          speakingRef.current?.unwatch(participant.identity)
           syncParticipants(next)
         })
         next.on(RoomEvent.TrackMuted, () => syncParticipants(next))
@@ -652,6 +695,16 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
               // volume dele voltava no padrao ao republicar o microfone.
               participant.setVolume(effectiveVolume(participant.identity))
               audioSinkRef.current?.appendChild(element)
+
+              // Derivação da faixa pro medidor de voz — é o que faz o anel
+              // acender na primeira sílaba em vez de esperar o servidor.
+              // Ver lib/speaking-detector.
+              if (track.mediaStreamTrack) {
+                speakingDetector().watch(
+                  participant.identity,
+                  new MediaStream([track.mediaStreamTrack])
+                )
+              }
             }
 
             if (
@@ -699,6 +752,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           RoomEvent.TrackUnsubscribed,
           (track: RemoteTrack, _pub, participant: RemoteParticipant) => {
             track.detach().forEach((el) => el.remove())
+
+            if (track.kind === Track.Kind.Audio) {
+              speakingRef.current?.unwatch(participant.identity)
+            }
 
             if (track.source === Track.Source.ScreenShare) {
               setScreenShares((prev) =>
@@ -770,6 +827,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           callProcessorRef.current = processor
           setProcessorEpoch((epoch) => epoch + 1)
 
+          // O SEU anel sai da faixa processada — a que sai daqui depois do
+          // ganho e do portão. Portão fechado é silêncio pros outros, então
+          // tem que ser silêncio no seu anel também.
+          speakingDetector().watch(next.localParticipant.identity, processor.processedStream)
+
           const micTrack = new LocalAudioTrack(processor.processedTrack, undefined, true)
           if (startMuted) await micTrack.mute()
 
@@ -799,6 +861,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         }
 
         roomRef.current = next
+        roomForSyncRef.current = next
         setRoom(next)
         setConnected(true)
         syncParticipants(next)
@@ -837,17 +900,31 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     await setMic(!current.localParticipant.isMicrophoneEnabled)
   }, [setMic])
 
+  /**
+   * Ensurdecer com valor explícito.
+   *
+   * Existe porque quem chama de fora nem sempre quer ALTERNAR: o "Volto
+   * logo!" quer DESLIGAR o som, e um toggle ali desligaria pra quem estava
+   * ouvindo e LIGARIA de volta pra quem já tinha ensurdecido antes de sair.
+   */
+  const setDeafen = React.useCallback(
+    (value: boolean) => {
+      setDeafened((prev) => {
+        if (prev === value) return prev
+        applyDeafen(value)
+        cue(value ? 'deafen' : 'undeafen')
+        // Ensurdecer sem mutar o proprio mic e o comportamento errado: quem nao
+        // ouve ninguem tambem nao deveria estar falando.
+        if (value) void setMic(false)
+        return value
+      })
+    },
+    [applyDeafen, setMic, cue]
+  )
+
   const toggleDeafen = React.useCallback(() => {
-    setDeafened((prev) => {
-      const next = !prev
-      applyDeafen(next)
-      cue(next ? 'deafen' : 'undeafen')
-      // Ensurdecer sem mutar o proprio mic e o comportamento errado: quem nao
-      // ouve ninguem tambem nao deveria estar falando.
-      if (next) void setMic(false)
-      return next
-    })
-  }, [applyDeafen, setMic, cue])
+    setDeafen(!deafenedRef.current)
+  }, [setDeafen])
 
   /**
    * Liga e desliga a webcam.
@@ -1255,6 +1332,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       toggleMic,
       setMic,
       toggleDeafen,
+      setDeafen,
       toggleCamera,
       startScreenShare,
       stopScreenShare,
@@ -1285,6 +1363,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       toggleMic,
       setMic,
       toggleDeafen,
+      setDeafen,
       toggleCamera,
       startScreenShare,
       stopScreenShare,

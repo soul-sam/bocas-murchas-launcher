@@ -25,11 +25,21 @@ import { useVoice } from './voice-context'
  *    desenha);
  *  - cutucada não te acha (o servidor tem uma lista de quem optou por não
  *    receber, e a gente entra nela sem mexer na preferência salva da pessoa —
- *    ver nudge-context).
+ *    ver nudge-context);
+ *  - se você MARCOU NA MÃO e está numa call, o microfone e o som desligam
+ *    junto. Quem clicou "Volto logo!" está saindo da frente do computador, e
+ *    deixar o mic aberto pra sala ouvir a casa é o defeito clássico disso.
  *
- * O que NÃO acontece: sair da call, mutar o microfone, parar de receber
- * mensagem. AFK é um recado, não um modo de operação — quem volta correndo
- * porque ouviu o próprio nome não perde nada.
+ * O AUTOMÁTICO NÃO MEXE EM ÁUDIO, de propósito. Quem fica dez minutos sem
+ * tocar no teclado pode estar assistindo à tela que alguém compartilhou, e
+ * cortar o som de quem está ASSISTINDO é exatamente o contrário do que a
+ * feature promete. O automático só põe o recado.
+ *
+ * Voltar devolve o que estava antes — e só o que ESTE módulo mexeu: quem já
+ * estava mudo antes de sair continua mudo ao voltar.
+ *
+ * O que nunca acontece: sair da call ou parar de receber mensagem. AFK é um
+ * recado, não um modo de operação.
  */
 
 /** O recado padrão. Curto de propósito: cabe na linha da lista de membros. */
@@ -89,6 +99,25 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
   const previousRef = React.useRef<{ status: string; customStatus: string | null } | null>(null)
 
   /**
+   * Estado de áudio de antes do AFK — null quando não havia call, ou quando o
+   * AFK foi automático (que não mexe em áudio). Só se devolve o que se mexeu.
+   */
+  const audioRef = React.useRef<{ micEnabled: boolean; deafened: boolean } | null>(null)
+
+  /**
+   * A call por REFERÊNCIA, não por dependência.
+   *
+   * O contexto de voz muda a cada transição de "quem está falando" — várias
+   * vezes por segundo numa conversa. Se `enable`/`disable` dependessem dele,
+   * elas ganhariam identidade nova na mesma frequência, e o efeito do AFK
+   * automático (que tem `enable` na lista) refaria o `setInterval` de 30s
+   * antes de cada tique chegar: o automático simplesmente nunca dispararia
+   * enquanto alguém estivesse falando.
+   */
+  const voiceRef = React.useRef(voice)
+  voiceRef.current = voice
+
+  /**
    * `armed` é o que impede o AFK de se desligar no mesmo clique que o ligou:
    * só depois de a janela perder o foco (ou passar a carência) um toque na
    * janela conta como "voltei".
@@ -133,6 +162,17 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
       setAutomatic(auto)
       applyRemote('away', message)
 
+      // Só no clique, e só dentro de uma call. `setDeafen(true)` já muta o
+      // microfone junto (ver voice-context): quem não ouve ninguém também não
+      // deveria estar falando.
+      const call = voiceRef.current
+      if (!auto && call.connected) {
+        audioRef.current = { micEnabled: call.micEnabled, deafened: call.deafened }
+        call.setDeafen(true)
+      } else {
+        audioRef.current = null
+      }
+
       // O objeto de usuário local também muda: é dele que a barra lateral e o
       // seu próprio avatar leem status e recado.
       if (user) applyUser({ ...user, status: 'away', customStatus: message })
@@ -159,6 +199,17 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
     setAfk(false)
     setNote(null)
     setAutomatic(false)
+
+    // Devolve o áudio ANTES do resto: é o que a pessoa nota primeiro ao voltar.
+    // Sai do ensurdecido primeiro (que não mexe no mic) e só então restaura o
+    // microfone — na ordem inversa o `setDeafen` mutaria de novo.
+    const audio = audioRef.current
+    audioRef.current = null
+    const call = voiceRef.current
+    if (audio && call.connected) {
+      call.setDeafen(audio.deafened)
+      if (audio.micEnabled) void call.setMic(true)
+    }
 
     const status = (before?.status ?? 'online') as 'away' | 'online' | 'dnd' | 'offline'
     // Voltar pra 'away' não faz sentido: se a pessoa está mexendo, ela está

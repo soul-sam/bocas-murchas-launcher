@@ -94,6 +94,19 @@ export function ChannelSidebar({
   const { view, sidebarIsDrawer, sidebarOpen, closeSidebar } = useLayout()
   const { afk, toggle: toggleAfk } = useAfk()
 
+  /**
+   * Quem está falando NA MINHA call.
+   *
+   * A lista de quem está em cada canal de voz vem do socket, que não tem (nem
+   * teria como ter) nível de áudio: só existe voz medida do canal em que EU
+   * estou, porque é o único que o meu launcher está ouvindo. Por isso o anel
+   * aparece só nas pessoas da minha sala — nas outras seria chute.
+   */
+  const speakingIds = React.useMemo(
+    () => new Set(voice.participants.filter((p) => p.isSpeaking).map((p) => p.identity)),
+    [voice.participants]
+  )
+
   const setStatus = async (status: UserStatus): Promise<void> => {
     if (!token || !user) return
     await usersApi.setStatus(token, status)
@@ -312,6 +325,8 @@ export function ChannelSidebar({
                   <ul className="mb-1 ml-4 space-y-0.5 border-l border-line pl-2">
                     {occupants.map((occupant) => {
                       const isSharing = sharing.includes(occupant.id)
+                      const isSpeaking =
+                        voice.channel?.id === channel.id && speakingIds.has(occupant.id)
                       // Estar na call e estar NA CADEIRA são coisas diferentes,
                       // e é essa diferença que faz alguém chamar três vezes sem
                       // resposta. Ver lib/afk-context.
@@ -347,6 +362,7 @@ export function ChannelSidebar({
                             <UserAvatar
                               src={resolveAssetUrl(occupant.avatar)}
                               name={occupant.displayName}
+                              speaking={isSpeaking}
                               className="h-8 w-8 shrink-0 rounded-full"
                             />
                             <span className={cn('truncate', afkNote && 'opacity-60')}>
@@ -570,8 +586,10 @@ export function ChannelSidebar({
             label={afk ? 'Voltei!' : 'Volto logo!'}
             description={
               afk
-                ? 'Tira o aviso e devolve seu status. Também sai sozinho quando você mexer na janela.'
-                : 'Avisa a galera que você saiu e desliga as cutucadas até você voltar.'
+                ? 'Tira o aviso, devolve seu status e o áudio como estava. Também sai sozinho quando você mexer na janela.'
+                : voice.connected
+                  ? 'Avisa a galera que você saiu, desliga as cutucadas e muda seu mic e o som até você voltar.'
+                  : 'Avisa a galera que você saiu e desliga as cutucadas até você voltar.'
             }
             active={afk}
             onClick={toggleAfk}
