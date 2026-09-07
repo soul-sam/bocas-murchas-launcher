@@ -8,12 +8,13 @@ import { PartyCard } from './PartyCard'
 import { WagerCard } from './WagerCard'
 import { WatchCard } from './WatchCard'
 import { SystemCard } from './SystemCard'
+import { ChessResultCard } from './ChessResultCard'
 
 /**
  * REGISTRO DE CARTÕES.
  *
  * Uma mensagem com `type` de cartão (poll, event, game, recap, party, wager,
- * watch, system) é desenhada por um componente em vez do texto. O texto
+ * watch, system, chess) é desenhada por um componente em vez do texto. O texto
  * (`content`) continua existindo como fallback: aparece na busca, na
  * notificação do sistema e em cliente antigo que não conhece o tipo.
  *
@@ -40,7 +41,8 @@ const REGISTRY: Record<string, CardComponent> = {
   party: PartyCard,
   wager: WagerCard,
   watch: WatchCard,
-  system: SystemCard
+  system: SystemCard,
+  chess: ChessResultCard
 }
 
 export function hasCard(message: ChatMessage): boolean {
