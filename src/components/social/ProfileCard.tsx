@@ -15,6 +15,7 @@ import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { LevelRing } from './LevelRing'
 import { BetPopover } from './BetPopover'
+import { ChessBlock } from './ChessBlock'
 
 const STATUS_LABEL: Record<string, string> = {
   online: 'Online',
@@ -182,6 +183,7 @@ export function ProfileCard({
           </p>
 
           {gp && <GamificationBlock profile={gp} />}
+          <ChessBlock userId={member.id} isSelf={isSelf} open={open} />
 
           {activity && (
             <div className="mt-2 rounded-brutal border border-burn/40 bg-burn/[0.06] px-2 py-1.5">
