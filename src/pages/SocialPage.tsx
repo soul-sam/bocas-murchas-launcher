@@ -3,6 +3,7 @@ import { useChat } from '@/lib/chat-context'
 import { useVoice } from '@/lib/voice-context'
 import { useLayout } from '@/lib/layout-context'
 import type { Channel } from '@/lib/api'
+import { ConversationRail } from '@/components/social/ConversationRail'
 import { ChannelSidebar } from '@/components/social/ChannelSidebar'
 import { ChatView } from '@/components/social/ChatView'
 import { VoiceStage } from '@/components/social/VoiceStage'
@@ -16,7 +17,8 @@ import { LeaderboardPanel } from '@/components/social/LeaderboardPanel'
 import { useOverlays } from '@/lib/overlay-context'
 
 /**
- * Tela social: canais à esquerda, chat ou call no meio, membros à direita.
+ * Tela social: rail de conversas na ponta esquerda, canais ao lado, chat ou
+ * call no meio, membros à direita.
  *
  * Clicar num canal de voz entra na call E troca a área central pro palco;
  * clicar num canal de texto (ou numa conversa) volta pro chat sem sair da call
@@ -71,6 +73,8 @@ export function SocialPage() {
 
   return (
     <div className="relative flex min-h-0 flex-1 overflow-hidden">
+      <ConversationRail onSelectText={handleSelectText} />
+
       <ChannelSidebar
         onSelectText={handleSelectText}
         onSelectVoice={handleSelectVoice}

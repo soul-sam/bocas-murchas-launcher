@@ -74,8 +74,6 @@ export function ChannelSidebar({
   const {
     textChannels,
     voiceChannels,
-    dmChannels,
-    conversations,
     activeChannelId,
     unread,
     mentions,
@@ -111,7 +109,7 @@ export function ChannelSidebar({
     <aside
       className={cn(
         'flex w-60 shrink-0 flex-col border-r border-[#1a1a1a] bg-[#0D0D0D]',
-        sidebarIsDrawer && 'absolute inset-y-0 left-0 z-30 shadow-[10px_0_30px_rgba(0,0,0,0.6)]'
+        sidebarIsDrawer && 'absolute inset-y-0 left-14 z-30 shadow-[10px_0_30px_rgba(0,0,0,0.6)]'
       )}
     >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[#1a1a1a] px-3">
@@ -160,64 +158,10 @@ export function ChannelSidebar({
 
       <p className="mx-2 mb-1 mt-1.5 flex shrink-0 items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70">
         <MessageSquare className="h-2.5 w-2.5" />
-        botão direito em alguém = conversa
+        botão direito em alguém = conversa (aparece na barra)
       </p>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-2">
-        {/* Conversas primeiro: mensagem direta é a que mais espera resposta.
-            A seção some quando não há nenhuma, pra não ocupar espaço à toa. */}
-        {dmChannels.length > 0 && (
-          <Section label="Conversas">
-            {dmChannels.map((channel) => {
-              const conversation = conversations.find(
-                (c) => 'dm:' + c.id === channel.id
-              )
-              const count = unread[channel.id] ?? 0
-              const active = view === 'chat' && channel.id === activeChannelId
-              const peer = conversation?.other
-
-              return (
-                <button
-                  key={channel.id}
-                  type="button"
-                  onClick={() => {
-                    onSelectText(channel)
-                    afterSelect()
-                  }}
-                  onContextMenu={(event) => peer && openUserMenu(event, peer.id)}
-                  title={peer ? '@' + peer.username : channel.name}
-                  className={cn(
-                    'flex w-full items-center gap-1.5 rounded-brutal px-2 py-1 text-left transition-colors',
-                    active
-                      ? 'bg-acid/10 text-acid'
-                      : count > 0
-                        ? 'text-foreground hover:bg-void-light'
-                        : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
-                  )}
-                >
-                  <UserAvatar
-                    src={resolveAssetUrl(peer?.avatar)}
-                    name={peer?.displayName ?? channel.name}
-                    status={peer?.status ?? 'offline'}
-                    className="h-5 w-5"
-                  />
-                  <span className={cn('truncate text-sm', count > 0 && !active && 'font-semibold')}>
-                    {channel.name}
-                  </span>
-
-                  {/* Conversa direta é sempre "com você": o contador é
-                      vermelho, não cinza como o de canal movimentado. */}
-                  {count > 0 && !active && (
-                    <span className="ml-auto shrink-0 rounded-full bg-destructive px-1.5 font-mono text-[10px] font-bold text-dirty-white">
-                      {count > 99 ? '99+' : count}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
-          </Section>
-        )}
-
         <Section
           label="Texto"
           action={

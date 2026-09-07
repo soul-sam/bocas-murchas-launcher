@@ -37,7 +37,7 @@ export function HomePage() {
             className="h-10 w-10 drop-shadow-[0_0_10px_rgba(106,255,0,0.5)]"
           />
           <div>
-            <h1 className="title-brutal text-3xl">Bocas Murchas</h1>
+            <h1 className="title-brutal brand-wordmark text-3xl">Bocas Murchas</h1>
             <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
               Logado como{' '}
               <span className="text-acid">{user?.displayName ?? user?.username}</span>

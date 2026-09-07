@@ -136,6 +136,12 @@
       4px 4px 0 rgba(106, 255, 0, 0.3);
   }
 
+  .brand-wordmark {
+    font-family: 'Source Code Pro', 'JetBrains Mono', monospace;
+    font-weight: 650;
+    font-variation-settings: 'wght' 650;
+  }
+
   .title-acid {
     @apply font-bold uppercase tracking-wide;
     background: linear-gradient(135deg, #6AFF00 0%, #F2B705 100%);
