@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.2.2',
+    headline: 'O anel de quem está falando agora acende na hora',
+    items: [
+      'Quem está falando acende na primeira sílaba, e acende pra todo mundo que estiver falando ao mesmo tempo. Antes quem decidia isso era o servidor, com meio segundo de atraso — e quem falava baixo, ou era o terceiro a falar, às vezes não acendia nunca.',
+      'O anel agora também aparece em volta do avatar na lista da call, na barra lateral. Ali ele simplesmente não existia.',
+      '"Volto logo!" muta seu microfone e o som da call quando você clica, e devolve os dois como estavam quando você volta. Se você já estava mudo antes de sair, continua mudo.'
+    ],
+    note: 'O AFK automático (aquele por tempo parado) não mexe no seu áudio — só o botão. Quem fica dez minutos assistindo a uma tela compartilhada não pode levar um mute do nada.'
+  },
+  {
     version: '1.2.0',
     headline: 'Volto logo, caixa de sugestões e o som do compartilhamento arrumado',
     items: [
