@@ -272,12 +272,34 @@ const FILE_CUES: Partial<Record<UiSound, string>> = {
  */
 const bufferCache = new Map<string, Promise<AudioBuffer | null>>()
 
+/**
+ * Bytes do asset.
+ *
+ * No build o mp3 vira data URI (assetsInlineLimit) e `fetch` de data: é
+ * barrado pelo CSP do index.html (connect-src não lista `data:`) — foi por
+ * isso que em produção o som nunca tocava, enquanto no dev, que serve o
+ * arquivo pelo Vite, funcionava. Data URI a gente decodifica na mão; só o
+ * caminho de dev passa pelo fetch.
+ */
+async function readBytes(url: string): Promise<ArrayBuffer> {
+  if (url.startsWith('data:')) {
+    const comma = url.indexOf(',')
+    const header = url.slice(0, comma)
+    const payload = url.slice(comma + 1)
+    const binary = header.endsWith(';base64') ? atob(payload) : decodeURIComponent(payload)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return bytes.buffer
+  }
+  const res = await fetch(url)
+  return res.arrayBuffer()
+}
+
 function loadBuffer(audio: AudioContext, url: string): Promise<AudioBuffer | null> {
   const cached = bufferCache.get(url)
   if (cached) return cached
 
-  const pending = fetch(url)
-    .then((res) => res.arrayBuffer())
+  const pending = readBytes(url)
     .then((bytes) => audio.decodeAudioData(bytes))
     .catch(() => {
       // Falhou (asset faltando, formato inválido): esquece pra tentar de novo
