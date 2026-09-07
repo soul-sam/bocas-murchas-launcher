@@ -117,7 +117,7 @@ export function ChannelSidebar({
       aria-modal={sidebarIsDrawer ? true : undefined}
       aria-label={sidebarIsDrawer ? 'Canais' : undefined}
       className={cn(
-        'flex w-60 shrink-0 flex-col border-r border-line bg-void',
+        'flex w-60 shrink-0 flex-col border-r border-line bg-depth-2',
         sidebarIsDrawer && 'absolute inset-y-0 left-14 z-30 shadow-[10px_0_30px_rgba(0,0,0,0.6)]'
       )}
     >

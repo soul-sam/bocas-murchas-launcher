@@ -85,7 +85,7 @@ export function SocialPage() {
         />
       )}
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col bg-depth-3">
         {view === 'voice' ? (
           <VoiceStage />
         ) : (

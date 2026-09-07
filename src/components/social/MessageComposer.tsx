@@ -762,7 +762,7 @@ export function MessageComposer({
 
       <div
         className={cn(
-          'flex items-end gap-1 border-2 bg-void px-2 py-1.5 transition-colors',
+          'flex items-end gap-1 border-2 bg-depth-2 px-2 py-1.5 transition-colors',
           dragging
             ? 'border-acid bg-acid/5'
             : 'border-line focus-within:border-acid/60',

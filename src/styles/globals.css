@@ -11,6 +11,11 @@
      ativo. Os valores dos escuros vem da auditoria de set/2026; os claros
      trocam o verde de texto por um verde-folha que passa AA sobre branco.
 
+     --depth-2/--depth-3 sao os fundos de profundidade: a barra da esquerda,
+     a lista de membros e o rodape ficam em --background (1); a coluna de
+     canais e o composer em --depth-2; a area do chat em --depth-3. Cada
+     degrau e' um pouco mais claro que o anterior, so o bastante pra separar.
+
      --neon-rgb alimenta os halos (rgb(var(--neon-rgb) / a)) — nos temas
      claros e o verde escuro, pra que o halo vire uma sombra verde suave em
      vez de um borrao fluorescente sobre branco. */
@@ -18,6 +23,8 @@
   /* ---------- Grafite (padrao) ---------- */
   :root {
     --background: 210 7% 6%;
+    --depth-2: 210 7% 8%;
+    --depth-3: 210 8% 10%;
     --foreground: 216 13% 92%;
     --card: 210 8% 10%;
     --card-foreground: 216 13% 92%;
@@ -52,6 +59,8 @@
   /* ---------- Meia-Noite ---------- */
   :root[data-theme='meia-noite'] {
     --background: 220 49% 8%;
+    --depth-2: 220 45% 10%;
+    --depth-3: 220 41% 12%;
     --foreground: 216 43% 93%;
     --card: 220 41% 13%;
     --card-foreground: 216 43% 93%;
@@ -72,6 +81,8 @@
   /* ---------- Roxo Murcho ---------- */
   :root[data-theme='roxo'] {
     --background: 268 51% 7%;
+    --depth-2: 268 47% 9%;
+    --depth-3: 266 44% 11%;
     --foreground: 265 52% 94%;
     --card: 266 44% 11%;
     --card-foreground: 265 52% 94%;
@@ -93,6 +104,8 @@
   :root[data-theme='papel'] {
     color-scheme: light;
     --background: 75 17% 96%;
+    --depth-2: 75 17% 97.5%;
+    --depth-3: 0 0% 99%;
     --foreground: 210 13% 9%;
     --card: 0 0% 100%;
     --card-foreground: 210 13% 9%;
@@ -126,6 +139,8 @@
   :root[data-theme='acido-claro'] {
     color-scheme: light;
     --background: 100 24% 95%;
+    --depth-2: 100 24% 96.5%;
+    --depth-3: 100 20% 98%;
     --foreground: 100 24% 8%;
     --card: 0 0% 100%;
     --card-foreground: 100 24% 8%;

@@ -76,6 +76,12 @@ export default {
           DEFAULT: 'hsl(var(--burn))',
           dark: 'hsl(var(--burn-dark))'
         },
+        // Profundidade: depth-1 e' o proprio bg-void; 2 e 3 sao degraus mais
+        // claros (coluna de canais/composer e area do chat).
+        depth: {
+          2: 'hsl(var(--depth-2))',
+          3: 'hsl(var(--depth-3))'
+        },
         void: {
           DEFAULT: 'hsl(var(--background))',
           light: 'hsl(var(--muted))',
