@@ -18,7 +18,7 @@ import type { ReactNode, SVGProps } from 'react'
  *  - a cor NUNCA vem do ícone, vem de fora por `currentColor` — é a raridade
  *    do cosmético que manda (`RARITY_COLOR`);
  *  - tem que ler a 14px, que é o tamanho real na tela: badge é um chip de 24
- *    com ícone de 14 dentro. Prêmio do recap sai a 16, título a 10.
+ *    com ícone de 14 dentro. Prêmio do recap sai a 16.
  *
  * A prova visual — todos os ícones nos quatro tamanhos e nas quatro cores de
  * raridade sobre o fundo do app — está em `docs/icones-preview.html`. É lá que
@@ -113,75 +113,6 @@ export const BADGE_GLYPH: Record<string, ReactNode> = {
 }
 
 // ============================================
-// TÍTULOS (chave dos ids `title:*` da lojinha)
-// ============================================
-
-/**
- * O título é desenhado a 10px dentro da etiqueta, e a 10px o que sobra de um
- * ícone é a silhueta — por isso existem duas versões da mesma arte. `TitleIcon`
- * usa a `_SM` (menos formas, traço 2.5); a detalhada fica pronta pro dia em que
- * a etiqueta crescer.
- */
-export const TITLE_GLYPH: Record<string, ReactNode> = {
-  // espinha de peixe
-  feeder: <path d="M4 12h12l4-4v8l-4-4M4 12l4-5v10ZM12 8v8" />,
-  // escudo de cura
-  suporte: <path d="M4 4.5h16v8l-3 5-5 3-5-3-3-5ZM12 8v7M8.5 11.5h7" />,
-  // boca de perfil
-  'boca-de-ouro': <path d="M4 4.5h5l5 6-5 2 5 2-5 6H4M18 7.5q5 5 0 10" />,
-  // nota quadrada
-  dj: <path d="M10 16.5v-13l10 3v5l-10-3M10 16.5H4v4h6Z" />,
-  // dedo insistente
-  cutucador: <path d="M4 20V9.5a2 2 0 0 1 4 0v4h6l2 3v3.5ZM5 3.5v2M11.5 5.5l2-2" />,
-  // lua sonolenta
-  coruja: <path d="M15 3.5a8.5 8.5 0 1 0 5.5 14A10 10 0 0 1 15 3.5ZM7 12.5h3" />,
-  // coroa murcha
-  lenda: <path d="M5 20 3.5 7.5 9 10l3-6.5 3 5 5.5-4-2 15.5ZM8.5 16q3.5-3 7 0" />,
-}
-
-export const TITLE_GLYPH_SM: Record<string, ReactNode> = {
-  // espinha de peixe
-  feeder: <path d="M4 12l4-5v10ZM8 12h8l4-4v8l-4-4" />,
-  // escudo de cura
-  suporte: (
-    <>
-      <path d="M4 4.5h16v8l-3 5-5 3-5-3-3-5Z" />
-      <path d="M12 8v7m-3.5-3.5h7" />
-    </>
-  ),
-  // boca de perfil
-  'boca-de-ouro': (
-    <>
-      <path d="M4 4.5h5l5 6-5 2 5 2-5 6H4" />
-      <path d="M18 7.5q5 5 0 10" />
-    </>
-  ),
-  // nota quadrada
-  dj: <path d="M10 16.5v-13l10 3v5l-10-3v8H4v4h6Z" />,
-  // dedo insistente
-  cutucador: (
-    <>
-      <path d="M4 20V9.5a2 2 0 0 1 4 0v4h6l2 3v3.5Z" />
-      <path d="M6 3.5v2" />
-    </>
-  ),
-  // lua sonolenta
-  coruja: (
-    <>
-      <path d="M15 3.5a8.5 8.5 0 1 0 5.5 14A10 10 0 0 1 15 3.5Z" />
-      <path d="M7 12.5h3" />
-    </>
-  ),
-  // coroa murcha
-  lenda: (
-    <>
-      <path d="M5 20 3.5 7.5 9 10l3-6.5 3 5 5.5-4-2 15.5Z" />
-      <path d="M8.5 16q3.5-3 7 0" />
-    </>
-  ),
-}
-
-// ============================================
 // PRÊMIOS DO RECAP (keys de modules/recap.ts na API)
 // ============================================
 
@@ -235,14 +166,6 @@ export const AWARD_GLYPH: Record<string, ReactNode> = {
  */
 /** Selo recortado */
 export const GENERIC_BADGE: ReactNode = <path d="M8 3.5h8l4.5 4.5v8l-4.5 4.5-4-3-4 3L3.5 16V8Z" />
-
-/** Etiqueta */
-export const GENERIC_TITLE: ReactNode = (
-  <>
-    <path d="M3.5 7.5h12l5 5-5 5h-12Z" />
-    <circle cx="7.5" cy="12.5" r="1" />
-  </>
-)
 
 /** Taça */
 export const GENERIC_AWARD: ReactNode = <path d="M7 3.5h10v8a5 5 0 0 1-10 0ZM7 6.5H3.5v5L7 13M17 6.5h3.5v5L17 13M12 16.5v4M8 20.5h8" />

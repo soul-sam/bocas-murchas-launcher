@@ -7,7 +7,6 @@ import { resolveAssetUrl } from '@/lib/api'
 import type { VoiceParticipant } from '@/lib/voice-context'
 import type { Member } from '@/lib/members-context'
 import { useGamification } from '@/lib/gamification-context'
-import { TitleIcon } from '@/lib/cosmetic-icons'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { VideoSurface } from './ScreenStage'
@@ -241,11 +240,11 @@ function ParticipantName({
       {participant.isLocal && (
         <span className="shrink-0 text-[11.5px] text-muted-foreground">(você)</span>
       )}
-      {/* Só o ícone do título: o nome do título não caberia por cima do vídeo
-          sem roubar espaço do nome da pessoa, que é o que importa aqui. */}
+      {/* Título só em texto (títulos não têm ícone). Trunca antes de roubar
+          espaço do nome da pessoa, que é o que importa aqui. */}
       {title && (
-        <span title={title} className="shrink-0 text-burn">
-          <TitleIcon titleId={member?.title} className="h-2.5 w-2.5" />
+        <span title={title} className="min-w-0 truncate text-[11px] text-burn">
+          {title}
         </span>
       )}
     </span>

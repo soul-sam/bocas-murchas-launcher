@@ -9,7 +9,6 @@ import { useOverlays } from '@/lib/overlay-context'
 import { useSocket, type ActivityEntry } from '@/lib/socket-context'
 import { useLayout } from '@/lib/layout-context'
 import { useGamification } from '@/lib/gamification-context'
-import { TitleIcon } from '@/lib/cosmetic-icons'
 import { CargoChip } from '@/lib/cargo-icons'
 import { useCargos } from '@/lib/cargos-context'
 import { ProfileCard } from './ProfileCard'
@@ -240,10 +239,7 @@ function Group({
                       </span>
                     ) : (
                       title && (
-                        <span className="flex items-center gap-1 truncate text-[11px] text-burn/80">
-                          <TitleIcon titleId={member.title} className="h-2.5 w-2.5 shrink-0" />
-                          <span className="truncate">{title}</span>
-                        </span>
+                        <span className="block truncate text-[11px] text-burn/80">{title}</span>
                       )
                     )}
                   </span>

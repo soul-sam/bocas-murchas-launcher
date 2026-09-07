@@ -1,18 +1,16 @@
 import { cn } from '@/lib/utils'
-import { cosmeticKey, RARITY_COLOR, type Rarity } from '@/lib/api-gamification'
+import { RARITY_COLOR, type Rarity } from '@/lib/api-gamification'
 import {
   AWARD_GLYPH,
   BADGE_GLYPH,
   GENERIC_AWARD,
   GENERIC_BADGE,
-  GENERIC_TITLE,
-  Glyph,
-  TITLE_GLYPH_SM
+  Glyph
 } from '@/lib/cosmetic-glyphs'
 import { titleRarity } from '@/lib/api-gamification'
 
 /**
- * ÍCONES DOS COSMÉTICOS — badges, títulos e prêmios do recap.
+ * ÍCONES DOS COSMÉTICOS — badges e prêmios do recap (títulos são só texto).
  *
  * O servidor guarda um emoji em cada badge/prêmio (`icon: '🩸'`), e por um
  * tempo a tela desenhava esse emoji direto. Aqui a gente ignora o emoji e
@@ -60,19 +58,6 @@ export function BadgeIcon({
 }) {
   const art = (badgeId ? BADGE_GLYPH[badgeId] : null) ?? GENERIC_BADGE
   return <Glyph art={art} className={className ?? 'h-3.5 w-3.5'} />
-}
-
-/** Aceita o id completo (`title:dj`) ou só a chave (`dj`). */
-export function TitleIcon({
-  titleId,
-  className
-}: {
-  titleId: string | null | undefined
-  className?: string
-}) {
-  const key = cosmeticKey(titleId)
-  const art = (key ? TITLE_GLYPH_SM[key] : null) ?? GENERIC_TITLE
-  return <Glyph art={art} strokeWidth={2.5} className={className ?? 'h-2.5 w-2.5'} />
 }
 
 export function AwardIcon({
@@ -124,7 +109,7 @@ export function BadgeChip({
 }
 
 /**
- * Etiqueta do título equipado, com o ícone dele.
+ * Etiqueta do título equipado — só texto, na cor da raridade.
  *
  * Um componente só porque o título aparece em cinco telas (perfil, autor da
  * mensagem, lista de membros, ranking, lojinha) e "o mesmo título com aparência
@@ -154,13 +139,12 @@ export function TitleTag({
     <span
       title={tooltip}
       className={cn(
-        'flex shrink-0 cursor-default items-center gap-1 rounded-brutal border px-1',
+        'flex shrink-0 cursor-default items-center rounded-brutal border px-1',
         'text-[11px] leading-4',
         className
       )}
       style={{ color, borderColor: `${color}66` }}
     >
-      <TitleIcon titleId={titleId} className="h-2.5 w-2.5 shrink-0" />
       <span className="truncate">{name}</span>
     </span>
   )

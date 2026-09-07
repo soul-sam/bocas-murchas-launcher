@@ -49,7 +49,6 @@ export const TITLE_RARITY: Record<string, Rarity> = {
   lagado: 'common',
   afk: 'common',
   ragequitter: 'common',
-  'boca-murcha': 'common',
   'voz-de-blitz': 'common',
   dj: 'rare',
   tiltado: 'rare',
@@ -59,7 +58,7 @@ export const TITLE_RARITY: Record<string, Rarity> = {
   'boca-de-ouro': 'epic',
   carry: 'epic',
   veterano: 'epic',
-  lenda: 'legendary'
+  'boca-murcha': 'legendary'
 }
 
 export function titleRarity(titleId: string | null | undefined): Rarity {
