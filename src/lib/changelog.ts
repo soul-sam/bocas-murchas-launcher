@@ -42,6 +42,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.2.0',
+    headline: 'Volto logo, caixa de sugestões e o som do compartilhamento arrumado',
+    items: [
+      'Botão "Volto logo!" do lado do microfone: avisa a galera que você saiu e desliga as cutucadas até você voltar. Ele se marca sozinho depois de 10 minutos longe do teclado e se desmarca quando você mexe na janela — dá pra mudar o tempo em Configurações → Chat.',
+      'Quem está fora aparece com o recado do lado do nome, inclusive na lista de quem está na call. Cutucar quem saiu não funciona mais, e o menu diz isso antes do clique.',
+      'Canal #sugestoes: peça o que falta ou avise o que quebrou, e a galera vota. O que tem mais voto fica no topo do quadro. Também dá pelo /sugestao, de qualquer canal.',
+      'Compartilhar tela com som: o Launcher fica mudo enquanto isso, então os avisos daqui e o soundboard param de voltar pra call com atraso. As vozes ainda vão junto — não tem como tirar, e agora está escrito na tela de compartilhar.',
+      'O som que você compartilha agora vai em estéreo e sem os filtros de voz que o Windows metia no meio. Jogo e música chegam do jeito que saem.',
+      'Passar o mouse em badge, cargo, título, pacote de sticker ou botão de ícone agora mostra uma dica nossa, com a descrição inteira e o atalho de teclado — no lugar daquela caixinha branca do Windows.',
+      'O que já estava salvo no seletor de tela (som, qualidade) não é mais perguntado do zero toda vez.'
+    ],
+    note: 'Quem pediu menos animação no Windows agora é atendido também nos menus e nas janelas — antes só o fundo e os brilhos obedeciam.'
+  },
+  {
     version: '1.1.1',
     headline: 'Roxo Murcho pra todo mundo',
     items: [
