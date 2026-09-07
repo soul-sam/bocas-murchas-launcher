@@ -108,14 +108,22 @@
    MOLDURAS DE AVATAR
    ============================================
    Aplicadas no <Avatar> (que já tem border e overflow hidden). Raras azuis,
-   épicas roxas, e a de fogo é a ÚNICA animada: um anel de gradiente ATRÁS do
-   avatar correndo pela horizontal — só background-position. */
+   épicas roxas, e a lendária é a ÚNICA animada.
+
+   REGRA DE TAMANHO: toda moldura tem border-width 2px. A borda entra no
+   box-sizing, então 4px de borda encolhia a foto — na prateleira as fotos
+   saíam de tamanhos diferentes. O que cada moldura tem de a mais (anel
+   duplo, halo) é box-shadow, que fica FORA da caixa e não mexe na foto.
+   Limite do halo: 16px. */
+[class*='frame-'] {
+  border-width: 2px !important;
+  border-style: solid !important;
+}
 
 /* --- raras (azul) --- */
 .frame-pixel {
   border-style: dashed !important;
   border-color: #3fc1ff !important;
-  border-width: 2px !important;
 }
 
 .frame-ice {
@@ -131,8 +139,7 @@
 .frame-dashed {
   border-style: dashed !important;
   border-color: #3fc1ff !important;
-  border-width: 3px !important;
-  box-shadow: 0 0 6px rgba(63, 193, 255, 0.35);
+  box-shadow: 0 0 0 1px rgba(63, 193, 255, 0.35), 0 0 6px rgba(63, 193, 255, 0.35);
 }
 
 .frame-wave {
@@ -146,11 +153,10 @@
   box-shadow: 0 0 10px rgba(176, 124, 255, 0.65), inset 0 0 0 1px rgba(208, 162, 255, 0.5);
 }
 
+/* "Dupla": a segunda linha é um anel de box-shadow com um vão escuro. */
 .frame-amethyst {
-  border-style: double !important;
-  border-width: 4px !important;
   border-color: #8b4dff !important;
-  box-shadow: 0 0 8px rgba(139, 77, 255, 0.5);
+  box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 3px #8b4dff, 0 0 8px 3px rgba(139, 77, 255, 0.5);
 }
 
 .frame-violet-neon {
@@ -159,26 +165,25 @@
 }
 
 /* --- lendária: Lenda Murcha (animada) --- */
-/* Mesmo desenho da Ametista (borda dupla), em dourado, com o halo respirando
-   devagar. A coroa em cima é um irmão (`frame-fire-ring`) que o UserAvatar
-   desenha — a classe da borda continua servindo pra webcam na call. */
+/* Mesmo desenho da Ametista, em dourado, com o halo respirando devagar. A
+   coroa em cima é um irmão (`frame-fire-ring`) que o UserAvatar desenha — a
+   classe da borda continua servindo pra webcam na call. */
 .frame-fire {
-  border-style: double !important;
-  border-width: 4px !important;
   border-color: #ffd000 !important;
-  box-shadow: 0 0 8px rgba(255, 208, 0, 0.5);
+  box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 3px #ffd000, 0 0 8px 3px rgba(255, 208, 0, 0.5);
   animation: frame-fire-glow 3s ease-in-out infinite;
 }
 
 @keyframes frame-fire-glow {
-  0%, 100% { box-shadow: 0 0 6px rgba(255, 208, 0, 0.4); }
-  50%      { box-shadow: 0 0 14px rgba(255, 208, 0, 0.85); }
+  0%, 100% { box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 3px #ffd000, 0 0 6px 3px rgba(255, 208, 0, 0.4); }
+  50%      { box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 3px #ffd000, 0 0 14px 3px rgba(255, 208, 0, 0.85); }
 }
 
 /* A coroa: centrada no topo, por cima da borda. */
 .frame-fire-ring {
+  border: 0 !important; /* o seletor [class*='frame-'] pegaria a coroa */
   position: absolute;
-  top: -8px;
+  top: -9px;
   left: 50%;
   width: 15px;
   height: 15px;
