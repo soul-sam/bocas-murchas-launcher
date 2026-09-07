@@ -428,7 +428,7 @@ function ParticipantTile({
       onContextMenu={onContextMenu}
       className={cn(
         'group flex flex-col items-center gap-2 rounded-brutal border-2 p-3 transition-all sm:p-4',
-        camera ? 'w-52 sm:w-64' : 'w-32 sm:w-40',
+        camera ? 'w-52 sm:w-64' : 'w-36 sm:w-44',
         participant.isSpeaking
           ? 'border-acid bg-acid/5 shadow-[0_0_20px_rgba(106,255,0,0.2)]'
           : 'border-[#1a1a1a] bg-void-light/30'
@@ -455,7 +455,7 @@ function ParticipantTile({
             name={participant.name}
             ringColor={member?.profileColor}
             speaking={participant.isSpeaking}
-            className="h-12 w-12 sm:h-16 sm:w-16"
+            className="h-16 w-16 sm:h-20 sm:w-20"
           />
         )}
 
@@ -469,10 +469,10 @@ function ParticipantTile({
         )}
       </div>
 
-      <p className="w-full truncate text-center text-xs text-foreground sm:text-sm">
+      <p className="w-full truncate text-center text-sm text-foreground sm:text-base">
         {participant.name}
         {participant.isLocal && (
-          <span className="ml-1 text-[10px] text-muted-foreground">(você)</span>
+          <span className="ml-1 text-[11px] text-muted-foreground">(você)</span>
         )}
       </p>
 
@@ -573,10 +573,10 @@ function ParticipantChip({
           name={participant.name}
           ringColor={member?.profileColor}
           speaking={participant.isSpeaking}
-          className="h-6 w-6"
+          className="h-7 w-7"
         />
       )}
-      <span className="max-w-24 truncate text-xs text-foreground">{participant.name}</span>
+      <span className="max-w-28 truncate text-sm text-foreground">{participant.name}</span>
 
       {participant.isScreenSharing && (
         <MonitorUp className="h-3 w-3 shrink-0 text-destructive" aria-label="transmitindo" />

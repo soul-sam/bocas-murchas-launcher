@@ -363,19 +363,19 @@ export function ChannelSidebar({
                                 : occupant.displayName
                             }
                             className={cn(
-                              'flex w-full items-center gap-2 rounded-brutal py-0.5 pr-1 text-left text-xs text-muted-foreground transition-colors hover:bg-void-light',
+                              'flex w-full items-center gap-2.5 rounded-brutal py-1 pr-1 text-left text-sm text-muted-foreground transition-colors hover:bg-void-light',
                               !isSharing && 'cursor-default'
                             )}
                           >
                             <UserAvatar
                               src={resolveAssetUrl(occupant.avatar)}
                               name={occupant.displayName}
-                              className="h-6 w-6 shrink-0 rounded-full"
+                              className="h-8 w-8 shrink-0 rounded-full"
                             />
                             <span className="truncate">{occupant.displayName}</span>
                             {isSharing && (
                               <span className="ml-auto flex shrink-0 items-center gap-0.5 text-destructive">
-                                <ScreenShare className="h-3 w-3" aria-label="compartilhando tela" />
+                                <ScreenShare className="h-3.5 w-3.5" aria-label="compartilhando tela" />
                               </span>
                             )}
                           </button>
