@@ -179,17 +179,31 @@ function Framed({
   frame,
   speaking,
   className,
+  wrapperClassName,
   children
 }: {
   frame?: string | null
   speaking?: boolean
   className?: string
+  /**
+   * Tamanho do WRAPPER de fora — e não é detalhe: o `h-full` do card de
+   * dentro mede contra ESTE elemento. Sem altura aqui, `h-full` resolve
+   * contra `auto` e o card encolhe até o tamanho do conteúdo: um card de
+   * 944×531 virava uma tarja de 944×187 (a altura do avatar), com a célula
+   * da grade continuando com os 531 calculados. Era isso o card achatado com
+   * um buraco embaixo.
+   *
+   * Fica como propriedade em vez de `h-full w-full` fixo porque a fileira
+   * compacta usa `Framed` com tamanho próprio (`h-7 w-12`) dentro de um
+   * botão sem altura, e ali `h-full` não teria contra o que medir.
+   */
+  wrapperClassName?: string
   children: React.ReactNode
 }) {
   const style = frameClass(frame)
 
   return (
-    <div className="relative min-w-0">
+    <div className={cn('relative min-w-0', wrapperClassName)}>
       {frameNeedsRing(frame) && <span aria-hidden className="frame-fire-ring" />}
       <div
         className={cn(
@@ -355,6 +369,7 @@ function CameraTile({
       <Framed
         frame={member?.avatarFrame}
         speaking={participant.isSpeaking}
+        wrapperClassName="h-full w-full"
         className={cn(
           'h-full w-full transition-shadow',
           // Sem medida ainda (primeiro quadro): a proporção segura o layout
@@ -432,6 +447,7 @@ function AvatarTile({
       <Framed
         frame={member?.avatarFrame}
         speaking={participant.isSpeaking}
+        wrapperClassName="h-full w-full"
         className={cn(
           'flex h-full w-full items-center justify-center bg-void-light/30 transition-shadow',
           !width && 'aspect-video w-full min-w-[176px]',
@@ -470,6 +486,13 @@ function AvatarTile({
  * Fica POR CIMA do conteúdo em vez de embaixo do card: antes o nome roubava
  * uma linha de altura de cada card, e com quatro fileiras isso somava um card
  * inteiro de espaço jogado fora.
+ *
+ * A BARRA DE VOLUME FICA ACIMA DO NOME, não em cima dele. Eram dois blocos
+ * absolutos ancorados no mesmo `bottom`, então a barra cobria o nome — e não
+ * só no hover: volume fora do padrão fica sempre visível (de propósito, senão
+ * a pessoa esquece que abaixou alguém), então quem tivesse mexido no volume
+ * de alguém nunca mais via o nome daquela pessoa. Agora é uma coluna só: a
+ * barra entra por cima da linha do nome e empurra, em vez de tapar.
  */
 function TileOverlay({
   participant,
@@ -485,13 +508,36 @@ function TileOverlay({
   const muted = volume === 0
 
   return (
-    <>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-void/95 to-transparent px-2 pb-1.5 pt-6">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-gradient-to-t from-void/95 via-void/70 to-transparent px-2 pb-1.5 pt-8">
+      {!participant.isLocal && (
+        <div
+          className={cn(
+            // `pointer-events-auto`: a coluna toda é transparente ao clique
+            // (pra não roubar o clique de destaque do card), menos a barra.
+            'pointer-events-auto rounded-brutal bg-void/90 px-1.5 py-0.5 transition-opacity',
+            // Volume fora do padrão fica SEMPRE visível: sem isso a pessoa
+            // abaixava alguém, esquecia, e depois achava que o coleguinha
+            // estava com problema de microfone.
+            volume !== 1
+              ? 'opacity-100'
+              : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'
+          )}
+        >
+          <VolumeControl
+            participant={participant}
+            volume={volume}
+            onVolume={onVolume}
+            compact
+          />
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
         <ParticipantName
           participant={participant}
           member={member}
           emojiSize="md"
-          className="flex-1 text-sm text-dirty-white"
+          className="min-w-0 flex-1 text-sm text-dirty-white"
         />
 
         {!participant.micEnabled && (
@@ -504,30 +550,7 @@ function TileOverlay({
           />
         )}
       </div>
-
-      {!participant.isLocal && (
-        <div
-          className={cn(
-            'absolute inset-x-2 bottom-1 flex items-center transition-opacity',
-            // Volume fora do padrão fica SEMPRE visível: sem isso a pessoa
-            // abaixava alguém, esquecia, e depois achava que o coleguinha
-            // estava com problema de microfone.
-            volume !== 1
-              ? 'opacity-100'
-              : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'
-          )}
-        >
-          <div className="flex-1 rounded-brutal bg-void/90 px-1.5 py-0.5">
-            <VolumeControl
-              participant={participant}
-              volume={volume}
-              onVolume={onVolume}
-              compact
-            />
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   )
 }
 
@@ -675,10 +698,16 @@ export function CallStage({
         A de fora é o espaço disponível — é ela que o ResizeObserver mede, e
         por isso não pode ter tamanho vindo do conteúdo.
 
-        A de dentro é a grade, com o número de colunas que a conta escolheu.
-        Antes era flex-wrap: a quebra ficava a cargo do navegador e discordava
-        da conta por um pixel de arredondamento, então às vezes sobrava uma
-        fileira com um card sozinho num palco onde caberiam todos.
+        A de dentro é a fileira, com LARGURA EXATA pra caber o número de
+        colunas que a conta escolheu — nem um pixel a mais.
+
+        Já foi `grid` com `gridTemplateColumns`, porque com flex-wrap solto a
+        quebra ficava a cargo do navegador e discordava da conta por um pixel
+        de arredondamento. Com a largura travada em `colunas × card + vãos`
+        esse risco some (os dois números são inteiros), e em troca a ÚLTIMA
+        FILEIRA CENTRALIZA: numa call de três, o terceiro card ficava
+        encostado à esquerda embaixo do primeiro, com um buraco do lado. A
+        grade não sabe centralizar sobra de fileira; o flex sabe.
 
         `m-auto` em vez de centralizar pelo pai: com `items-center` e conteúdo
         maior que o espaço (piso de tamanho batido, muita gente na call), o
@@ -687,10 +716,10 @@ export function CallStage({
       */}
       <div ref={grid.ref} className="flex min-h-0 flex-1 overflow-auto">
         <div
-          className="m-auto grid gap-3"
+          className="m-auto flex flex-wrap justify-center gap-3"
           style={
-            grid.columns
-              ? { gridTemplateColumns: `repeat(${grid.columns}, ${grid.width}px)` }
+            grid.columns && grid.width
+              ? { width: grid.columns * grid.width + (grid.columns - 1) * GAP }
               : undefined
           }
         >
