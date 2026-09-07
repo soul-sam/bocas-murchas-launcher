@@ -1,9 +1,9 @@
 import * as React from 'react'
-import { X, Coins, Loader2, Check, ShoppingBag, Tag, Sparkles, Frame, Smile, Palette } from 'lucide-react'
+import { X, Coins, Loader2, Check, ShoppingBag, Tag, Sparkles, Frame, Smile, Volume2, Play } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
 import {
-  cosmeticColor,
+  cosmeticSound,
   cosmeticEmoji,
   formatCompact,
   RARITY_COLOR,
@@ -19,14 +19,16 @@ import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useGamification } from '@/lib/gamification-context'
+import { useSettings } from '@/lib/settings-context'
+import { playJoinSound } from '@/lib/ui-sounds'
 import { cn } from '@/lib/utils'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { TitleTag } from '@/lib/cosmetic-icons'
 
 /**
- * LOJINHA — gastar murchos em título, efeito de nome, moldura de avatar e
- * emoji do lado do nome (`Nome · 😎 · Título`).
+ * LOJINHA — gastar murchos em título, efeito de nome, moldura de avatar,
+ * emoji do lado do nome (`Nome · 😎 · Título`) e som de entrar/sair da call.
  *
  * Camada própria (div fixed + clique fora fecha), NÃO Radix Dialog: ela mora
  * em GlobalOverlays mas quem abre pode estar numa tela que some, e camada
@@ -42,7 +44,7 @@ const TABS: { type: CosmeticType; label: string; Icon: typeof Tag }[] = [
   { type: 'nameEffect', label: 'Efeitos', Icon: Sparkles },
   { type: 'avatarFrame', label: 'Molduras', Icon: Frame },
   { type: 'emoji', label: 'Emojis', Icon: Smile },
-  { type: 'nameColor', label: 'Cores', Icon: Palette }
+  { type: 'joinSound', label: 'Sons', Icon: Volume2 }
 ]
 
 const RARITY_ORDER: Record<string, number> = { common: 0, rare: 1, epic: 2, legendary: 3 }
@@ -52,6 +54,7 @@ export function ShopModal() {
   const { user } = useAuth()
   const { byId } = useMembers()
   const { shop, loadShop, buy, equip, profile, catalog } = useGamification()
+  const { settings } = useSettings()
 
   const [tab, setTab] = React.useState<CosmeticType>('title')
   const [hovered, setHovered] = React.useState<ShopItem | null>(null)
@@ -81,12 +84,11 @@ export function ShopModal() {
   if (!open || !user) return null
 
   const me = byId[user.id] ?? user
-  // A cor também entra na prévia: passar o mouse numa cor pinta MEU nome com
-  // ela, igual acontece com efeito e moldura.
-  const color =
-    (hovered?.type === 'nameColor' ? cosmeticColor(hovered) : null) ??
-    me.profileColor ??
-    DEFAULT_NAME_COLOR
+  const color = me.profileColor ?? DEFAULT_NAME_COLOR
+  // Som toca no volume do slider "entrar/sair da call", que é o que a galera
+  // vai ouvir de verdade. Slider em zero: a prévia toca baixinho mesmo assim,
+  // senão a prateleira parece quebrada.
+  const previewVolume = settings.soundEnabled && settings.voiceCueVolume > 0 ? settings.voiceCueVolume : 0.4
   const coins = profile?.coins ?? shop?.coins ?? 0
 
   const items = (shop?.items ?? [])
@@ -255,6 +257,11 @@ export function ShopModal() {
                   onBuy={() => void handleBuy(item)}
                   onEquip={() => void handleEquip(item, false)}
                   onUnequip={() => void handleEquip(item, true)}
+                  onPreview={
+                    item.type === 'joinSound'
+                      ? (phase) => playJoinSound(cosmeticSound(item), phase, previewVolume)
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -284,7 +291,8 @@ function ItemTile({
   onCancel,
   onBuy,
   onEquip,
-  onUnequip
+  onUnequip,
+  onPreview
 }: {
   item: ShopItem
   me: { name: string; avatar?: string; color: string }
@@ -297,6 +305,8 @@ function ItemTile({
   onBuy: () => void
   onEquip: () => void
   onUnequip: () => void
+  /** Só nos sons: toca o par entrar/sair pra ouvir antes de comprar. */
+  onPreview?: (phase: 'join' | 'leave') => void
 }) {
   const tier = (item.rarity as Rarity) ?? 'common'
   const rarity = RARITY_COLOR[tier] ?? RARITY_COLOR.common
@@ -343,16 +353,26 @@ function ItemTile({
             <NameEmoji glyph={cosmeticEmoji(item)} className="text-2xl" />
           </span>
         )}
-        {item.type === 'nameColor' && (
-          <span className="flex items-center gap-2 truncate">
-            <span
-              aria-hidden
-              className="h-4 w-4 shrink-0 rounded-full border border-white/20"
-              style={{ background: cosmeticColor(item) ?? undefined }}
-            />
-            <span className="truncate font-display text-base" style={{ color: cosmeticColor(item) ?? undefined }}>
-              {me.name}
-            </span>
+        {item.type === 'joinSound' && onPreview && (
+          <span className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onPreview('join')}
+              title="Ouvir: entrou"
+              className="flex items-center gap-1 rounded-brutal border border-line px-2 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-acid/60 hover:text-acid"
+            >
+              <Play className="h-3 w-3" />
+              entrou
+            </button>
+            <button
+              type="button"
+              onClick={() => onPreview('leave')}
+              title="Ouvir: saiu"
+              className="flex items-center gap-1 rounded-brutal border border-line px-2 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-acid/60 hover:text-acid"
+            >
+              <Play className="h-3 w-3" />
+              saiu
+            </button>
           </span>
         )}
       </div>

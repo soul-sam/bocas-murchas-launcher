@@ -16,7 +16,8 @@ import { livekit, type Channel } from './api'
 import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
-import { playUiSound } from './ui-sounds'
+import { playUiSound, playJoinSound } from './ui-sounds'
+import { useMembers } from './members-context'
 import { createMicProcessor, type MicProcessor } from './audio-processor'
 
 /**
@@ -170,9 +171,10 @@ function readMetadata(participant: Participant): { displayName?: string; avatar?
 }
 
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const { socket } = useSocket()
   const { settings, update: updateSettings } = useSettings()
+  const { byId } = useMembers()
 
   const [room, setRoom] = React.useState<Room | null>(null)
   const [channel, setChannel] = React.useState<Channel | null>(null)
@@ -255,6 +257,27 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     const isVoiceCue = name === 'voice-join' || name === 'voice-leave'
     playUiSound(name, isVoiceCue ? voiceCueVolumeRef.current : cueVolumeRef.current)
   }, [])
+
+  /**
+   * Entrar/sair toca o som DE QUEM entrou ou saiu — o cosmético `joinSound`
+   * comprado na lojinha, que a lista de membros já carrega. A identidade do
+   * LiveKit é o id do usuário, então é só olhar em `byId`. Sem som comprado
+   * cai no aviso padrão. Refs porque os handlers do LiveKit são registrados
+   * uma vez só (ver `cueVolumeRef`).
+   */
+  const membersRef = React.useRef(byId)
+  membersRef.current = byId
+  const myJoinSoundRef = React.useRef<string | null | undefined>(user?.joinSound)
+  myJoinSoundRef.current = (user && membersRef.current[user.id]?.joinSound) ?? user?.joinSound
+
+  const voiceCue = React.useCallback(
+    (phase: 'join' | 'leave', identity?: string) => {
+      const sound = identity ? membersRef.current[identity]?.joinSound : myJoinSoundRef.current
+      if (sound && playJoinSound(sound, phase, voiceCueVolumeRef.current)) return
+      cue(phase === 'join' ? 'voice-join' : 'voice-leave')
+    },
+    [cue]
+  )
 
   /**
    * Volume por pessoa.
@@ -423,7 +446,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     leavingRef.current = true
 
     if (current) {
-      cue('voice-leave')
+      voiceCue('leave')
       await current.disconnect().catch(() => {})
     }
 
@@ -503,14 +526,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           }
         })
 
-        next.on(RoomEvent.ParticipantConnected, () => {
+        next.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
           // So dispara pra quem chega DEPOIS de voce; quem ja estava na sala
           // vem em remoteParticipants no connect, sem evento.
-          cue('voice-join')
+          voiceCue('join', participant.identity)
           syncParticipants(next)
         })
-        next.on(RoomEvent.ParticipantDisconnected, () => {
-          cue('voice-leave')
+        next.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
+          voiceCue('leave', participant.identity)
           syncParticipants(next)
         })
         next.on(RoomEvent.TrackMuted, () => syncParticipants(next))
@@ -741,7 +764,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         setConnected(true)
         syncParticipants(next)
 
-        cue('voice-join')
+        voiceCue('join')
 
         // Só agora o servidor sabe em que sala mandar soundboard e nudge.
         socketRef.current?.emit('joinVoice', target.id)

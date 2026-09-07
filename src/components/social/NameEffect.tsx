@@ -4,7 +4,9 @@ import { cosmeticKey } from '@/lib/api-gamification'
 import '@/styles/effects.css'
 
 /**
- * Efeito cosmético no nome de alguém: glow, rainbow, glitch, fire.
+ * Efeito cosmético no nome de alguém. Raros são azuis, épicos roxos, e o
+ * lendário (`fire`, "Rei dos Bocas") é o ÚNICO animado — o resto é estático
+ * por definição, não só quando `animated={false}`.
  *
  * Recebe o id do cosmético como vem do servidor (`effect:glow`) ou só a chave
  * (`glow`). Sem efeito (ou efeito desconhecido) devolve os filhos num span
@@ -15,9 +17,17 @@ import '@/styles/effects.css'
  */
 
 const EFFECT_CLASS: Record<string, string> = {
+  // raros (azul)
   glow: 'fx-glow',
-  rainbow: 'fx-rainbow',
+  ice: 'fx-ice',
+  neon: 'fx-neon',
+  electric: 'fx-electric',
+  crystal: 'fx-crystal',
+  // épicos (roxo)
   glitch: 'fx-glitch',
+  arcane: 'fx-arcane',
+  shadow: 'fx-shadow',
+  // lendário (fogo, animado)
   fire: 'fx-fire'
 }
 

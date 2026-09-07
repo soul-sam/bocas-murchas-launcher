@@ -59,10 +59,18 @@ const STATUS_STYLES: Record<string, string> = {
  * ela quer que apareça.
  */
 const FRAME_STYLES: Record<string, string> = {
-  acid: 'frame-acid',
-  gold: 'frame-gold',
+  // raras (azul)
   pixel: 'frame-pixel',
-  neon: 'frame-neon'
+  ice: 'frame-ice',
+  steel: 'frame-steel',
+  dashed: 'frame-dashed',
+  wave: 'frame-wave',
+  // épicas (roxo)
+  arcane: 'frame-arcane',
+  amethyst: 'frame-amethyst',
+  'violet-neon': 'frame-violet-neon',
+  // lendária (fogo, a única animada)
+  fire: 'frame-fire'
 }
 
 export const AVATAR_FRAME_KEYS = Object.keys(FRAME_STYLES)
@@ -75,8 +83,8 @@ export const AVATAR_FRAME_KEYS = Object.keys(FRAME_STYLES)
  * na call, não só no quadradinho do avatar. Sem isso, quem pagou por uma
  * moldura perdia ela justamente na hora em que todo mundo está olhando.
  *
- * A neon é a exceção: ela pinta a borda de transparente e o anel de verdade é
- * um irmão posicionado atrás (`frame-neon-ring`, ver styles/effects.css). Quem
+ * A de fogo é a exceção: ela pinta a borda de transparente e o anel de verdade
+ * é um irmão posicionado atrás (`frame-fire-ring`, ver styles/effects.css). Quem
  * usa isto precisa saber se tem que desenhar esse irmão — daí as duas funções.
  */
 export function frameClass(frame: string | null | undefined): string | undefined {
@@ -85,7 +93,7 @@ export function frameClass(frame: string | null | undefined): string | undefined
 }
 
 export function frameNeedsRing(frame: string | null | undefined): boolean {
-  return cosmeticKey(frame) === 'neon'
+  return cosmeticKey(frame) === 'fire'
 }
 
 /** Avatar com bolinha de status no canto, igual Discord. */
@@ -118,9 +126,9 @@ export function UserAvatar({
 
   return (
     <div className="relative shrink-0">
-      {/* Anel neon fica ATRÁS do avatar: vem antes no DOM e o Avatar é
+      {/* Anel de fogo fica ATRÁS do avatar: vem antes no DOM e o Avatar é
           `relative`, então pinta por cima dele. */}
-      {frameNeedsRing(frame) && <span aria-hidden className="frame-neon-ring" />}
+      {frameNeedsRing(frame) && <span aria-hidden className="frame-fire-ring" />}
 
       <Avatar
         className={cn(className, frameStyle, speaking && 'ring-2 ring-acid')}

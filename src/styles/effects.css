@@ -8,69 +8,78 @@
    transform, opacity e background-position, que o compositor resolve sem
    repintar a árvore. Nada de animar text-shadow, filter ou box-shadow. */
 
-/* --- glow ---------------------------------------------------------------
-   O brilho fixo fica no próprio texto; o que pulsa é uma cópia por cima
-   (::after com attr(data-text)) que só varia a opacidade. Texto invisível,
-   sombra na cor herdada — text-fill-color não afeta a cor da sombra. */
+/* --- PALETA POR RARIDADE ----------------------------------------------------
+   Raro = azul (#3FC1FF), épico = roxo (#D0A2FF), lendário = fogo. É a mesma
+   escala de RARITY_COLOR no launcher: o efeito e a moldura contam a raridade
+   sozinhos, sem etiqueta. SÓ O LENDÁRIO ANIMA (`.fx-fire`, `.frame-fire-ring`);
+   todo o resto é estático por definição. */
+
+/* --- raros (azul) ------------------------------------------------------ */
+
+/* glow: brilho azul fixo em volta do texto. */
 .fx-glow {
-  position: relative;
-  text-shadow: 0 0 6px currentColor;
+  color: #7fd4ff;
+  text-shadow: 0 0 6px rgba(63, 193, 255, 0.85), 0 0 14px rgba(63, 193, 255, 0.45);
 }
 
-.fx-glow::after {
-  content: attr(data-text);
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
-  animation: fx-glow-pulse 2.2s ease-in-out infinite;
-}
-
-@keyframes fx-glow-pulse {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 1; }
-}
-
-/* --- rainbow --------------------------------------------------------------
-   Gradiente 3x mais largo que o texto correndo pela horizontal. */
-.fx-rainbow {
-  background-image: linear-gradient(
-    90deg,
-    #ff004c, #ff9a00, #6aff00, #00e5ff, #b400ff, #ff004c
-  );
-  background-size: 300% 100%;
+/* ice: degradê vertical branco-gelo → azul-claro, como vidro congelado. */
+.fx-ice {
+  background-image: linear-gradient(180deg, #f2fbff 0%, #a8e6ff 55%, #3fc1ff 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: fx-slide 4s linear infinite;
 }
 
-@keyframes fx-slide {
-  from { background-position: 0% 50%; }
-  to { background-position: 300% 50%; }
+/* neon: letreiro azul — texto claro com halo forte e tubo escuro atrás. */
+.fx-neon {
+  color: #dff5ff;
+  text-shadow: 0 0 2px #fff, 0 0 8px #3fc1ff, 0 0 18px #1b8fd6, 0 0 28px rgba(27, 143, 214, 0.6);
 }
 
-/* --- glitch ---------------------------------------------------------------
-   Parado 90% do tempo; um tranco curto de vez em quando. As sombras
-   vermelha/ciana são fixas — o tranco é só transform. */
+/* electric: azul elétrico com uma faísca ciana deslocada (sombra dupla). */
+.fx-electric {
+  color: #4fd0ff;
+  text-shadow: 1px -1px 0 rgba(0, 229, 255, 0.9), -1px 1px 0 rgba(0, 72, 255, 0.7), 0 0 10px rgba(63, 193, 255, 0.55);
+}
+
+/* crystal: facetas — degradê diagonal em faixas azul/branco. */
+.fx-crystal {
+  background-image: linear-gradient(
+    135deg,
+    #3fc1ff 0%, #bfefff 20%, #3fc1ff 40%, #e8f9ff 55%, #3fc1ff 75%, #9fe2ff 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* --- épicos (roxo) ----------------------------------------------------- */
+
+/* glitch: falha de sinal PARADA — sombras roxa/magenta deslocadas. */
 .fx-glitch {
   display: inline-block;
-  text-shadow: 1px 0 rgba(255, 0, 80, 0.55), -1px 0 rgba(0, 229, 255, 0.55);
-  animation: fx-glitch 3.2s steps(1, end) infinite;
+  color: #e4ccff;
+  text-shadow: 2px 0 rgba(255, 0, 229, 0.55), -2px 0 rgba(140, 80, 255, 0.7);
 }
 
-@keyframes fx-glitch {
-  0%, 89%, 100% { transform: translate(0, 0); }
-  90% { transform: translate(-2px, 1px); }
-  92% { transform: translate(2px, -1px) skewX(-6deg); }
-  94% { transform: translate(-1px, 0); }
-  96% { transform: translate(1px, 1px); }
+/* arcane: degradê roxo místico, escuro embaixo, lilás em cima. */
+.fx-arcane {
+  background-image: linear-gradient(0deg, #6a1fd6 0%, #b07cff 55%, #ead9ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-/* --- fire -----------------------------------------------------------------
-   Gradiente vertical de fogo (amarelo em cima, vermelho embaixo) que sobe e
-   desce, com uma tremida de opacidade por cima. */
+/* shadow: lilás claro com sombra roxa profunda e deslocada. */
+.fx-shadow {
+  color: #e6d6ff;
+  text-shadow: 0 2px 0 #5a2a9e, 0 4px 10px rgba(90, 42, 158, 0.9), 0 0 18px rgba(176, 124, 255, 0.35);
+}
+
+/* --- lendário: Rei dos Bocas (fogo) ----------------------------------------
+   O ÚNICO com gradiente animado. Gradiente vertical de fogo (amarelo em
+   cima, vermelho embaixo) que sobe e desce, com uma tremida de opacidade.
+   Só background-position e opacity: o compositor resolve sem repintar. */
 .fx-fire {
   background-image: linear-gradient(0deg, #ff2d00 0%, #ff8a00 45%, #ffd000 80%, #fff3a0 100%);
   background-size: 100% 220%;
@@ -90,40 +99,79 @@
   50% { opacity: 0.86; }
 }
 
+@keyframes fx-slide {
+  from { background-position: 0% 50%; }
+  to { background-position: 300% 50%; }
+}
+
 /* ============================================
    MOLDURAS DE AVATAR
    ============================================
-   Aplicadas no <Avatar> (que já tem border e overflow hidden). A neon é a
-   única animada: um anel de gradiente ATRÁS do avatar correndo pela
-   horizontal — mesmo truque do rainbow, só background-position. */
-.frame-acid {
-  border-color: #6aff00 !important;
-  box-shadow: 0 0 8px rgba(106, 255, 0, 0.65), inset 0 0 0 1px rgba(106, 255, 0, 0.4);
-}
+   Aplicadas no <Avatar> (que já tem border e overflow hidden). Raras azuis,
+   épicas roxas, e a de fogo é a ÚNICA animada: um anel de gradiente ATRÁS do
+   avatar correndo pela horizontal — só background-position. */
 
-.frame-gold {
-  border-color: #f2b705 !important;
-  box-shadow: 0 0 0 1px #f2b705, 0 0 10px rgba(242, 183, 5, 0.55);
-}
-
+/* --- raras (azul) --- */
 .frame-pixel {
   border-style: dashed !important;
-  border-color: #6aff00 !important;
+  border-color: #3fc1ff !important;
   border-width: 2px !important;
 }
 
-.frame-neon {
+.frame-ice {
+  border-color: #a8e6ff !important;
+  box-shadow: 0 0 8px rgba(168, 230, 255, 0.6), inset 0 0 0 1px rgba(63, 193, 255, 0.45);
+}
+
+.frame-steel {
+  border-color: #7fa6c2 !important;
+  box-shadow: 0 0 0 1px #3f6b8f, inset 0 0 0 1px rgba(200, 225, 240, 0.5);
+}
+
+.frame-dashed {
+  border-style: dashed !important;
+  border-color: #3fc1ff !important;
+  border-width: 3px !important;
+  box-shadow: 0 0 6px rgba(63, 193, 255, 0.35);
+}
+
+.frame-wave {
+  border-color: #1b5e8f !important;
+  box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 4px #3fc1ff;
+}
+
+/* --- épicas (roxo) --- */
+.frame-arcane {
+  border-color: #b07cff !important;
+  box-shadow: 0 0 10px rgba(176, 124, 255, 0.65), inset 0 0 0 1px rgba(208, 162, 255, 0.5);
+}
+
+.frame-amethyst {
+  border-style: double !important;
+  border-width: 4px !important;
+  border-color: #8b4dff !important;
+  box-shadow: 0 0 8px rgba(139, 77, 255, 0.5);
+}
+
+.frame-violet-neon {
+  border-color: #d0a2ff !important;
+  box-shadow: 0 0 2px #fff, 0 0 8px #d0a2ff, 0 0 16px rgba(176, 124, 255, 0.7);
+}
+
+/* --- lendária: fogo (animada) --- */
+.frame-fire {
   border-color: transparent !important;
 }
 
 /* O anel: quem monta o avatar coloca este irmão logo antes dele. */
-.frame-neon-ring {
+.frame-fire-ring {
   position: absolute;
   inset: -3px;
   border-radius: 6px;
-  background-image: linear-gradient(90deg, #6aff00, #00e5ff, #b400ff, #ff004c, #f2b705, #6aff00);
+  background-image: linear-gradient(90deg, #ff2d00, #ff8a00, #ffd000, #fff3a0, #ff8a00, #ff2d00);
   background-size: 300% 100%;
-  animation: fx-slide 3s linear infinite;
+  box-shadow: 0 0 10px rgba(255, 138, 0, 0.7);
+  animation: fx-slide 2.2s linear infinite, fx-flicker 0.35s steps(2, end) infinite;
   pointer-events: none;
 }
 
@@ -145,26 +193,17 @@
 }
 
 /* Versão parada de qualquer efeito: mesma cor, mesmo gradiente, zero
-   movimento. É o que as listas usam (ver NameEffect `animated={false}`). O
-   glow fixo do texto fica; só a cópia pulsante some. */
-.fx-static,
-.fx-static::after {
+   movimento. É o que as listas usam (ver NameEffect `animated={false}`). Só
+   o lendário anima, então na prática isto congela o fogo. */
+.fx-static {
   animation: none !important;
-}
-
-.fx-glow.fx-static::after {
-  opacity: 0.35;
 }
 
 /* Quem pediu menos animação no sistema não leva nome piscando na lista. */
 @media (prefers-reduced-motion: reduce) {
-  .fx-glow::after,
-  .fx-rainbow,
-  .fx-glitch,
   .fx-fire,
-  .frame-neon-ring,
+  .frame-fire-ring,
   .toast-in {
     animation: none;
   }
-  .fx-glow::after { opacity: 0.6; }
 }

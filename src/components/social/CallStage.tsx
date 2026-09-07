@@ -191,7 +191,7 @@ function Framed({
 
   return (
     <div className="relative min-w-0">
-      {frameNeedsRing(frame) && <span aria-hidden className="frame-neon-ring" />}
+      {frameNeedsRing(frame) && <span aria-hidden className="frame-fire-ring" />}
       <div
         className={cn(
           'relative overflow-hidden rounded-brutal border-2 bg-black',

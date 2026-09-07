@@ -9,6 +9,7 @@ import {
   Glyph,
   TITLE_GLYPH_SM
 } from '@/lib/cosmetic-glyphs'
+import { titleRarity } from '@/lib/api-gamification'
 
 /**
  * ÍCONES DOS COSMÉTICOS — badges, títulos e prêmios do recap.
@@ -145,14 +146,19 @@ export function TitleTag({
    */
   tooltip?: string
 }) {
+  // A cor é a da RARIDADE do título (comum cinza, raro azul, épico roxo,
+  // lendário dourado) — antes era tudo âmbar, e um título comum parecia tão
+  // importante quanto o lendário.
+  const color = RARITY_COLOR[titleRarity(titleId)]
   return (
     <span
       title={tooltip}
       className={cn(
-        'flex shrink-0 cursor-default items-center gap-1 rounded-brutal border border-burn/40 px-1',
-        'text-[11px] leading-4 text-burn',
+        'flex shrink-0 cursor-default items-center gap-1 rounded-brutal border px-1',
+        'text-[11px] leading-4',
         className
       )}
+      style={{ color, borderColor: `${color}66` }}
     >
       <TitleIcon titleId={titleId} className="h-2.5 w-2.5 shrink-0" />
       <span className="truncate">{name}</span>

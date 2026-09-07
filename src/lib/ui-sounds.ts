@@ -242,6 +242,76 @@ const CUES: Record<UiSound, Cue> = {
 }
 
 /**
+ * SONS DA LOJINHA — cosmético `joinSound` (`sound:<chave>`). Cada um é um par
+ * entrar/sair; todo mundo no canal ouve o par DE QUEM entrou ou saiu. Mesmo
+ * sintetizador dos avisos (Cue), só que aqui o timbre pode variar: a graça
+ * é justamente cada pessoa soar diferente. Duração curta mesmo assim — é o
+ * aviso que mais toca numa noite.
+ */
+export const JOIN_SOUNDS: Record<string, { join: Cue; leave: Cue }> = {
+  // raros
+  retro: {
+    join: { volume: 0.5, cutoff: 3200, type: 'square', notes: [{ freq: C5, at: 0, dur: 0.06 }, { freq: E5, at: 0.06, dur: 0.06 }, { freq: G5, at: 0.12, dur: 0.1 }] },
+    leave: { volume: 0.5, cutoff: 3200, type: 'square', notes: [{ freq: G5, at: 0, dur: 0.06 }, { freq: E5, at: 0.06, dur: 0.06 }, { freq: C5, at: 0.12, dur: 0.12 }] }
+  },
+  bell: {
+    join: { volume: 0.55, cutoff: 5000, type: 'sine', notes: [{ freq: E6, at: 0, dur: 0.5 }, { freq: E6 * 2.76, at: 0, dur: 0.18, gain: 0.25 }] },
+    leave: { volume: 0.55, cutoff: 5000, type: 'sine', notes: [{ freq: B5, at: 0, dur: 0.5 }, { freq: B5 * 2.76, at: 0, dur: 0.18, gain: 0.25 }] }
+  },
+  woosh: {
+    join: { volume: 0.6, cutoff: 1200, type: 'sawtooth', notes: [{ freq: 90, at: 0, dur: 0.12, gain: 0.5 }, { freq: 220, at: 0.06, dur: 0.16 }, { freq: 480, at: 0.14, dur: 0.14, gain: 0.6 }] },
+    leave: { volume: 0.6, cutoff: 1200, type: 'sawtooth', notes: [{ freq: 480, at: 0, dur: 0.12, gain: 0.6 }, { freq: 220, at: 0.06, dur: 0.16 }, { freq: 90, at: 0.14, dur: 0.18, gain: 0.5 }] }
+  },
+  pop: {
+    join: { volume: 0.7, cutoff: 2400, type: 'sine', notes: [{ freq: 320, at: 0, dur: 0.05 }, { freq: 640, at: 0.02, dur: 0.06 }] },
+    leave: { volume: 0.7, cutoff: 2400, type: 'sine', notes: [{ freq: 640, at: 0, dur: 0.05 }, { freq: 320, at: 0.02, dur: 0.07 }] }
+  },
+  radio: {
+    join: { volume: 0.45, cutoff: 1800, type: 'square', notes: [{ freq: 1900, at: 0, dur: 0.04, gain: 0.5 }, { freq: 2300, at: 0.05, dur: 0.04, gain: 0.5 }, { freq: A5, at: 0.11, dur: 0.12 }] },
+    leave: { volume: 0.45, cutoff: 1800, type: 'square', notes: [{ freq: A5, at: 0, dur: 0.1 }, { freq: 2300, at: 0.11, dur: 0.04, gain: 0.5 }, { freq: 1900, at: 0.16, dur: 0.05, gain: 0.5 }] }
+  },
+  // épicos
+  thunder: {
+    join: { volume: 0.9, cutoff: 500, type: 'sawtooth', notes: [{ freq: 55, at: 0, dur: 0.4 }, { freq: 41, at: 0.08, dur: 0.5, gain: 0.8 }, { freq: 65, at: 0.02, dur: 0.15, gain: 0.5 }] },
+    leave: { volume: 0.9, cutoff: 400, type: 'sawtooth', notes: [{ freq: 65, at: 0, dur: 0.2 }, { freq: 41, at: 0.1, dur: 0.6, gain: 0.7 }] }
+  },
+  laser: {
+    join: { volume: 0.55, cutoff: 4000, type: 'sawtooth', notes: [{ freq: 1800, at: 0, dur: 0.05 }, { freq: 1200, at: 0.04, dur: 0.05 }, { freq: 700, at: 0.08, dur: 0.06 }, { freq: 400, at: 0.12, dur: 0.1 }] },
+    leave: { volume: 0.55, cutoff: 4000, type: 'sawtooth', notes: [{ freq: 400, at: 0, dur: 0.05 }, { freq: 700, at: 0.04, dur: 0.05 }, { freq: 1200, at: 0.08, dur: 0.06 }, { freq: 1800, at: 0.12, dur: 0.1 }] }
+  },
+  choir: {
+    join: { volume: 0.5, cutoff: 2000, type: 'triangle', notes: [{ freq: C5, at: 0, dur: 0.7 }, { freq: E5, at: 0.05, dur: 0.65 }, { freq: G5, at: 0.1, dur: 0.6 }, { freq: C6, at: 0.15, dur: 0.55, gain: 0.7 }] },
+    leave: { volume: 0.5, cutoff: 2000, type: 'triangle', notes: [{ freq: C5, at: 0, dur: 0.7 }, { freq: 311.13, at: 0.05, dur: 0.65 }, { freq: G5, at: 0.1, dur: 0.6, gain: 0.7 }] }
+  },
+  // lendário
+  royal: {
+    join: { volume: 0.8, cutoff: 2600, type: 'sawtooth', notes: [{ freq: G4, at: 0, dur: 0.1 }, { freq: G4, at: 0.12, dur: 0.1 }, { freq: C5, at: 0.24, dur: 0.14 }, { freq: E5, at: 0.36, dur: 0.14 }, { freq: G5, at: 0.48, dur: 0.4 }, { freq: C5, at: 0.48, dur: 0.4, gain: 0.5 }] },
+    leave: { volume: 0.8, cutoff: 2600, type: 'sawtooth', notes: [{ freq: G5, at: 0, dur: 0.12 }, { freq: E5, at: 0.12, dur: 0.12 }, { freq: C5, at: 0.24, dur: 0.14 }, { freq: G4, at: 0.36, dur: 0.4 }, { freq: C5 / 2, at: 0.36, dur: 0.4, gain: 0.5 }] }
+  }
+}
+
+export const JOIN_SOUND_KEYS = Object.keys(JOIN_SOUNDS)
+
+/**
+ * Toca o som de entrar/sair de um cosmético. Aceita o id completo
+ * (`sound:bell`) ou só a chave. Devolve false se a chave é desconhecida ou o
+ * volume é zero — aí quem chamou toca o aviso padrão.
+ */
+export function playJoinSound(sound: string | null | undefined, phase: 'join' | 'leave', volume: number): boolean {
+  if (!sound || volume <= 0) return false
+  const key = sound.startsWith('sound:') ? sound.slice('sound:'.length) : sound
+  const pair = JOIN_SOUNDS[key]
+  if (!pair) return false
+
+  const audio = audioContext()
+  if (!audio) return false
+  if (audio.state === 'suspended') void audio.resume().catch(() => {})
+
+  playSynth(audio, pair[phase], volume)
+  return true
+}
+
+/**
  * Um AudioContext só, reaproveitado.
  *
  * Criar e fechar um por som (o que a versão anterior do nudge fazia) estoura

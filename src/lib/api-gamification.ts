@@ -25,14 +25,47 @@ import { request, type GameSessionSummary } from './api'
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
 
-export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji' | 'nameColor'
+export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji' | 'joinSound'
 
 /**
- * Cor do nome de quem não comprou nenhuma: a cor de texto padrão. Era o verde
- * da marca, o que fazia TODO nome brilhar igual; agora o verde é um item épico
- * da lojinha e só aparece em quem pagou por ele.
+ * Cor do nome: a cor de texto padrão. A cor comprada saiu da lojinha
+ * (set/2026); o que diferencia o nome agora é efeito, moldura e título, cada
+ * um na paleta da própria raridade.
  */
 export const DEFAULT_NAME_COLOR = '#EAEAEA'
+
+/**
+ * Raridade de cada título, espelho do catálogo da API (`rules.ts`). O
+ * `TitleTag` pinta o título com a cor da raridade e roda em telas que não
+ * têm o catálogo carregado (autor de mensagem, lista de membros), então o
+ * mapa fica aqui, estático. Título desconhecido cai em comum.
+ */
+export const TITLE_RARITY: Record<string, Rarity> = {
+  feeder: 'common',
+  suporte: 'common',
+  cutucador: 'common',
+  coruja: 'common',
+  mudo: 'common',
+  lagado: 'common',
+  afk: 'common',
+  ragequitter: 'common',
+  'boca-murcha': 'common',
+  'voz-de-blitz': 'common',
+  dj: 'rare',
+  tiltado: 'rare',
+  'cacador-de-elo': 'rare',
+  insone: 'rare',
+  'mestre-do-soundboard': 'rare',
+  'boca-de-ouro': 'epic',
+  carry: 'epic',
+  veterano: 'epic',
+  lenda: 'legendary'
+}
+
+export function titleRarity(titleId: string | null | undefined): Rarity {
+  const key = cosmeticKey(titleId)
+  return (key && TITLE_RARITY[key]) || 'common'
+}
 
 export interface Badge {
   id: string
@@ -48,6 +81,7 @@ export interface EquippedCosmetics {
   nameEffect: string | null
   avatarFrame: string | null
   emoji: string | null
+  joinSound: string | null
 }
 
 export interface GamificationProfile {
@@ -390,11 +424,11 @@ export function cosmeticEmoji(item: Pick<ShopItem, 'data'> | undefined): string 
   return typeof glyph === 'string' && glyph ? glyph : null
 }
 
-/** Hex de um cosmético de cor de nome; null se não for um. */
-export function cosmeticColor(item: Pick<ShopItem, 'type' | 'data'> | undefined): string | null {
-  if (item?.type !== 'nameColor') return null
-  const hex = item.data?.color
-  return typeof hex === 'string' && /^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : null
+/** Chave do par de sons de um cosmético `joinSound` (`sound:bell` → "bell"). */
+export function cosmeticSound(item: Pick<ShopItem, 'type' | 'data'> | undefined): string | null {
+  if (item?.type !== 'joinSound') return null
+  const key = item.data?.sound
+  return typeof key === 'string' && key ? key : null
 }
 
 /** Nome legível a partir só do id, quando o catálogo ainda não chegou. */
