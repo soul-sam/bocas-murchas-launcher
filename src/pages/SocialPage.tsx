@@ -3,7 +3,6 @@ import { useChat } from '@/lib/chat-context'
 import { useVoice } from '@/lib/voice-context'
 import { useLayout } from '@/lib/layout-context'
 import type { Channel } from '@/lib/api'
-import { ConversationRail } from '@/components/social/ConversationRail'
 import { ChannelSidebar } from '@/components/social/ChannelSidebar'
 import { ChatView } from '@/components/social/ChatView'
 import { VoiceStage } from '@/components/social/VoiceStage'
@@ -17,7 +16,7 @@ import { LeaderboardPanel } from '@/components/social/LeaderboardPanel'
 import { useOverlays } from '@/lib/overlay-context'
 
 /**
- * Tela social: rail de conversas na ponta esquerda, canais ao lado, chat ou
+ * Tela social: canais à esquerda (as conversas ficam na AppRail), chat ou
  * call no meio, membros à direita.
  *
  * Clicar num canal de voz entra na call E troca a área central pro palco;
@@ -29,7 +28,7 @@ import { useOverlays } from '@/lib/overlay-context'
  * gaveta de canais em janela estreita.
  */
 export function SocialPage() {
-  const { setActiveChannel } = useChat()
+  const { setActiveChannel, activeChannelId } = useChat()
   const voice = useVoice()
   // O editor de perfil vive na casca autenticada, não aqui: esta página some ao
   // trocar pra aba do Minecraft, e desmontar uma modal aberta trava o app
@@ -39,6 +38,10 @@ export function SocialPage() {
     useLayout()
 
   const [channelManagerOpen, setChannelManagerOpen] = React.useState(false)
+
+  // Conversa individual aberta: a coluna do servidor (canais, membros) some.
+  // DM não pertence ao servidor — fica só o histórico da conversa.
+  const dmActive = view === 'chat' && activeChannelId?.startsWith('dm:') === true
 
   const handleSelectText = React.useCallback(
     (channel: Channel) => {
@@ -73,14 +76,14 @@ export function SocialPage() {
 
   return (
     <div className="relative flex min-h-0 flex-1 overflow-hidden">
-      <ConversationRail onSelectText={handleSelectText} />
-
-      <ChannelSidebar
-        onSelectText={handleSelectText}
-        onSelectVoice={handleSelectVoice}
-        onOpenProfile={openProfileEditor}
-        onManageChannels={() => setChannelManagerOpen(true)}
-      />
+      {!dmActive && (
+        <ChannelSidebar
+          onSelectText={handleSelectText}
+          onSelectVoice={handleSelectVoice}
+          onOpenProfile={openProfileEditor}
+          onManageChannels={() => setChannelManagerOpen(true)}
+        />
+      )}
 
       <main className="flex min-w-0 flex-1 flex-col">
         {view === 'voice' ? (
@@ -108,7 +111,7 @@ export function SocialPage() {
         <AgendaPanel />
       ) : leaderboardOpen ? (
         <LeaderboardPanel />
-      ) : membersOpen ? (
+      ) : membersOpen && !dmActive ? (
         <MemberList />
       ) : null}
 
