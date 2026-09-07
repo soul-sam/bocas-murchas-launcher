@@ -233,8 +233,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const cueVolumeRef = React.useRef(0)
   cueVolumeRef.current = settings.soundEnabled ? settings.soundVolume : 0
 
+  // Entrar/sair da call tem slider proprio (aba Chat): os mp3 sao bem mais
+  // presentes que os bipes sintetizados e a galera quer controlar separado.
+  const voiceCueVolumeRef = React.useRef(0)
+  voiceCueVolumeRef.current = settings.soundEnabled ? settings.voiceCueVolume : 0
+
   const cue = React.useCallback((name: Parameters<typeof playUiSound>[0]) => {
-    playUiSound(name, cueVolumeRef.current)
+    const isVoiceCue = name === 'voice-join' || name === 'voice-leave'
+    playUiSound(name, isVoiceCue ? voiceCueVolumeRef.current : cueVolumeRef.current)
   }, [])
 
   /**
@@ -404,7 +410,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     leavingRef.current = true
 
     if (current) {
-      cue('self-leave')
+      cue('voice-leave')
       await current.disconnect().catch(() => {})
     }
 
@@ -458,6 +464,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         const next = new Room({
           adaptiveStream: true,
           dynacast: true,
+          // Volume por pessoa vai ate 200%. Sem isso o LiveKit escreve direto em
+          // <audio>.volume, que o navegador limita a 1 (acima disso da
+          // IndexSizeError e o ajuste nao aplica). Com WebAudio o volume vira
+          // um GainNode, que aceita > 1. A troca de saida continua funcionando:
+          // o SDK chama AudioContext.setSinkId alem do setSinkId dos elementos.
+          webAudioMix: true,
           audioCaptureDefaults: {
             deviceId:
               settings.voice.inputDeviceId !== 'default'
@@ -479,11 +491,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         next.on(RoomEvent.ParticipantConnected, () => {
           // So dispara pra quem chega DEPOIS de voce; quem ja estava na sala
           // vem em remoteParticipants no connect, sem evento.
-          cue('user-join')
+          cue('voice-join')
           syncParticipants(next)
         })
         next.on(RoomEvent.ParticipantDisconnected, () => {
-          cue('user-leave')
+          cue('voice-leave')
           syncParticipants(next)
         })
         next.on(RoomEvent.TrackMuted, () => syncParticipants(next))
@@ -699,7 +711,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         setConnected(true)
         syncParticipants(next)
 
-        cue('self-join')
+        cue('voice-join')
 
         // Só agora o servidor sabe em que sala mandar soundboard e nudge.
         socketRef.current?.emit('joinVoice', target.id)

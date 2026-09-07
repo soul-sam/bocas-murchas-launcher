@@ -1,19 +1,31 @@
 /**
  * Sons da interface (entrar na call, mutar, alguém chegou…).
  *
- * São SINTETIZADOS no Web Audio, não arquivos. Três motivos: não pesam no
- * instalador, não dependem de asset que pode faltar no pacote (o hook antigo
- * de mp3 já falhava calado por isso), e não carregam licença de terceiros —
- * são nossos.
+ * A maioria é SINTETIZADA no Web Audio, não arquivo. Três motivos: não pesam
+ * no instalador, não dependem de asset que pode faltar no pacote (o hook
+ * antigo de mp3 já falhava calado por isso), e não carregam licença de
+ * terceiros — são nossos.
  *
  * O timbre é o mesmo em todos os avisos: duas ondas triangulares levemente
  * desafinadas entre si passando por um filtro passa-baixa. A desafinação dá
  * corpo (uma onda pura soa fina e digital) e o filtro tira o brilho áspero.
  * O que muda de um aviso pro outro é só a melodia — assim o conjunto soa como
  * uma família, e não como sons avulsos.
+ *
+ * Exceção: alguém entrar ou sair da call (`voice-join`/`voice-leave`) usa
+ * dois mp3 escolhidos pela galera (`assets/sounds`). Pra não repetir a falha
+ * antiga, eles entram no bundle como data URI (ver assetsInlineLimit no
+ * electron.vite.config.ts) e tocam pelo mesmo AudioContext dos outros
+ * avisos. O `volume` recebido vira o ganho direto (sem o fator 0.22 dos
+ * sintetizados), controlado pelo slider próprio nas configurações de chat.
  */
 
+import voiceJoinUrl from '@/assets/sounds/voice-join.mp3'
+import voiceLeaveUrl from '@/assets/sounds/voice-leave.mp3'
+
 export type UiSound =
+  | 'voice-join'
+  | 'voice-leave'
   | 'self-join'
   | 'self-leave'
   | 'user-join'
@@ -68,6 +80,23 @@ const E6 = 1318.51
  * ler, sem precisar decorar nada.
  */
 const CUES: Record<UiSound, Cue> = {
+  // Entrar/sair da call vêm de arquivo (FILE_CUES); isto é só o reserva pra
+  // quando o mp3 não decodifica.
+  'voice-join': {
+    volume: 0.85,
+    notes: [
+      { freq: D5, at: 0, dur: 0.11 },
+      { freq: A5, at: 0.08, dur: 0.22 }
+    ]
+  },
+  'voice-leave': {
+    volume: 0.85,
+    notes: [
+      { freq: A5, at: 0, dur: 0.11 },
+      { freq: D5, at: 0.08, dur: 0.22 }
+    ]
+  },
+
   // Você entrou: quinta ascendente, confiante.
   'self-join': {
     volume: 0.85,
@@ -227,6 +256,64 @@ function audioContext(): AudioContext | null {
 }
 
 /**
+ * Avisos que vêm de arquivo em vez de sintetizados. Entrar e sair da call
+ * tocam pra todo mundo que está na sala: quem chega e quem já estava ouvem
+ * o mesmo som, idem na saída.
+ */
+const FILE_CUES: Partial<Record<UiSound, string>> = {
+  'voice-join': voiceJoinUrl,
+  'voice-leave': voiceLeaveUrl
+}
+
+/**
+ * Buffers decodificados, um por arquivo. Decodificar a cada toque custa
+ * alguns ms e, pior, atrasa o som em relação ao evento; com cache o segundo
+ * toque em diante sai na hora.
+ */
+const bufferCache = new Map<string, Promise<AudioBuffer | null>>()
+
+function loadBuffer(audio: AudioContext, url: string): Promise<AudioBuffer | null> {
+  const cached = bufferCache.get(url)
+  if (cached) return cached
+
+  const pending = fetch(url)
+    .then((res) => res.arrayBuffer())
+    .then((bytes) => audio.decodeAudioData(bytes))
+    .catch(() => {
+      // Falhou (asset faltando, formato inválido): esquece pra tentar de novo
+      // no próximo toque, e o chamador cai no sintetizado.
+      bufferCache.delete(url)
+      return null
+    })
+
+  bufferCache.set(url, pending)
+  return pending
+}
+
+/**
+ * Toca um arquivo no AudioContext compartilhado. `gain` (0..1) é o volume
+ * escolhido pela pessoa; o arquivo já vem normalizado, então 1 = o mais alto
+ * que ele tem. Devolve false se não deu pra tocar.
+ */
+async function playFile(audio: AudioContext, url: string, gain: number): Promise<boolean> {
+  const buffer = await loadBuffer(audio, url)
+  if (!buffer) return false
+
+  try {
+    const source = audio.createBufferSource()
+    source.buffer = buffer
+    const master = audio.createGain()
+    master.gain.value = Math.min(1, gain)
+    source.connect(master)
+    master.connect(audio.destination)
+    source.start()
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Toca um aviso. `volume` é o do usuário (0..1); 0 ou menos não toca nada.
  */
 export function playUiSound(name: UiSound, volume: number): void {
@@ -241,6 +328,18 @@ export function playUiSound(name: UiSound, volume: number): void {
   // Depois de um tempo ocioso o contexto pode entrar em suspenso.
   if (audio.state === 'suspended') void audio.resume().catch(() => {})
 
+  const file = FILE_CUES[name]
+  if (file) {
+    void playFile(audio, file, volume).then((ok) => {
+      if (!ok) playSynth(audio, cue, volume)
+    })
+    return
+  }
+
+  playSynth(audio, cue, volume)
+}
+
+function playSynth(audio: AudioContext, cue: Cue, volume: number): void {
   const now = audio.currentTime
   const master = audio.createGain()
   master.gain.value = Math.min(1, volume) * cue.volume * 0.22

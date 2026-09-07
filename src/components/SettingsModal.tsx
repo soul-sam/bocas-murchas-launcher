@@ -19,6 +19,7 @@ import { useHotkeys } from '@/lib/hotkeys-context'
 import { useNudge } from '@/lib/nudge-context'
 import { useVoice } from '@/lib/voice-context'
 import { useAudioDevices } from '@/lib/use-audio-devices'
+import { playUiSound } from '@/lib/ui-sounds'
 import { GATE_OFF_DB } from '@/lib/audio-processor'
 import { RAM_LIMITS, type LolPhase, type LolStatus } from '../../electron/preload/types'
 import { Button } from '@/components/ui/button'
@@ -172,6 +173,29 @@ function ChatTab() {
           checked={chat.notifyAllMessages}
           onCheckedChange={(notifyAllMessages) => patch({ notifyAllMessages })}
         />
+
+        <label className="mt-3 flex items-center gap-3">
+          <span className="shrink-0 text-sm">Volume de entrar/sair da call</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={settings.voiceCueVolume}
+            onChange={(e) => void update({ voiceCueVolume: Number(e.target.value) })}
+            onMouseUp={() =>
+              playUiSound('voice-join', settings.soundEnabled ? settings.voiceCueVolume : 0)
+            }
+            className="ram-slider flex-1"
+          />
+          <span className="w-9 shrink-0 text-right font-mono text-[11px] text-acid">
+            {Math.round(settings.voiceCueVolume * 100)}%
+          </span>
+        </label>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          O som que toca pra todo mundo na sala quando alguém entra ou sai. Solte
+          o controle pra ouvir uma prévia.
+        </p>
 
         <p className="mt-3 rounded-brutal border border-[#1a1a1a] bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
           Pra silenciar UM canal só, clique no sininho no topo dele. Canal

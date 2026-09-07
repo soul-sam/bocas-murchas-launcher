@@ -288,6 +288,8 @@ export interface LauncherSettings {
    */
   userVolumes: Record<string, number>
   soundboardVolume: number
+  /** Volume (0..1) dos sons de alguém entrar/sair da call. */
+  voiceCueVolume: number
   nudgeOptOut: boolean
   nudgeShakeWindow: boolean
   closeToTray: boolean
@@ -451,6 +453,9 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   },
   userVolumes: {},
   soundboardVolume: 0.7,
+  // Os mp3 já vêm normalizados no talo; metade é o suficiente pra notar sem
+  // assustar quem está de fone.
+  voiceCueVolume: 0.5,
   nudgeOptOut: false,
   nudgeShakeWindow: true,
   closeToTray: true

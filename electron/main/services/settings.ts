@@ -150,6 +150,7 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     chat: normalizeChat(raw.chat),
     userVolumes: normalizeUserVolumes(raw.userVolumes),
     soundboardVolume: clamp(Number(raw.soundboardVolume), 0, 1, DEFAULTS.soundboardVolume),
+    voiceCueVolume: clamp(Number(raw.voiceCueVolume), 0, 1, DEFAULTS.voiceCueVolume),
     nudgeOptOut: raw.nudgeOptOut ?? DEFAULTS.nudgeOptOut,
     nudgeShakeWindow: raw.nudgeShakeWindow ?? DEFAULTS.nudgeShakeWindow,
     closeToTray: raw.closeToTray ?? DEFAULTS.closeToTray
