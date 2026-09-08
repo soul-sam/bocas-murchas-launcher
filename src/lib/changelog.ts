@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.2.3',
+    headline: 'Subir de nível agora paga murchos',
+    items: [
+      'Cada nível novo cai em murchos na sua conta, e quanto mais alto o nível, mais ele paga. Do nível 2 ao 30 são 50.000 murchos no total.',
+      'Quem já tinha nível não ficou pra trás: todo mundo recebeu de uma vez o que os níveis já conquistados valem.',
+      'O aviso de subir de nível agora diz quanto você ganhou.',
+      'Botão "?" do lado do seu saldo na Lojinha: mostra tudo que rende murcho — check-in, tempo em call, partida, xadrez, aposta, missão e o prêmio do recap — e quanto vale a sua próxima subida de nível.'
+    ],
+    note: 'Nível continua vindo só de XP; nada aqui muda como você ganha XP.'
+  },
+  {
     version: '1.2.2',
     headline: 'O anel de quem está falando agora acende na hora',
     items: [
