@@ -156,7 +156,11 @@ interface VoiceContextValue {
   join: (channel: Channel) => Promise<void>
   leave: () => Promise<void>
   toggleMic: () => Promise<void>
-  setMic: (enabled: boolean) => Promise<void>
+  /**
+   * `transient` e o push-to-talk: abre e fecha o microfone sem mudar a ESCOLHA
+   * da pessoa, entao nao vira icone de mudo pra sala.
+   */
+  setMic: (enabled: boolean, opts?: { transient?: boolean }) => Promise<void>
   toggleDeafen: () => void
   /** Ensurdecer com valor explícito (o AFK usa). */
   setDeafen: (value: boolean) => void
@@ -248,6 +252,15 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const audioSinkRef = React.useRef<HTMLDivElement | null>(null)
   const roomRef = React.useRef<Room | null>(null)
   const deafenedRef = React.useRef(false)
+
+  /**
+   * Mudo POR ESCOLHA — o que a barra lateral dos outros mostra.
+   *
+   * Separado de `micEnabled` porque o push-to-talk liga e desliga a faixa o
+   * tempo todo: usar o estado da faixa faria o icone de mudo piscar a cada
+   * frase de quem fala com tecla.
+   */
+  const selfMutedRef = React.useRef(false)
   const leavingRef = React.useRef(false)
 
   /**
@@ -314,6 +327,18 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const cue = React.useCallback((name: Parameters<typeof playUiSound>[0]) => {
     const isVoiceCue = name === 'voice-join' || name === 'voice-leave'
     playUiSound(name, isVoiceCue ? voiceCueVolumeRef.current : cueVolumeRef.current)
+  }, [])
+
+  /**
+   * Conta pro servidor (e por ele pra barra lateral de todo mundo) se estou
+   * mudo ou ensurdecido. O canal quem sabe e o servidor — daqui so vai o
+   * estado.
+   */
+  const publishFlags = React.useCallback(() => {
+    socketRef.current?.emit('voice:flags', {
+      muted: selfMutedRef.current,
+      deafened: deafenedRef.current
+    })
   }, [])
 
   /**
@@ -558,6 +583,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     setLauncherSilenced(false)
     setDeafened(false)
     deafenedRef.current = false
+    selfMutedRef.current = false
 
     void window.bocas.tray.setVoiceState({ inVoice: false, micMuted: false })
     leavingRef.current = false
@@ -870,6 +896,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
         // Só agora o servidor sabe em que sala mandar soundboard e nudge.
         socketRef.current?.emit('joinVoice', target.id)
+        // Entrar mudo (push-to-talk ou nao) so conta como ESCOLHA fora do PTT.
+        selfMutedRef.current = startMuted && settings.voice.mode !== 'push-to-talk'
+        publishFlags()
 
         void window.bocas.tray.setVoiceState({ inVoice: true, micMuted: startMuted })
       } catch (err) {
@@ -879,19 +908,24 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         setConnecting(false)
       }
     },
-    [token, leave, settings.voice, syncParticipants, cue, effectiveVolume]
+    [token, leave, settings.voice, syncParticipants, cue, effectiveVolume, publishFlags]
   )
 
   const setMic = React.useCallback(
-    async (enabled: boolean) => {
+    async (enabled: boolean, opts?: { transient?: boolean }) => {
       const current = roomRef.current
       if (!current) return
       await current.localParticipant.setMicrophoneEnabled(enabled)
       setMicEnabled(enabled)
       cue(enabled ? 'unmute' : 'mute')
       void window.bocas.tray.setVoiceState({ inVoice: true, micMuted: !enabled })
+
+      if (!opts?.transient) {
+        selfMutedRef.current = !enabled
+        publishFlags()
+      }
     },
-    [cue]
+    [cue, publishFlags]
   )
 
   const toggleMic = React.useCallback(async () => {
@@ -916,10 +950,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         // Ensurdecer sem mutar o proprio mic e o comportamento errado: quem nao
         // ouve ninguem tambem nao deveria estar falando.
         if (value) void setMic(false)
+        else publishFlags()
         return value
       })
     },
-    [applyDeafen, setMic, cue]
+    [applyDeafen, setMic, cue, publishFlags]
   )
 
   const toggleDeafen = React.useCallback(() => {
@@ -1136,13 +1171,15 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
       socket.emit('joinVoice', target.id)
       if (screenSharingRef.current) socket.emit('screenshare:state', { active: true })
+      // O servidor perdeu o estado com a conexao: mudo e ensurdecido voltam junto.
+      publishFlags()
     }
 
     socket.on('connect', handleConnect)
     return () => {
       socket.off('connect', handleConnect)
     }
-  }, [socket])
+  }, [socket, publishFlags])
 
   // A janela fechar (ou o app cair) tem que soltar a sala no servidor.
   React.useEffect(() => {
