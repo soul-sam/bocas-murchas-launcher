@@ -73,6 +73,9 @@ function normalizeHotkeys(raw: Partial<HotkeySettings> | undefined): HotkeySetti
     deafen: typeof h.deafen === 'string' ? h.deafen : d.deafen,
     pttToggle: typeof h.pttToggle === 'string' ? h.pttToggle : d.pttToggle,
     nudgeChannel: typeof h.nudgeChannel === 'string' ? h.nudgeChannel : d.nudgeChannel,
+    // Arquivo salvo antes do clipe existir nao tem a chave: cai no padrao, e
+    // quem atualizar o launcher ja ganha o atalho funcionando.
+    clip: typeof h.clip === 'string' ? h.clip : d.clip,
     sounds
   }
 }
@@ -182,7 +185,8 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     // Teto de 3h: numero absurdo no arquivo (editado na mao) nao pode virar um
     // automatico que nunca dispara sem explicacao.
     afkAutoMinutes: Math.round(clamp(Number(raw.afkAutoMinutes), 0, 180, DEFAULTS.afkAutoMinutes)),
-    closeToTray: raw.closeToTray ?? DEFAULTS.closeToTray
+    closeToTray: raw.closeToTray ?? DEFAULTS.closeToTray,
+    clipBuffer: raw.clipBuffer ?? DEFAULTS.clipBuffer
   }
 }
 

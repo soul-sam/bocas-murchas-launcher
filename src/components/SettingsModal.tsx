@@ -38,6 +38,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { SwitchRow } from '@/components/ui/switch'
 import { HotkeyRecorder, formatAccelerator } from '@/components/social/HotkeyRecorder'
 import { MicMeter } from '@/components/social/MicMeter'
+import { VoiceAlertSettings } from '@/components/social/VoiceAlertSettings'
 
 const DEFAULT_MAX_MB = 4096
 
@@ -200,6 +201,10 @@ function ChatTab() {
           O som que toca pra todo mundo na sala quando alguém entra ou sai. Solte
           o controle pra ouvir uma prévia.
         </p>
+
+        <div className="mt-3 border-t border-line pt-3">
+          <VoiceAlertSettings />
+        </div>
 
         <p className="mt-3 rounded-brutal border border-line bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
           Pra silenciar UM canal só, clique no sininho no topo dele. Canal
@@ -715,6 +720,12 @@ function HotkeysTab() {
           value={hotkeys.nudgeChannel}
           onChange={(nudgeChannel) => patch({ nudgeChannel })}
         />
+        <HotkeyRow
+          label="Salvar clipe da call"
+          hint="Pega os últimos ~30 segundos e abre a confirmação. Funciona com o jogo em primeiro plano — que é exatamente quando a piada acontece."
+          value={hotkeys.clip}
+          onChange={(clip) => patch({ clip })}
+        />
         <p className="text-[11.5px] text-muted-foreground">
           atalho de cada som fica no painel do soundboard
         </p>
@@ -782,6 +793,23 @@ function ZoeiraTab() {
           Limites do servidor: 15s entre cutucadas na mesma pessoa, 3 por minuto
           por quem envia, e no máximo 5 por minuto em quem recebe — mesmo que
           venham de gente diferente.
+        </p>
+      </section>
+
+      <section>
+        <SectionTitle>Clipes da call</SectionTitle>
+
+        <SwitchRow
+          label="Manter o buffer ligado"
+          hint="Enquanto você está numa call, o launcher segura os últimos 30 segundos em memória pra poder salvar. NADA sai daqui enquanto ninguém aperta o atalho, e o buffer some quando a call acaba."
+          checked={settings.clipBuffer}
+          onCheckedChange={(clipBuffer) => void update({ clipBuffer })}
+        />
+
+        <p className="mt-3 rounded-brutal border border-line bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          O atalho fica em Configurações → Atalhos. Depois de clipar, o launcher
+          toca o que pegou e pergunta se salva — atalho global é fácil de
+          esbarrar.
         </p>
       </section>
 

@@ -50,6 +50,7 @@ import { useMembers } from '@/lib/members-context'
 import { NameEmoji } from './NameEmoji'
 import { ActivityLine } from './ActivityLine'
 import { OpenPartiesStrip } from './OpenPartiesStrip'
+import { SmokeStrip } from './SmokeStrip'
 import { SoundboardPopover } from './SoundboardPopover'
 import { ConnectionBars } from './ConnectionBars'
 
@@ -511,6 +512,7 @@ export function ChannelSidebar({
 
       {/* "Bora?" abertos: visível mesmo com o chat em outro canal. */}
       <OpenPartiesStrip />
+      <SmokeStrip />
 
       {/* Rodapé do usuário */}
       <footer className="flex shrink-0 items-center gap-2 border-t border-line bg-void px-2 py-2">

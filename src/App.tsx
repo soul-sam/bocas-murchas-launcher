@@ -19,6 +19,8 @@ import { OverlayProvider, useOverlays } from '@/lib/overlay-context'
 import { LayoutProvider } from '@/lib/layout-context'
 import { ActivityProvider } from '@/lib/activity-context'
 import { PartyProvider } from '@/lib/party-context'
+import { SmokeProvider } from '@/lib/smoke-context'
+import { ClipProvider } from '@/lib/clip-context'
 import { GamificationProvider } from '@/lib/gamification-context'
 import { WatchProvider } from '@/lib/watch-context'
 import { EmojiProvider } from '@/lib/emoji-context'
@@ -45,6 +47,9 @@ import { PollComposer } from '@/components/social/PollComposer'
 import { SuggestionComposer } from '@/components/social/SuggestionComposer'
 import { EventComposer } from '@/components/social/EventComposer'
 import { PartyComposer } from '@/components/social/PartyComposer'
+import { SmokeComposer } from '@/components/social/SmokeComposer'
+import { ClipComposer } from '@/components/social/ClipComposer'
+import { WrappedModal } from '@/components/social/WrappedModal'
 import { ShopModal } from '@/components/social/ShopModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
@@ -147,11 +152,16 @@ function GlobalOverlays() {
       <SuggestionComposer />
       <EventComposer />
       <PartyComposer />
+      <SmokeComposer />
       <ShopModal />
       <AdminModal />
       {/* Novidades da versão: camada própria (sem Radix) porque pode abrir
           sozinha no primeiro quadro, antes de qualquer clique. */}
       <WhatsNewModal />
+      {/* Confirmar o clipe: também abre sozinha, disparada por um atalho
+          global que funciona com a janela em segundo plano. */}
+      <ClipComposer />
+      <WrappedModal />
       {/* Banners: drops de admin e "tem gente do grupo no seu lobby". */}
       <DropHost />
       <PartyCallPrompt />
@@ -223,6 +233,11 @@ function AuthedLayout() {
               <AfkProvider>
               <SoundboardProvider>
                 <NudgeProvider>
+                  {/* Clipes ANTES dos atalhos: o atalho global de clipar chama
+                      useClips(), e um provider abaixo do consumidor é um throw
+                      na primeira tecla. Ele só precisa de voz e chat, que já
+                      estão de pé aqui. */}
+                  <ClipProvider>
                   <HotkeysProvider>
                     <OverlayProvider>
                       <LayoutProvider>
@@ -231,6 +246,7 @@ function AuthedLayout() {
                         <EmojiProvider>
                           <GamificationProvider>
                             <PartyProvider>
+                              <SmokeProvider>
                               <WatchProvider>
                                 {/* Índices de @pessoa e #canal montados uma
                                     vez, não uma vez por mensagem na tela. */}
@@ -243,12 +259,14 @@ function AuthedLayout() {
                                   </PrintProvider>
                                 </RichTextProvider>
                               </WatchProvider>
+                              </SmokeProvider>
                             </PartyProvider>
                           </GamificationProvider>
                         </EmojiProvider>
                       </LayoutProvider>
                     </OverlayProvider>
                   </HotkeysProvider>
+                  </ClipProvider>
                 </NudgeProvider>
               </SoundboardProvider>
               </AfkProvider>

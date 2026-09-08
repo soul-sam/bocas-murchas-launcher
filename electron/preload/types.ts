@@ -108,6 +108,14 @@ export interface HotkeySettings {
   deafen: string
   pttToggle: string
   nudgeChannel: string
+  /**
+   * Salvar os últimos segundos da call.
+   *
+   * Global (vale com o jogo em primeiro plano) porque é exatamente aí que a
+   * piada acontece — um atalho de clipe que só funciona com o launcher em
+   * foco não serve pra nada.
+   */
+  clip: string
   /** soundId -> accelerator */
   sounds: Record<string, string>
 }
@@ -390,6 +398,16 @@ export interface LauncherSettings {
    */
   afkAutoMinutes: number
   closeToTray: boolean
+  /**
+   * Manter o buffer rolante da call ligado, pra poder clipar os últimos
+   * segundos (ver src/lib/clip-recorder.ts).
+   *
+   * Ligado por padrão: o valor da feature é ela estar pronta no momento em
+   * que a coisa engraçada acontece — quem precisa lembrar de ligar antes já
+   * perdeu o clipe. Nada sai da máquina enquanto ninguém aperta o botão, e
+   * desligar aqui derruba o gravador na hora, não só o botão.
+   */
+  clipBuffer: boolean
 }
 
 // ============================================
@@ -402,6 +420,7 @@ export type HotkeyAction =
   | { kind: 'deafen' }
   | { kind: 'ptt-toggle' }
   | { kind: 'nudge-channel' }
+  | { kind: 'clip' }
 
 export interface HotkeyBinding {
   id: string
@@ -544,6 +563,9 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     deafen: 'Control+Shift+D',
     pttToggle: '',
     nudgeChannel: '',
+    // Ctrl+Shift+C é o atalho de clipe que a galera já tem na mão de outros
+    // programas, e não conflita com nada nosso.
+    clip: 'Control+Shift+C',
     sounds: {}
   },
   screenShare: {
@@ -572,7 +594,8 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   // 10 minutos: tempo de um cafe, e curto o bastante pra o aviso ainda ser
   // verdade quando alguem for chamar.
   afkAutoMinutes: 10,
-  closeToTray: true
+  closeToTray: true,
+  clipBuffer: true
 }
 
 export interface BocasAPI {

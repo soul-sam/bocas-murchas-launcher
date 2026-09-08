@@ -37,6 +37,7 @@ import { CargoIcon } from '@/lib/cargo-icons'
 import { useOverlays } from '@/lib/overlay-context'
 import { parseSlashCommand, SLASH_HELP } from '@/lib/slash-commands'
 import { useEmojis, toPickerEmojis, type CustomEmoji, type Sticker } from '@/lib/emoji-context'
+import { useClips } from '@/lib/clip-context'
 import { ComposerActions } from './ComposerActions'
 import { EmojiImage } from './CustomEmojiImg'
 import { StickerPicker } from './StickerPicker'
@@ -106,9 +107,12 @@ export function MessageComposer({
     openEventComposer,
     openPartyComposer,
     openShop,
-    openSuggestionComposer
+    openSuggestionComposer,
+    openSmokeComposer,
+    openWrapped
   } = useOverlays()
   const { emojis } = useEmojis()
+  const { capture: captureClip } = useClips()
 
   const [content, setContent] = React.useState('')
   const [image, setImage] = React.useState<string | null>(null)
@@ -403,6 +407,16 @@ export function MessageComposer({
         break
       case 'suggestion':
         openSuggestionComposer()
+        break
+      case 'smoke':
+        openSmokeComposer()
+        break
+      // "/clipe" pega na hora e abre a confirmação, igual ao atalho global.
+      case 'clip':
+        void captureClip()
+        break
+      case 'wrapped':
+        openWrapped()
         break
       case 'drop':
         if (user?.role !== 'admin' || !onDrop) return false

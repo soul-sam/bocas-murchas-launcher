@@ -10,15 +10,19 @@ import { WatchCard } from './WatchCard'
 import { SystemCard } from './SystemCard'
 import { ChessResultCard } from './ChessResultCard'
 import { SuggestionCard } from './SuggestionCard'
+import { SmokeCard } from './SmokeCard'
+import { DayRecapCard } from './DayRecapCard'
+import { MemoryCard } from './MemoryCard'
+import { ClipCard } from './ClipCard'
 
 /**
  * REGISTRO DE CARTÕES.
  *
  * Uma mensagem com `type` de cartão (poll, event, game, recap, party, wager,
- * watch, system, chess, suggestion) é desenhada por um componente em vez do
- * texto. O texto
- * (`content`) continua existindo como fallback: aparece na busca, na
- * notificação do sistema e em cliente antigo que não conhece o tipo.
+ * watch, system, chess, suggestion, smoke, dayrecap, memory, clip) é desenhada
+ * por um componente em vez do texto. O texto (`content`) continua existindo
+ * como fallback: aparece na busca, na notificação do sistema e em cliente
+ * antigo que não conhece o tipo.
  *
  * Cada cartão recebe a mensagem inteira e o `metadata` já parseado. Quem
  * precisa de dado fresco (votos, RSVP) escuta o socket por conta própria —
@@ -45,7 +49,11 @@ const REGISTRY: Record<string, CardComponent> = {
   watch: WatchCard,
   system: SystemCard,
   chess: ChessResultCard,
-  suggestion: SuggestionCard
+  suggestion: SuggestionCard,
+  smoke: SmokeCard,
+  dayrecap: DayRecapCard,
+  memory: MemoryCard,
+  clip: ClipCard
 }
 
 export function hasCard(message: ChatMessage): boolean {

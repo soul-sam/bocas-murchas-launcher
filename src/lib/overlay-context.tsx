@@ -89,6 +89,21 @@ interface OverlayContextValue {
   openPartyComposer: (seed?: string) => void
   closePartyComposer: () => void
 
+  /** Acender um sinal de fumaça ("entro em 20 min"). */
+  smokeComposerOpen: boolean
+  openSmokeComposer: () => void
+  closeSmokeComposer: () => void
+
+  /**
+   * Retrospectiva Murcha. `wrappedYear` existe pra dar pra abrir a de um ano
+   * anterior sem inventar outra rota — quem abre pelo menu manda o ano
+   * corrente, e em janeiro o botão passa a oferecer o que acabou de fechar.
+   */
+  wrappedOpen: boolean
+  wrappedYear: number
+  openWrapped: (year?: number) => void
+  closeWrapped: () => void
+
   shopOpen: boolean
   openShop: () => void
   closeShop: () => void
@@ -119,6 +134,9 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [eventComposerSeed, setEventComposerSeed] = React.useState<string | null>(null)
   const [partyComposerOpen, setPartyComposerOpen] = React.useState(false)
   const [partyComposerSeed, setPartyComposerSeed] = React.useState<string | null>(null)
+  const [smokeComposerOpen, setSmokeComposerOpen] = React.useState(false)
+  const [wrappedOpen, setWrappedOpen] = React.useState(false)
+  const [wrappedYear, setWrappedYear] = React.useState(() => new Date().getFullYear())
   const [shopOpen, setShopOpen] = React.useState(false)
   const [adminOpen, setAdminOpen] = React.useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = React.useState(false)
@@ -209,6 +227,18 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       },
       closePartyComposer: () => setPartyComposerOpen(false),
 
+      smokeComposerOpen,
+      openSmokeComposer: () => setSmokeComposerOpen(true),
+      closeSmokeComposer: () => setSmokeComposerOpen(false),
+
+      wrappedOpen,
+      wrappedYear,
+      openWrapped: (year?: number) => {
+        setWrappedYear(year ?? new Date().getFullYear())
+        setWrappedOpen(true)
+      },
+      closeWrapped: () => setWrappedOpen(false),
+
       shopOpen,
       openShop: () => setShopOpen(true),
       closeShop: () => setShopOpen(false),
@@ -235,6 +265,9 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       eventComposerSeed,
       partyComposerOpen,
       partyComposerSeed,
+      smokeComposerOpen,
+      wrappedOpen,
+      wrappedYear,
       shopOpen,
       adminOpen,
       whatsNewOpen

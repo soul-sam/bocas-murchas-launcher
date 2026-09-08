@@ -424,6 +424,14 @@ export type CardMessageType =
   | 'system'
   | 'chess'
   | 'suggestion'
+  /** Sinal de fumaça: "entro em 20 min". */
+  | 'smoke'
+  /** Fechamento do dia, 23h. */
+  | 'dayrecap'
+  /** "Naquele dia": o que o grupo fazia nesta data lá atrás. */
+  | 'memory'
+  /** Os últimos segundos da call, salvos por alguém. */
+  | 'clip'
 
 export type MessageType = 'text' | 'gif' | 'sticker' | 'image' | 'file' | CardMessageType
 
@@ -437,7 +445,11 @@ export const CARD_MESSAGE_TYPES: ReadonlySet<string> = new Set<CardMessageType>(
   'watch',
   'system',
   'chess',
-  'suggestion'
+  'suggestion',
+  'smoke',
+  'dayrecap',
+  'memory',
+  'clip'
 ])
 
 export function isCardMessage(message: { type: string }): boolean {
@@ -484,9 +496,22 @@ export interface ChatMessage {
     author: { displayName: string }
   } | null
   reactions?: MessageReaction[]
+  /**
+   * Gorjetas recebidas. Vem junto com a mensagem (não numa chamada à parte)
+   * porque o chip é desenhado ao lado das reações — ver lib/message-include
+   * no servidor.
+   */
+  tips?: MessageTip[]
   isEdited: boolean
   isPinned: boolean
   createdAt: string
+}
+
+export interface MessageTip {
+  id: string
+  amount: number
+  createdAt: string
+  from: { id: string; displayName: string; avatar?: string | null }
 }
 
 /** Mesmo corpo pro canal e pra conversa: as duas rotas aceitam os mesmos campos. */
@@ -559,6 +584,22 @@ export const messages = {
       token,
       body: JSON.stringify({ emoji })
     })
+  },
+
+  /**
+   * Gorjeta: murchos de quem leu pra quem escreveu.
+   *
+   * Devolve a lista COMPLETA de gorjetas da mensagem, não só a nova — assim o
+   * chip é redesenhado a partir de um estado inteiro em vez de somado à mão,
+   * e não fica torto se dois cliques chegarem juntos.
+   */
+  async tip(token: string, id: string, amount: number): Promise<MessageTip[]> {
+    const res = await request<{ tips: MessageTip[] }>(`/messages/${id}/tip`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ amount })
+    })
+    return res.tips ?? []
   },
 
   async togglePin(token: string, id: string): Promise<{ isPinned: boolean }> {
@@ -691,6 +732,14 @@ export interface Sound {
   durationMs: number
   sizeBytes: number
   volume: number
+  /**
+   * Preço de tabela, em murchos. 0 = de graça (o padrão).
+   *
+   * NÃO é o que a pessoa vai pagar: a sobretaxa por repetição é por pessoa e
+   * vive na memória do servidor, então o preço real vem pelo socket
+   * (`soundboard:prices`). Este campo é o que o dono configurou.
+   */
+  price: number
   category: string
   playCount: number
   isBlocked: boolean
@@ -730,7 +779,13 @@ export const sounds = {
   async update(
     token: string,
     id: string,
-    patch: { name?: string; emoji?: string; category?: string; volume?: number }
+    patch: {
+      name?: string
+      emoji?: string
+      category?: string
+      volume?: number
+      price?: number
+    }
   ): Promise<Sound> {
     const res = await request<{ sound: Sound }>(`/sounds/${id}`, {
       method: 'PUT',

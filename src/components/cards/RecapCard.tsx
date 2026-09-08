@@ -116,8 +116,14 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                         <NameEmoji id={who?.emoji} />
                       </span>
                     </span>
+                    {/* Só o `label`: ele JÁ traz o número formatado pelo
+                        servidor ("15 mensagens", "KDA 2.50 em 5 partidas").
+                        Imprimir o `value` antes dele rendia "15 15 mensagens"
+                        em todo prêmio — passou despercebido enquanto os
+                        rótulos eram curtos, e ficou gritante quando o clipe
+                        da semana trouxe um título entre aspas. */}
                     <span className="shrink-0 font-mono text-[11.5px] text-burn">
-                      {formatCompact(award.value)} {award.label}
+                      {award.label}
                     </span>
                   </li>
                 )

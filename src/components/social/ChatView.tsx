@@ -10,6 +10,7 @@ import {
   ArrowDown,
   Search,
   Link2,
+  Clapperboard,
   CalendarDays,
   Lightbulb,
   ListOrdered,
@@ -72,6 +73,7 @@ export function ChatView() {
     edit,
     remove,
     react,
+    applyTips,
     togglePin,
     notifyTyping
   } = useChat()
@@ -88,6 +90,8 @@ export function ChatView() {
     toggleSearch,
     linksOpen,
     toggleLinks,
+    clipsOpen,
+    toggleClips,
     agendaOpen,
     toggleAgenda,
     suggestionsOpen,
@@ -359,6 +363,17 @@ export function ChatView() {
 
           {!isDm && (
             <HeaderButton
+              label="Clipes"
+              description="Os últimos segundos da call que alguém achou que valia guardar."
+              active={clipsOpen}
+              onClick={toggleClips}
+            >
+              <Clapperboard className="h-4 w-4" />
+            </HeaderButton>
+          )}
+
+          {!isDm && (
+            <HeaderButton
               label="Agenda"
               description="Os eventos marcados pelo grupo e quem confirmou."
               active={agendaOpen}
@@ -459,6 +474,7 @@ export function ChatView() {
                     onDelete={remove}
                     onReact={react}
                     onPin={togglePin}
+                    onTipped={applyTips}
                     // Só oferece o pulo quando a mensagem citada está na tela:
                     // um botão que não faz nada é pior que botão nenhum.
                     onJumpTo={

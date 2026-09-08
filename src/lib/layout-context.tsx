@@ -71,6 +71,11 @@ interface LayoutContextValue {
   toggleLinks: () => void
   closeLinks: () => void
 
+  /** Acervo de clipes da call. Mesma coluna dos outros paineis. */
+  clipsOpen: boolean
+  toggleClips: () => void
+  closeClips: () => void
+
   /** Agenda: proximos eventos marcados. */
   agendaOpen: boolean
   /** O quadro de sugestões, ordenado por voto. */
@@ -116,6 +121,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
     | 'agenda'
     | 'leaderboard'
     | 'suggestions'
+    | 'clips'
     | null
   const [panel, setPanel] = React.useState<RightPanel>(null)
   const togglePanel = React.useCallback(
@@ -133,6 +139,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   const agendaOpen = panel === 'agenda'
   const leaderboardOpen = panel === 'leaderboard'
   const suggestionsOpen = panel === 'suggestions'
+  const clipsOpen = panel === 'clips'
 
   // Ctrl+F abre a busca do chat. O Chromium nao tem busca nativa de pagina no
   // Electron, entao a tecla estava sobrando — e e a que todo mundo aperta.
@@ -207,6 +214,9 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       linksOpen,
       toggleLinks: () => togglePanel('links'),
       closeLinks: () => closePanel('links'),
+      clipsOpen,
+      toggleClips: () => togglePanel('clips'),
+      closeClips: () => closePanel('clips'),
       agendaOpen,
       suggestionsOpen,
       toggleSuggestions: () => togglePanel('suggestions'),
@@ -227,6 +237,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       pinnedOpen,
       searchOpen,
       linksOpen,
+      clipsOpen,
       agendaOpen,
       suggestionsOpen,
       leaderboardOpen,

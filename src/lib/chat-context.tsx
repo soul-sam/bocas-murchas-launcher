@@ -106,6 +106,8 @@ interface ChatContextValue {
   edit: (messageId: string, content: string) => Promise<void>
   remove: (messageId: string) => Promise<void>
   react: (messageId: string, emoji: string) => Promise<void>
+  /** Reescreve as gorjetas de uma mensagem (o botão já falou com a rota). */
+  applyTips: (messageId: string, tips: ChatMessage['tips']) => void
   togglePin: (messageId: string) => Promise<void>
   notifyTyping: () => void
 
@@ -504,6 +506,31 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
 
     /**
+     * Gorjeta de outra pessoa.
+     *
+     * O servidor manda a LISTA INTEIRA de gorjetas da mensagem, e não o
+     * delta. Duas gorjetas quase simultâneas somadas à mão dariam contas
+     * diferentes em cada tela; substituir a lista inteira não tem esse
+     * problema, e a lista é curta por construção (uma por pessoa).
+     */
+    const handleTipped = (data: {
+      channelId?: string
+      conversationId?: string
+      messageId: string
+      tips: ChatMessage['tips']
+    }): void => {
+      const bucket = bucketOf(data)
+      if (!bucket || !data.messageId) return
+
+      setByChannel((prev) => ({
+        ...prev,
+        [bucket]: (prev[bucket] ?? []).map((m) =>
+          m.id === data.messageId ? { ...m, tips: data.tips ?? [] } : m
+        )
+      }))
+    }
+
+    /**
      * Reacao de outra pessoa.
      *
      * O servidor manda so o delta (quem reagiu com o que), nao a mensagem
@@ -609,6 +636,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     socket.on('messageDeleted', handleDeleted)
     socket.on('messagePinned', handlePinned)
     socket.on('messageReaction', handleReaction)
+    socket.on('messageTipped', handleTipped)
     // Nome antigo do mesmo evento — servidor desatualizado ainda manda assim.
     socket.on('reactionUpdate', handleReaction)
     socket.on('userTyping', handleTyping)
@@ -623,6 +651,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       socket.off('messageDeleted', handleDeleted)
       socket.off('messagePinned', handlePinned)
       socket.off('messageReaction', handleReaction)
+      socket.off('messageTipped', handleTipped)
       socket.off('reactionUpdate', handleReaction)
       socket.off('userTyping', handleTyping)
       socket.off('userStopTyping', handleStopTyping)
@@ -919,6 +948,27 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [token, activeChannelId, user]
   )
 
+  /**
+   * Grava a lista de gorjetas que a rota devolveu.
+   *
+   * Quem CHAMA a rota é o botão (components/social/TipPopover); aqui é só o
+   * lugar onde a lista de mensagens vive. Sem isso a gorjeta só apareceria
+   * pra quem a deu depois do eco do socket — e não apareceria de jeito nenhum
+   * se o canal estivesse fechado no momento do clique.
+   */
+  const applyTips = React.useCallback(
+    (messageId: string, tips: ChatMessage['tips']) => {
+      if (!activeChannelId) return
+      setByChannel((prev) => ({
+        ...prev,
+        [activeChannelId]: (prev[activeChannelId] ?? []).map((m) =>
+          m.id === messageId ? { ...m, tips: tips ?? [] } : m
+        )
+      }))
+    },
+    [activeChannelId]
+  )
+
   const togglePin = React.useCallback(
     async (messageId: string) => {
       if (!token || !activeChannelId) return
@@ -1028,6 +1078,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       edit,
       remove,
       react,
+      applyTips,
       togglePin,
       notifyTyping,
       refreshChannels,
@@ -1062,6 +1113,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       edit,
       remove,
       react,
+      applyTips,
       togglePin,
       notifyTyping,
       refreshChannels,

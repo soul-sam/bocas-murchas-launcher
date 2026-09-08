@@ -29,6 +29,7 @@ import { MessageCard, hasCard } from '@/components/cards'
 import { AuthorName } from './AuthorName'
 import { useEmojis, toPickerEmojis } from '@/lib/emoji-context'
 import { CustomEmojiImg } from './CustomEmojiImg'
+import { TipButton, TipChip, canTip } from './TipPopover'
 
 const QUICK_EMOJIS = ['😂', '💀', '🔥', '👍', '❤️', '😭']
 
@@ -74,6 +75,14 @@ interface MessageItemProps {
   onDelete: (messageId: string) => Promise<void>
   onReact: (messageId: string, emoji: string) => Promise<void>
   onPin: (messageId: string) => Promise<void>
+  /**
+   * Gorjeta paga. O ChatView reescreve as gorjetas da mensagem na lista.
+   *
+   * Vem de fora e não é resolvido aqui porque a lista de mensagens é do
+   * chat-context: um `setState` local ficaria por baixo do próximo retrato
+   * vindo do socket e a gorjeta piscaria pra fora da tela.
+   */
+  onTipped?: (messageId: string, tips: ChatMessage['tips']) => void
   /** Pular pra mensagem respondida. Ausente quando ela não está carregada. */
   onJumpTo?: (messageId: string) => void
 }
@@ -90,6 +99,7 @@ export function MessageItem({
   onDelete,
   onReact,
   onPin,
+  onTipped,
   onJumpTo
 }: MessageItemProps) {
   const { user } = useAuth()
@@ -300,8 +310,9 @@ export function MessageItem({
           </>
         )}
 
-        {groupedReactions.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1">
+        {(groupedReactions.length > 0 || (message.tips?.length ?? 0) > 0) && (
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            <TipChip tips={message.tips} />
             {groupedReactions.map(([emoji, info]) => (
               // Quinze pessoas numa reação viravam uma tira de 700px no title
               // nativo. Na dica a lista quebra em linhas e caber é problema
@@ -386,6 +397,14 @@ export function MessageItem({
             />
           </PopoverContent>
         </Popover>
+
+        {canTip(message, user?.id) && onTipped && (
+          <TipButton
+            message={message}
+            onTipped={(tips) => onTipped(message.id, tips)}
+            className={actionClass}
+          />
+        )}
 
         <Hint label="Responder" side="top">
           <button

@@ -55,6 +55,9 @@ export function ShortcutsHelp() {
       : []),
     ...(hotkeys.nudgeChannel
       ? [{ keys: formatAccelerator(hotkeys.nudgeChannel), what: 'Cutucar a call' }]
+      : []),
+    ...(hotkeys.clip
+      ? [{ keys: formatAccelerator(hotkeys.clip), what: 'Salvar clipe da call' }]
       : [])
   ]
 

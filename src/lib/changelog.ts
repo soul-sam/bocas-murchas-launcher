@@ -42,6 +42,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.3.0',
+    headline: 'Sinal de fumaça, clipes da call e murcho que sai pro bolso dos outros',
+    items: [
+      'Sinal de fumaça: um clique avisa que você entra daqui a 15, 30, 60 ou 120 minutos. Quem quiser diz "eu também" e entra na MESMA fumaça — na hora marcada todo mundo é chamado, inclusive no celular de quem já tinha fechado o launcher. Aparecer dentro da janela paga 25 murchos e 30 XP; prometer não paga nada.',
+      '"Me avisa quando encher", em Configurações → Chat: você escolhe quantas pessoas na call fazem valer a pena, e o launcher te chama quando chegar lá. Com ele fechado, o aviso vai pro celular. Não dispara se você já estiver numa call, e no máximo uma vez a cada duas horas — tem um "hoje não" do lado.',
+      'Clipe da call com Ctrl+Shift+C: salva os últimos ~30 segundos e pergunta se você quer guardar. O launcher segura esse pedaço em memória o tempo todo enquanto você está na call, mas NADA sai da sua máquina antes de você apertar. Os clipes viram card no chat e ficam no painel de Clipes, no topo da conversa.',
+      'O clipe mais reagido da semana leva 200 murchos no recap de domingo — dez vezes o que os outros prêmios pagam, porque é o único que ninguém ganha por acidente.',
+      'Gorjeta: o botão de moeda no canto da mensagem manda 10, 50 ou 200 murchos SEUS pra quem escreveu. Uma por pessoa por mensagem, e aparece um chip embaixo com o total e quem deu. Reação diz "vi"; gorjeta diz "isso valeu alguma coisa".',
+      'Som pago: quem subiu um som pode botar preço nele (no ⋯ do tile), e metade do que for cobrado volta pro dono. Repetir o mesmo som em poucos minutos vai ficando mais caro — o freio do soundboard deixou de ser "você não pode" e virou "quanto você quer gastar".',
+      'Recap do dia, às 23h: quantas mensagens, quanto de call, quantas partidas, quem foi a boca do dia — e a fileira de quem apareceu.',
+      '"Naquele dia": de vez em quando o launcher desenterra o que o grupo estava fazendo nesta mesma data meses atrás, com a mensagem que a galera mais reagiu na época.',
+      'Retrospectiva Murcha: o seu ano em slides, no botão do ano dentro do Ranking. Horas de call, com quem você mais ficou, sua melhor partida, o som que você mais tocou, o que você disse de melhor — e no fim os números do grupo inteiro. Já dá pra espiar a prévia de 2026.'
+    ],
+    note: 'O soundboard continua de graça: som só custa se alguém tiver posto preço nele, e o preço aparece no canto do botão antes do clique. Sobre os clipes: o buffer só existe enquanto você está numa call, some quando ela acaba, e dá pra desligar em Configurações → Zoeira.'
+  },
+  {
     version: '1.2.3',
     headline: 'Subir de nível agora paga murchos',
     items: [

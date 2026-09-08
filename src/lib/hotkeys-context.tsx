@@ -4,6 +4,7 @@ import { useSettings } from './settings-context'
 import { useVoice } from './voice-context'
 import { useSoundboard } from './soundboard-context'
 import { useNudge } from './nudge-context'
+import { useClips } from './clip-context'
 
 /**
  * Cola entre as configuracoes de atalho e o que eles fazem.
@@ -32,13 +33,14 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
   const voice = useVoice()
   const soundboard = useSoundboard()
   const nudge = useNudge()
+  const clips = useClips()
 
   const [registrations, setRegistrations] = React.useState<HotkeyRegistration[]>([])
   const [pttActive, setPttActive] = React.useState(false)
 
   // Handlers mudam a cada render; o listener de IPC e registrado uma vez só.
-  const actionsRef = React.useRef({ voice, soundboard, nudge })
-  actionsRef.current = { voice, soundboard, nudge }
+  const actionsRef = React.useRef({ voice, soundboard, nudge, clips })
+  actionsRef.current = { voice, soundboard, nudge, clips }
 
   // --- registrar os atalhos globais ---------------------------------------
   const hotkeys = settings.hotkeys
@@ -66,6 +68,9 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
         action: { kind: 'nudge-channel' }
       })
     }
+    if (hotkeys.clip) {
+      bindings.push({ id: 'clip', accelerator: hotkeys.clip, action: { kind: 'clip' } })
+    }
 
     for (const [soundId, accelerator] of Object.entries(hotkeys.sounds)) {
       if (!accelerator) continue
@@ -82,7 +87,7 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
   // --- reagir aos disparos ------------------------------------------------
   React.useEffect(() => {
     return window.bocas.hotkeys.onTriggered((event) => {
-      const { voice: v, soundboard: sb, nudge: n } = actionsRef.current
+      const { voice: v, soundboard: sb, nudge: n, clips: c } = actionsRef.current
 
       switch (event.action.kind) {
         case 'mute':
@@ -97,6 +102,11 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
           break
         case 'sound':
           void sb.play(event.action.soundId)
+          break
+        // O clipe NAO salva aqui: abre a tela de confirmacao (ver
+        // lib/clip-context.tsx). O atalho e global e o dedo e rapido.
+        case 'clip':
+          void c.capture()
           break
       }
     })

@@ -11,6 +11,7 @@ import { PinnedPanel } from '@/components/social/PinnedPanel'
 import { SearchPanel } from '@/components/social/SearchPanel'
 import { ChannelManager } from '@/components/social/ChannelManager'
 import { LinksPanel } from '@/components/social/LinksPanel'
+import { ClipsPanel } from '@/components/social/ClipsPanel'
 import { AgendaPanel } from '@/components/social/AgendaPanel'
 import { SuggestionsPanel } from '@/components/social/SuggestionsPanel'
 import { LeaderboardPanel } from '@/components/social/LeaderboardPanel'
@@ -42,6 +43,7 @@ export function SocialPage() {
     pinnedOpen,
     searchOpen,
     linksOpen,
+    clipsOpen,
     agendaOpen,
     leaderboardOpen,
     suggestionsOpen
@@ -103,7 +105,7 @@ export function SocialPage() {
         )}
       </main>
 
-      {/* Uma coluna à direita só, disputada por cinco painéis. Empilhar todos
+      {/* Uma coluna à direita só, disputada por seis painéis. Empilhar todos
           numa janela de 1000px não sobraria chat nenhum.
 
           O SOUNDBOARD SAIU DESTA DISPUTA: virou um drop-up ancorado no próprio
@@ -117,6 +119,8 @@ export function SocialPage() {
         <PinnedPanel />
       ) : linksOpen && view === 'chat' ? (
         <LinksPanel />
+      ) : clipsOpen ? (
+        <ClipsPanel />
       ) : agendaOpen ? (
         <AgendaPanel />
       ) : suggestionsOpen ? (

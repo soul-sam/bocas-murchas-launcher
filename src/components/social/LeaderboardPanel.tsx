@@ -62,13 +62,26 @@ const MEDAL_COLOR = ['#FFC53D', '#C9C9C9', '#B87333']
 
 export function LeaderboardPanel() {
   const { closeLeaderboard: close } = useLayout()
-  const { openShop } = useOverlays()
+  const currentYear = new Date().getFullYear()
+  const { openShop, openWrapped } = useOverlays()
   const [recapOpen, setRecapOpen] = React.useState(false)
 
   return (
     <aside className="flex w-72 shrink-0 flex-col border-l border-line bg-void xl:w-80">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
         <h3 className="flex-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">Ranking</h3>
+        {/* A retrospectiva mora AQUI e não numa aba própria: quem abre o
+            ranking já está perguntando "como eu fui?", e é a mesma pergunta
+            numa escala maior. */}
+        <button
+          type="button"
+          onClick={() => openWrapped()}
+          title={`Retrospectiva Murcha ${currentYear}`}
+          aria-label="Retrospectiva Murcha"
+          className="shrink-0 rounded-brutal border border-line px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:border-acid/60 hover:text-acid"
+        >
+          {currentYear}
+        </button>
         <button type="button" onClick={close} aria-label="Fechar" className="rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
           <X className="h-3.5 w-3.5" />
         </button>
