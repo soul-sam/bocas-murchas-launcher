@@ -111,11 +111,13 @@ export function EarnRulesPopover({ className }: { className?: string }) {
 }
 
 function RulesList({ rules }: { rules: EarnRules }) {
-  const { actions, chess, levelUp, wager } = rules
-  const n = (value: number): string => value.toLocaleString('pt-BR')
+  const { actions, levelUp } = rules
 
   return (
     <div className="max-h-[22rem] overflow-y-auto px-3 py-2.5">
+      {/* Só "Todo dia" mostra número. Ali o valor é sempre o mesmo e a pessoa
+          consegue planejar o dia com ele. No resto depende do jogo, do
+          resultado e do nível — número solto ali viraria promessa quebrada. */}
       <Section title="Todo dia">
         <Row Icon={CalendarCheck} label="Check-in" value={`+${actions.checkinBase}`}>
           mais {actions.checkinPerStreak} por dia de sequência, até {actions.checkinStreakMax}
@@ -125,27 +127,22 @@ function RulesList({ rules }: { rules: EarnRules }) {
       </Section>
 
       <Section title="Jogando">
-        <Row Icon={Gamepad2} label="Partida jogada" value={`+${actions.gamePlayed}`}>
-          vitória rende {actions.gamePlayed + actions.gameWin} no total
+        <Row Icon={Gamepad2} label="League of Legends">
+          toda partida paga, vitória paga mais
         </Row>
-        <Row Icon={ChessGlyph} label="Xadrez, por partida" value={`+${chess.rapid.coins}`}>
-          rapid; blitz {chess.blitz.coins} e bullet {chess.bullet.coins}, vitória dobra
+        <Row Icon={ChessGlyph} label="Xadrez">
+          quanto mais longo o controle de tempo, mais paga; vitória dobra
         </Row>
-        <Row Icon={Dices} label="Aposta certa" value={`${wager.payoutMultiplier}×`}>
-          entre {wager.min} e {n(wager.max)} por aposta
+        <Row Icon={Dices} label="Apostando">
+          quem acerta leva o dobro do que apostou
         </Row>
       </Section>
 
       <Section title="De vez em quando">
-        <Row
-          Icon={TrendingUp}
-          label={`Subir pro nível ${levelUp.next.level}`}
-          value={`+${n(levelUp.next.coins)}`}
-          highlight
-        >
+        <Row Icon={TrendingUp} label={`Subir pro nível ${levelUp.next.level}`} highlight>
           cada nível paga mais que o anterior
         </Row>
-        <Row Icon={Coins} label="Prêmio do recap" value={`+${actions.recapAward}`}>
+        <Row Icon={Coins} label="Prêmio do recap">
           pra quem se destaca na semana
         </Row>
       </Section>
@@ -176,7 +173,8 @@ function Row({
 }: {
   Icon: RowIcon
   label: string
-  value: string
+  /** Sem valor, a linha só descreve — é assim fora de "Todo dia". */
+  value?: string
   /** Destaca a linha que muda por pessoa (o próximo nível). */
   highlight?: boolean
   children?: React.ReactNode
@@ -195,7 +193,7 @@ function Row({
           <p className="text-[11px] leading-tight text-muted-foreground">{children}</p>
         )}
       </div>
-      <span className="shrink-0 font-mono text-xs text-burn">{value}</span>
+      {value && <span className="shrink-0 font-mono text-xs text-burn">{value}</span>}
     </div>
   )
 }
