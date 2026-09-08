@@ -8,8 +8,7 @@ import {
   Loader2,
   Mic,
   Target,
-  TrendingUp,
-  type LucideIcon
+  TrendingUp
 } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { gamification, type EarnRules } from '@/lib/api-gamification'
@@ -157,13 +156,16 @@ function RulesList({ rules }: { rules: EarnRules }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-2.5 last:mb-0">
-      <h3 className="mb-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <h3 className="mb-1 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
         {title}
       </h3>
       <div className="space-y-0.5">{children}</div>
     </section>
   )
 }
+
+/** Aceita ícone do lucide e o peão desenhado aqui embaixo. */
+type RowIcon = React.ComponentType<{ className?: string }>
 
 function Row({
   Icon,
@@ -172,7 +174,7 @@ function Row({
   highlight,
   children
 }: {
-  Icon: LucideIcon
+  Icon: RowIcon
   label: string
   value: string
   /** Destaca a linha que muda por pessoa (o próximo nível). */
