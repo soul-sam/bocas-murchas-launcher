@@ -24,17 +24,34 @@ import { fetchYouTubeTitle, parseYouTubeUrl } from './youtube'
  * de 8s pra frente em cada pessoa, a cada mensagem.
  */
 
-export interface WatchQueueItem {
+/**
+ * Vídeo pra assistir junto, ou faixa pra tocar sem imagem.
+ *
+ * É UMA sessão por canal nos dois casos — o servidor não deixa a sala ter um
+ * vídeo e uma música brigando pelo alto-falante. Ver realtime/watch.ts na API.
+ */
+export type WatchMode = 'video' | 'music'
+
+/** O mínimo pra tocar alguma coisa. Sai da busca ou de um link colado. */
+export interface WatchTrack {
   videoId: string
   title?: string
-  /** Quem botou na fila. */
-  addedBy: string
+  /** Artista, quando veio da busca de música. */
+  artist?: string
+  /** Capa do álbum, quando veio da busca de música. */
+  artUrl?: string
 }
 
-export interface WatchSession {
+export interface WatchQueueItem extends WatchTrack {
+  /** Quem botou na fila. */
+  addedBy: string
+  /** O quantésimo pedido desta pessoa. É o que dá o rodízio da fila. */
+  turn?: number
+}
+
+export interface WatchSession extends WatchTrack {
   channelId: string
   videoId: string
-  title?: string
   playing: boolean
   /** Posição (s) no instante `updatedAt` (relógio do servidor). */
   positionSec: number
@@ -42,6 +59,7 @@ export interface WatchSession {
   /** Quem trouxe o vídeo. Não é dono: qualquer um na call controla. */
   hostUserId: string
   queue?: WatchQueueItem[]
+  mode: WatchMode
 }
 
 export interface WatchAck {
@@ -60,8 +78,17 @@ interface WatchContextValue {
   expectedPosition: (session?: WatchSession | null) => number
 
   /** Cola um link (ou id) e bota pra tocar pra sala. Busca o título antes. */
-  set: (urlOrId: string) => Promise<WatchAck>
-  queueAdd: (urlOrId: string) => Promise<WatchAck>
+  set: (urlOrId: string, mode?: WatchMode) => Promise<WatchAck>
+  queueAdd: (urlOrId: string, mode?: WatchMode) => Promise<WatchAck>
+  /**
+   * Igual aos de cima, mas pra faixa que JÁ veio resolvida (da busca): não
+   * passa pelo oEmbed, que custaria 4s de espera pra descobrir um título que
+   * a busca já tinha entregue com artista e capa.
+   */
+  playTrack: (track: WatchTrack, mode?: WatchMode) => Promise<WatchAck>
+  queueTrack: (track: WatchTrack, mode?: WatchMode) => Promise<WatchAck>
+  /** Tira da fila. O videoId confere contra corrida — ver a API. */
+  queueRemove: (index: number, videoId: string) => Promise<WatchAck>
   next: () => Promise<WatchAck>
   play: (positionSec: number) => Promise<WatchAck>
   pause: (positionSec: number) => Promise<WatchAck>
@@ -82,6 +109,18 @@ function isSession(value: unknown): value is WatchSession {
   if (!value || typeof value !== 'object') return false
   const s = value as Partial<WatchSession>
   return typeof s.channelId === 'string' && typeof s.videoId === 'string'
+}
+
+/**
+ * Sessão sem `mode` é de um servidor anterior à música (ou de um deploy no
+ * meio do caminho). Vira vídeo, que é o que ela era. Sem isso o modo chegaria
+ * `undefined` e cairia em todo `=== 'music'` como falso por acidente, em vez
+ * de por decisão.
+ */
+function normalizeSession(session: WatchSession): WatchSession {
+  return session.mode === 'music' || session.mode === 'video'
+    ? session
+    : { ...session, mode: 'video' }
 }
 
 export function WatchProvider({ children }: { children: React.ReactNode }) {
@@ -112,7 +151,7 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
       const next: Record<string, WatchSession> = {}
       if (data?.sessions && typeof data.sessions === 'object') {
         for (const [channelId, session] of Object.entries(data.sessions)) {
-          if (isSession(session)) next[channelId] = session
+          if (isSession(session)) next[channelId] = normalizeSession(session)
         }
       }
       setSessions(next)
@@ -123,7 +162,9 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
       noteServerClock(data.serverNow)
       const channelId = data.channelId
       setSessions((current) => {
-        if (isSession(data.session)) return { ...current, [channelId]: data.session }
+        if (isSession(data.session)) {
+          return { ...current, [channelId]: normalizeSession(data.session) }
+        }
         if (!(channelId in current)) return current
         const rest = { ...current }
         delete rest[channelId]
@@ -193,28 +234,42 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
     return { videoId: parsed.videoId, title: title ?? undefined }
   }, [])
 
-  const set = React.useCallback(
-    async (urlOrId: string): Promise<WatchAck> => {
+  const fromUrl = React.useCallback(
+    async (event: string, urlOrId: string, mode: WatchMode): Promise<WatchAck> => {
       const video = await resolveVideo(urlOrId)
       if (!video) {
         setFeedback('Isso não parece um link do YouTube.')
         return { ok: false, error: 'Isso não parece um link do YouTube.' }
       }
-      return request('watch:set', video)
+      return request(event, { ...video, mode })
     },
     [request, resolveVideo]
   )
 
+  const set = React.useCallback(
+    (urlOrId: string, mode: WatchMode = 'video') => fromUrl('watch:set', urlOrId, mode),
+    [fromUrl]
+  )
+
   const queueAdd = React.useCallback(
-    async (urlOrId: string): Promise<WatchAck> => {
-      const video = await resolveVideo(urlOrId)
-      if (!video) {
-        setFeedback('Isso não parece um link do YouTube.')
-        return { ok: false, error: 'Isso não parece um link do YouTube.' }
-      }
-      return request('watch:queue:add', video)
-    },
-    [request, resolveVideo]
+    (urlOrId: string, mode: WatchMode = 'video') => fromUrl('watch:queue:add', urlOrId, mode),
+    [fromUrl]
+  )
+
+  const playTrack = React.useCallback(
+    (track: WatchTrack, mode: WatchMode = 'music') => request('watch:set', { ...track, mode }),
+    [request]
+  )
+
+  const queueTrack = React.useCallback(
+    (track: WatchTrack, mode: WatchMode = 'music') =>
+      request('watch:queue:add', { ...track, mode }),
+    [request]
+  )
+
+  const queueRemove = React.useCallback(
+    (index: number, videoId: string) => request('watch:queue:remove', { index, videoId }),
+    [request]
   )
 
   const next = React.useCallback(() => request('watch:next'), [request])
@@ -257,6 +312,9 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
       expectedPosition,
       set,
       queueAdd,
+      playTrack,
+      queueTrack,
+      queueRemove,
       next,
       play,
       pause,
@@ -265,7 +323,24 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
       feedback,
       clearFeedback
     }),
-    [sessions, sessionFor, current, expectedPosition, set, queueAdd, next, play, pause, seek, stop, feedback, clearFeedback]
+    [
+      sessions,
+      sessionFor,
+      current,
+      expectedPosition,
+      set,
+      queueAdd,
+      playTrack,
+      queueTrack,
+      queueRemove,
+      next,
+      play,
+      pause,
+      seek,
+      stop,
+      feedback,
+      clearFeedback
+    ]
   )
 
   return <Context.Provider value={value}>{children}</Context.Provider>

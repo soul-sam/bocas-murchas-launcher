@@ -835,6 +835,59 @@ function ZoeiraTab() {
           canal inteiro no mesmo período.
         </p>
       </section>
+
+      <section className="space-y-2">
+        <SectionTitle>Música na call</SectionTitle>
+        <label className="flex items-center gap-3">
+          <span className="shrink-0 text-sm">Volume da música</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={settings.music.volume}
+            onChange={(e) =>
+              void update({ music: { ...settings.music, volume: Number(e.target.value) } })
+            }
+            className="ram-slider flex-1"
+          />
+          <span className="w-9 shrink-0 text-right font-mono text-[11px] text-foreground">
+            {Math.round(settings.music.volume * 100)}%
+          </span>
+        </label>
+
+        <SwitchRow
+          label="Abaixar quando alguém fala"
+          hint="A música cai sozinha na primeira sílaba e volta quando a call cala. É o que faz dar pra jogar com som sem ninguém gritar."
+          checked={settings.music.duck}
+          onCheckedChange={(duck) => void update({ music: { ...settings.music, duck } })}
+        />
+
+        {settings.music.duck && (
+          <label className="flex items-center gap-3">
+            <span className="shrink-0 text-sm">Quanto sobra</span>
+            <input
+              type="range"
+              min={0}
+              max={0.9}
+              step={0.05}
+              value={settings.music.duckLevel}
+              onChange={(e) =>
+                void update({ music: { ...settings.music, duckLevel: Number(e.target.value) } })
+              }
+              className="ram-slider flex-1"
+            />
+            <span className="w-9 shrink-0 text-right font-mono text-[11px] text-foreground">
+              {Math.round(settings.music.duckLevel * 100)}%
+            </span>
+          </label>
+        )}
+
+        <p className="rounded-brutal border border-line bg-void/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          A fila é da call, mas o volume é seu: cada pessoa ouve no seu nível, e
+          mutar a música não muta pra mais ninguém.
+        </p>
+      </section>
     </div>
   )
 }

@@ -17,23 +17,14 @@ import {
   X
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
-import { cn } from '@/lib/utils'
+import { cn, formatClock } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { useVoice } from '@/lib/voice-context'
 import { useWatch, type WatchAck, type WatchSession } from '@/lib/watch-context'
 import { openExternal } from '@/lib/rich-text'
-import {
-  YT_STATE,
-  parsePlayerMessage,
-  playerErrorInfo,
-  sendPlayerCommand,
-  sendPlayerListening,
-  youtubeEmbedUrl,
-  youtubeWatchUrl,
-  type YtCommand,
-  type YtPlayerState
-} from '@/lib/youtube'
+import { YT_STATE, playerErrorInfo, youtubeWatchUrl } from '@/lib/youtube'
+import { useYoutubePlayer } from '@/lib/use-youtube-player'
 
 /**
  * Palco do "assistir junto".
@@ -66,23 +57,7 @@ import {
  * (electron/main/services/embed-referer.ts).
  */
 
-/** Acima disso, em mudança de estado, o player pula pra posição certa. */
-const APPLY_TOLERANCE_SEC = 1
-/** Acima disso, na checagem periódica, corrige a deriva. */
-const DRIFT_TOLERANCE_SEC = 2
-const DRIFT_CHECK_MS = 5_000
-/** Tentativas do aperto de mão `listening` (a cada 500ms) antes de desistir. */
-const HANDSHAKE_TRIES = 30
 const VOLUME_KEY = 'bocas:watch-volume'
-
-function formatClock(totalSec: number): string {
-  const sec = Math.max(0, Math.floor(totalSec))
-  const h = Math.floor(sec / 3600)
-  const m = Math.floor((sec % 3600) / 60)
-  const s = sec % 60
-  const mm = h > 0 ? String(m).padStart(2, '0') : String(m)
-  return `${h > 0 ? `${h}:` : ''}${mm}:${String(s).padStart(2, '0')}`
-}
 
 function loadVolume(): number {
   try {
@@ -205,14 +180,32 @@ export function WatchStage({
   const watch = useWatch()
   const session = watch.current
 
-  if (!session) {
-    return <EmptyWatch collapsed={collapsed} onClose={onClose} />
+  /**
+   * Música tem palco próprio (components/social/MusicHost), que fica de pé
+   * mesmo quando esta tela não existe. Aqui ela conta como "não tem vídeo": o
+   * formulário continua valendo, e colar um link TROCA a música pelo vídeo —
+   * que é o que o servidor faz de qualquer jeito, já que a sala tem uma
+   * sessão só. O aviso no EmptyWatch existe pra isso não ser surpresa.
+   */
+  if (!session || session.mode === 'music') {
+    return (
+      <EmptyWatch collapsed={collapsed} onClose={onClose} musicPlaying={session?.mode === 'music'} />
+    )
   }
 
   return <Player session={session} collapsed={collapsed} onExpand={onExpand} onClose={onClose} />
 }
 
-function EmptyWatch({ collapsed, onClose }: { collapsed: boolean; onClose: () => void }) {
+function EmptyWatch({
+  collapsed,
+  onClose,
+  musicPlaying
+}: {
+  collapsed: boolean
+  onClose: () => void
+  /** Tem música tocando: botar um vídeo aqui vai calar a jukebox. */
+  musicPlaying?: boolean
+}) {
   const watch = useWatch()
 
   if (collapsed) {
@@ -253,6 +246,12 @@ function EmptyWatch({ collapsed, onClose }: { collapsed: boolean; onClose: () =>
           Cola um link do YouTube: toca pra todo mundo na call, no mesmo segundo. Qualquer um
           pausa, pula e troca.
         </p>
+        {musicPlaying && (
+          <p className="mt-2 max-w-sm text-sm text-burn">
+            Tem música tocando agora. Botar um vídeo aqui vai parar a música — a call toca uma
+            coisa de cada vez.
+          </p>
+        )}
       </div>
 
       <UrlForm onSubmit={watch.set} autoFocus />
@@ -290,65 +289,12 @@ function Player({
   const voice = useVoice()
 
   const containerRef = React.useRef<HTMLDivElement>(null)
-  const iframeRef = React.useRef<HTMLIFrameElement | null>(null)
-  /**
-   * Id que vai no aperto de mão e volta em toda mensagem do player. Um por
-   * montagem: se algum dia houver dois embeds na tela, cada um só ouve o seu.
-   */
-  const playerId = React.useMemo(() => `watch-${Math.random().toString(36).slice(2, 10)}`, [])
 
-  const [ready, setReady] = React.useState(false)
-  /**
-   * Codigo do erro do player, nao um booleano: "nao deu pra tocar" manda a
-   * pessoa tentar de novo pra sempre, enquanto cada codigo pede uma atitude
-   * diferente (trocar de video, abrir no YouTube, atualizar o launcher).
-   */
-  const [errorCode, setErrorCode] = React.useState<number | null>(null)
-  const [playerState, setPlayerState] = React.useState<YtPlayerState>(YT_STATE.unstarted)
-  const [currentTime, setCurrentTime] = React.useState(0)
-  const [duration, setDuration] = React.useState(0)
-  const [playerTitle, setPlayerTitle] = React.useState<string | null>(null)
   const [volume, setVolume] = React.useState<number>(loadVolume)
   const [muted, setMuted] = React.useState(false)
   const [scrub, setScrub] = React.useState<number | null>(null)
   const [fullscreen, setFullscreen] = React.useState(false)
   const [queueOpen, setQueueOpen] = React.useState(false)
-  /** Qual vídeo o iframe já terminou de carregar — gatilho do aperto de mão. */
-  const [loadedVideoId, setLoadedVideoId] = React.useState<string | null>(null)
-
-  // Refs espelhando o estado que os handlers de mensagem/intervalo precisam
-  // ler sem ficar re-registrando a cada render.
-  const sessionRef = React.useRef(session)
-  sessionRef.current = session
-  const readyRef = React.useRef(false)
-  const timeRef = React.useRef(0)
-  const stateRef = React.useRef<YtPlayerState>(YT_STATE.unstarted)
-  const scrubbingRef = React.useRef(false)
-  scrubbingRef.current = scrub !== null
-  const endedHandledRef = React.useRef<string | null>(null)
-
-  const send = React.useCallback(
-    (func: YtCommand, args: unknown[] = []) => {
-      sendPlayerCommand(iframeRef.current, playerId, func, args)
-    },
-    [playerId]
-  )
-
-  /**
-   * Obriga o player a obedecer ao servidor. Chamado quando o estado muda e
-   * quando o player fica pronto. Tolerância de 1s: um seek causa buffering e
-   * ninguém quer isso a cada play/pause por 300ms de latência.
-   */
-  const applySession = React.useCallback(() => {
-    if (!readyRef.current) return
-    const current = sessionRef.current
-    const expected = watch.expectedPosition(current)
-    if (Math.abs(timeRef.current - expected) > APPLY_TOLERANCE_SEC) {
-      send('seekTo', [expected, true])
-      timeRef.current = expected
-    }
-    send(current.playing ? 'playVideo' : 'pauseVideo')
-  }, [watch, send])
 
   /** Quem avisa o servidor que o vídeo acabou. Ver o cabeçalho do arquivo. */
   const isDriver = React.useMemo(() => {
@@ -359,167 +305,51 @@ function Player({
       : [...identities].sort()[0]
     return driver === user.id
   }, [user, voice.participants, session.hostUserId])
-  const isDriverRef = React.useRef(isDriver)
-  isDriverRef.current = isDriver
 
-  // --- mensagens do player ------------------------------------------------
-  React.useEffect(() => {
-    const handleMessage = (event: MessageEvent): void => {
-      if (event.source !== iframeRef.current?.contentWindow) return
-      const message = parsePlayerMessage(event, playerId)
-      if (!message) return
-
-      const markReady = (): void => {
-        if (readyRef.current) return
-        readyRef.current = true
-        setReady(true)
-      }
-
-      switch (message.event) {
-        case 'onReady':
-          markReady()
-          break
-
-        case 'initialDelivery':
-        case 'infoDelivery': {
-          markReady()
-          const info = (message as { info?: Record<string, unknown> }).info
-          if (!info || typeof info !== 'object') break
-
-          if (typeof info.currentTime === 'number' && Number.isFinite(info.currentTime)) {
-            timeRef.current = info.currentTime
-            if (!scrubbingRef.current) setCurrentTime(info.currentTime)
-          }
-          if (typeof info.duration === 'number' && info.duration > 0) setDuration(info.duration)
-          if (typeof info.playerState === 'number') {
-            stateRef.current = info.playerState as YtPlayerState
-            setPlayerState(info.playerState as YtPlayerState)
-          }
-          const videoData = info.videoData as { title?: unknown } | undefined
-          if (videoData && typeof videoData.title === 'string' && videoData.title) {
-            setPlayerTitle(videoData.title)
-          }
-          break
-        }
-
-        case 'onStateChange': {
-          const state = (message as { info?: unknown }).info
-          if (typeof state !== 'number') break
-          stateRef.current = state as YtPlayerState
-          setPlayerState(state as YtPlayerState)
-
-          /**
-           * Acabou. Se tem fila, próximo; senão o servidor precisa saber que
-           * parou, ou quem entrar depois calcula uma posição além do fim e
-           * vê um player travado na tela final.
-           */
-          if (state === YT_STATE.ended && isDriverRef.current) {
-            const current = sessionRef.current
-            if (!current.playing || endedHandledRef.current === current.videoId) break
-            endedHandledRef.current = current.videoId
-            if (current.queue && current.queue.length > 0) void watch.next()
-            else void watch.pause(timeRef.current)
-          }
-          break
-        }
-
-        case 'onError': {
-          const code = (message as { info?: unknown }).info
-          if (typeof code !== 'number' || code <= 0) break
-          /**
-           * QUALQUER erro para o player, não só os de "não deixa embutir": o
-           * player não volta a mandar `infoDelivery` depois de errar, então
-           * insistir só deixaria o spinner girando pra sempre. O texto de cada
-           * código sai de playerErrorInfo (lib/youtube.ts).
-           */
-          setErrorCode(code)
-          break
-        }
-      }
-    }
-
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [playerId, watch])
-
-  // --- aperto de mão --------------------------------------------------------
   /**
-   * Vídeo novo = iframe novo (a `key` lá embaixo). Zera tudo e recomeça o
-   * `listening` até o player responder. O `load` do iframe não basta como
-   * gatilho único: o player termina de subir DEPOIS dele, e uma mensagem
-   * mandada cedo demais se perde sem erro.
+   * A sincronia toda mora no hook (lib/use-youtube-player): aperto de mão,
+   * obedecer ao servidor, corrigir deriva, volume. Aqui fica só o palco.
    */
-  React.useEffect(() => {
-    readyRef.current = false
-    setReady(false)
-    setErrorCode(null)
-    setPlayerTitle(null)
-    setDuration(0)
-    setCurrentTime(0)
-    timeRef.current = 0
-    stateRef.current = YT_STATE.unstarted
-    setPlayerState(YT_STATE.unstarted)
-    endedHandledRef.current = null
-  }, [session.videoId])
-
-  React.useEffect(() => {
-    if (loadedVideoId !== session.videoId) return
-
-    let tries = 0
-    const attempt = (): void => {
-      if (readyRef.current || tries >= HANDSHAKE_TRIES) {
-        clearInterval(timer)
-        return
-      }
-      tries += 1
-      sendPlayerListening(iframeRef.current, playerId)
+  const player = useYoutubePlayer({
+    videoId: session.videoId,
+    playing: session.playing,
+    expectedPosition: () => watch.expectedPosition(session),
+    syncKey: session.updatedAt,
+    volume,
+    muted,
+    isDriver,
+    scrubbing: scrub !== null,
+    onEnded: () => {
+      /**
+       * Acabou. Se tem fila, próximo; senão o servidor precisa saber que
+       * parou, ou quem entrar depois calcula uma posição além do fim e vê um
+       * player travado na tela final.
+       */
+      if ((session.queue ?? []).length > 0) void watch.next()
+      else void watch.pause(player.timeRef.current)
     }
-    attempt()
-    const timer = setInterval(attempt, 500)
-    return () => clearInterval(timer)
-  }, [loadedVideoId, session.videoId, playerId])
+  })
 
-  // Pronto: aplica volume guardado e cai na posição da sala.
-  React.useEffect(() => {
-    if (!ready) return
-    send('setVolume', [volume])
-    send(muted ? 'mute' : 'unMute')
-    applySession()
-    // Só na virada pra `ready`; volume/mute têm efeito próprio abaixo.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready])
+  const {
+    iframeRef,
+    iframeSrc,
+    onIframeLoad,
+    ready,
+    errorCode,
+    playerState,
+    currentTime,
+    duration,
+    playerTitle,
+    timeRef,
+    applySession,
+    seekLocal
+  } = player
 
-  // --- servidor mandou, player obedece --------------------------------------
+  // O volume é preferência de quem ouve, não da sala: sobrevive ao vídeo, à
+  // call e ao app fechado.
   React.useEffect(() => {
-    applySession()
-  }, [session.playing, session.positionSec, session.updatedAt, applySession])
-
-  // Deriva: buffering de um lado só acumula segundos em poucos minutos.
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      if (!readyRef.current || scrubbingRef.current) return
-      const current = sessionRef.current
-      if (!current.playing || stateRef.current !== YT_STATE.playing) return
-      const expected = watch.expectedPosition(current)
-      if (Math.abs(timeRef.current - expected) > DRIFT_TOLERANCE_SEC) {
-        send('seekTo', [expected, true])
-        timeRef.current = expected
-      }
-    }, DRIFT_CHECK_MS)
-    return () => clearInterval(timer)
-  }, [watch, send])
-
-  // --- volume (só meu) ------------------------------------------------------
-  React.useEffect(() => {
-    if (!ready) return
-    send('setVolume', [volume])
     saveVolume(volume)
-  }, [volume, ready, send])
-
-  React.useEffect(() => {
-    if (!ready) return
-    send(muted ? 'mute' : 'unMute')
-  }, [muted, ready, send])
+  }, [volume])
 
   // --- tela cheia -----------------------------------------------------------
   React.useEffect(() => {
@@ -540,33 +370,26 @@ function Player({
   const localPlaying = playerState === YT_STATE.playing || playerState === YT_STATE.buffering
 
   const togglePlay = React.useCallback(() => {
-    const current = sessionRef.current
     // A sala diz "tocando" mas o meu player não está: autoplay barrado ou
     // player recém-carregado. Isso é problema MEU — resolve local, sem mandar
     // a sala inteira dar play de novo.
-    if (
-      current.playing &&
-      stateRef.current !== YT_STATE.playing &&
-      stateRef.current !== YT_STATE.buffering
-    ) {
+    if (session.playing && !localPlaying) {
       applySession()
       return
     }
-    if (current.playing) void watch.pause(timeRef.current)
+    if (session.playing) void watch.pause(timeRef.current)
     else void watch.play(timeRef.current)
-  }, [watch, applySession])
+  }, [watch, applySession, session.playing, localPlaying, timeRef])
 
   const commitSeek = React.useCallback(
     (value: number) => {
       setScrub(null)
       // Local na hora, pra barra não "voltar" enquanto o servidor responde; o
       // broadcast que volta cai dentro da tolerância e não pula de novo.
-      send('seekTo', [value, true])
-      timeRef.current = value
-      setCurrentTime(value)
+      seekLocal(value)
       void watch.seek(value)
     },
-    [watch, send]
+    [watch, seekLocal]
   )
 
   // --- derivados pra tela ---------------------------------------------------
@@ -576,7 +399,6 @@ function Player({
   const shown = scrub ?? currentTime
   const sliderMax = duration > 0 ? duration : Math.max(shown + 1, 1)
   const queue = session.queue ?? []
-  const iframeSrc = React.useMemo(() => youtubeEmbedUrl(session.videoId), [session.videoId])
   const blocked = errorCode !== null
   const errorInfo = playerErrorInfo(errorCode)
 
@@ -615,7 +437,7 @@ function Player({
             title={title}
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
             referrerPolicy="strict-origin-when-cross-origin"
-            onLoad={() => setLoadedVideoId(session.videoId)}
+            onLoad={onIframeLoad}
             className="h-full w-full border-0"
           />
         </div>

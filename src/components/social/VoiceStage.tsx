@@ -16,7 +16,8 @@ import {
   Video,
   VideoOff,
   Tv,
-  Radio
+  Radio,
+  Disc3
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useVoice, type ScreenShareFeed } from '@/lib/voice-context'
@@ -37,7 +38,7 @@ export function VoiceStage() {
   // O seletor de tela é renderizado na casca autenticada, não aqui: este
   // componente sai da tela no instante em que a call cai, e arrancar uma modal
   // aberta trava o app inteiro (ver lib/interaction-guard.ts).
-  const { openScreenPicker, openUserMenu } = useOverlays()
+  const { openScreenPicker, openUserMenu, openMusicPanel } = useOverlays()
   const { density, sidebarIsDrawer, toggleSidebar } = useLayout()
   const watch = useWatch()
 
@@ -55,7 +56,12 @@ export function VoiceStage() {
   const [watchFocused, setWatchFocused] = React.useState(true)
 
   const hasStage = voice.screenShares.length > 0
-  const watchVideoId = watch.current?.videoId ?? null
+  /**
+   * SÓ vídeo. A música é a mesma sessão em outro modo, e sem este filtro cada
+   * troca de faixa (a cada três minutos) abria o palco do assistir junto por
+   * cima da tela de quem estava jogando.
+   */
+  const watchVideoId = watch.current?.mode === 'video' ? watch.current.videoId : null
 
   /**
    * Vídeo novo na sala (alguém colou um link, ou eu entrei numa call que já
@@ -158,6 +164,8 @@ export function VoiceStage() {
 
   const compact = density !== 'wide'
   const watchIsMain = watchOpen && (!hasStage || watchFocused)
+  // Música e vídeo são a MESMA sessão no servidor, em modos diferentes.
+  const musicPlaying = watch.current?.mode === 'music'
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -185,7 +193,7 @@ export function VoiceStage() {
         </span>
 
         <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          {watch.current && (
+          {watch.current?.mode === 'video' && (
             <button
               type="button"
               onClick={() => {
@@ -328,6 +336,18 @@ export function VoiceStage() {
             </ControlButton>
           </SoundboardPopover>
 
+          {/* A jukebox. Não abre painel na tela: o que ela liga é a barra
+              global (components/social/MusicHost), que continua tocando
+              depois que esta tela sair do ar. */}
+          <ControlButton
+            active={musicPlaying}
+            label={musicPlaying ? 'Tem música tocando — pedir outra' : 'Pedir uma música'}
+            text={compact ? undefined : musicPlaying ? 'Tocando' : 'Música'}
+            onClick={() => openMusicPanel()}
+          >
+            <Disc3 className="h-4 w-4" />
+          </ControlButton>
+
           {/* "Rolando" quando tem vídeo na sala e eu fechei o painel: é a
               única pista de que tem algo pra reabrir. */}
           <ControlButton
@@ -335,11 +355,11 @@ export function VoiceStage() {
             label={
               watchOpen
                 ? 'Fechar o assistir junto (só pra mim)'
-                : watch.current
+                : watchVideoId
                   ? 'Tem vídeo rolando na sala — abrir'
                   : 'Assistir junto (YouTube sincronizado)'
             }
-            text={compact ? undefined : watch.current && !watchOpen ? 'Rolando' : 'Assistir'}
+            text={compact ? undefined : watchVideoId && !watchOpen ? 'Rolando' : 'Assistir'}
             onClick={toggleWatch}
           >
             <Tv className="h-4 w-4" />

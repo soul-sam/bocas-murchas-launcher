@@ -182,6 +182,30 @@ export interface ScreenShareSettings {
  */
 export type ScreenShareQuality = '720p30' | '1080p30' | '1080p60'
 
+/**
+ * A JUKEBOX DA CALL.
+ *
+ * A fila e o que toca sao da SALA (o servidor manda, ver realtime/watch.ts na
+ * API); tudo aqui e de quem escuta. Cada um toca a propria copia do video, e
+ * por isso o volume pode ser diferente pra cada pessoa sem que ninguem
+ * precise combinar nada — coisa que um bot de Discord, que manda um audio
+ * mixado so, nao consegue fazer.
+ */
+export interface MusicSettings {
+  /** 0..1. Multiplicado por 100 antes de ir pro player do YouTube. */
+  volume: number
+  /**
+   * Abaixar a musica sozinho enquanto alguem fala na call.
+   *
+   * E o motivo de a musica em call normalmente nao dar certo: ou fica alta e
+   * cobre a conversa, ou fica tao baixa que nao vale a pena. Ver
+   * components/social/MusicHost.tsx pro tempo de subida e descida.
+   */
+  duck: boolean
+  /** Quanto do volume sobra enquanto alguem fala. 0..1 (0.25 = um quarto). */
+  duckLevel: number
+}
+
 export function isScreenShareQuality(value: unknown): value is ScreenShareQuality {
   return value === '720p30' || value === '1080p30' || value === '1080p60'
 }
@@ -375,6 +399,7 @@ export interface LauncherSettings {
   hotkeys: HotkeySettings
   chat: ChatSettings
   screenShare: ScreenShareSettings
+  music: MusicSettings
   /**
    * Volume por pessoa na call: userId -> 0..2 (1 = normal, 0 = mudo pra mim).
    *
@@ -574,6 +599,15 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     withAudio: true,
     muteLauncher: true,
     quality: '720p30'
+  },
+  music: {
+    // Musica de fundo entra mais baixa que um video que a galera sentou pra
+    // ver: 45% e o ponto em que da pra conversar por cima sem ninguem gritar.
+    volume: 0.45,
+    duck: true,
+    // Um quarto: continua audivel (a musica nao "some" no meio da frase), mas
+    // sai da frente da voz. Zero viraria um liga-desliga a cada silaba.
+    duckLevel: 0.25
   },
   chat: {
     compact: false,

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { ExternalLink, Play, Tv, Users } from 'lucide-react'
+import { Disc3, ExternalLink, Play, Tv, Users } from 'lucide-react'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -14,7 +14,8 @@ import { openExternal } from '@/lib/rich-text'
 import { youtubeThumbnail, youtubeWatchUrl } from '@/lib/youtube'
 
 /**
- * CARTÃO 'ASSISTINDO JUNTO' — metadata: { channelId, videoId, title, hostUserId }.
+ * CARTÃO 'ASSISTINDO JUNTO' / 'MÚSICA NA CALL' — metadata:
+ * { channelId, videoId, title, hostUserId, mode }.
  *
  * O servidor posta isso no canal do sistema quando alguém bota um vídeo novo
  * na call. O cartão é o convite: capa, quem trouxe, e um botão que já entra
@@ -30,6 +31,8 @@ interface WatchCardMeta {
   videoId?: string
   title?: string | null
   hostUserId?: string
+  /** Ausente nos cartões antigos, de antes da jukebox: aqueles são vídeo. */
+  mode?: 'video' | 'music'
 }
 
 export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMeta>) {
@@ -47,7 +50,10 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
   const channel = voiceChannels.find((c) => c.id === metadata.channelId) ?? null
   const host = metadata.hostUserId ? byId[metadata.hostUserId] : undefined
   const hostName = host?.displayName ?? message.author.displayName
-  const title = metadata.title?.trim() || 'Vídeo do YouTube'
+  const music = metadata.mode === 'music'
+  const title = metadata.title?.trim() || (music ? 'Som do YouTube' : 'Vídeo do YouTube')
+  const label = music ? 'Música na call' : 'Assistir junto'
+  const Icon = music ? Disc3 : Tv
 
   /**
    * Ainda está no ar? O retrato de canais em que não estou vem do connect e
@@ -55,7 +61,10 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
    * manda o retrato de novo a cada reconexão — então o pior caso é um "rolando
    * agora" que sobra por um tempo, nunca um que falta.
    */
-  const live = !!(channel && videoId && watch.sessionFor(channel.id)?.videoId === videoId)
+  const session = channel ? watch.sessionFor(channel.id) : null
+  const live = music
+    ? session?.mode === 'music'
+    : !!(videoId && session?.videoId === videoId && session.mode === 'video')
   const peopleInCall = channel ? voiceByChannel[channel.id]?.length ?? 0 : 0
   const alreadyThere = !!(channel && voice.connected && voice.channel?.id === channel.id)
 
@@ -73,7 +82,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
 
   if (!videoId) {
     return (
-      <CardFrame title="Assistir junto" icon={<Tv className="h-3.5 w-3.5" />}>
+      <CardFrame title={label} icon={<Icon className="h-3.5 w-3.5" />}>
         <p className="text-sm text-foreground">{message.content}</p>
       </CardFrame>
     )
@@ -81,10 +90,10 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
 
   if (compact) {
     return (
-      <CardFrame title="Assistir junto" icon={<Tv className="h-3.5 w-3.5" />}>
+      <CardFrame title={label} icon={<Icon className="h-3.5 w-3.5" />}>
         <div className="flex items-center gap-2">
           <p className="min-w-0 flex-1 truncate text-sm text-foreground">
-            <span className="text-muted-foreground">{hostName} trouxe </span>
+            <span className="text-muted-foreground">{hostName} {music ? 'botou' : 'trouxe'} </span>
             {title}
           </p>
           {channel && (
@@ -104,10 +113,10 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
   return (
     <CardFrame
       accent={live ? 'acid' : 'muted'}
-      icon={<Tv className="h-3.5 w-3.5" />}
+      icon={<Icon className="h-3.5 w-3.5" />}
       title={
         <span className="flex items-center gap-2">
-          Assistir junto
+          {label}
           {live && (
             <span className="flex items-center gap-1 text-acid-text">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-acid" />

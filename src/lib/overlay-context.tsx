@@ -108,6 +108,17 @@ interface OverlayContextValue {
   openShop: () => void
   closeShop: () => void
 
+  /**
+   * Pedir música: a busca da jukebox. Camada global porque é aberta do
+   * compositor de mensagens (/tocar), da call e da tela de jogar — e porque a
+   * música toca fora da tela social, então o painel também precisa existir lá.
+   */
+  musicPanelOpen: boolean
+  /** `seed` pré-preenche o campo — é o resto de "/tocar alguma coisa". */
+  openMusicPanel: (seed?: string) => void
+  closeMusicPanel: () => void
+  musicPanelSeed: string | null
+
   /** Painel admin (convites, membros, cargos, impressora, sons) como camada global. */
   adminOpen: boolean
   openAdmin: () => void
@@ -138,6 +149,8 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [wrappedOpen, setWrappedOpen] = React.useState(false)
   const [wrappedYear, setWrappedYear] = React.useState(() => new Date().getFullYear())
   const [shopOpen, setShopOpen] = React.useState(false)
+  const [musicPanelOpen, setMusicPanelOpen] = React.useState(false)
+  const [musicPanelSeed, setMusicPanelSeed] = React.useState<string | null>(null)
   const [adminOpen, setAdminOpen] = React.useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = React.useState(false)
 
@@ -243,6 +256,14 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       openShop: () => setShopOpen(true),
       closeShop: () => setShopOpen(false),
 
+      musicPanelOpen,
+      musicPanelSeed,
+      openMusicPanel: (seed?: string) => {
+        setMusicPanelSeed(seed && seed.trim() ? seed.trim() : null)
+        setMusicPanelOpen(true)
+      },
+      closeMusicPanel: () => setMusicPanelOpen(false),
+
       adminOpen,
       openAdmin: () => setAdminOpen(true),
       closeAdmin: () => setAdminOpen(false),
@@ -269,6 +290,8 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       wrappedOpen,
       wrappedYear,
       shopOpen,
+      musicPanelOpen,
+      musicPanelSeed,
       adminOpen,
       whatsNewOpen
     ]

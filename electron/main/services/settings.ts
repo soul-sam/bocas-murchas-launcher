@@ -8,11 +8,12 @@ import {
   type HotkeySettings,
   type LauncherSettings,
   type LolSettings,
+  type MusicSettings,
   type ScreenShareSettings,
   type VoiceSettings,
   type VoiceMode, isScreenShareQuality, isThemeId } from '../../preload/types.js'
 
-export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, ScreenShareSettings, VoiceSettings, VoiceMode }
+export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, MusicSettings, ScreenShareSettings, VoiceSettings, VoiceMode }
 
 const FILE = 'settings.json'
 
@@ -112,6 +113,18 @@ function normalizeScreenShare(
   }
 }
 
+function normalizeMusic(raw: Partial<MusicSettings> | undefined): MusicSettings {
+  const d = DEFAULTS.music
+  const m = raw ?? {}
+  return {
+    volume: clamp(Number(m.volume), 0, 1, d.volume),
+    duck: m.duck ?? d.duck,
+    // Teto de 0.9: "abaixar pra 95%" nao abaixa nada e faria a pessoa achar
+    // que o recurso esta quebrado quando na verdade esta ligado e sem efeito.
+    duckLevel: clamp(Number(m.duckLevel), 0, 0.9, d.duckLevel)
+  }
+}
+
 function normalizeLol(raw: Partial<LolSettings> | undefined): LolSettings {
   const d = DEFAULTS.lol
   const l = raw ?? {}
@@ -177,6 +190,7 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     hotkeys: normalizeHotkeys(raw.hotkeys),
     chat: normalizeChat(raw.chat),
     screenShare: normalizeScreenShare(raw.screenShare),
+    music: normalizeMusic(raw.music),
     userVolumes: normalizeUserVolumes(raw.userVolumes),
     soundboardVolume: clamp(Number(raw.soundboardVolume), 0, 1, DEFAULTS.soundboardVolume),
     voiceCueVolume: clamp(Number(raw.voiceCueVolume), 0, 1, DEFAULTS.voiceCueVolume),
@@ -219,6 +233,7 @@ export async function updateSettings(patch: Partial<LauncherSettings>): Promise<
     // poder ENCOLHER a lista, e um spread so sabe crescer.
     chat: { ...current.chat, ...(patch.chat ?? {}) },
     screenShare: { ...current.screenShare, ...(patch.screenShare ?? {}) },
+    music: { ...current.music, ...(patch.music ?? {}) },
     // Merge por pessoa: ajustar o volume de UM nao pode apagar o dos outros.
     // Voltar alguem pro 1 remove a chave no normalize logo abaixo.
     userVolumes: { ...current.userVolumes, ...(patch.userVolumes ?? {}) }

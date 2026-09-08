@@ -107,6 +107,7 @@ export function MessageComposer({
     openEventComposer,
     openPartyComposer,
     openShop,
+    openMusicPanel,
     openSuggestionComposer,
     openSmokeComposer,
     openWrapped
@@ -417,6 +418,9 @@ export function MessageComposer({
         break
       case 'wrapped':
         openWrapped()
+        break
+      case 'music':
+        openMusicPanel(command.seed)
         break
       case 'drop':
         if (user?.role !== 'admin' || !onDrop) return false

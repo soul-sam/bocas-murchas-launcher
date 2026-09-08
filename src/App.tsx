@@ -53,6 +53,8 @@ import { WrappedModal } from '@/components/social/WrappedModal'
 import { ShopModal } from '@/components/social/ShopModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
+import { MusicHost } from '@/components/social/MusicHost'
+import { MusicPanel } from '@/components/social/MusicPanel'
 import { AdminModal } from '@/components/AdminModal'
 import { WhatsNewModal } from '@/components/WhatsNewModal'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -165,6 +167,11 @@ function GlobalOverlays() {
       {/* Banners: drops de admin e "tem gente do grupo no seu lobby". */}
       <DropHost />
       <PartyCallPrompt />
+      {/* A jukebox. Mora AQUI, e não no palco da call, porque a música tem que
+          continuar quando a pessoa vai pra tela de jogar — que é quando ela
+          serve pra alguma coisa. Ver components/social/MusicHost.tsx. */}
+      <MusicHost />
+      <MusicPanel />
     </>
   )
 }

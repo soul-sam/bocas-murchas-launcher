@@ -17,6 +17,7 @@ export type SlashCommand =
   | { kind: 'smoke' }
   | { kind: 'clip' }
   | { kind: 'wrapped' }
+  | { kind: 'music'; seed: string }
 
 const ALIASES: Record<string, SlashCommand['kind']> = {
   enquete: 'poll',
@@ -44,6 +45,11 @@ const ALIASES: Record<string, SlashCommand['kind']> = {
   clipe: 'clip',
   clip: 'clip',
   clipar: 'clip',
+  tocar: 'music',
+  musica: 'music',
+  música: 'music',
+  som: 'music',
+  dj: 'music',
   retrospectiva: 'wrapped',
   retro: 'wrapped',
   ano: 'wrapped',
@@ -78,6 +84,8 @@ export function parseSlashCommand(text: string): SlashCommand | null {
       return { kind: 'party', seed }
     case 'drop':
       return { kind: 'drop', seed }
+    case 'music':
+      return { kind: 'music', seed }
   }
 }
 
@@ -91,5 +99,6 @@ export const SLASH_HELP: Array<{ command: string; hint: string }> = [
   { command: '/loja', hint: 'Abrir a lojinha' },
   { command: '/fumaca', hint: 'Avisar que você entra daqui a pouco' },
   { command: '/clipe', hint: 'Salvar os últimos segundos da call' },
+  { command: '/tocar', hint: 'Pedir uma música pra call — ex.: /tocar seu link' },
   { command: '/retrospectiva', hint: 'Seu ano murcho, em slides' }
 ]

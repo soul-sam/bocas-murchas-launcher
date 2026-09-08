@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.4.0',
+    headline: 'Música na call — e ela não para quando você vai jogar',
+    items: [
+      'Pedir música: o botão do disquinho na call, ou /tocar no chat. Toca pra todo mundo no mesmo segundo, igual ao assistir junto — só que sem vídeo na tela e sem sumir quando você troca pra aba do Minecraft. É esse o ponto: dá pra jogar com a música rolando.',
+      'Barra de pesquisa de verdade: você digita o nome da música e ela aparece com capa, artista e duração enquanto você escreve. Colar link do YouTube continua funcionando pra quando você já sabe qual é o vídeo.',
+      'A música abaixa sozinha quando alguém fala e volta quando a call cala. É o que faz dar pra ouvir som sem ninguém precisar gritar por cima. Dá pra desligar (ou escolher quanto ela abaixa) em Configurações → Zoeira.',
+      'O volume é SEU. Cada um ouve no nível que quiser, e mutar a música não muta pra mais ninguém — coisa que bot de Discord não faz, porque lá é um áudio mixado só pra todo mundo.',
+      'A fila é em rodízio: se você jogar cinco músicas de uma vez e outra pessoa pedir uma, a dela toca antes da sua segunda. Ninguém mais sequestra a noite com a própria playlist.',
+      'Vincular o Spotify (na aba "Minhas playlists") traz as SUAS playlists e curtidas pra dentro da fila. Quem toca continua sendo o YouTube — o Spotify não deixa a call inteira ouvir a mesma faixa —, então ele entra só como catálogo. Não pedimos permissão pra mexer em nada na sua conta.'
+    ],
+    note: 'A call toca uma coisa de cada vez: botar um vídeo no assistir junto para a música, e vice-versa. Música que o grupo já tocou antes entra na hora; a primeira vez de cada música demora um instante porque o launcher vai procurar o vídeo.'
+  },
+  {
     version: '1.3.0',
     headline: 'Sinal de fumaça, clipes da call e murcho que sai pro bolso dos outros',
     items: [
