@@ -2,6 +2,7 @@
   "pkg": "bocas-murchas-launcher",
   "globalName": "BocasMurchas",
   "shape": "package",
+  "projectId": "aeb7b617-b045-451e-b2e6-787e3017af34",
   "srcDir": "src",
   "tsconfig": ".design-sync/tsconfig.paths.json",
   "cssEntry": ".design-sync/compiled.css",
