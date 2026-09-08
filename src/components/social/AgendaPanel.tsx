@@ -261,6 +261,7 @@ export function AgendaPanel() {
                                 const member = byId[rsvp.userId] ?? rsvp.user
                                 return (
                                   <UserAvatar
+                                    userId={rsvp.userId}
                                     key={rsvp.userId}
                                     src={resolveAssetUrl(member?.avatar)}
                                     name={member?.displayName ?? '?'}

@@ -304,6 +304,7 @@ function MusicBar({ session }: { session: WatchSession }) {
               </div>
 
               <UserAvatar
+                userId={session.hostUserId}
                 src={host?.avatar ?? undefined}
                 name={host?.displayName ?? 'alguém'}
                 ringColor={host?.profileColor}

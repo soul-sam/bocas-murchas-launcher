@@ -251,6 +251,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
                   return (
                     <span key={who.id} title={who.displayName}>
                       <UserAvatar
+                        userId={who.id}
                         src={resolveAssetUrl(who.avatar)}
                         name={who.displayName}
                         ringColor={who.profileColor}

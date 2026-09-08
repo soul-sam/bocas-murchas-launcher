@@ -169,6 +169,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
 
           <div className="flex items-center gap-1.5">
             <UserAvatar
+              userId={metadata.hostUserId ?? message.author.id}
               src={host?.avatar ?? message.author.avatar ?? undefined}
               name={hostName}
               ringColor={host?.profileColor}

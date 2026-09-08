@@ -71,6 +71,7 @@ export function ChessResultCard({ metadata, compact }: CardProps<ChessCardMeta>)
       <div className="flex items-center gap-2">
         {member && (
           <UserAvatar
+            userId={member.id}
             src={resolveAssetUrl(member.avatar)}
             name={member.displayName}
             ringColor={member.profileColor}

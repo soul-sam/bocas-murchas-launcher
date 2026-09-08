@@ -60,6 +60,7 @@ export function MemoryCard({ message, metadata }: CardProps<MemoryCardMetadata>)
             <span className="ml-auto flex shrink-0 items-center gap-1">
               {people.slice(0, 8).map((p) => (
                 <UserAvatar
+                  userId={p.id}
                   key={p.id}
                   src={resolveAssetUrl(byId[p.id]?.avatar ?? p.avatar)}
                   name={byId[p.id]?.displayName ?? p.displayName}

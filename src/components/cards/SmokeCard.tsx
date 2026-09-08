@@ -172,6 +172,7 @@ export function SmokeCard({ metadata }: CardProps<SmokeCardMetadata>) {
         {members.map((m) => (
           <span key={m.id} className="relative">
             <UserAvatar
+              userId={m.id}
               src={resolveAssetUrl(m.avatar)}
               name={m.displayName}
               className={cn('h-7 w-7', m.id === creatorId && 'ring-1 ring-burn')}

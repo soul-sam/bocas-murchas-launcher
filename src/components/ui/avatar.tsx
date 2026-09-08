@@ -2,6 +2,7 @@ import * as React from 'react'
 import * as AvatarPrimitive from '@radix-ui/react-avatar'
 import { cn } from '@/lib/utils'
 import { cosmeticKey } from '@/lib/api-gamification'
+import { useOverlaysOptional } from '@/lib/overlay-context'
 import '@/styles/effects.css'
 
 export const Avatar = React.forwardRef<
@@ -96,7 +97,19 @@ export function frameNeedsRing(frame: string | null | undefined): boolean {
   return cosmeticKey(frame) === 'fire'
 }
 
-/** Avatar com bolinha de status no canto, igual Discord. */
+/**
+ * Avatar com bolinha de status no canto, igual Discord.
+ *
+ * CLICAR ABRE O PERFIL quando vem `userId`. A decisão de pôr o gatilho aqui
+ * dentro, e não em cada tela, é o que faz a foto de alguém se comportar igual
+ * no chat, na lista, na call e nos cartões — eram uns quinze lugares, e
+ * espalhar `onClick={() => openProfile(id)}` por todos garantiria que metade
+ * ficaria de fora (e que a próxima tela nasceria sem).
+ *
+ * Sem `userId` nada muda: continua sendo uma imagem, sem foco e sem cursor de
+ * clique. É assim nos lugares onde o avatar é decoração e não uma pessoa
+ * clicável — dentro do próprio perfil, por exemplo.
+ */
 export function UserAvatar({
   src,
   name,
@@ -105,7 +118,8 @@ export function UserAvatar({
   ringColor,
   speaking,
   frame,
-  style
+  style,
+  userId
 }: {
   src?: string
   name: string
@@ -121,11 +135,45 @@ export function UserAvatar({
    * pixels em tempo de execução (ver components/social/CallStage.tsx).
    */
   style?: React.CSSProperties
+  /** De quem é esta foto. Quando vem, clicar abre o perfil em modal. */
+  userId?: string
 }) {
   const frameStyle = frameClass(frame)
+  /**
+   * Opcional de propósito: este componente é de `ui/` e pode ser desenhado
+   * fora da árvore autenticada (onde o OverlayProvider não existe). Ver
+   * useOverlaysOptional.
+   */
+  const overlays = useOverlaysOptional()
+  const abrirPerfil = userId && overlays ? () => overlays.openProfile(userId) : null
 
   return (
-    <div className="relative shrink-0">
+    <div
+      className={cn(
+        'relative shrink-0',
+        abrirPerfil && 'cursor-pointer transition-opacity hover:opacity-80'
+      )}
+      {...(abrirPerfil
+        ? {
+            role: 'button' as const,
+            tabIndex: 0,
+            'aria-label': `Ver o perfil de ${name}`,
+            onClick: (event: React.MouseEvent) => {
+              // A foto costuma estar DENTRO de outra coisa clicável (a linha da
+              // mensagem, o card da call, o item da lista). Sem parar aqui, um
+              // clique no rosto abriria o perfil e disparava a ação de trás.
+              event.stopPropagation()
+              abrirPerfil()
+            },
+            onKeyDown: (event: React.KeyboardEvent) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return
+              event.preventDefault()
+              event.stopPropagation()
+              abrirPerfil()
+            }
+          }
+        : {})}
+    >
       {/* Coroa da moldura lendária, por cima da borda (z-index no CSS). */}
       {frameNeedsRing(frame) && <span aria-hidden className="frame-fire-ring" />}
 

@@ -209,6 +209,7 @@ export function MessageItem({
               className="block cursor-default"
             >
               <UserAvatar
+                userId={message.author.id}
                 src={resolveAssetUrl(message.author.avatar)}
                 name={message.author.displayName}
                 ringColor={color}

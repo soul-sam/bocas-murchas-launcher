@@ -113,6 +113,21 @@ interface OverlayContextValue {
    * compositor de mensagens (/tocar), da call e da tela de jogar — e porque a
    * música toca fora da tela social, então o painel também precisa existir lá.
    */
+  /**
+   * Perfil aberto em modal (o id de quem). Null = fechado.
+   *
+   * Mora aqui, e nao num state ao lado de cada avatar, por dois motivos. O
+   * primeiro e o de sempre nesta lista: quem abriu o perfil pode SUMIR — a
+   * pessoa sai da call, a mensagem sai da tela, a lista de membros re-renderiza
+   * — e uma camada ancorada num componente que desmonta e exatamente o que
+   * trava o app (ver lib/interaction-guard.ts). O segundo e que o mesmo perfil
+   * e aberto de uns quinze lugares diferentes: um estado so significa que
+   * abrir de qualquer um deles da a MESMA tela.
+   */
+  profileUserId: string | null
+  openProfile: (userId: string) => void
+  closeProfile: () => void
+
   musicPanelOpen: boolean
   /** `seed` pré-preenche o campo — é o resto de "/tocar alguma coisa". */
   openMusicPanel: (seed?: string) => void
@@ -149,6 +164,7 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [wrappedOpen, setWrappedOpen] = React.useState(false)
   const [wrappedYear, setWrappedYear] = React.useState(() => new Date().getFullYear())
   const [shopOpen, setShopOpen] = React.useState(false)
+  const [profileUserId, setProfileUserId] = React.useState<string | null>(null)
   const [musicPanelOpen, setMusicPanelOpen] = React.useState(false)
   const [musicPanelSeed, setMusicPanelSeed] = React.useState<string | null>(null)
   const [adminOpen, setAdminOpen] = React.useState(false)
@@ -256,6 +272,10 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       openShop: () => setShopOpen(true),
       closeShop: () => setShopOpen(false),
 
+      profileUserId,
+      openProfile: (userId: string) => setProfileUserId(userId),
+      closeProfile: () => setProfileUserId(null),
+
       musicPanelOpen,
       musicPanelSeed,
       openMusicPanel: (seed?: string) => {
@@ -290,6 +310,7 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       wrappedOpen,
       wrappedYear,
       shopOpen,
+      profileUserId,
       musicPanelOpen,
       musicPanelSeed,
       adminOpen,
@@ -304,4 +325,17 @@ export function useOverlays(): OverlayContextValue {
   const ctx = React.useContext(OverlayContext)
   if (!ctx) throw new Error('useOverlays must be used within an OverlayProvider')
   return ctx
+}
+
+/**
+ * Igual ao de cima, mas devolve null fora do provider em vez de estourar.
+ *
+ * Existe pra o <UserAvatar>, que e um componente de `ui/` e por isso pode ser
+ * desenhado em telas que NAO estao dentro do OverlayProvider — o provider so
+ * envolve a arvore autenticada, e login, cadastro e a barra de titulo ficam
+ * fora dela. Com o `useOverlays` normal, botar um avatar em qualquer uma
+ * dessas telas viraria tela branca em vez de um avatar que nao abre perfil.
+ */
+export function useOverlaysOptional(): OverlayContextValue | null {
+  return React.useContext(OverlayContext)
 }

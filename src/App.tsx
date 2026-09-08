@@ -55,6 +55,7 @@ import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
 import { MusicHost } from '@/components/social/MusicHost'
 import { MusicPanel } from '@/components/social/MusicPanel'
+import { ProfileModal } from '@/components/social/ProfileModal'
 import { AdminModal } from '@/components/AdminModal'
 import { WhatsNewModal } from '@/components/WhatsNewModal'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -148,6 +149,10 @@ function GlobalOverlays() {
       <QuickSwitcher />
       <ShortcutsHelp />
       <ImageLightbox />
+      {/* Perfil de alguém, aberto clicando na foto em qualquer tela. Camada
+          própria porque o avatar que abriu some sozinho o tempo todo — quem
+          sai da call, a mensagem que rola pra fora. */}
+      <ProfileModal />
       {/* Compositores de cartão e lojinha: abertos do compositor de mensagens
           e de comandos de barra, que vivem numa tela que some. */}
       <PollComposer />

@@ -431,6 +431,7 @@ function Ranking() {
                     </span>
                   )}
                   <UserAvatar
+                    userId={entry.userId}
                     src={resolveAssetUrl(person?.avatar ?? entry.avatar)}
                     name={person?.displayName ?? entry.displayName}
                     ringColor={color}
@@ -504,6 +505,7 @@ function LiveGames() {
               <li key={game.session.id} className="rounded-brutal border border-burn/40 bg-burn/[0.04] p-2">
                 <div className="flex items-center gap-2">
                   <UserAvatar
+                    userId={game.session.userId}
                     src={resolveAssetUrl(person?.avatar ?? game.session.user?.avatar)}
                     name={name}
                     ringColor={color}

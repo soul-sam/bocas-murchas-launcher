@@ -41,6 +41,7 @@ export function PartyCallPrompt() {
         <div className="flex -space-x-2">
           {people.slice(0, 4).map((p) => (
             <UserAvatar
+              userId={p.id}
               key={p.id}
               src={resolveAssetUrl(p.avatar)}
               name={p.displayName}

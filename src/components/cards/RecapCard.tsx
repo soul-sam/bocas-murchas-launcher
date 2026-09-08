@@ -101,6 +101,7 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                       <AwardIcon awardKey={award.key} className="h-4 w-4" />
                     </span>
                     <UserAvatar
+                      userId={award.userId}
                       src={resolveAssetUrl(who?.avatar)}
                       name={name}
                       ringColor={color}

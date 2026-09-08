@@ -40,12 +40,12 @@ const STATUS_LABEL: Record<string, string> = {
 const BADGES_SHOWN = 8
 
 /**
- * Cartão de perfil. É onde fica o botão de cutucar — precisa de um alvo, então
- * não faz sentido em lugar nenhum além de "olhando o perfil de alguém".
+ * O cartao de perfil como POPOVER, ancorado em quem o abriu. E o formato da
+ * lista de membros: abre do lado, sem cobrir a conversa.
  *
- * A parte de gamificação (nível, XP, murchos, badges) é buscada SÓ quando o
- * cartão abre: são 30 pessoas na lista e ninguém abre 30 perfis por noite.
- * O contexto guarda em cache por um minuto.
+ * O conteudo mora em <ProfileBody>, que o modal (components/social/
+ * ProfileModal) tambem desenha. Sao duas molduras pro mesmo perfil — e o dia
+ * em que alguem somar um campo aqui ele tem que aparecer nos dois.
  */
 export function ProfileCard({
   member,
@@ -54,12 +54,47 @@ export function ProfileCard({
   member: Member
   children: React.ReactNode
 }) {
+  const [open, setOpen] = React.useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      <PopoverContent align="end" side="left" className="w-72 p-0">
+        <ProfileBody member={member} open={open} />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+/**
+ * O PERFIL EM SI — sem moldura.
+ *
+ * Saiu de dentro do ProfileCard quando o modal apareceu: eram duas telas
+ * mostrando a mesma pessoa, e manter duas copias garantiria que um campo novo
+ * (ou uma correcao) entraria so numa delas.
+ *
+ * `open` nao e enfeite: a parte de gamificacao (nivel, XP, murchos, badges) e
+ * buscada SO quando o perfil aparece — sao 30 pessoas na lista e ninguem abre
+ * 30 perfis por noite. O contexto guarda em cache por um minuto. O modal passa
+ * `open` fixo em true, porque ele so existe aberto.
+ *
+ * `wide` da mais respiro no modal (a bio e as badges cabem sem apertar) sem
+ * mudar nada do popover, que vive espremido em 18rem do lado da lista.
+ */
+export function ProfileBody({
+  member,
+  open,
+  wide
+}: {
+  member: Member
+  open: boolean
+  wide?: boolean
+}) {
   const { user } = useAuth()
   const { nudgeUser } = useNudge()
   const { activityOf } = useActivity()
   const { profile: myProfile, profileOf, cosmeticName } = useGamification()
 
-  const [open, setOpen] = React.useState(false)
   const [remote, setRemote] = React.useState<GamificationProfile | null>(null)
 
   const isSelf = member.id === user?.id
@@ -93,179 +128,183 @@ export function ProfileCard({
   const progress = gp && gp.nextLevelXp > 0 ? gp.levelXp / gp.nextLevelXp : 0
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent align="end" side="left" className="w-72 p-0">
-        <div
-          className="h-16"
-          style={
-            member.banner
-              ? {
-                  backgroundImage: `url(${resolveAssetUrl(member.banner)})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }
-              : { background: `linear-gradient(135deg, ${color}33, transparent)` }
-          }
-        />
+    /*
+      O pai unico dos dois blocos (capa e conteudo). No popover ele nao pinta
+      nada — quem desenha a moldura e o PopoverContent. No modal ele e quem
+      da o respiro: `wide` solta o texto, que espremido em 18rem cortava bio
+      e badge no meio.
+    */
+    <div className={cn(wide && "text-sm")}>
+      <div
+        className="h-16"
+        style={
+          member.banner
+            ? {
+                backgroundImage: `url(${resolveAssetUrl(member.banner)})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }
+            : { background: `linear-gradient(135deg, ${color}33, transparent)` }
+        }
+      />
 
-        <div className="px-3 pb-3">
-          <div className="-mt-8 mb-2 flex items-end justify-between gap-2">
-            {gp ? (
-              <LevelRing level={gp.level} progress={progress} size={68}>
-                <UserAvatar
-                  src={resolveAssetUrl(member.avatar)}
-                  name={member.displayName}
-                  status={status}
-                  ringColor={color}
-                  frame={member.avatarFrame}
-                  className="h-14 w-14 border-2"
-                />
-              </LevelRing>
-            ) : (
-              // Mesmo tamanho do anel, pra nada pular quando ele chegar.
-              <div className="flex h-[68px] w-[68px] shrink-0 items-center justify-center">
-                <UserAvatar
-                  src={resolveAssetUrl(member.avatar)}
-                  name={member.displayName}
-                  status={status}
-                  ringColor={color}
-                  frame={member.avatarFrame}
-                  className="h-14 w-14 border-2"
-                />
-              </div>
-            )}
+      <div className="px-3 pb-3">
+        <div className="-mt-8 mb-2 flex items-end justify-between gap-2">
+          {gp ? (
+            <LevelRing level={gp.level} progress={progress} size={68}>
+              <UserAvatar
+                src={resolveAssetUrl(member.avatar)}
+                name={member.displayName}
+                status={status}
+                ringColor={color}
+                frame={member.avatarFrame}
+                className="h-14 w-14 border-2"
+              />
+            </LevelRing>
+          ) : (
+            // Mesmo tamanho do anel, pra nada pular quando ele chegar.
+            <div className="flex h-[68px] w-[68px] shrink-0 items-center justify-center">
+              <UserAvatar
+                src={resolveAssetUrl(member.avatar)}
+                name={member.displayName}
+                status={status}
+                ringColor={color}
+                frame={member.avatarFrame}
+                className="h-14 w-14 border-2"
+              />
+            </div>
+          )}
 
-            <div className="mb-1 flex items-center gap-1">
-              {inMatch && (
-                <BetPopover userId={member.id} targetName={member.displayName} side="left" align="start">
-                  <button
-                    type="button"
-                    title={`Apostar murchos na partida de ${member.displayName}`}
-                    className={cn(
-                      'flex items-center gap-1 rounded-brutal border-2 border-acid-dark px-2 py-1',
-                      'font-mono text-[11.5px] uppercase tracking-widest text-acid',
-                      'transition-colors hover:bg-acid/15 disabled:cursor-not-allowed disabled:opacity-40'
-                    )}
-                  >
-                    <Coins className="h-3 w-3" />
-                    apostar
-                  </button>
-                </BetPopover>
-              )}
-
-              {!isSelf && member.isOnline && (
+          <div className="mb-1 flex items-center gap-1">
+            {inMatch && (
+              <BetPopover userId={member.id} targetName={member.displayName} side="left" align="start">
                 <button
                   type="button"
-                  onClick={() => nudgeUser(member.id)}
-                  title="Cutucar (treme a tela dessa pessoa)"
+                  title={`Apostar murchos na partida de ${member.displayName}`}
                   className={cn(
-                    'flex items-center gap-1 rounded-brutal border-2 border-burn/60 px-2 py-1',
-                    'font-mono text-[11.5px] uppercase tracking-widest text-burn',
-                    'transition-colors hover:bg-burn/15'
+                    'flex items-center gap-1 rounded-brutal border-2 border-acid-dark px-2 py-1',
+                    'font-mono text-[11.5px] uppercase tracking-widest text-acid',
+                    'transition-colors hover:bg-acid/15 disabled:cursor-not-allowed disabled:opacity-40'
                   )}
                 >
-                  <Zap className="h-3 w-3" />
-                  cutucar
+                  <Coins className="h-3 w-3" />
+                  apostar
                 </button>
-              )}
-            </div>
-          </div>
-
-          <p
-            className="flex items-center gap-1.5 font-display text-base leading-tight"
-            style={{ color }}
-          >
-            <NameEffect effect={member.nameEffect} className="truncate">
-              {member.displayName}
-            </NameEffect>
-            <NameEmoji id={member.emoji} size="md" />
-            {member.role === 'admin' && (
-              <Shield className="h-3.5 w-3.5 shrink-0 text-burn" aria-label="admin" />
+              </BetPopover>
             )}
-          </p>
 
-          <p className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-            <span className="truncate">
-              @{member.username}
-              {member.pronouns && ` · ${member.pronouns}`}
-            </span>
-            {title && <TitleTag titleId={member.title} name={title} />}
-          </p>
-
-          {/* CARGOS. Ficam aqui, na identidade, e não junto das badges lá
-              embaixo: badge é o que a pessoa conquistou jogando; cargo é o que
-              ela É no grupo — quem rachou a impressora, quem opera a máquina.
-              Ordem de prioridade, que é a que o servidor manda. */}
-          {cargos.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1">
-              {cargos.map((cargo) => (
-                <CargoChip key={cargo.id} cargo={cargo} />
-              ))}
-            </div>
-          )}
-
-          <PersonalLine
-            timezone={member.timezone}
-            birthday={member.birthday}
-            games={games}
-          />
-
-          {gp && <GamificationBlock profile={gp} />}
-          <ChessBlock userId={member.id} isSelf={isSelf} open={open} />
-
-          {activity && (
-            <div className="mt-2 rounded-brutal border border-burn/40 bg-burn/[0.06] px-2 py-1.5">
-              <ActivityLine activity={activity} className="text-[11.5px]" />
-            </div>
-          )}
-
-          {riotId && (
-            <p
-              className="mt-1.5 flex items-center gap-1 font-mono text-[11.5px] text-muted-foreground"
-              title="Riot ID lido do cliente do LoL"
-            >
-              <Swords className="h-3 w-3 shrink-0" aria-hidden />
-              {riotId}
-            </p>
-          )}
-
-          {member.customStatus && (
-            <p className="mt-2 rounded-brutal border border-line bg-void/60 px-2 py-1 text-xs text-foreground">
-              {member.customStatus}
-            </p>
-          )}
-
-          {member.bio && (
-            <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
-              {member.bio}
-            </p>
-          )}
-
-          {links.length > 0 && (
-            <div className="mt-2 space-y-1">
-              {links.map((link, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => void window.bocas.shell.openExternal(link.url)}
-                  className="flex w-full items-center gap-1.5 truncate text-left text-xs text-acid transition-colors hover:underline"
-                >
-                  <ExternalLink className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{link.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          <p className="mt-3 border-t border-line pt-2 text-[11.5px] text-muted-foreground">
-            {STATUS_LABEL[status] ?? status}
-          </p>
+            {!isSelf && member.isOnline && (
+              <button
+                type="button"
+                onClick={() => nudgeUser(member.id)}
+                title="Cutucar (treme a tela dessa pessoa)"
+                className={cn(
+                  'flex items-center gap-1 rounded-brutal border-2 border-burn/60 px-2 py-1',
+                  'font-mono text-[11.5px] uppercase tracking-widest text-burn',
+                  'transition-colors hover:bg-burn/15'
+                )}
+              >
+                <Zap className="h-3 w-3" />
+                cutucar
+              </button>
+            )}
+          </div>
         </div>
-      </PopoverContent>
-    </Popover>
+
+        <p
+          className="flex items-center gap-1.5 font-display text-base leading-tight"
+          style={{ color }}
+        >
+          <NameEffect effect={member.nameEffect} className="truncate">
+            {member.displayName}
+          </NameEffect>
+          <NameEmoji id={member.emoji} size="md" />
+          {member.role === 'admin' && (
+            <Shield className="h-3.5 w-3.5 shrink-0 text-burn" aria-label="admin" />
+          )}
+        </p>
+
+        <p className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+          <span className="truncate">
+            @{member.username}
+            {member.pronouns && ` · ${member.pronouns}`}
+          </span>
+          {title && <TitleTag titleId={member.title} name={title} />}
+        </p>
+
+        {/* CARGOS. Ficam aqui, na identidade, e não junto das badges lá
+            embaixo: badge é o que a pessoa conquistou jogando; cargo é o que
+            ela É no grupo — quem rachou a impressora, quem opera a máquina.
+            Ordem de prioridade, que é a que o servidor manda. */}
+        {cargos.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1">
+            {cargos.map((cargo) => (
+              <CargoChip key={cargo.id} cargo={cargo} />
+            ))}
+          </div>
+        )}
+
+        <PersonalLine
+          timezone={member.timezone}
+          birthday={member.birthday}
+          games={games}
+        />
+
+        {gp && <GamificationBlock profile={gp} />}
+        <ChessBlock userId={member.id} isSelf={isSelf} open={open} />
+
+        {activity && (
+          <div className="mt-2 rounded-brutal border border-burn/40 bg-burn/[0.06] px-2 py-1.5">
+            <ActivityLine activity={activity} className="text-[11.5px]" />
+          </div>
+        )}
+
+        {riotId && (
+          <p
+            className="mt-1.5 flex items-center gap-1 font-mono text-[11.5px] text-muted-foreground"
+            title="Riot ID lido do cliente do LoL"
+          >
+            <Swords className="h-3 w-3 shrink-0" aria-hidden />
+            {riotId}
+          </p>
+        )}
+
+        {member.customStatus && (
+          <p className="mt-2 rounded-brutal border border-line bg-void/60 px-2 py-1 text-xs text-foreground">
+            {member.customStatus}
+          </p>
+        )}
+
+        {member.bio && (
+          <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+            {member.bio}
+          </p>
+        )}
+
+        {links.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {links.map((link, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => void window.bocas.shell.openExternal(link.url)}
+                className="flex w-full items-center gap-1.5 truncate text-left text-xs text-acid transition-colors hover:underline"
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                <span className="truncate">{link.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <p className="mt-3 border-t border-line pt-2 text-[11.5px] text-muted-foreground">
+          {STATUS_LABEL[status] ?? status}
+        </p>
+      </div>
+    </div>
   )
 }
+
 
 /**
  * Hora local, aniversário e jogos.

@@ -111,6 +111,7 @@ export function ClipComposer() {
             <span className="shrink-0 text-[11.5px] text-muted-foreground">na call:</span>
             {quem.slice(0, 8).map((m) => (
               <UserAvatar
+                userId={m.id}
                 key={m.id}
                 src={resolveAssetUrl(m.avatar)}
                 name={m.displayName}

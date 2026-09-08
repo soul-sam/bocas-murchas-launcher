@@ -365,6 +365,7 @@ export function ChannelSidebar({
                             )}
                           >
                             <UserAvatar
+                              userId={occupant.id}
                               src={resolveAssetUrl(occupant.avatar)}
                               name={occupant.displayName}
                               speaking={isSpeaking}

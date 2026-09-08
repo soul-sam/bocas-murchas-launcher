@@ -166,6 +166,7 @@ export function PartyCard({ metadata }: CardProps<PartyCardMetadata>) {
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         {members.map((m) => (
           <UserAvatar
+            userId={m.id}
             key={m.id}
             src={resolveAssetUrl(m.avatar)}
             name={m.displayName}

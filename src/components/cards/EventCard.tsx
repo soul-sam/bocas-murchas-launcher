@@ -249,6 +249,7 @@ function AvatarRow({
       <div className="flex -space-x-1.5">
         {shown.map(({ id, member }) => (
           <UserAvatar
+            userId={id}
             key={id}
             src={resolveAssetUrl(member?.avatar)}
             name={member?.displayName ?? '?'}

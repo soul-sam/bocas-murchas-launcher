@@ -455,6 +455,7 @@ function AvatarTile({
         )}
       >
         <UserAvatar
+          userId={participant.identity}
           src={resolveAssetUrl(member?.avatar ?? participant.avatar)}
           name={member?.displayName ?? participant.name}
           ringColor={member?.profileColor}
@@ -601,6 +602,7 @@ export function ParticipantChip({
         </button>
       ) : (
         <UserAvatar
+          userId={participant.identity}
           src={resolveAssetUrl(member?.avatar ?? participant.avatar)}
           name={member?.displayName ?? participant.name}
           ringColor={member?.profileColor}

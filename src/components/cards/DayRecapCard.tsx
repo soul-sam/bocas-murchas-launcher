@@ -59,6 +59,7 @@ export function DayRecapCard({ message, metadata }: CardProps<DayRecap>) {
                 const known = byId[p.id]
                 return (
                   <UserAvatar
+                    userId={p.id}
                     key={p.id}
                     src={resolveAssetUrl(known?.avatar ?? p.avatar)}
                     name={known?.displayName ?? p.displayName}

@@ -146,6 +146,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
     >
       <div className="flex items-center gap-2">
         <UserAvatar
+          userId={metadata.userId}
           src={resolveAssetUrl(player?.avatar)}
           name={name}
           ringColor={color}

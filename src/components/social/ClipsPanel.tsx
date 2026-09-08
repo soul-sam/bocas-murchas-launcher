@@ -122,6 +122,7 @@ export function ClipsPanel() {
             >
               <div className="flex items-start gap-2">
                 <UserAvatar
+                  userId={clip.author.id}
                   src={resolveAssetUrl(author.avatar)}
                   name={author.displayName}
                   ringColor={'profileColor' in author ? author.profileColor : undefined}
@@ -174,6 +175,7 @@ export function ClipsPanel() {
                     const who = byId[id]
                     return (
                       <UserAvatar
+                        userId={id}
                         key={id}
                         src={resolveAssetUrl(who?.avatar)}
                         name={who?.displayName ?? '?'}

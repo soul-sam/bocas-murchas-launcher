@@ -399,6 +399,7 @@ function VoterStack({ voters }: { voters: PollPerson[] }) {
     <span className="flex shrink-0 items-center -space-x-1.5" title={names}>
       {shown.map((voter) => (
         <UserAvatar
+          userId={voter.id}
           key={voter.id}
           src={resolveAssetUrl(voter.avatar)}
           name={voter.displayName}

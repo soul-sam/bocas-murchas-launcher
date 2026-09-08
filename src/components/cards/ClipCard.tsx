@@ -57,6 +57,7 @@ export function ClipCard({ message, metadata }: CardProps<ClipCardMetadata>) {
                 const who = byId[id]
                 return (
                   <UserAvatar
+                    userId={id}
                     key={id}
                     src={resolveAssetUrl(who?.avatar)}
                     name={who?.displayName ?? '?'}
