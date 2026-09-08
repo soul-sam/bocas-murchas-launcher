@@ -69,6 +69,11 @@ interface ChatContextValue {
   setActiveChannel: (channelId: string) => void
   /** Abre (criando se preciso) a conversa com alguem e vai pra ela. */
   openDm: (userId: string) => Promise<void>
+  /**
+   * Fecha uma conversa da barra: some da MINHA lista, sem apagar mensagem
+   * nenhuma. Volta sozinha se a pessoa escrever de novo.
+   */
+  closeDm: (conversationId: string) => Promise<void>
 
   messages: ChatMessage[]
   loadingMessages: boolean
@@ -356,6 +361,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         if (list.some((m) => m.id === message.id)) return prev
         return { ...prev, [bucket]: [...list, message] }
       })
+
+      /**
+       * Mensagem de uma conversa que nao esta na minha lista: eu fechei esse
+       * papo ("excluir conversa") e ele acabou de voltar a existir. So o
+       * servidor sabe montar a linha (com a pessoa do outro lado), entao a
+       * lista e recarregada em vez de remendada aqui.
+       */
+      if (
+        data.conversationId &&
+        !conversationsRef.current.some((c) => c.id === data.conversationId)
+      ) {
+        void refreshConversations()
+      }
 
       // Conversa nova sobe pro topo da lista e ganha a previa.
       if (data.conversationId) {
@@ -971,6 +989,37 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setActiveChannelId(channelId)
   }, [])
 
+  const closeDm = React.useCallback(
+    async (conversationId: string) => {
+      if (!token) return
+
+      const channelId = dmChannelId(conversationId)
+      await dmApi.close(token, conversationId)
+
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId))
+
+      // A conversa fechada nao pode continuar sendo a tela aberta: cai no
+      // primeiro canal de texto, que e onde o launcher abre normalmente.
+      setActiveChannelId((current) =>
+        current === channelId
+          ? (textChannels[0]?.id ?? null)
+          : current
+      )
+
+      const forget = <T,>(map: Record<string, T>): Record<string, T> => {
+        if (!(channelId in map)) return map
+        const next = { ...map }
+        delete next[channelId]
+        return next
+      }
+
+      setUnread(forget)
+      setMentions(forget)
+      setByChannel(forget)
+    },
+    [token, textChannels]
+  )
+
   const openDm = React.useCallback(
     async (userId: string) => {
       if (!token) return
@@ -1011,6 +1060,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       activeChannel,
       setActiveChannel,
       openDm,
+      closeDm,
       messages: activeChannelId ? (byChannel[activeChannelId] ?? []) : [],
       loadingMessages,
       hasMore: activeChannelId ? !exhausted[activeChannelId] : false,
@@ -1045,6 +1095,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       activeChannel,
       setActiveChannel,
       openDm,
+      closeDm,
       byChannel,
       loadingMessages,
       exhausted,

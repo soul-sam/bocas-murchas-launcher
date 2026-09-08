@@ -676,6 +676,14 @@ export const dm = {
 
   async markRead(token: string, conversationId: string): Promise<void> {
     await request(`/dm/${conversationId}/read`, { method: 'POST', token })
+  },
+
+  /**
+   * Fecha a conversa PRA MIM. Nada e apagado: some da lista e volta se a
+   * pessoa mandar mensagem nova (ou se eu abrir a DM de novo).
+   */
+  async close(token: string, conversationId: string): Promise<void> {
+    await request(`/dm/${conversationId}`, { method: 'DELETE', token })
   }
 }
 

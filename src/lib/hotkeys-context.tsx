@@ -132,7 +132,7 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
       e.preventDefault()
       held = true
       setPttActive(true)
-      void actionsRef.current.voice.setMic(true)
+      void actionsRef.current.voice.setMic(true, { transient: true })
     }
 
     const handleUp = (e: KeyboardEvent): void => {
@@ -140,7 +140,7 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
       e.preventDefault()
       held = false
       setPttActive(false)
-      void actionsRef.current.voice.setMic(false)
+      void actionsRef.current.voice.setMic(false, { transient: true })
     }
 
     // Perder o foco com a tecla apertada deixaria o mic aberto pra sempre.
@@ -148,7 +148,7 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
       if (!held) return
       held = false
       setPttActive(false)
-      void actionsRef.current.voice.setMic(false)
+      void actionsRef.current.voice.setMic(false, { transient: true })
     }
 
     window.addEventListener('keydown', handleDown)

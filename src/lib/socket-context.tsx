@@ -54,6 +54,8 @@ interface SocketContextValue {
   presenceById: Record<string, OnlineUser>
   /** channelId -> pessoas na voz */
   voiceByChannel: Record<string, VoiceUser[]>
+  /** userId -> microfone mudo / ensurdecido. So contem quem esta em call. */
+  voiceFlags: Record<string, VoiceFlags>
   /** channelId -> userIds compartilhando tela */
   screenShares: ScreenShareMap
   /** Perfis atualizados em tempo real (id -> user). */
@@ -66,6 +68,12 @@ interface SocketContextValue {
   activities: Record<string, ActivityEntry>
 }
 
+/** O que a barra lateral desenha ao lado de quem esta na call. */
+export interface VoiceFlags {
+  muted: boolean
+  deafened: boolean
+}
+
 const SocketContext = React.createContext<SocketContextValue | null>(null)
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
@@ -76,6 +84,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [onlineUsers, setOnlineUsers] = React.useState<OnlineUser[]>([])
   const [voiceByChannel, setVoiceByChannel] = React.useState<Record<string, VoiceUser[]>>({})
   const [screenShares, setScreenShares] = React.useState<ScreenShareMap>({})
+  const [voiceFlags, setVoiceFlags] = React.useState<Record<string, VoiceFlags>>({})
   const [profileUpdates, setProfileUpdates] = React.useState<Record<string, AuthUser>>({})
   const [activities, setActivities] = React.useState<Record<string, ActivityEntry>>({})
 
@@ -174,12 +183,38 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     const handleVoiceState = (data: {
       byChannelId?: Record<string, VoiceUser[]>
       sharingByChannelId?: Record<string, string[]>
+      mutedUserIds?: string[]
+      deafenedUserIds?: string[]
     }): void => {
       // Isto e um RETRATO do servidor, entao SUBSTITUI os dois mapas em vez de
       // misturar: misturar deixaria pra tras gente que saiu da call (ou parou
       // de transmitir) enquanto o socket estava fora.
       setVoiceByChannel(data?.byChannelId ?? {})
       setScreenShares(data?.sharingByChannelId ?? {})
+
+      const flags: Record<string, VoiceFlags> = {}
+      for (const id of data?.mutedUserIds ?? []) {
+        flags[id] = { muted: true, deafened: false }
+      }
+      for (const id of data?.deafenedUserIds ?? []) {
+        flags[id] = { muted: flags[id]?.muted ?? false, deafened: true }
+      }
+      setVoiceFlags(flags)
+    }
+
+    const handleVoiceFlags = (data: {
+      userId: string
+      muted?: boolean
+      deafened?: boolean
+    }): void => {
+      if (!data?.userId) return
+      setVoiceFlags((prev) => ({
+        ...prev,
+        [data.userId]: {
+          muted: Boolean(data.muted),
+          deafened: Boolean(data.deafened)
+        }
+      }))
     }
 
     const handleVoiceChanged = (data: {
@@ -200,6 +235,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
        * limpar sem fechar o launcher.
        */
       const present = new Set(roster.map((u) => u.id))
+
       setScreenShares((prev) => {
         const current = prev[data.channelId]
         if (!current || current.length === 0) return prev
@@ -240,6 +276,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     client.on('voiceState', handleVoiceState)
     client.on('voiceUserJoined', handleVoiceChanged)
     client.on('voiceUserLeft', handleVoiceChanged)
+    client.on('voice:flags', handleVoiceFlags)
     client.on('screenshare:state', handleScreenShare)
     client.on('user:profileUpdated', handleProfileUpdated)
     client.on('activity:changed', handleActivityChanged)
@@ -256,6 +293,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       client.off('voiceState', handleVoiceState)
       client.off('voiceUserJoined', handleVoiceChanged)
       client.off('voiceUserLeft', handleVoiceChanged)
+      client.off('voice:flags', handleVoiceFlags)
       client.off('screenshare:state', handleScreenShare)
       client.off('user:profileUpdated', handleProfileUpdated)
       client.off('activity:changed', handleActivityChanged)
@@ -285,6 +323,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       onlineIds,
       presenceById,
       voiceByChannel,
+      voiceFlags,
       screenShares,
       profileUpdates,
       activities
@@ -296,6 +335,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       onlineIds,
       presenceById,
       voiceByChannel,
+      voiceFlags,
       screenShares,
       profileUpdates,
       activities
