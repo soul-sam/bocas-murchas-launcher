@@ -1,6 +1,6 @@
 {
   "name": "bocas-murchas-launcher",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "private": true,
   "description": "Launcher do grupo Bocas Murchas — chat, voz, tela, soundboard e Minecraft",
   "main": "out/main/index.js",
