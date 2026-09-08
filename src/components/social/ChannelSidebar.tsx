@@ -88,7 +88,7 @@ export function ChannelSidebar({
   } = useChat()
   const voice = useVoice()
   const { mine: myActivity } = useActivity()
-  const { voiceByChannel, screenShares, connected } = useSocket()
+  const { voiceByChannel, voiceFlags, screenShares, connected } = useSocket()
   const { open: openSettings, settings } = useSettings()
   const { pttActive } = useHotkeys()
   const { openUserMenu, openQuickSwitcher, openAdmin, openScreenPicker } = useOverlays()
@@ -334,6 +334,10 @@ export function ChannelSidebar({
                       const member = memberById[occupant.id]
                       const afkNote =
                         member?.status === 'away' ? member.customStatus : null
+                      // Mudo e ensurdecido vem do socket (e nao do LiveKit)
+                      // porque a barra mostra TODOS os canais, e do LiveKit so
+                      // chega quem esta na minha sala.
+                      const flags = voiceFlags[occupant.id]
 
                       return (
                         <li key={occupant.id}>
@@ -376,9 +380,29 @@ export function ChannelSidebar({
                                 aria-label={afkNote}
                               />
                             )}
-                            {isSharing && (
-                              <span className="ml-auto flex shrink-0 items-center gap-0.5 text-destructive">
-                                <ScreenShare className="h-3.5 w-3.5" aria-label="compartilhando tela" />
+                            {(isSharing || flags?.muted || flags?.deafened) && (
+                              <span className="ml-auto flex shrink-0 items-center gap-1">
+                                {isSharing && (
+                                  <ScreenShare
+                                    className="h-3.5 w-3.5 text-destructive"
+                                    aria-label="compartilhando tela"
+                                  />
+                                )}
+                                {/* Apagados de proposito: sao um estado, nao um
+                                    alerta — o que precisa saltar na lista e
+                                    quem esta transmitindo. */}
+                                {flags?.muted && (
+                                  <MicOff
+                                    className="h-3.5 w-3.5 text-muted-foreground/70"
+                                    aria-label="microfone mudo"
+                                  />
+                                )}
+                                {flags?.deafened && (
+                                  <HeadphoneOff
+                                    className="h-3.5 w-3.5 text-muted-foreground/70"
+                                    aria-label="sem ouvir"
+                                  />
+                                )}
                               </span>
                             )}
                           </button>

@@ -9,7 +9,8 @@ import {
   UserCog,
   Settings,
   Headphones,
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -43,7 +44,7 @@ import { useOverlays } from '@/lib/overlay-context'
 export function UserContextMenu() {
   const { user } = useAuth()
   const { byId } = useMembers()
-  const { openDm } = useChat()
+  const { openDm, closeDm, conversations } = useChat()
   const voice = useVoice()
   const { nudgeUser } = useNudge()
   const { open: openSettings } = useSettings()
@@ -58,6 +59,14 @@ export function UserContextMenu() {
   const muted = volume === 0
 
   const inMyCall = voice.participants.some((p) => p.identity === userId && !p.isLocal)
+
+  /**
+   * A conversa com essa pessoa, se ela existir na minha barra.
+   *
+   * E o que decide se o menu mostra "Excluir conversa": nao faz sentido
+   * oferecer fechar um papo que nunca foi aberto.
+   */
+  const conversation = conversations.find((c) => c.other.id === userId)
 
   const copy = React.useCallback((text: string) => {
     /**
@@ -123,6 +132,19 @@ export function UserContextMenu() {
               <MessageSquare className="h-3.5 w-3.5" />
               Mandar mensagem
             </DropdownMenuItem>
+
+            {conversation && (
+              // Nao apaga mensagem nenhuma — so tira o papo da barra. Por isso
+              // nao pergunta "tem certeza?": a conversa volta inteira na
+              // proxima mensagem ou em "Mandar mensagem".
+              <DropdownMenuItem
+                onSelect={() => void closeDm(conversation.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Excluir conversa
+              </DropdownMenuItem>
+            )}
 
             <DropdownMenuSeparator />
 

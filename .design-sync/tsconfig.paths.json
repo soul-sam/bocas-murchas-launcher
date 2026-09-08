@@ -1,0 +1,15 @@
+{
+  "comment_1": "Existe SO pro design-sync. O converter (.ds-sync/lib/bundle.mjs) le o tsconfig",
+  "comment_2": "com um strip de comentarios por regex: /\\*...\\*/ nao-guloso. Em tsconfig.web.json",
+  "comment_3": "isso casa do /* dentro de \"@/*\" ate o */ dentro de \"src/**/*.ts\" no include —",
+  "comment_4": "o bloco paths inteiro e' apagado, JSON.parse quebra e o plugin de alias vira null.",
+  "comment_5": "Este arquivo nao tem include, entao nao existe */ depois do paths e o strip nao morde.",
+  "comment_6": "baseUrl e' '..' porque o converter resolve relativo ao diretorio DESTE arquivo.",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["src/*"],
+      "@shared/*": ["electron/shared/*"]
+    }
+  }
+}
