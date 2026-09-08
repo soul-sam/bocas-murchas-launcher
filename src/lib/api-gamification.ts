@@ -10,6 +10,7 @@ import { request, type GameSessionSummary } from './api'
  *   GET  /gamification/leaderboard?period&metric -> { period, metric, entries }
  *   GET  /gamification/badges                   -> { all, mine }
  *   GET  /gamification/shop                     -> { coins, items }
+ *   GET  /gamification/earn-rules               -> tabela de ganho de murcho
  *   POST /gamification/shop/buy { cosmeticId }  -> { profile, item }   402 sem saldo, 409 já tem
  *   POST /gamification/equip { type, cosmeticId|null } -> { user }
  *   POST /gamification/checkin                  -> { profile, awarded|null }
@@ -147,6 +148,40 @@ export interface ShopItem {
 export interface ShopResponse {
   coins: number
   items: ShopItem[]
+}
+
+/**
+ * De onde vem murcho — o que o "?" da lojinha mostra.
+ *
+ * Vem do servidor de propósito: os números são de `rules.ts` e o
+ * balanceamento muda. Cópia no cliente mentiria na primeira mudança.
+ */
+export interface EarnRules {
+  actions: {
+    checkinBase: number
+    checkinPerStreak: number
+    checkinStreakMax: number
+    voicePer30Min: number
+    gamePlayed: number
+    gameWin: number
+    missionComplete: number
+    recapAward: number
+  }
+  chess: {
+    bullet: { coins: number; perDay: number }
+    blitz: { coins: number; perDay: number }
+    rapid: { coins: number; perDay: number }
+    winMultiplier: number
+  }
+  levelUp: {
+    level: number
+    next: { level: number; coins: number }
+  }
+  wager: {
+    min: number
+    max: number
+    payoutMultiplier: number
+  }
 }
 
 export type WagerPrediction = 'win' | 'loss'
@@ -309,6 +344,12 @@ const XP_REASON_LABEL: Record<string, string> = {
 
 export function xpReasonLabel(reason: string | undefined | null): string {
   if (!reason) return ''
+  // Murchos de nível vêm como `levelup:<nível>` (e `levelup:backfill` no
+  // ajuste retroativo), então não dá pra ter uma chave fixa no mapa.
+  if (reason.startsWith('levelup:')) {
+    const level = reason.slice('levelup:'.length)
+    return level === 'backfill' ? 'níveis que você já tinha' : `nível ${level}`
+  }
   return XP_REASON_LABEL[reason] ?? reason.replace(/_/g, ' ')
 }
 
@@ -470,6 +511,10 @@ export const gamification = {
 
   async shop(token: string): Promise<ShopResponse> {
     return request<ShopResponse>('/gamification/shop', { token })
+  },
+
+  async earnRules(token: string): Promise<EarnRules> {
+    return request<EarnRules>('/gamification/earn-rules', { token })
   },
 
   async buy(

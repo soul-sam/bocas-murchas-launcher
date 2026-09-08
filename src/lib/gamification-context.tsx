@@ -458,13 +458,16 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       scheduleRefresh()
     }
 
-    const handleLevelUp = (data: { level: number; xp: number }): void => {
+    const handleLevelUp = (data: { level: number; xp: number; coins?: number }): void => {
       if (!data || typeof data.level !== 'number') return
       setProfile((prev) => (prev ? { ...prev, level: data.level, xp: data.xp ?? prev.xp } : prev))
+      // O saldo novo chega no `gamification:coins` da mesma subida; aqui só o
+      // valor ganho, pra não precisar de um segundo toast.
+      const coins = typeof data.coins === 'number' ? data.coins : 0
       pushToast({
         kind: 'levelup',
         title: `Nível ${data.level}!`,
-        body: 'subiu de nível',
+        body: coins > 0 ? `subiu de nível · +${coins} murchos` : 'subiu de nível',
         ttlMs: 6_000
       })
       sound('levelup')
@@ -473,7 +476,10 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       if (!document.hasFocus()) {
         void window.bocas.notify.show({
           title: `Nível ${data.level}!`,
-          body: 'Você subiu de nível no Bocas Murchas',
+          body:
+            coins > 0
+              ? `Você subiu de nível e ganhou ${coins} murchos`
+              : 'Você subiu de nível no Bocas Murchas',
           silent: !settingsRef.current.soundEnabled
         })
       }
@@ -508,7 +514,10 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       setShop((prev) =>
         prev && typeof data.coins === 'number' ? { ...prev, coins: data.coins } : prev
       )
-      if (data.delta !== 0) {
+      // Murchos de subida de nível já saem no toast de `levelup`; um segundo
+      // toast com o mesmo número seria eco.
+      const fromLevelUp = typeof data.reason === 'string' && data.reason.startsWith('levelup:')
+      if (data.delta !== 0 && !fromLevelUp) {
         pushToast({
           kind: 'coins',
           title: `${data.delta > 0 ? '+' : '−'}${Math.abs(data.delta)} murchos`,

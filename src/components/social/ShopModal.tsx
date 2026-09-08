@@ -22,6 +22,7 @@ import { useGamification } from '@/lib/gamification-context'
 import { useSettings } from '@/lib/settings-context'
 import { playJoinSound } from '@/lib/ui-sounds'
 import { cn } from '@/lib/utils'
+import { EarnRulesPopover } from './EarnRulesPopover'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { TitleTag } from '@/lib/cosmetic-icons'
@@ -164,13 +165,18 @@ export function ShopModal() {
               enfeite pro seu nome, pago em murchos
             </p>
           </div>
-          <div
-            className="flex items-center gap-1.5 rounded-brutal border-2 border-burn/60 bg-burn/10 px-3 py-1.5 font-mono text-sm text-burn"
-            title="Seu saldo"
-          >
-            <Coins className="h-4 w-4" />
-            {formatCompact(coins)}
-            <span className="text-[11.5px] opacity-70">murchos</span>
+          {/* O "?" fica à ESQUERDA do saldo: à direita ele passaria por baixo
+              do X de fechar, que é absoluto no canto. */}
+          <div className="flex items-center gap-1.5">
+            <EarnRulesPopover />
+            <div
+              className="flex items-center gap-1.5 rounded-brutal border-2 border-burn/60 bg-burn/10 px-3 py-1.5 font-mono text-sm text-burn"
+              title="Seu saldo"
+            >
+              <Coins className="h-4 w-4" />
+              {formatCompact(coins)}
+              <span className="text-[11.5px] opacity-70">murchos</span>
+            </div>
           </div>
         </div>
 
