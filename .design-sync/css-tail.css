@@ -1,0 +1,18 @@
+/* ==========================================================================
+   Cauda anexada a compiled.css pelo buildCmd do design-sync.
+
+   O card de preview do converter injeta `body{background:#fff}` num <style>
+   inline, que vem DEPOIS do <link> da styles.css. Este design system e'
+   dark-first: o tema grafite mora no :root e o app pinta o body escuro. Sem
+   isto todo card sai branco e metade do texto (text-muted-foreground) fica
+   ilegivel.
+
+   `html body` tem especificidade 0,0,2 contra 0,0,1 do `body` inline — ganha
+   por especificidade, nao por ordem, entao nao precisa de !important e a
+   regra continua sendo uma afirmacao honesta do DS: o fundo padrao dele e'
+   --background.
+   ========================================================================== */
+html body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}

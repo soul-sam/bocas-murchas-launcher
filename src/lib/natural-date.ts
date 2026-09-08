@@ -92,7 +92,11 @@ function normalize(text: string): string {
     const ch = text[i]
     const flat = ch
       .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
+      // Escapes, nao os combining marks crus (mesmo estilo de api-cargos.ts).
+      // Crus, o range so' e' valido se quem carrega o JS acertar o charset:
+      // servido como latin-1 ele vira lixo, "Range out of order in character
+      // class", e o bundle INTEIRO morre no parse — nao so' esta funcao.
+      .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
     out += flat.length === 1 ? flat : ch
   }
