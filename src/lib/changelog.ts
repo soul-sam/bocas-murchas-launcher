@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.4.3',
+    headline: 'Tela compartilhada que não pesa no jogo de ninguém',
+    items: [
+      'Compartilhar tela deixou de custar pra quem não está olhando: o vídeo só chega (e só é decodificado) depois que a pessoa clica em "Assistir" no palco. Quem está no meio de uma partida com a call aberta não recebe nem processa a tela de ninguém.',
+      'Do lado de quem transmite, a captura PARA quando ninguém está assistindo — a transmissão continua no ar e volta sozinha no primeiro clique. Dá pra desligar no seletor de tela, se preferir.',
+      'A tela vai em H.264 (placa de vídeo codifica e decodifica) e com perfil "Jogo" ou "Texto" no seletor: jogo prioriza fluidez, texto prioriza nitidez. Minimizar o launcher corta o vídeo e mantém o som.',
+      'Apostas: contador de 5 minutos pra fechar, teto pessoal por aposta e aviso quando a partida é em grupo.',
+      'Volume do "assistir junto" não volta mais pra 100 a cada vídeo novo.',
+      'Menos trabalho em segundo plano: com o launcher minimizado os relógios da tela param, e com um jogo rodando as animações decorativas somem. O detector do cliente do LoL espaça as buscas quando o cliente está fechado, e o update automático espera a partida (ou a call) acabar pra baixar.'
+    ],
+    note: 'Se alguém reclamar que a tela ficou preta por um instante ao clicar em "Assistir": é a captura religando. Se ficar preta de vez, desmarque "Pausar a captura quando ninguém estiver assistindo" no seletor e avise.'
+  },
+  {
     version: '1.4.1',
     headline: 'Clicou na foto, abriu o perfil',
     items: [
