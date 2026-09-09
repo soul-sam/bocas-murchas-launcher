@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useTicker } from '@/lib/use-now'
 import { Coins, Swords, Pickaxe, Radio } from 'lucide-react'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
@@ -37,15 +38,7 @@ const RESULT_LABEL: Record<string, string> = {
   unknown: 'Encerrada'
 }
 
-function useTicker(intervalMs: number, enabled: boolean): number {
-  const [now, setNow] = React.useState(() => Date.now())
-  React.useEffect(() => {
-    if (!enabled) return
-    const timer = setInterval(() => setNow(Date.now()), intervalMs)
-    return () => clearInterval(timer)
-  }, [intervalMs, enabled])
-  return now
-}
+// Relogio compartilhado (para com a janela escondida): ver lib/use-now.
 
 export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
   const { user } = useAuth()

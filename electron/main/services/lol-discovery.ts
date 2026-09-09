@@ -189,19 +189,10 @@ export async function discoverLcu(manualLockfilePath: string): Promise<Discovery
     }
   }
 
-  // 2. Filtro barato antes do PowerShell.
-  const running = await isUxRunning()
-  if (running === false) return { credentials: null, error }
-
-  // 3. Linha de comando do processo.
-  try {
-    const found = await fromProcess()
-    if (found) return { credentials: found, error }
-  } catch (err) {
-    error ??= `PowerShell falhou ao ler o processo do cliente: ${(err as Error).message}`
-  }
-
-  // 4. Caminhos de instalacao comuns.
+  // 2. Caminhos de instalacao comuns. Antes do tasklist porque e so uma
+  //    leitura de arquivo: na maioria das maquinas o cliente esta numa dessas
+  //    pastas, e este ciclo roda o dia inteiro em segundo plano — cada
+  //    processo a menos por ciclo e CPU que sobra pro jogo.
   for (const file of fallbackLockfilePaths()) {
     try {
       const found = await fromLockfile(file, 'lockfile')
@@ -209,6 +200,18 @@ export async function discoverLcu(manualLockfilePath: string): Promise<Discovery
     } catch {
       // Nao existe nessa pasta. Segue.
     }
+  }
+
+  // 3. Filtro barato antes do PowerShell.
+  const running = await isUxRunning()
+  if (running === false) return { credentials: null, error }
+
+  // 4. Linha de comando do processo.
+  try {
+    const found = await fromProcess()
+    if (found) return { credentials: found, error }
+  } catch (err) {
+    error ??= `PowerShell falhou ao ler o processo do cliente: ${(err as Error).message}`
   }
 
   if (running === true) {

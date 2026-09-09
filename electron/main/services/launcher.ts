@@ -252,14 +252,19 @@ export async function launchGame(): Promise<LaunchStatus> {
 
     state.stderrBuffer = []
     state.stdoutBuffer = []
+    // O console so em dev: no app empacotado nao ha terminal, e um modpack
+    // Forge cospe milhares de linhas — cada `console.log` era uma escrita
+    // sincrona num pipe morto, no processo main, competindo com o jogo. O
+    // anel de linhas (pra diagnostico de crash) continua.
+    const echo = !app.isPackaged
     child.stdout?.on('data', (chunk: Buffer) => {
       const line = chunk.toString()
-      console.log('[mc:stdout]', line.trim())
+      if (echo) console.log('[mc:stdout]', line.trim())
       pushBuffer(state.stdoutBuffer, line)
     })
     child.stderr?.on('data', (chunk: Buffer) => {
       const line = chunk.toString()
-      console.log('[mc:stderr]', line.trim())
+      if (echo) console.log('[mc:stderr]', line.trim())
       pushBuffer(state.stderrBuffer, line)
     })
 

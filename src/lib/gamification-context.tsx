@@ -383,7 +383,11 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       return
     }
     void refreshLiveGames()
-    const timer = setInterval(() => void refreshLiveGames(), LIVE_POLL_MS)
+    // Janela escondida (minimizada atras do jogo): ninguem ve o botao de
+    // apostar, entao a requisicao espera a janela voltar.
+    const timer = setInterval(() => {
+      if (!document.hidden) void refreshLiveGames()
+    }, LIVE_POLL_MS)
     return () => clearInterval(timer)
   }, [token, shouldPoll, refreshLiveGames])
 

@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useTicker } from '@/lib/use-now'
 import { Coins, Loader2, TrendingDown, TrendingUp, Swords, Pickaxe } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { ApiError } from '@/lib/api'
@@ -162,11 +163,7 @@ function SquadNote({ players, className }: { players: MatchPlayer[]; className?:
 
 /** mm:ss até `iso`, ou null se já passou. */
 function useCountdown(iso?: string): string | null {
-  const [now, setNow] = React.useState(() => Date.now())
-  React.useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [])
+  const now = useTicker(1000, Boolean(iso))
 
   if (!iso) return null
   const left = new Date(iso).getTime() - now

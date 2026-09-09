@@ -206,11 +206,29 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
   }
 }
 
+/**
+ * Cache do arquivo, validado pelo mtime.
+ *
+ * `loadSettings` e chamado de timers (descoberta do LoL a cada ciclo, status
+ * do servidor a cada 30 s, cada `settings:get` do renderer): ler e normalizar
+ * o JSON toda vez era leitura de disco e alocacao a troco de nada. Um `stat`
+ * e barato e ainda pega edicao manual do arquivo com o launcher aberto.
+ *
+ * O objeto devolvido e sempre uma copia nova (normalize) — quem chama pode
+ * mexer a vontade sem envenenar o cache.
+ */
+let cached: { mtimeMs: number; size: number; raw: string } | null = null
+
 export async function loadSettings(): Promise<LauncherSettings> {
   try {
-    const raw = await fs.readFile(settingsPath(), 'utf-8')
-    return normalize(JSON.parse(raw) as Partial<LauncherSettings>)
+    const file = settingsPath()
+    const stat = await fs.stat(file)
+    if (!cached || cached.mtimeMs !== stat.mtimeMs || cached.size !== stat.size) {
+      cached = { mtimeMs: stat.mtimeMs, size: stat.size, raw: await fs.readFile(file, 'utf-8') }
+    }
+    return normalize(JSON.parse(cached.raw) as Partial<LauncherSettings>)
   } catch {
+    cached = null
     // normalize({}) em vez de espalhar DEFAULTS: um spread raso devolveria
     // voice/hotkeys por referencia, compartilhados com o objeto de defaults.
     return normalize({})
@@ -243,6 +261,12 @@ export async function updateSettings(patch: Partial<LauncherSettings>): Promise<
 
   const next = normalize(merged)
   await fs.mkdir(path.dirname(settingsPath()), { recursive: true })
-  await fs.writeFile(settingsPath(), JSON.stringify(next, null, 2))
+  // Escrita atomica: gravar direto e cair no meio deixava um JSON truncado, e
+  // o boot seguinte voltava tudo pro padrao.
+  const file = settingsPath()
+  const tmp = `${file}.tmp`
+  await fs.writeFile(tmp, JSON.stringify(next, null, 2))
+  await fs.rename(tmp, file)
+  cached = null
   return next
 }

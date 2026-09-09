@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useTicker } from '@/lib/use-now'
 import {
   X,
   Coins,
@@ -462,14 +463,7 @@ function Ranking() {
 
 // ---------------------------------------------------------------------------
 
-function useTicker(intervalMs: number): number {
-  const [now, setNow] = React.useState(() => Date.now())
-  React.useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), intervalMs)
-    return () => clearInterval(timer)
-  }, [intervalMs])
-  return now
-}
+// Relogio compartilhado (para com a janela escondida): ver lib/use-now.
 
 function LiveGames() {
   const { user } = useAuth()

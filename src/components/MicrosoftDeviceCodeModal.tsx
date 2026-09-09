@@ -1,14 +1,11 @@
 import * as React from 'react'
+import { useTicker } from '@/lib/use-now'
 import { Check, Copy, ExternalLink, Loader2, RefreshCw, TriangleAlert, X } from 'lucide-react'
 import { useMcAuth } from '@/lib/mc-auth-context'
 import { Button } from '@/components/ui/button'
 
 function useCountdown(expiresInSec: number, startedAt: number): string {
-  const [now, setNow] = React.useState(Date.now())
-  React.useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(id)
-  }, [])
+  const now = useTicker(1000)
   const remaining = Math.max(0, expiresInSec * 1000 - (now - startedAt))
   const m = Math.floor(remaining / 60_000)
   const s = Math.floor((remaining % 60_000) / 1000)

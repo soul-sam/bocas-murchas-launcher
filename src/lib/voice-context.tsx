@@ -1245,7 +1245,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
    * errada. Se o SDK mudar por dentro, `pingMs` fica null e a barra volta a
    * mostrar só a qualidade — nada quebra.
    *
-   * A cada 3s: RTT muda devagar, e o custo é uma varredura de estatísticas.
+   * A cada 5s (e só com a janela visível — o número é pra barra, e a
+   * varredura de getStats() não é de graça): RTT muda devagar.
    */
   React.useEffect(() => {
     if (!connected) return
@@ -1254,7 +1255,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     const read = async (): Promise<void> => {
       const room = roomRef.current
-      if (!room || cancelled) return
+      if (!room || cancelled || document.hidden) return
 
       const engine = (room as unknown as {
         engine?: {
@@ -1296,10 +1297,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
 
     void read()
-    const timer = setInterval(() => void read(), 3_000)
+    const timer = setInterval(() => void read(), 5_000)
+    document.addEventListener('visibilitychange', read)
     return () => {
       cancelled = true
       clearInterval(timer)
+      document.removeEventListener('visibilitychange', read)
     }
   }, [connected])
 

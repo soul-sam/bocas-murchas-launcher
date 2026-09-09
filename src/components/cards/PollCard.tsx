@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { subscribeTicker } from '@/lib/use-now'
 import { BarChart3, Check, Clock, EyeOff, ListChecks, Loader2, Lock } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -147,10 +148,10 @@ export function PollCard({ metadata, compact }: CardProps<PollCardMetadata>) {
     if (endsAtMs === null || closed) return
     // Perto do fim a contagem anda por segundo; longe, de meio em meio minuto
     // basta — dezenas de cards no canal não precisam re-renderizar à toa.
+    // Relogio compartilhado: para com a janela escondida (lib/use-now).
     const left = endsAtMs - Date.now()
     const interval = left < 90_000 ? 1_000 : 30_000
-    const timer = setInterval(() => setNow(Date.now()), interval)
-    return () => clearInterval(timer)
+    return subscribeTicker(interval, setNow)
   }, [endsAtMs, closed])
 
   // --- dados desenháveis -----------------------------------------------------

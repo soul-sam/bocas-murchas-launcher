@@ -332,6 +332,16 @@ export async function checkForUpdates(manual = true): Promise<UpdaterStatus> {
   // Ja baixou ou esta baixando: checar de novo so atrapalharia.
   if (state.stage === 'downloading' || state.stage === 'downloaded') return state
 
+  // Com autoDownload, "checar" e "baixar dezenas de MB a toda velocidade".
+  // No meio de uma partida (ou de uma call) isso e ping subindo e disco
+  // ocupado pro jogo. A checagem automatica espera o proximo ciclo; a
+  // manual (botao) continua valendo — a pessoa pediu.
+  const busy = manual ? null : isBusy()
+  if (busy) {
+    log('checkForUpdates() adiado: ocupado', { busy })
+    return state
+  }
+
   setState({ manualCheck: manual })
 
   try {

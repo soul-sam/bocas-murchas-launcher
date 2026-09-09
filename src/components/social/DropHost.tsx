@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { subscribeTicker } from '@/lib/use-now'
 import { X, Megaphone, AlertTriangle, PartyPopper, Siren, Trash2, Hash } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -104,8 +105,7 @@ export function DropHost() {
   const hasExpiring = drops.some((d) => d.expiresAt)
   React.useEffect(() => {
     if (!hasExpiring) return
-    const timer = setInterval(() => setNow(Date.now()), 1_000)
-    return () => clearInterval(timer)
+    return subscribeTicker(1_000, setNow)
   }, [hasExpiring])
 
   // Vencidos saem do estado: senão a lista cresce a noite inteira.

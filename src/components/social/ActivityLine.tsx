@@ -1,4 +1,4 @@
-import * as React from 'react'
+import { useTicker } from '@/lib/use-now'
 import { Swords, Pickaxe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { GameActivity } from '@/lib/api'
@@ -12,14 +12,7 @@ import { queueLabel } from '@/lib/activity-context'
  * O relógio anda sozinho (a cada 30s) pra "há 23 min" não congelar.
  */
 
-function useTicker(intervalMs: number): number {
-  const [now, setNow] = React.useState(() => Date.now())
-  React.useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), intervalMs)
-    return () => clearInterval(timer)
-  }, [intervalMs])
-  return now
-}
+// Relogio compartilhado (para com a janela escondida): ver lib/use-now.
 
 export function formatElapsed(sinceMs: number, nowMs: number): string {
   const total = Math.max(0, Math.floor((nowMs - sinceMs) / 1000))

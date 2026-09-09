@@ -85,6 +85,8 @@ export function installInteractionGuard(): () => void {
   let strikes = 0
 
   const timer = setInterval(() => {
+    // Escondida nao tem clique pra travar; volta a vigiar quando aparecer.
+    if (document.hidden) return
     if (!isBodyLocked() || hasOpenLayer()) {
       strikes = 0
       return

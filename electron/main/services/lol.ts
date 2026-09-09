@@ -47,6 +47,16 @@ import { eogToResult, isUsableEogBlock, type EogStatsBlock } from './lol-eog.js'
  */
 
 const DISCOVERY_INTERVAL_MS = 5_000
+/**
+ * Sem cliente aberto, a descoberta espaca ate aqui. Cada ciclo sem sucesso
+ * e um `tasklist` (processo novo, ~50 ms de CPU) e, se ele achar o processo,
+ * um PowerShell — o dia inteiro, inclusive com outro jogo aberto. Doze
+ * ciclos rapidos (um minuto) pegam o cliente que acabou de abrir; depois
+ * disso, 30 s de atraso na deteccao nao atrapalham ninguem: entre abrir o
+ * cliente e entrar numa fila passa mais que isso.
+ */
+const DISCOVERY_IDLE_INTERVAL_MS = 30_000
+const DISCOVERY_FAST_TICKS = 12
 const POLL_INTERVAL_MS = 2_000
 const LIVE_INTERVAL_MS = 5_000
 const EOG_INTERVAL_MS = 3_000
@@ -277,6 +287,7 @@ export function startLolWatcher(): void {
     return
   }
   running = true
+  discoveryMisses = 0
   const gen = ++generation
   void runTick(gen)
 }
@@ -309,10 +320,19 @@ function clearTimer(): void {
   }
 }
 
+/** Ciclos seguidos de descoberta sem cliente. Zera quando conecta. */
+let discoveryMisses = 0
+
+function discoveryInterval(): number {
+  return discoveryMisses >= DISCOVERY_FAST_TICKS
+    ? DISCOVERY_IDLE_INTERVAL_MS
+    : DISCOVERY_INTERVAL_MS
+}
+
 function schedule(gen: number): void {
   if (gen !== generation) return
   clearTimer()
-  timer = setTimeout(() => void runTick(gen), session ? POLL_INTERVAL_MS : DISCOVERY_INTERVAL_MS)
+  timer = setTimeout(() => void runTick(gen), session ? POLL_INTERVAL_MS : discoveryInterval())
 }
 
 function runTick(gen: number): Promise<void> {
@@ -345,9 +365,11 @@ async function discover(): Promise<void> {
   const outcome = await discoverLcu(settings.lol.lockfilePath)
   const creds = outcome.credentials
   if (!creds) {
+    discoveryMisses += 1
     setError(outcome.error)
     return
   }
+  discoveryMisses = 0
 
   // Valida de verdade: lockfile pode apontar pra uma porta que ninguem escuta.
   let rawPhase: unknown
@@ -392,6 +414,8 @@ async function discover(): Promise<void> {
 function disconnect(s: Session, reason?: string): void {
   if (session !== s) return
   session = null
+  // Cliente fechou agora: volta a procurar rapido (pode ser so um restart).
+  discoveryMisses = 0
   // Cliente caiu no meio da partida: o jogo pode continuar sem ele. Quem
   // decide o que fazer com ela e o proximo connect (ver pollConnected).
   if (s.game) orphanGame = s.game
