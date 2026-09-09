@@ -32,6 +32,8 @@ import { useCargos } from './cargos-context'
  */
 
 const PAGE_SIZE = 50
+/** Quantas mensagens um canal fechado guarda em memoria. */
+const CACHE_KEEP = 2 * PAGE_SIZE
 
 /** Prefixo que distingue conversa de canal de verdade. */
 const DM_PREFIX = 'dm:'
@@ -747,6 +749,34 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
   }, [token])
+
+  // --- aparar o cache dos canais fechados ---------------------------------
+  // Rolar pra cima carrega 50 por vez e nada era descartado: uma noite
+  // passeando pelo historico de varios canais deixava milhares de mensagens
+  // (e os nos de DOM delas, ao reabrir) na memoria. Ao trocar de canal, o
+  // que ficou pra tras volta a ter so as ultimas `CACHE_KEEP` — e o "role
+  // pra cima" busca de novo do servidor, como na primeira abertura.
+  React.useEffect(() => {
+    if (!activeChannelId) return
+    const trimmed: string[] = []
+    setByChannel((prev) => {
+      let next: Record<string, ChatMessage[]> | null = null
+      for (const [id, list] of Object.entries(prev)) {
+        if (id === activeChannelId || list.length <= CACHE_KEEP) continue
+        next ??= { ...prev }
+        next[id] = list.slice(-CACHE_KEEP)
+        trimmed.push(id)
+      }
+      return next ?? prev
+    })
+    if (trimmed.length > 0) {
+      setExhausted((prev) => {
+        const next = { ...prev }
+        for (const id of trimmed) delete next[id]
+        return next
+      })
+    }
+  }, [activeChannelId])
 
   // --- carregar mensagens do canal aberto ---------------------------------
   React.useEffect(() => {

@@ -357,6 +357,22 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     [activities]
   )
 
+  /**
+   * JOGO RODANDO NESTA MAQUINA → `<html class="game-running">`.
+   *
+   * Pelos sinais crus (processo do Minecraft vivo, partida de LoL em
+   * andamento), nao pelo que a pessoa escolheu COMPARTILHAR: e um modo de
+   * economia, nao presenca. O CSS desliga as animacoes decorativas infinitas
+   * (pulsos, brilhos, scanlines) enquanto a classe esta la — o launcher
+   * aberto no segundo monitor deixa de acordar o compositor 60 vezes por
+   * segundo pra piscar uma bolinha. Ver styles/globals.css.
+   */
+  const gameRunning = launch.stage === 'running' || lol?.phase === 'in-progress'
+  React.useEffect(() => {
+    document.documentElement.classList.toggle('game-running', gameRunning)
+    return () => document.documentElement.classList.remove('game-running')
+  }, [gameRunning])
+
   const value = React.useMemo<ActivityContextValue>(
     () => ({
       lol,

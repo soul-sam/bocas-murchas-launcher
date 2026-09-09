@@ -569,6 +569,20 @@
   }
 }
 
+/* `html.game-running` e ligado pelo activity-context enquanto um jogo roda
+   nesta maquina: as mesmas animacoes infinitas param, pelo mesmo motivo que
+   no reduced-motion — so que aqui e pra devolver GPU pro jogo, nao por
+   acessibilidade. As de entrada/saida (animate-in/out) continuam: sao curtas
+   e so rodam num clique. */
+html.game-running .animate-scan,
+html.game-running .animate-flicker,
+html.game-running .animate-float,
+html.game-running .animate-glow-pulse,
+html.game-running .animate-rainbow,
+html.game-running .animate-pulse {
+  animation: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-scan,
   .animate-flicker,
