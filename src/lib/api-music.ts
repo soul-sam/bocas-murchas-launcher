@@ -28,8 +28,15 @@ export interface MusicResult {
   videoId?: string
 }
 
-/** Quantos resultados por busca. 12 enche a lista sem virar rolagem infinita. */
-export const MUSIC_PAGE_SIZE = 12
+/**
+ * Quantos resultados por busca.
+ *
+ * Dez porque e o TETO do Spotify pra app em Development Mode: pedir 11 volta
+ * `400 Invalid limit`, e nao uma lista menor. O servidor tambem corta em 10
+ * (ver MAX_LIMIT em routes/music.routes.ts) — este numero aqui e so pra nao
+ * pedir o que vai ser recusado.
+ */
+export const MUSIC_PAGE_SIZE = 10
 
 /**
  * A busca está desligada (faltou chave no servidor, ou o provedor recusou a

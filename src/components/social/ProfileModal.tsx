@@ -55,7 +55,7 @@ export function ProfileModal() {
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-label={`Perfil de ${member.displayName}`}
-        className="card-gradient relative max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-brutal border-2 border-acid-dark shadow-[0_0_50px_rgba(0,0,0,0.8)]"
+        className="card-gradient relative max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-brutal border-2 border-acid-dark shadow-[0_0_50px_rgba(0,0,0,0.8)]"
       >
         {/*
           O X flutua por cima da capa. Fica no canto oposto ao avatar, que

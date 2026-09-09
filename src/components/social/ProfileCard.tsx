@@ -127,6 +127,18 @@ export function ProfileBody({
   const gp = isSelf ? myProfile : remote
   const progress = gp && gp.nextLevelXp > 0 ? gp.levelXp / gp.nextLevelXp : 0
 
+  /**
+   * As medidas do modo largo, juntas pra nao saírem de sincronia.
+   *
+   * O popover vive espremido em 18rem do lado da lista e essas medidas sao as
+   * dele. No modal, que ocupa o meio da tela, elas ficavam pequenas demais —
+   * uma foto de 56px num cartao de 512 parece erro de layout, e o anel de
+   * nivel some. `ringPx` acompanha o avatar porque o placeholder (o div de
+   * mesmo tamanho, pra nada pular quando o anel chega) usa o mesmo numero.
+   */
+  const ringPx = wide ? 96 : 68
+  const avatarClass = wide ? 'h-20 w-20 border-2' : 'h-14 w-14 border-2'
+
   return (
     /*
       O pai unico dos dois blocos (capa e conteudo). No popover ele nao pinta
@@ -136,7 +148,7 @@ export function ProfileBody({
     */
     <div className={cn(wide && "text-sm")}>
       <div
-        className="h-16"
+        className={cn(wide ? 'h-28' : 'h-16')}
         style={
           member.banner
             ? {
@@ -148,29 +160,37 @@ export function ProfileBody({
         }
       />
 
-      <div className="px-3 pb-3">
-        <div className="-mt-8 mb-2 flex items-end justify-between gap-2">
+      <div className={cn(wide ? 'px-4 pb-4' : 'px-3 pb-3')}>
+        <div
+          className={cn(
+            'mb-2 flex items-end justify-between gap-2',
+            wide ? '-mt-12' : '-mt-8'
+          )}
+        >
           {gp ? (
-            <LevelRing level={gp.level} progress={progress} size={68}>
+            <LevelRing level={gp.level} progress={progress} size={ringPx}>
               <UserAvatar
                 src={resolveAssetUrl(member.avatar)}
                 name={member.displayName}
                 status={status}
                 ringColor={color}
                 frame={member.avatarFrame}
-                className="h-14 w-14 border-2"
+                className={avatarClass}
               />
             </LevelRing>
           ) : (
             // Mesmo tamanho do anel, pra nada pular quando ele chegar.
-            <div className="flex h-[68px] w-[68px] shrink-0 items-center justify-center">
+            <div
+              className="flex shrink-0 items-center justify-center"
+              style={{ width: ringPx, height: ringPx }}
+            >
               <UserAvatar
                 src={resolveAssetUrl(member.avatar)}
                 name={member.displayName}
                 status={status}
                 ringColor={color}
                 frame={member.avatarFrame}
-                className="h-14 w-14 border-2"
+                className={avatarClass}
               />
             </div>
           )}
@@ -212,7 +232,10 @@ export function ProfileBody({
         </div>
 
         <p
-          className="flex items-center gap-1.5 font-display text-base leading-tight"
+          className={cn(
+            'flex items-center gap-1.5 font-display leading-tight',
+            wide ? 'text-xl' : 'text-base'
+          )}
           style={{ color }}
         >
           <NameEffect effect={member.nameEffect} className="truncate">
