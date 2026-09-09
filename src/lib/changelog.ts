@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.4.1',
+    headline: 'Clicou na foto, abriu o perfil',
+    items: [
+      'A foto de qualquer pessoa agora abre o perfil dela: no chat, na lista do canal de voz, dentro da call, no ranking e nos cartões (enquete, bora, fumaça, aposta, partida, clipe). Antes só dava pela lista da direita.',
+      'O perfil abre no meio da tela, tipo Discord — com nível, murchos, badges, cargos, o que a pessoa está jogando, hora local e aniversário. Fecha no Esc ou clicando fora.'
+    ],
+    note: 'Na lista de membros da direita continua abrindo do lado, como antes: ali o cartão não cobre a conversa. E clicar na foto não dispara mais o que estava atrás dela — clicar em quem está na call, por exemplo, abre o perfil sem te jogar pra dentro do canal.'
+  },
+  {
     version: '1.4.0',
     headline: 'Música na call — e ela não para quando você vai jogar',
     items: [
