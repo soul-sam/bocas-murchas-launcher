@@ -195,6 +195,18 @@ export function useYoutubePlayer(input: YoutubePlayerInput): YoutubePlayer {
             if (!inputRef.current.scrubbing) setCurrentTime(info.currentTime)
           }
           if (typeof info.duration === 'number' && info.duration > 0) setDuration(info.duration)
+
+          // Reconciliacao do volume. O player NOVO de cada video nasce em 100
+          // e ignora o `setVolume` mandado cedo demais (o `initialDelivery`
+          // chega antes de ele aceitar comando). Em vez de adivinhar o
+          // momento, cada `infoDelivery` traz o volume REAL: quando difere do
+          // pedido, manda de novo. Auto-corrige em qualquer ordem.
+          if (typeof info.volume === 'number' && Math.round(info.volume) !== inputRef.current.volume) {
+            send('setVolume', [inputRef.current.volume])
+          }
+          if (typeof info.muted === 'boolean' && info.muted !== inputRef.current.muted) {
+            send(inputRef.current.muted ? 'mute' : 'unMute')
+          }
           if (typeof info.playerState === 'number') {
             stateRef.current = info.playerState as YtPlayerState
             setPlayerState(info.playerState as YtPlayerState)
