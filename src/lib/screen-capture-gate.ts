@@ -1,5 +1,5 @@
-import { Track, type Room, type LocalVideoTrack } from 'livekit-client'
-import { hasViewers, CAPTURE_IDLE_GRACE_MS, type SubscribedQualityLike } from './screen-share-policy'
+import type { Room, LocalVideoTrack, Track } from 'livekit-client'
+import { hasViewers, CAPTURE_IDLE_GRACE_MS, type SubscribedQualityLike } from './screen-share-policy.ts'
 
 /**
  * Para a CAPTURA da tela quando ninguem esta assistindo.
@@ -58,8 +58,12 @@ interface EngineLike {
   off: (event: 'subscribedQualityUpdate', fn: (update: QualityUpdate) => void) => unknown
 }
 
+// So tipos do livekit-client: o modulo roda em `node --test` com stubs
+// (screen-capture-gate.test.ts). O valor e o de `Track.Source.ScreenShare`.
+const SCREEN_SHARE = 'screen_share' as Track.Source
+
 function screenPublication(room: Room) {
-  return room.localParticipant.getTrackPublication(Track.Source.ScreenShare)
+  return room.localParticipant.getTrackPublication(SCREEN_SHARE)
 }
 
 /** Faixa de video que nunca entrega quadro: canvas com captureStream(0). */
@@ -87,6 +91,9 @@ export function createCaptureGate(options: CaptureGateOptions): CaptureGate {
   const setState = (next: CaptureState): void => {
     if (state === next) return
     state = next
+    // Fica no console de proposito: e o jeito de conferir, numa call de
+    // teste, que a captura parou mesmo (junto com `__voiceStats()`).
+    console.info(`[screen] captura ${next === 'idle' ? 'pausada: ninguem assistindo' : 'retomada'}`)
     options.onStateChange?.(next)
   }
 
