@@ -29,5 +29,6 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "electron/preload/types.ts"
-  ]
+  ],
+  "exclude": ["src/**/*.test.ts"]
 }

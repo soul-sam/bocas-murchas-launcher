@@ -20,7 +20,17 @@ import { playUiSound, playJoinSound } from './ui-sounds'
 import { useMembers } from './members-context'
 import { createMicProcessor, type MicProcessor } from './audio-processor'
 import { setLauncherSilenced } from './launcher-silence'
+import { exposeVoiceStats } from './voice-diagnostics'
 import { createSpeakingDetector, type SpeakingDetector } from './speaking-detector'
+import {
+  SCREEN_QUALITY,
+  shouldSubscribe,
+  encoderProfile,
+  type ScreenQuality,
+  type ScreenContent
+} from './screen-share-policy'
+
+export { SCREEN_QUALITY, type ScreenQuality, type ScreenContent }
 
 /**
  * Chamada de voz e compartilhamento de tela via LiveKit.
@@ -33,15 +43,6 @@ import { createSpeakingDetector, type SpeakingDetector } from './speaking-detect
  * O socket continua sendo a fonte da verdade de QUEM esta em cada canal: o
  * servidor usa isso pra saber pra onde mandar som do soundboard e nudge.
  */
-
-/** Presets pensados pra SFU self-hosted: o upload da VPS e o gargalo. */
-export const SCREEN_QUALITY = {
-  '720p30': { width: 1280, height: 720, frameRate: 30, maxBitrate: 1_800_000 },
-  '1080p30': { width: 1920, height: 1080, frameRate: 30, maxBitrate: 3_000_000 },
-  '1080p60': { width: 1920, height: 1080, frameRate: 60, maxBitrate: 5_000_000 }
-} as const
-
-export type ScreenQuality = keyof typeof SCREEN_QUALITY
 
 /**
  * Constraints do AUDIO da tela — as tres primeiras existem pra DESLIGAR o que
@@ -97,7 +98,20 @@ export interface CameraFeed {
 export interface ScreenShareFeed {
   identity: string
   name: string
-  track: Track
+  /**
+   * A faixa de video, SO enquanto este cliente esta assistindo.
+   *
+   * O feed existe a partir da PUBLICACAO (alguem apertou "compartilhar"),
+   * nao da assinatura: a sala conecta com autoSubscribe desligado e o video
+   * so e pedido ao SFU depois do clique em "Assistir". Null = no ar, mas nao
+   * estou recebendo. Na propria transmissao a faixa esta sempre aqui (e
+   * local, nao custa rede) — o palco e que decide se pinta ou nao.
+   */
+  track: Track | null
+  /** Este cliente pediu o video dessa pessoa ao servidor. */
+  watching: boolean
+  /** A tela vem com audio junto (faixa ScreenShareAudio publicada). */
+  hasAudio: boolean
   /**
    * Verdadeiro na SUA propria transmissao.
    *
@@ -168,9 +182,19 @@ interface VoiceContextValue {
   startScreenShare: (sourceId: string, options?: {
     withAudio?: boolean
     quality?: ScreenQuality
+    content?: ScreenContent
     sourceName?: string
+    muteLauncher?: boolean
   }) => Promise<void>
   stopScreenShare: () => Promise<void>
+
+  /**
+   * Assinar a tela de UMA pessoa. Uma por vez: assistir outra solta a
+   * anterior. O video e o audio da tela so saem do servidor depois daqui.
+   */
+  watchScreen: (identity: string) => void
+  /** Soltar a tela (fechar o painel, trocar de aba, sair da call). */
+  unwatchScreen: (identity?: string) => void
 
   /**
    * Nível do microfone processado, 0..100, e se o gate está aberto.
@@ -203,6 +227,27 @@ interface VoiceContextValue {
 
 const VoiceContext = React.createContext<VoiceContextValue | null>(null)
 
+function sameParticipants(a: VoiceParticipant[], b: VoiceParticipant[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i]
+    const y = b[i]
+    if (
+      x.identity !== y.identity ||
+      x.name !== y.name ||
+      x.avatar !== y.avatar ||
+      x.isLocal !== y.isLocal ||
+      x.isSpeaking !== y.isSpeaking ||
+      x.micEnabled !== y.micEnabled ||
+      x.isScreenSharing !== y.isScreenSharing ||
+      x.cameraEnabled !== y.cameraEnabled
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
 function readMetadata(participant: Participant): { displayName?: string; avatar?: string } {
   if (!participant.metadata) return {}
   try {
@@ -210,6 +255,16 @@ function readMetadata(participant: Participant): { displayName?: string; avatar?
   } catch {
     return {}
   }
+}
+
+/**
+ * `participant.setVolume(v)` do LiveKit so mexe no MICROFONE (source padrao).
+ * O audio da tela e outra faixa (ScreenShareAudio) — sem passar por aqui o
+ * slider e o ensurdecer nao valiam pro som do jogo de quem transmite.
+ */
+function setParticipantVolume(participant: RemoteParticipant, volume: number): void {
+  participant.setVolume(volume, Track.Source.Microphone)
+  participant.setVolume(volume, Track.Source.ScreenShareAudio)
 }
 
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
@@ -298,6 +353,129 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
     return speakingRef.current
   }, [])
+
+  /**
+   * ASSINATURA SOB DEMANDA (ver lib/screen-share-policy).
+   *
+   * A sala conecta com `autoSubscribe: false`. Cada publicacao remota passa
+   * por `shouldSubscribe`: microfone e camera sempre; video e audio da tela
+   * so pra quem eu estou assistindo — e o video so com a janela visivel.
+   *
+   * `watchingRef` e a identidade de quem eu estou assistindo (uma por vez) e
+   * `hiddenRef` espelha `document.visibilityState`. Os dois sao refs porque
+   * quem le e o handler de TrackPublished, registrado uma unica vez.
+   */
+  const watchingRef = React.useRef<string | null>(null)
+  const hiddenRef = React.useRef(document.visibilityState === 'hidden')
+
+  const applySubscription = React.useCallback(
+    (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+      const wanted = shouldSubscribe(
+        { source: publication.source, kind: publication.kind },
+        { watching: watchingRef.current === participant.identity, hidden: hiddenRef.current }
+      )
+      // `isDesired` e o que ESTE cliente pediu; sem a comparacao cada
+      // sincronizacao mandaria um UpdateSubscription redundante pro servidor.
+      if (publication.isDesired !== wanted) publication.setSubscribed(wanted)
+    },
+    []
+  )
+
+  const applyAllSubscriptions = React.useCallback(
+    (current: Room) => {
+      for (const participant of current.remoteParticipants.values()) {
+        for (const publication of participant.trackPublications.values()) {
+          applySubscription(publication, participant)
+        }
+      }
+    },
+    [applySubscription]
+  )
+
+  /**
+   * Feeds nascem da PUBLICACAO. `track` entra no TrackSubscribed e sai no
+   * TrackUnsubscribed; `watching` acompanha o pedido, nao a chegada — assim o
+   * palco mostra "carregando" entre o clique e o primeiro quadro.
+   */
+  const upsertRemoteFeed = React.useCallback(
+    (participant: RemoteParticipant, patch: Partial<ScreenShareFeed> = {}) => {
+      const meta = readMetadata(participant)
+      const videoPub = participant.getTrackPublication(Track.Source.ScreenShare)
+      const audioPub = participant.getTrackPublication(Track.Source.ScreenShareAudio)
+      setScreenShares((prev) => {
+        const existing = prev.find((s) => s.identity === participant.identity)
+        const rest = prev.filter((s) => s.identity !== participant.identity)
+        const feed: ScreenShareFeed = {
+          identity: participant.identity,
+          name: meta.displayName || participant.name || participant.identity,
+          track: existing?.track ?? null,
+          watching: watchingRef.current === participant.identity,
+          hasAudio: !!audioPub,
+          isLocal: false,
+          ...patch
+        }
+        // Sem publicacao de video nao tem feed — o audio sozinho nao e "tela".
+        if (!videoPub) return rest
+        // Antes das suas: quem entra numa call pra assistir quer ver a
+        // tela do outro, nao a propria.
+        const localIndex = rest.findIndex((s) => s.isLocal)
+        if (localIndex === -1) return [...rest, feed]
+        return [...rest.slice(0, localIndex), feed, ...rest.slice(localIndex)]
+      })
+    },
+    []
+  )
+
+  const watchScreen = React.useCallback(
+    (identity: string) => {
+      const current = roomRef.current
+      if (!current) return
+      if (identity === current.localParticipant.identity) return
+      const previous = watchingRef.current
+      watchingRef.current = identity
+      if (previous && previous !== identity) {
+        const before = current.remoteParticipants.get(previous)
+        if (before) upsertRemoteFeed(before, { watching: false })
+      }
+      const participant = current.remoteParticipants.get(identity)
+      if (participant) upsertRemoteFeed(participant, { watching: true })
+      applyAllSubscriptions(current)
+    },
+    [applyAllSubscriptions, upsertRemoteFeed]
+  )
+
+  const unwatchScreen = React.useCallback(
+    (identity?: string) => {
+      const previous = watchingRef.current
+      if (!previous) return
+      if (identity && identity !== previous) return
+      watchingRef.current = null
+      const current = roomRef.current
+      if (!current) return
+      const participant = current.remoteParticipants.get(previous)
+      if (participant) upsertRemoteFeed(participant, { watching: false })
+      // Na hora, nao no proximo evento: e o que libera decodificador e rede
+      // enquanto a pessoa ainda esta fechando o painel.
+      applyAllSubscriptions(current)
+    },
+    [applyAllSubscriptions, upsertRemoteFeed]
+  )
+
+  /**
+   * Janela escondida/minimizada: corta o VIDEO da tela no servidor. Nao e
+   * so "pausar": sem assinatura nao chega pacote, nao tem decodificador vivo
+   * e a memoria dos buffers vai embora. Voltando, o video e pedido de novo
+   * — quem assiste continua assistindo, so pagou o custo de um keyframe.
+   */
+  React.useEffect(() => {
+    const handle = (): void => {
+      hiddenRef.current = document.visibilityState === 'hidden'
+      const current = roomRef.current
+      if (current) applyAllSubscriptions(current)
+    }
+    document.addEventListener('visibilitychange', handle)
+    return () => document.removeEventListener('visibilitychange', handle)
+  }, [applyAllSubscriptions])
 
   /** Configurações de voz por ref, pros efeitos que não devem reagir a slider. */
   const voiceSettingsRef = React.useRef(settings.voice)
@@ -405,7 +583,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (!current) return
 
     for (const participant of current.remoteParticipants.values()) {
-      participant.setVolume(effectiveVolume(participant.identity))
+      setParticipantVolume(participant, effectiveVolume(participant.identity))
     }
   }, [effectiveVolume])
 
@@ -441,9 +619,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       // A ref antes de tudo: o som muda neste instante, sem esperar render.
       const next = { ...userVolumesRef.current, [identity]: clamped }
       userVolumesRef.current = next
-      roomRef.current?.remoteParticipants
-        .get(identity)
-        ?.setVolume(effectiveVolume(identity))
+      const participant = roomRef.current?.remoteParticipants.get(identity)
+      if (participant) setParticipantVolume(participant, effectiveVolume(identity))
       setUserVolumes(next)
 
       pendingVolumesRef.current[identity] = clamped
@@ -489,26 +666,30 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     const detector = speakingRef.current
 
-    setParticipants(
-      all.map((p) => {
-        const meta = readMetadata(p)
-        return {
-          identity: p.identity,
-          name: meta.displayName || p.name || p.identity,
-          avatar: meta.avatar,
-          isLocal: p.identity === current.localParticipant.identity,
-          // Medição local quando existe (rápida e sem lista de dominantes);
-          // pra quem ainda não tem faixa medida, o sinal do servidor — que é
-          // o comportamento antigo, e é melhor que anel nenhum.
-          isSpeaking: detector?.watching(p.identity)
-            ? detector.isSpeaking(p.identity)
-            : p.isSpeaking,
-          micEnabled: p.isMicrophoneEnabled,
-          isScreenSharing: p.isScreenShareEnabled,
-          cameraEnabled: p.isCameraEnabled
-        }
-      })
-    )
+    const next: VoiceParticipant[] = all.map((p) => {
+      const meta = readMetadata(p)
+      return {
+        identity: p.identity,
+        name: meta.displayName || p.name || p.identity,
+        avatar: meta.avatar,
+        isLocal: p.identity === current.localParticipant.identity,
+        // Medição local quando existe (rápida e sem lista de dominantes);
+        // pra quem ainda não tem faixa medida, o sinal do servidor — que é
+        // o comportamento antigo, e é melhor que anel nenhum.
+        isSpeaking: detector?.watching(p.identity)
+          ? detector.isSpeaking(p.identity)
+          : p.isSpeaking,
+        micEnabled: p.isMicrophoneEnabled,
+        isScreenSharing: p.isScreenShareEnabled,
+        cameraEnabled: p.isCameraEnabled
+      }
+    })
+
+    // Este sync roda a cada evento da sala (ActiveSpeakersChanged dispara
+    // varias vezes por segundo numa conversa). Devolver a MESMA lista quando
+    // nada mudou poupa um render da arvore inteira da call — palco, <video>,
+    // barra lateral — que estava acontecendo em cima de uma transmissao 60fps.
+    setParticipants((prev) => (sameParticipants(prev, next) ? prev : next))
 
     setMicEnabled(current.localParticipant.isMicrophoneEnabled)
     setScreenSharing(current.localParticipant.isScreenShareEnabled)
@@ -541,6 +722,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     roomRef.current = null
     roomForSyncRef.current = null
+    watchingRef.current = null
     // O detector segura um AudioContext e um nó por pessoa: sair da call sem
     // desmontar isso deixaria o grafo vivo e medindo silêncio pra sempre.
     speakingRef.current?.destroy()
@@ -639,8 +821,49 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         next.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
           voiceCue('leave', participant.identity)
           speakingRef.current?.unwatch(participant.identity)
+          if (watchingRef.current === participant.identity) watchingRef.current = null
+          setScreenShares((prev) => prev.filter((s) => s.identity !== participant.identity))
           syncParticipants(next)
         })
+
+        /**
+         * PUBLICACAO remota: e aqui que a assinatura e decidida (autoSubscribe
+         * esta desligado). Microfone e camera entram na hora; a tela vira um
+         * card "fulano esta transmitindo" e so e pedida ao servidor depois do
+         * clique em "Assistir".
+         */
+        next.on(
+          RoomEvent.TrackPublished,
+          (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+            applySubscription(publication, participant)
+            if (
+              publication.source === Track.Source.ScreenShare ||
+              publication.source === Track.Source.ScreenShareAudio
+            ) {
+              upsertRemoteFeed(participant)
+            }
+            syncParticipants(next)
+          }
+        )
+
+        next.on(
+          RoomEvent.TrackUnpublished,
+          (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+            if (publication.source === Track.Source.ScreenShare) {
+              if (watchingRef.current === participant.identity) watchingRef.current = null
+            }
+            if (
+              publication.source === Track.Source.ScreenShare ||
+              publication.source === Track.Source.ScreenShareAudio
+            ) {
+              // getTrackPublication ja nao devolve a faixa removida: o upsert
+              // apaga o feed quando o video sumiu e so atualiza hasAudio
+              // quando foi o audio.
+              upsertRemoteFeed(participant)
+            }
+            syncParticipants(next)
+          }
+        )
         next.on(RoomEvent.TrackMuted, () => syncParticipants(next))
         next.on(RoomEvent.TrackUnmuted, () => syncParticipants(next))
         next.on(RoomEvent.ActiveSpeakersChanged, () => syncParticipants(next))
@@ -656,6 +879,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
                 identity: next.localParticipant.identity,
                 name: meta.displayName || next.localParticipant.name || 'Você',
                 track,
+                watching: true,
+                hasAudio: !!next.localParticipant.getTrackPublication(
+                  Track.Source.ScreenShareAudio
+                ),
                 isLocal: true
               }
             ])
@@ -719,7 +946,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
               element.setAttribute('data-identity', participant.identity)
               // Ja entra no volume certo: quem chegou depois de eu abaixar o
               // volume dele voltava no padrao ao republicar o microfone.
-              participant.setVolume(effectiveVolume(participant.identity))
+              setParticipantVolume(participant, effectiveVolume(participant.identity))
               audioSinkRef.current?.appendChild(element)
 
               // Derivação da faixa pro medidor de voz — é o que faz o anel
@@ -753,21 +980,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
               track.kind === Track.Kind.Video &&
               track.source === Track.Source.ScreenShare
             ) {
-              const meta = readMetadata(participant)
-              // Antes das suas: quem entra numa call pra assistir quer ver a
-              // tela do outro, nao a propria.
-              setScreenShares((prev) => {
-                const rest = prev.filter((s) => s.identity !== participant.identity)
-                const feed: ScreenShareFeed = {
-                  identity: participant.identity,
-                  name: meta.displayName || participant.name || participant.identity,
-                  track,
-                  isLocal: false
-                }
-                const localIndex = rest.findIndex((s) => s.isLocal)
-                if (localIndex === -1) return [...rest, feed]
-                return [...rest.slice(0, localIndex), feed, ...rest.slice(localIndex)]
-              })
+              // So chega aqui depois do "Assistir": o feed ja existe desde
+              // a publicacao, falta a faixa.
+              upsertRemoteFeed(participant, { track })
             }
 
             syncParticipants(next)
@@ -784,9 +999,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (track.source === Track.Source.ScreenShare) {
-              setScreenShares((prev) =>
-                prev.filter((s) => s.identity !== participant.identity)
-              )
+              // Desassinar nao e "saiu do ar": a tela continua publicada e
+              // o card fica, so sem video (janela minimizada, parei de
+              // assistir). Se a publicacao acabou, TrackUnpublished limpa.
+              upsertRemoteFeed(participant, { track: null })
             }
 
             if (track.source === Track.Source.Camera) {
@@ -819,7 +1035,21 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           void leave()
         })
 
-        await next.connect(credentials.url, credentials.token)
+        // autoSubscribe DESLIGADO: e a raiz do lag de quem nao estava nem
+        // olhando a tela. Com ele ligado o SFU mandava o video da tela (ate
+        // 1080p60, 5 Mbps) pra todo mundo da call no instante da publicacao,
+        // e cada cliente decodificava — no meio de uma partida. O que assinar
+        // e decidido por publicacao em lib/screen-share-policy.
+        await next.connect(credentials.url, credentials.token, { autoSubscribe: false })
+
+        // Quem ja estava na sala nao dispara TrackPublished: assinar o
+        // microfone deles (e listar as telas no ar) e por aqui.
+        applyAllSubscriptions(next)
+        for (const participant of next.remoteParticipants.values()) {
+          if (participant.getTrackPublication(Track.Source.ScreenShare)) {
+            upsertRemoteFeed(participant)
+          }
+        }
 
         // Push-to-talk comeca mudo; voz ativa comeca aberto.
         const startMuted = settings.voice.mode === 'push-to-talk'
@@ -908,7 +1138,18 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         setConnecting(false)
       }
     },
-    [token, leave, settings.voice, syncParticipants, cue, effectiveVolume, publishFlags]
+    [
+      token,
+      leave,
+      settings.voice,
+      syncParticipants,
+      cue,
+      effectiveVolume,
+      publishFlags,
+      applySubscription,
+      applyAllSubscriptions,
+      upsertRemoteFeed
+    ]
   )
 
   const setMic = React.useCallback(
@@ -1072,6 +1313,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       options: {
         withAudio?: boolean
         quality?: ScreenQuality
+        content?: ScreenContent
         sourceName?: string
         muteLauncher?: boolean
       } = {}
@@ -1082,6 +1324,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const withAudio = options.withAudio ?? true
       const quality = options.quality ?? '720p30'
       const preset = SCREEN_QUALITY[quality]
+      const profile = encoderProfile(options.content ?? 'game')
       const muteLauncher = withAudio && (options.muteLauncher ?? true)
 
       // O main so libera getDisplayMedia se a fonte estiver marcada antes.
@@ -1101,15 +1344,30 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
               width: preset.width,
               height: preset.height,
               frameRate: preset.frameRate
-            }
+            },
+            // 'motion' pra jogo, 'detail' pra texto — ver encoderProfile.
+            contentHint: profile.contentHint
           },
           {
             videoEncoding: {
               maxBitrate: preset.maxBitrate,
               maxFramerate: preset.frameRate
             },
-            // Texto de IDE fica ilegivel se o encoder trocar nitidez por fps.
-            degradationPreference: 'maintain-resolution',
+            /**
+             * H.264 em vez do VP8 padrao do LiveKit.
+             *
+             * No Windows o Chromium codifica E decodifica H.264 na GPU (Media
+             * Foundation / D3D11); VP8 e software nos dois lados. Com VP8 o
+             * encoder de 1080p disputava os nucleos com o jogo de quem
+             * transmite, e cada espectador pagava um decodificador em
+             * software. O SFU nao transcodifica — se algum cliente nao souber
+             * H.264 o LiveKit pede o codec reserva (VP8) so pra ele.
+             */
+            videoCodec: 'h264',
+            degradationPreference: profile.degradationPreference,
+            // Duas camadas (original + ~360p a 3 fps): a miniatura e a janela
+            // pequena recebem a menor, sem o custo de um segundo encoder
+            // pesado — a camada baixa e barata de codificar.
             simulcast: true,
             // O audio da tela e MUSICA/JOGO, nao voz: o preset da call (48k
             // mono, que serve pra fala) espremia trilha e efeito. O LiveKit
@@ -1344,6 +1602,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     [micTestActive]
   )
 
+  // `await __voiceStats()` no DevTools: codec, fps, GPU ou CPU, perda, bitrate.
+  React.useEffect(() => exposeVoiceStats(room), [room])
+
   const value = React.useMemo<VoiceContextValue>(
     () => ({
       room,
@@ -1373,6 +1634,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       toggleCamera,
       startScreenShare,
       stopScreenShare,
+      watchScreen,
+      unwatchScreen,
       getMicLevel,
       isMicGateOpen,
       holdMicMonitor,
@@ -1404,10 +1667,16 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       toggleCamera,
       startScreenShare,
       stopScreenShare,
+      watchScreen,
+      unwatchScreen,
       getMicLevel,
       isMicGateOpen,
       holdMicMonitor,
-      micTest
+      micTest,
+      // Faltavam: sem eles o ping e a qualidade so atualizavam de carona em
+      // outro evento da sala.
+      pingMs,
+      connectionQuality
     ]
   )
 

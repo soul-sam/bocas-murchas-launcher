@@ -23,6 +23,33 @@ import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /**
+ * CAPTURA DE TELA NA GPU.
+ *
+ * Precisa vir antes do `app.whenReady()`: switches de linha de comando so
+ * valem se entrarem antes do Chromium subir.
+ *
+ * O capturador padrao do WebRTC no Windows (GDI/DXGI via BitBlt) copia o
+ * framebuffer pela CPU a cada quadro — 1080p60 sao ~370 MB/s de memcpy em
+ * cima do jogo. Windows Graphics Capture (WGC) faz a copia dentro da GPU e
+ * entrega uma textura; e o que o Discord e o OBS usam. O Chromium tem o WGC
+ * pronto, mas atras de flags:
+ *
+ * - WebRtcAllowWgcScreenCapturer / WebRtcAllowWgcWindowCapturer: liga o WGC
+ *   pra monitor inteiro e pra janela.
+ * - AllowWgcZeroHz: com WGC, quadros identicos nao sao reenviados — tela
+ *   parada custa zero pro encoder.
+ *
+ * Se o sistema nao tiver WGC (Windows < 10 1903) o Chromium cai sozinho no
+ * capturador antigo. No Linux/macOS as flags sao ignoradas.
+ */
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch(
+    'enable-features',
+    'WebRtcAllowWgcScreenCapturer,WebRtcAllowWgcWindowCapturer,AllowWgcZeroHz'
+  )
+}
+
+/**
  * Aberto pelo autostart do Windows E com "abrir na bandeja" ligado: a janela
  * nasce escondida. Decidido uma vez, antes da janela existir. Abrir pelo
  * atalho normal sempre mostra a janela.

@@ -11,7 +11,7 @@ import {
   type MusicSettings,
   type ScreenShareSettings,
   type VoiceSettings,
-  type VoiceMode, isScreenShareQuality, isThemeId } from '../../preload/types.js'
+  type VoiceMode, isScreenShareQuality, isScreenShareContent, isThemeId } from '../../preload/types.js'
 
 export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, MusicSettings, ScreenShareSettings, VoiceSettings, VoiceMode }
 
@@ -109,7 +109,8 @@ function normalizeScreenShare(
   return {
     withAudio: s.withAudio ?? d.withAudio,
     muteLauncher: s.muteLauncher ?? d.muteLauncher,
-    quality: isScreenShareQuality(s.quality) ? s.quality : d.quality
+    quality: isScreenShareQuality(s.quality) ? s.quality : d.quality,
+    content: isScreenShareContent(s.content) ? s.content : d.content
   }
 }
 

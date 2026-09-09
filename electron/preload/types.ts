@@ -173,6 +173,18 @@ export interface ScreenShareSettings {
    */
   muteLauncher: boolean
   quality: ScreenShareQuality
+  /**
+   * O que esta na tela: 'game' prioriza fluidez (o encoder baixa a resolucao
+   * antes de derrubar quadros), 'text' prioriza nitidez. Ver
+   * src/lib/screen-share-policy.ts.
+   */
+  content: ScreenShareContent
+}
+
+export type ScreenShareContent = 'game' | 'text'
+
+export function isScreenShareContent(value: unknown): value is ScreenShareContent {
+  return value === 'game' || value === 'text'
 }
 
 /**
@@ -598,7 +610,9 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     // O que mudou e que agora o launcher nao entra junto na mistura.
     withAudio: true,
     muteLauncher: true,
-    quality: '720p30'
+    quality: '720p30',
+    // Plataforma de jogo: fluidez e o padrao. Quem compartilha codigo troca.
+    content: 'game'
   },
   music: {
     // Musica de fundo entra mais baixa que um video que a galera sentou pra

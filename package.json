@@ -12,6 +12,7 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "lint:design": "node scripts/check-design-tokens.mjs",
+    "test:policy": "node --test src/lib/screen-share-policy.test.ts",
     "typecheck": "npm run lint:design && npm run typecheck:node && npm run typecheck:web",
     "package": "electron-vite build && electron-builder --win --x64",
     "release": "electron-vite build && electron-builder --win --x64 --publish always"

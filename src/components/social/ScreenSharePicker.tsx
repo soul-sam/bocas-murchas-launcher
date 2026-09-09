@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { SCREEN_QUALITY, type ScreenQuality } from '@/lib/voice-context'
+import { SCREEN_QUALITY, type ScreenQuality, type ScreenContent } from '@/lib/voice-context'
 import { useSettings } from '@/lib/settings-context'
 import { Hint } from '@/components/ui/tooltip'
 
@@ -35,6 +35,7 @@ interface ScreenSharePickerProps {
     options: {
       withAudio: boolean
       quality: ScreenQuality
+      content: ScreenContent
       sourceName: string
       muteLauncher: boolean
     }
@@ -51,6 +52,7 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
   const [withAudio, setWithAudio] = React.useState(settings.screenShare.withAudio)
   const [muteLauncher, setMuteLauncher] = React.useState(settings.screenShare.muteLauncher)
   const [quality, setQuality] = React.useState<ScreenQuality>(settings.screenShare.quality)
+  const [content, setContent] = React.useState<ScreenContent>(settings.screenShare.content)
   const [filter, setFilter] = React.useState('')
   const [starting, setStarting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -82,6 +84,7 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
     setWithAudio(settings.screenShare.withAudio)
     setMuteLauncher(settings.screenShare.muteLauncher)
     setQuality(settings.screenShare.quality)
+    setContent(settings.screenShare.content)
     load(false)
     // As preferencias entram de proposito fora da lista: relê-las a cada
     // mudanca de `settings` sobrescreveria o que a pessoa acabou de marcar.
@@ -106,11 +109,12 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
       await onConfirm(source.id, {
         withAudio,
         quality,
+        content,
         sourceName: source.name,
         muteLauncher
       })
       // Salvo só quando deu certo: erro na captura não é escolha nova.
-      void update({ screenShare: { withAudio, muteLauncher, quality } })
+      void update({ screenShare: { withAudio, muteLauncher, quality, content } })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao compartilhar')
@@ -227,9 +231,26 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
             </select>
           </label>
 
+          <label className="flex items-center gap-2">
+            <span className="text-[11.5px] text-muted-foreground">
+              Conteúdo
+            </span>
+            <select
+              value={content}
+              onChange={(e) => setContent(e.target.value as ScreenContent)}
+              className="input-terminal h-8 rounded-brutal px-2 text-xs"
+            >
+              <option value="game">Jogo — fluidez</option>
+              <option value="text">Texto — nitidez</option>
+            </select>
+          </label>
+
           {/* Observação é frase, não dado: Inter em caixa normal. */}
           <p className="w-full text-[11.5px] text-muted-foreground">
-            {QUALITY_HINT[quality]}
+            {QUALITY_HINT[quality]}{' '}
+            {content === 'game'
+              ? 'Com CPU apertada o encoder baixa a resolução antes de travar.'
+              : 'Nitidez acima de tudo: o encoder segura a resolução e sacrifica quadros.'}
           </p>
           </div>
 
