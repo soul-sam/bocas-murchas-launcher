@@ -4,7 +4,12 @@ import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
-import { type WagerBet, type WagerCardMeta, type WagerPool } from '@/lib/api-gamification'
+import {
+  WAGER_WINDOW_MS,
+  type WagerBet,
+  type WagerCardMeta,
+  type WagerPool
+} from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { useGamification } from '@/lib/gamification-context'
@@ -66,8 +71,26 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
   const since = typeof metadata.since === 'number' ? metadata.since : new Date(metadata.since).getTime()
   const now = useTicker(10_000, !settled)
 
-  const isMine = metadata.userId === user?.id
-  const canBet = !settled && !isMine && !myBet && !!user
+  // Grupo na mesma partida: o cartão é da partida, não de uma pessoa. Se eu
+  // estou em qualquer uma das sessões, é minha partida e eu não aposto.
+  const players = React.useMemo(
+    () => (Array.isArray(metadata.players) ? metadata.players : []),
+    [metadata.players]
+  )
+  const others = players.filter((p) => p.userId !== metadata.userId)
+  const isMine = metadata.userId === user?.id || players.some((p) => p.userId === user?.id)
+
+  // Janela de 5 min: cartões antigos não têm `closesAt`, daí o fallback pelo
+  // início da partida.
+  const closesAtMs =
+    typeof metadata.closesAt === 'number'
+      ? metadata.closesAt
+      : metadata.closesAt
+        ? new Date(metadata.closesAt).getTime()
+        : since + WAGER_WINDOW_MS
+  const windowOpen = live ? live.open : Number.isFinite(closesAtMs) && now < closesAtMs
+
+  const canBet = !settled && !isMine && !myBet && !!user && windowOpen
 
   const accent: 'acid' | 'burn' | 'destructive' | 'muted' = settled
     ? metadata.result === 'win'
@@ -167,10 +190,28 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
 
       <PoolBars pool={pool} className="mt-2" />
 
+      {others.length > 0 && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          {others.map((p) => p.displayName).join(', ')} {others.length > 1 ? 'estão' : 'está'} na
+          mesma partida — uma aposta vale por todos.
+        </p>
+      )}
+
       {canBet && (
         <div className="mt-2 border-t border-line pt-2">
-          <BetForm sessionId={metadata.sessionId} coins={profile?.coins ?? 0} />
+          <BetForm
+            sessionId={live?.session.id ?? metadata.sessionId}
+            coins={profile?.coins ?? 0}
+            max={live?.maxAmount}
+            closesAt={Number.isFinite(closesAtMs) ? new Date(closesAtMs).toISOString() : undefined}
+          />
         </div>
+      )}
+
+      {!settled && !isMine && !myBet && !windowOpen && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          aposta fechada — só nos 5 primeiros minutos
+        </p>
       )}
 
       {!settled && myBet && (

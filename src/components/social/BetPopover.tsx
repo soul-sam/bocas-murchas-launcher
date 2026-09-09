@@ -6,6 +6,7 @@ import {
   WAGER_MAX,
   WAGER_MIN,
   formatCompact,
+  type MatchPlayer,
   type WagerPool,
   type WagerPrediction
 } from '@/lib/api-gamification'
@@ -26,6 +27,12 @@ import { cn } from '@/lib/utils'
  * jogo mas o servidor ainda não registrou a sessão, o gatilho fica
  * desabilitado com o motivo no tooltip — em vez de abrir um formulário que
  * vai falhar.
+ *
+ * Duas travas vêm do servidor e são só espelhadas aqui: a janela de 5 min
+ * (`game.open`) e o teto pessoal (`game.maxAmount`, que sobe de 50 até 500
+ * conforme a pessoa aposta). Quando várias pessoas do grupo estão na MESMA
+ * partida, o board já traz a aposta do grupo em `myWager` — uma aposta só
+ * vale por todos, e o formulário nem aparece pros outros.
  */
 export function BetPopover({
   userId,
@@ -75,6 +82,7 @@ export function BetPopover({
   const detail = [game.session.champion, queueLabel(game.session.queue ?? undefined)]
     .filter(Boolean)
     .join(' · ')
+  const others = (game.players ?? []).filter((p) => p.userId !== game.session.userId)
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={false}>
@@ -94,6 +102,8 @@ export function BetPopover({
           </div>
         </header>
 
+        <SquadNote players={others} className="mb-2" />
+
         <PoolBars pool={game.pool} className="mb-3" />
 
         {isMine ? (
@@ -107,18 +117,62 @@ export function BetPopover({
             <span className={game.myWager.prediction === 'win' ? 'text-acid' : 'text-destructive'}>
               {game.myWager.prediction === 'win' ? 'vitória' : 'derrota'}
             </span>
-            .
+            {others.length > 0 ? ' nessa partida — vale pro grupo todo.' : '.'}
+          </p>
+        ) : !game.open ? (
+          <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
+            Aposta fechada. Só dá nos 5 primeiros minutos da partida.
           </p>
         ) : (
           <BetForm
             sessionId={game.session.id}
             coins={profile?.coins ?? 0}
+            max={game.maxAmount}
+            closesAt={game.closesAt}
             onPlaced={() => setOpen(false)}
           />
         )}
       </PopoverContent>
     </Popover>
   )
+}
+
+/**
+ * "Fulano e Beltrano também estão nessa partida." Aparece só quando mais de
+ * uma pessoa do grupo está no mesmo jogo — pra deixar claro que a aposta é
+ * uma só e cobre todo mundo.
+ */
+function SquadNote({ players, className }: { players: MatchPlayer[]; className?: string }) {
+  if (players.length === 0) return null
+  const names = players.map((p) => p.displayName)
+  const who =
+    names.length > 1 ? `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}` : names[0]
+
+  return (
+    <p
+      className={cn(
+        'rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-[11px] text-muted-foreground',
+        className
+      )}
+    >
+      {who} {names.length > 1 ? 'estão' : 'está'} na mesma partida. Uma aposta só, vale por todos.
+    </p>
+  )
+}
+
+/** mm:ss até `iso`, ou null se já passou. */
+function useCountdown(iso?: string): string | null {
+  const [now, setNow] = React.useState(() => Date.now())
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  if (!iso) return null
+  const left = new Date(iso).getTime() - now
+  if (!Number.isFinite(left) || left <= 0) return null
+  const total = Math.floor(left / 1000)
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
 }
 
 /**
@@ -165,29 +219,43 @@ const PRESETS = [10, 50, 100]
 /**
  * Formulário da aposta: lado + valor. Compartilhado com o cartão de aposta
  * no chat, por isso não sabe nada de popover.
+ *
+ * `max` é o teto PESSOAL vindo do servidor (rampa de 50 até 500). Sem ele
+ * cai no teto do sistema — o servidor recusa de qualquer jeito, mas aí a
+ * pessoa só descobre depois de clicar.
  */
 export function BetForm({
   sessionId,
   coins,
+  max = WAGER_MAX,
+  closesAt,
   onPlaced,
   className
 }: {
   sessionId: string
   coins: number
+  /** Teto pessoal desta aposta. */
+  max?: number
+  /** ISO do fim da janela de 5 min, pro contador. */
+  closesAt?: string
   onPlaced?: () => void
   className?: string
 }) {
   const { placeWager } = useGamification()
+  const limit = Math.min(WAGER_MAX, Math.max(WAGER_MIN, Math.floor(max)))
+  const presets = React.useMemo(() => PRESETS.filter((p) => p <= limit), [limit])
   const [prediction, setPrediction] = React.useState<WagerPrediction>('win')
-  const [amount, setAmount] = React.useState<number>(PRESETS[0])
+  const [amount, setAmount] = React.useState<number>(presets[0] ?? WAGER_MIN)
   const [custom, setCustom] = React.useState('')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const left = useCountdown(closesAt)
+  const expired = Boolean(closesAt) && left === null
 
   const value = custom ? Number(custom) : amount
-  const valid = Number.isInteger(value) && value >= WAGER_MIN && value <= WAGER_MAX
+  const valid = Number.isInteger(value) && value >= WAGER_MIN && value <= limit
   const affordable = value <= coins
-  const canSubmit = valid && affordable && !busy
+  const canSubmit = valid && affordable && !busy && !expired
 
   const submit = async (): Promise<void> => {
     if (!canSubmit) return
@@ -198,13 +266,7 @@ export function BetForm({
       onPlaced?.()
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(
-          err.status === 402
-            ? 'Murchos insuficientes.'
-            : err.status === 409
-              ? 'Você já apostou nessa partida.'
-              : err.message
-        )
+        setError(err.status === 402 ? 'Murchos insuficientes.' : err.message)
       } else {
         setError('Não deu pra apostar agora.')
       }
@@ -235,7 +297,7 @@ export function BetForm({
       </div>
 
       <div className="flex items-center gap-1">
-        {PRESETS.map((preset) => (
+        {presets.map((preset) => (
           <button
             key={preset}
             type="button"
@@ -256,7 +318,7 @@ export function BetForm({
         <input
           type="number"
           min={WAGER_MIN}
-          max={WAGER_MAX}
+          max={limit}
           value={custom}
           onChange={(e) => setCustom(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
           placeholder="outro"
@@ -272,14 +334,32 @@ export function BetForm({
           <Coins className="h-2.5 w-2.5 text-burn" />
           você tem {formatCompact(coins)}
         </span>
-        <span>
-          {WAGER_MIN}–{WAGER_MAX}
+        <span title={limit < WAGER_MAX ? 'Seu teto sobe a cada aposta, até 500' : undefined}>
+          {WAGER_MIN}–{limit}
+          {limit < WAGER_MAX && <span className="text-burn"> ↑</span>}
         </span>
       </div>
+
+      {closesAt && (
+        <p className="text-center text-[11px] text-muted-foreground">
+          {left ? (
+            <>
+              fecha em <span className="font-mono text-burn">{left}</span>
+            </>
+          ) : (
+            'janela de aposta fechada'
+          )}
+        </p>
+      )}
 
       {error && <p className="text-xs text-destructive">{error}</p>}
       {!error && valid && !affordable && (
         <p className="text-xs text-destructive">Não tem murchos pra isso.</p>
+      )}
+      {!error && custom !== '' && value > limit && (
+        <p className="text-xs text-destructive">
+          Seu teto agora é {limit}. Ele sobe a cada aposta, até {WAGER_MAX}.
+        </p>
       )}
 
       <button

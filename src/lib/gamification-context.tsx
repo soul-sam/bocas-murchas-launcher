@@ -398,9 +398,13 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       }
 
       // Otimista: a pool e a minha aposta aparecem já; o poll confirma depois.
-      setLiveGames((prev) =>
-        prev.map((game) => {
-          if (game.session.id !== sessionId) return game
+      // A aposta vale pela PARTIDA, então marca todas as sessões do mesmo
+      // grupo (mesmo `matchId`) — senão o colega ao lado continuaria clicável.
+      setLiveGames((prev) => {
+        const target = prev.find((g) => g.session.id === sessionId)
+        const matchId = target?.matchId ?? sessionId
+        return prev.map((game) => {
+          if (game.matchId !== matchId && game.session.id !== sessionId) return game
           const bets = me
             ? [...game.bets.filter((b) => b.userId !== me), { userId: me, prediction, amount }]
             : game.bets
@@ -411,7 +415,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
             myWager: { prediction, amount }
           }
         })
-      )
+      })
       void refreshLiveGames()
     },
     [token, refreshLiveGames]

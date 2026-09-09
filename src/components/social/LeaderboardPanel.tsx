@@ -528,7 +528,7 @@ function LiveGames() {
                         type="button"
                         className="shrink-0 rounded-brutal border border-acid-dark px-2 py-1 font-mono text-[11px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/15 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        {game.myWager ? 'apostado' : 'apostar'}
+                        {game.myWager ? 'apostado' : game.open ? 'apostar' : 'fechado'}
                       </button>
                     </BetPopover>
                   )}

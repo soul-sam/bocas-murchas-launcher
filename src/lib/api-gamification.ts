@@ -179,7 +179,16 @@ export interface EarnRules {
   }
   wager: {
     min: number
+    /** Teto máximo do sistema, alcançado depois de `rampBets` apostas. */
     max: number
+    /** Teto de quem perguntou, agora. */
+    myMax: number
+    /** Teto de quem nunca apostou. */
+    startMax: number
+    /** Apostas até destravar o teto cheio. */
+    rampBets: number
+    /** Janela pra apostar, do início da partida. */
+    betWindowMs: number
     payoutMultiplier: number
   }
 }
@@ -209,6 +218,23 @@ export interface LiveWagerGame {
   pool: WagerPool
   bets: WagerBet[]
   myWager: { prediction: WagerPrediction; amount: number } | null
+  /** Sessão que representa a partida (a primeira do grupo). */
+  matchId: string
+  /** Todo mundo do grupo na MESMA partida — uma aposta cobre todos. */
+  players: MatchPlayer[]
+  /** Aposta aberta? Falso = passou dos 5 min ou a partida acabou. */
+  open: boolean
+  /** ISO de quando a janela de aposta fecha. */
+  closesAt: string
+  /** Teto de aposta atual de quem pediu (rampa de 50 até 500). */
+  maxAmount: number
+}
+
+export interface MatchPlayer {
+  sessionId: string
+  userId: string
+  displayName: string
+  champion: string | null
 }
 
 export interface WeeklyRecap {
@@ -286,6 +312,12 @@ export interface WagerCardMeta {
   champion?: string | null
   queue?: string | null
   since: string | number
+  /** Quando a janela de 5 min fecha (epoch ms). */
+  closesAt?: string | number
+  /** Id da sessão que representa a partida. */
+  matchId?: string
+  /** Grupo na mesma partida — a aposta vale por todos. */
+  players?: MatchPlayer[]
   pool: WagerPool
   bets: WagerBet[]
   settled: boolean
@@ -304,9 +336,18 @@ export interface SystemCardMeta {
 // RÓTULOS E CONSTANTES (pt-BR)
 // ============================================
 
-/** Aposta mínima/máxima, igual ao servidor. */
+/**
+ * Aposta mínima e teto do sistema, igual ao servidor. O teto REAL de cada um
+ * é pessoal (`LiveWagerGame.maxAmount` / `EarnRules.wager.myMax`): começa em
+ * `WAGER_START_MAX` e sobe até `WAGER_MAX` na aposta de número
+ * `WAGER_RAMP_BETS`. Use `WAGER_MAX` só como limite absoluto de input.
+ */
 export const WAGER_MIN = 10
 export const WAGER_MAX = 500
+export const WAGER_START_MAX = 50
+export const WAGER_RAMP_BETS = 20
+/** Só dá pra apostar nos 5 primeiros minutos da partida. */
+export const WAGER_WINDOW_MS = 5 * 60 * 1000
 
 /**
  * Por que ganhou XP, em português de gente. O servidor manda a chave técnica;

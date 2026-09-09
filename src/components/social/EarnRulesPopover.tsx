@@ -111,7 +111,7 @@ export function EarnRulesPopover({ className }: { className?: string }) {
 }
 
 function RulesList({ rules }: { rules: EarnRules }) {
-  const { actions, levelUp } = rules
+  const { actions, levelUp, wager } = rules
 
   return (
     <div className="max-h-[22rem] overflow-y-auto px-3 py-2.5">
@@ -134,7 +134,12 @@ function RulesList({ rules }: { rules: EarnRules }) {
           quanto mais longo o controle de tempo, mais paga; vitória dobra
         </Row>
         <Row Icon={Dices} label="Apostando">
-          quem acerta leva o dobro do que apostou
+          quem acerta leva o dobro do que apostou; só nos {Math.round(wager.betWindowMs / 60000)}{' '}
+          primeiros minutos da partida, uma aposta por partida
+        </Row>
+        <Row Icon={Dices} label="Seu teto de aposta" value={`${wager.myMax}`}>
+          começa em {wager.startMax} e sobe a cada aposta até {wager.max}, na{' '}
+          {wager.rampBets}ª
         </Row>
       </Section>
 
