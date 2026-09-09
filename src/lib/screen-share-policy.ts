@@ -121,3 +121,38 @@ export function pickFocus(
   if (current && feeds.some((feed) => feed.identity === current)) return current
   return (feeds.find((feed) => !feed.isLocal) ?? feeds[0]).identity
 }
+
+/**
+ * O SFU tem alguem recebendo o VIDEO desta publicacao?
+ *
+ * Com `dynacast` ligado o servidor manda um `SubscribedQualityUpdate` pra
+ * quem transmite toda vez que o conjunto de assinantes muda: cada camada
+ * (simulcast) e cada codec vem com `enabled`. Todas desligadas = ninguem
+ * assiste — e ai o encoder ja para sozinho (isso e o dynacast), mas a CAPTURA
+ * continua rodando a 60 fps por baixo. E este sinal que o transmissor usa pra
+ * parar a captura tambem (ver lib/screen-capture-gate).
+ *
+ * O formato e o da mensagem do protocolo, mas so os campos que importam:
+ * `subscribedCodecs` e o formato novo (por codec), `subscribedQualities` o
+ * antigo. Servidor manda os dois; qualquer camada ligada em qualquer um vale.
+ */
+export interface SubscribedQualityLike {
+  subscribedQualities?: ReadonlyArray<{ enabled: boolean }>
+  subscribedCodecs?: ReadonlyArray<{ qualities: ReadonlyArray<{ enabled: boolean }> }>
+}
+
+export function hasViewers(update: SubscribedQualityLike): boolean {
+  if (update.subscribedCodecs?.some((codec) => codec.qualities.some((q) => q.enabled))) {
+    return true
+  }
+  return update.subscribedQualities?.some((q) => q.enabled) ?? false
+}
+
+/**
+ * Quanto tempo esperar sem espectador antes de parar a captura.
+ *
+ * Nao e zero porque o sinal chega assim que a pessoa troca de aba ou minimiza
+ * (o cliente dela solta o video), e ela costuma voltar em segundos — parar e
+ * readquirir a captura custa um keyframe e um flash preto pra quem assiste.
+ */
+export const CAPTURE_IDLE_GRACE_MS = 4_000

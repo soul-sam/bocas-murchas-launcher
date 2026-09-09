@@ -179,6 +179,13 @@ export interface ScreenShareSettings {
    * src/lib/screen-share-policy.ts.
    */
   content: ScreenShareContent
+  /**
+   * Parar a CAPTURA (nao a transmissao) quando ninguem esta assistindo. O
+   * card continua no ar pros outros; a captura volta no primeiro "Assistir".
+   * Ver src/lib/screen-capture-gate.ts. Chave de seguranca: se der problema
+   * em alguma maquina, desligar aqui volta ao comportamento antigo.
+   */
+  idleWhenUnwatched: boolean
 }
 
 export type ScreenShareContent = 'game' | 'text'
@@ -612,7 +619,8 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     muteLauncher: true,
     quality: '720p30',
     // Plataforma de jogo: fluidez e o padrao. Quem compartilha codigo troca.
-    content: 'game'
+    content: 'game',
+    idleWhenUnwatched: true
   },
   music: {
     // Musica de fundo entra mais baixa que um video que a galera sentou pra

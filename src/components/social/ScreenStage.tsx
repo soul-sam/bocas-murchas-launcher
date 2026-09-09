@@ -205,6 +205,11 @@ function IdleCard({
             {!info.withAudio && ' · sem áudio'}
           </p>
         )}
+        {feed.isLocal && info?.capture === 'idle' && (
+          <p className="text-[11.5px] text-muted-foreground">
+            ninguém assistindo · captura pausada, volta sozinha no primeiro clique
+          </p>
+        )}
         {!feed.isLocal && (
           <p className="text-[11.5px] text-muted-foreground">
             {feed.hasAudio ? 'com o som do jogo' : 'sem áudio'} · o vídeo só chega depois de
@@ -212,14 +217,17 @@ function IdleCard({
           </p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onWatch}
-        className="flex items-center gap-2 rounded-brutal border-2 border-acid bg-acid/10 px-4 py-2 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20"
-      >
-        {feed.isLocal ? <Eye className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-        {feed.isLocal ? 'Ver prévia' : 'Assistir'}
-      </button>
+      {/* Sem captura nao ha previa: o canvas ocioso nunca entrega quadro. */}
+      {!(feed.isLocal && info?.capture === 'idle') && (
+        <button
+          type="button"
+          onClick={onWatch}
+          className="flex items-center gap-2 rounded-brutal border-2 border-acid bg-acid/10 px-4 py-2 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20"
+        >
+          {feed.isLocal ? <Eye className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+          {feed.isLocal ? 'Ver prévia' : 'Assistir'}
+        </button>
+      )}
     </div>
   )
 }
@@ -269,7 +277,10 @@ const FocusedFeed = React.memo(function FocusedFeed({
     void containerRef.current?.requestFullscreen().catch(() => {})
   }, [])
 
-  const showingVideo = feed.isLocal ? previewOpen && !!feed.track : feed.watching && !!feed.track
+  // Previa propria so com captura viva: parada, a faixa e um canvas sem quadro.
+  const showingVideo = feed.isLocal
+    ? previewOpen && !!feed.track && info?.capture !== 'idle'
+    : feed.watching && !!feed.track
   const connecting = !feed.isLocal && feed.watching && !feed.track
   const label = showingVideo ? qualityLabel(stats, feed.isLocal ? info : null) : null
   const muted = volume === 0

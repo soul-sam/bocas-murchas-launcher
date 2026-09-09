@@ -38,6 +38,7 @@ interface ScreenSharePickerProps {
       content: ScreenContent
       sourceName: string
       muteLauncher: boolean
+      idleWhenUnwatched: boolean
     }
   ) => Promise<void>
 }
@@ -53,6 +54,9 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
   const [muteLauncher, setMuteLauncher] = React.useState(settings.screenShare.muteLauncher)
   const [quality, setQuality] = React.useState<ScreenQuality>(settings.screenShare.quality)
   const [content, setContent] = React.useState<ScreenContent>(settings.screenShare.content)
+  const [idleWhenUnwatched, setIdleWhenUnwatched] = React.useState(
+    settings.screenShare.idleWhenUnwatched
+  )
   const [filter, setFilter] = React.useState('')
   const [starting, setStarting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -85,6 +89,7 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
     setMuteLauncher(settings.screenShare.muteLauncher)
     setQuality(settings.screenShare.quality)
     setContent(settings.screenShare.content)
+    setIdleWhenUnwatched(settings.screenShare.idleWhenUnwatched)
     load(false)
     // As preferencias entram de proposito fora da lista: relê-las a cada
     // mudanca de `settings` sobrescreveria o que a pessoa acabou de marcar.
@@ -111,10 +116,13 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
         quality,
         content,
         sourceName: source.name,
-        muteLauncher
+        muteLauncher,
+        idleWhenUnwatched
       })
       // Salvo só quando deu certo: erro na captura não é escolha nova.
-      void update({ screenShare: { withAudio, muteLauncher, quality, content } })
+      void update({
+        screenShare: { withAudio, muteLauncher, quality, content, idleWhenUnwatched }
+      })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao compartilhar')
@@ -307,6 +315,22 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
             </div>
           )}
         </div>
+
+        <label className="mt-3 flex shrink-0 cursor-pointer items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={idleWhenUnwatched}
+            onChange={(e) => setIdleWhenUnwatched(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-acid"
+          />
+          <span className="min-w-0">
+            Pausar a captura quando ninguém estiver assistindo
+            <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
+              A transmissão continua no ar, mas a captura e a codificação param
+              até alguém clicar em assistir. Poupa GPU e CPU pro seu jogo.
+            </span>
+          </span>
+        </label>
 
         {error && <p className="mt-2 shrink-0 text-xs text-destructive">{error}</p>}
 

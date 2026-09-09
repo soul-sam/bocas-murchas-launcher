@@ -21,6 +21,7 @@ import { useMembers } from './members-context'
 import { createMicProcessor, type MicProcessor } from './audio-processor'
 import { setLauncherSilenced } from './launcher-silence'
 import { exposeVoiceStats } from './voice-diagnostics'
+import { createCaptureGate, type CaptureGate, type CaptureState } from './screen-capture-gate'
 import { createSpeakingDetector, type SpeakingDetector } from './speaking-detector'
 import {
   SCREEN_QUALITY,
@@ -132,6 +133,12 @@ export interface ScreenShareInfo {
   /** O launcher esta mudo por causa desta transmissao. */
   muteLauncher: boolean
   startedAt: number
+  /**
+   * `idle` = ninguem assistindo, captura PARADA (ver lib/screen-capture-gate).
+   * A publicacao continua no ar; a captura volta sozinha no primeiro
+   * "Assistir".
+   */
+  capture: CaptureState
 }
 
 interface VoiceContextValue {
@@ -185,6 +192,8 @@ interface VoiceContextValue {
     content?: ScreenContent
     sourceName?: string
     muteLauncher?: boolean
+    /** Parar a captura quando ninguem assiste (padrao: sim). */
+    idleWhenUnwatched?: boolean
   }) => Promise<void>
   stopScreenShare: () => Promise<void>
 
@@ -487,6 +496,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const screenSharingRef = React.useRef(false)
   screenSharingRef.current = screenSharing
 
+  /** Para a captura da tela quando ninguem assiste. Vive com a transmissao. */
+  const captureGateRef = React.useRef<CaptureGate | null>(null)
+  const dropCaptureGate = React.useCallback(() => {
+    captureGateRef.current?.destroy()
+    captureGateRef.current = null
+  }, [])
+
   /**
    * Volume dos avisos lido por ref: os handlers do LiveKit sao registrados uma
    * vez no connect e nunca mais; se dependessem do estado, ficariam presos ao
@@ -723,6 +739,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     roomRef.current = null
     roomForSyncRef.current = null
     watchingRef.current = null
+    dropCaptureGate()
     // O detector segura um AudioContext e um nó por pessoa: sair da call sem
     // desmontar isso deixaria o grafo vivo e medindo silêncio pra sempre.
     speakingRef.current?.destroy()
@@ -769,7 +786,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     void window.bocas.tray.setVoiceState({ inVoice: false, micMuted: false })
     leavingRef.current = false
-  }, [cue])
+  }, [cue, dropCaptureGate])
 
   const join = React.useCallback(
     async (target: Channel) => {
@@ -916,6 +933,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
            * voltar ao normal so saindo da call.
            */
           if (publication.source === Track.Source.ScreenShare) {
+            dropCaptureGate()
             setScreenShares((prev) => prev.filter((s) => !s.isLocal))
             setScreenSharing(false)
             setShareInfo(null)
@@ -1148,7 +1166,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       publishFlags,
       applySubscription,
       applyAllSubscriptions,
-      upsertRemoteFeed
+      upsertRemoteFeed,
+      dropCaptureGate
     ]
   )
 
@@ -1307,6 +1326,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  /** O gate encerra a transmissao se a fonte sumir; a funcao nasce abaixo. */
+  const stopScreenShareRef = React.useRef<() => Promise<void>>(async () => {})
+
   const startScreenShare = React.useCallback(
     async (
       sourceId: string,
@@ -1316,6 +1338,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         content?: ScreenContent
         sourceName?: string
         muteLauncher?: boolean
+        idleWhenUnwatched?: boolean
       } = {}
     ) => {
       const current = roomRef.current
@@ -1383,9 +1406,32 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           quality,
           withAudio,
           muteLauncher,
-          startedAt: Date.now()
+          startedAt: Date.now(),
+          capture: 'live'
         })
         socketRef.current?.emit('screenshare:state', { active: true })
+
+        // Ninguem assistindo = captura parada (o encoder o dynacast ja
+        // parava). Ver lib/screen-capture-gate.
+        dropCaptureGate()
+        if (options.idleWhenUnwatched ?? true) {
+          captureGateRef.current = createCaptureGate({
+            room: current,
+            sourceId,
+            resolution: {
+              width: preset.width,
+              height: preset.height,
+              frameRate: preset.frameRate
+            },
+            contentHint: profile.contentHint,
+            onStateChange: (capture) => {
+              setShareInfo((prev) => (prev ? { ...prev, capture } : prev))
+            },
+            onLost: () => {
+              void stopScreenShareRef.current()
+            }
+          })
+        }
       } catch (err) {
         await window.bocas.screen.cancelSelection()
         // Falhou no meio: o launcher nao pode ficar mudo por causa de uma
@@ -1395,12 +1441,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         throw err
       }
     },
-    []
+    [dropCaptureGate]
   )
 
   const stopScreenShare = React.useCallback(async () => {
     const current = roomRef.current
     if (!current) return
+    dropCaptureGate()
     await current.localParticipant.setScreenShareEnabled(false)
     setLauncherSilenced(false)
     setScreenSharing(false)
@@ -1409,7 +1456,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     // palco com uma imagem congelada por um instante depois do clique.
     setScreenShares((prev) => prev.filter((s) => !s.isLocal))
     socketRef.current?.emit('screenshare:state', { active: false })
-  }, [])
+  }, [dropCaptureGate])
+  stopScreenShareRef.current = stopScreenShare
 
   /**
    * Reconexao do socket: reavisar em que canal eu estou.

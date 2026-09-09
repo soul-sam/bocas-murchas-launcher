@@ -110,7 +110,8 @@ function normalizeScreenShare(
     withAudio: s.withAudio ?? d.withAudio,
     muteLauncher: s.muteLauncher ?? d.muteLauncher,
     quality: isScreenShareQuality(s.quality) ? s.quality : d.quality,
-    content: isScreenShareContent(s.content) ? s.content : d.content
+    content: isScreenShareContent(s.content) ? s.content : d.content,
+    idleWhenUnwatched: s.idleWhenUnwatched ?? d.idleWhenUnwatched
   }
 }
 

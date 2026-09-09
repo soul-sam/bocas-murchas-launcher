@@ -6,7 +6,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { shouldSubscribe, encoderProfile, pickFocus } from './screen-share-policy.ts'
+import { shouldSubscribe, encoderProfile, pickFocus, hasViewers } from './screen-share-policy.ts'
 
 const video = (source: 'screen_share' | 'camera' | 'unknown') => ({ source, kind: 'video' as const })
 const audio = (source: 'screen_share_audio' | 'microphone' | 'unknown') => ({ source, kind: 'audio' as const })
@@ -63,4 +63,28 @@ test('foco: prefere a tela de outra pessoa e respeita a escolha atual', () => {
   assert.equal(pickFocus(feeds, 'sumiu'), 'ana')
   assert.equal(pickFocus([{ identity: 'me', isLocal: true }], null), 'me')
   assert.equal(pickFocus([], 'ana'), null)
+})
+
+test('espectadores: qualquer camada ligada em qualquer codec conta', () => {
+  assert.equal(hasViewers({}), false)
+  assert.equal(hasViewers({ subscribedQualities: [] }), false)
+  assert.equal(
+    hasViewers({ subscribedQualities: [{ enabled: false }, { enabled: false }] }),
+    false
+  )
+  assert.equal(
+    hasViewers({ subscribedQualities: [{ enabled: false }, { enabled: true }] }),
+    true
+  )
+  assert.equal(
+    hasViewers({
+      subscribedQualities: [{ enabled: false }],
+      subscribedCodecs: [{ qualities: [{ enabled: false }] }, { qualities: [{ enabled: true }] }]
+    }),
+    true
+  )
+  assert.equal(
+    hasViewers({ subscribedCodecs: [{ qualities: [{ enabled: false }, { enabled: false }] }] }),
+    false
+  )
 })
