@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.5.0',
+    headline: 'Aposta sem sair da partida',
+    items: [
+      'Quando a partida começa, um painel aparece num canto da tela por cima do jogo: quanto a galera apostou em você, e as outras partidas do grupo abertas pra aposta. Ele encolhe sozinho depois de alguns segundos e volta ao passar o mouse.',
+      'Dá pra apostar dali mesmo, em dois cliques: vitória ou derrota, e o valor. O contador mostra quanto falta pra janela de 5 minutos fechar.',
+      'O clique atravessa o painel: mexer o mouse por cima dele não tira a mira do jogo, e clicar não minimiza o League.',
+      'Liga e desliga em Configurações › LoL, junto com o canto da tela onde ele fica.'
+    ],
+    note: 'O jogo precisa estar em janela sem bordas, que é o padrão do League. Em tela cheia exclusiva o Windows não deixa NENHUMA sobreposição aparecer — nem esta, nem a da própria Riot.'
+  },
+  {
     version: '1.4.3',
     headline: 'Tela compartilhada que não pesa no jogo de ninguém',
     items: [
