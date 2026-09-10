@@ -90,6 +90,20 @@ const api: BocasAPI = {
     onGameEnded: (cb) => on('lol:game-ended', cb),
     refresh: () => ipcRenderer.invoke('lol:refresh')
   },
+  overlay: {
+    push: (state) => ipcRenderer.invoke('overlay:push', state),
+    onAction: (cb) => on('overlay:action', cb),
+    // O `on` daqui entrega o payload; este canal nao tem payload nenhum, so
+    // o aviso. Embrulhado pra o consumidor receber uma funcao sem argumento.
+    onStateRequested: (cb) => on('overlay:request-state', () => cb()),
+
+    state: () => ipcRenderer.invoke('overlay:state'),
+    onState: (cb) => on('overlay:state', cb),
+    send: (action) => ipcRenderer.invoke('overlay:action', action),
+    requestState: () => ipcRenderer.invoke('overlay:request-state'),
+    setInteractive: (interactive) => ipcRenderer.invoke('overlay:set-interactive', interactive),
+    dismiss: () => ipcRenderer.invoke('overlay:dismiss')
+  },
   app: {
     applyAutostart: () => ipcRenderer.invoke('app:apply-autostart'),
     launchedAtLogin: () => ipcRenderer.invoke('app:launched-at-login'),

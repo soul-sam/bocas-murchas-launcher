@@ -25,7 +25,7 @@ import { useVoice } from '@/lib/voice-context'
 import { useAudioDevices, useVideoDevices } from '@/lib/use-audio-devices'
 import { playUiSound } from '@/lib/ui-sounds'
 import { GATE_OFF_DB } from '@/lib/audio-processor'
-import { RAM_LIMITS, type LolPhase, type LolStatus, THEME_IDS, THEME_LABEL, type ThemeId } from '../../electron/preload/types'
+import { RAM_LIMITS, type LolPhase, type LolStatus, type OverlayCorner, THEME_IDS, THEME_LABEL, type ThemeId } from '../../electron/preload/types'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -1193,6 +1193,43 @@ function LolTab() {
             <option value="off">Não fazer nada</option>
           </select>
         </label>
+      </section>
+
+      <section>
+        <SectionTitle>Sobreposição em partida</SectionTitle>
+        <SwitchRow
+          label="Mostrar por cima do jogo"
+          hint="Quando a partida começa, um painel aparece num canto da tela com as apostas em você e a chance de apostar em quem do grupo está jogando. Ele encolhe sozinho depois de alguns segundos."
+          checked={lol.overlay}
+          disabled={!lol.enabled}
+          onCheckedChange={(overlay) => patch({ overlay })}
+        />
+
+        <label className="flex items-center justify-between gap-3 py-2">
+          <span className="min-w-0">
+            <span className="block text-sm font-medium">Canto da tela</span>
+            <span className="block text-xs leading-snug text-muted-foreground">
+              Escolha o canto que o seu HUD deixa livre.
+            </span>
+          </span>
+          <select
+            value={lol.overlayCorner}
+            disabled={!lol.enabled || !lol.overlay}
+            onChange={(e) => patch({ overlayCorner: e.target.value as OverlayCorner })}
+            className="input-terminal h-8 w-40 shrink-0 rounded-brutal px-2 text-xs disabled:opacity-50"
+          >
+            <option value="top-left">Superior esquerdo</option>
+            <option value="top-right">Superior direito</option>
+            <option value="bottom-left">Inferior esquerdo</option>
+            <option value="bottom-right">Inferior direito</option>
+          </select>
+        </label>
+
+        <p className="text-xs leading-snug text-muted-foreground">
+          O jogo precisa estar em <strong className="font-medium text-foreground">janela sem
+          bordas</strong> (o padrão do League). Em tela cheia exclusiva o Windows não deixa
+          nenhuma sobreposição aparecer — nem esta, nem a da Riot.
+        </p>
       </section>
 
       <section className="space-y-2">

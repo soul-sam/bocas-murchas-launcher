@@ -22,6 +22,16 @@ import { listSources, selectSource, cancelSelection } from './services/screen-sh
 import { shakeWindow, type NudgeOptions } from './services/nudge.js'
 import { setVoiceState, setCloseToTray } from './services/tray.js'
 import { getLolStatus, refreshLolNow, startLolWatcher, stopLolWatcher } from './services/lol.js'
+import {
+  applyOverlaySettings,
+  dismissOverlay,
+  getOverlayState,
+  pushOverlayState,
+  relayOverlayAction,
+  requestOverlayState,
+  setOverlayInteractive
+} from './services/lol-overlay.js'
+import type { OverlayAction, OverlayState } from '../preload/types.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 import { app, powerMonitor } from 'electron'
 
@@ -103,6 +113,9 @@ export function registerIpcHandlers(): void {
       stopLolWatcher()
       if (next.lol.enabled) startLolWatcher()
     }
+    // Depois do watcher: desligar a leitura ja derruba a sobreposicao junto,
+    // e esta chamada so precisa cuidar do resto (ligar/desligar e o canto).
+    applyOverlaySettings(next.lol)
 
     return next
   })
@@ -113,6 +126,33 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('lol:status', async () => getLolStatus())
 
   ipcMain.handle('lol:refresh', async () => refreshLolNow())
+
+  // ============================================
+  // SOBREPOSICAO EM PARTIDA
+  // ============================================
+  // Ponte entre a janela principal (que tem token e apostas) e a janela da
+  // sobreposicao (que so desenha). Ver services/lol-overlay.ts.
+  ipcMain.handle('overlay:push', async (_e, state: OverlayState) => {
+    pushOverlayState(state)
+  })
+
+  ipcMain.handle('overlay:state', async () => getOverlayState())
+
+  ipcMain.handle('overlay:action', async (_e, action: OverlayAction) => {
+    relayOverlayAction(action)
+  })
+
+  ipcMain.handle('overlay:request-state', async () => {
+    requestOverlayState()
+  })
+
+  ipcMain.handle('overlay:set-interactive', async (_e, interactive: boolean) => {
+    setOverlayInteractive(Boolean(interactive))
+  })
+
+  ipcMain.handle('overlay:dismiss', async () => {
+    dismissOverlay()
+  })
 
   ipcMain.handle('app:apply-autostart', async () => applyAutostart())
 

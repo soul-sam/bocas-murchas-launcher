@@ -18,6 +18,7 @@ import {
 } from './services/tray.js'
 import { loadSettings } from './services/settings.js'
 import { startLolWatcher, stopLolWatcher } from './services/lol.js'
+import { applyOverlaySettings, destroyLolOverlay } from './services/lol-overlay.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -194,6 +195,9 @@ if (!gotTheLock) {
     // vez, quando o padrao e "ligado" e ninguem mexeu em nada ainda).
     void applyAutostart()
 
+    // Antes do watcher: o primeiro status pode sair no mesmo tick, e sem as
+    // preferencias carregadas a sobreposicao decidiria com o padrao.
+    applyOverlaySettings(settings.lol)
     if (settings.lol.enabled) startLolWatcher()
 
     app.on('activate', () => {
@@ -218,4 +222,5 @@ app.on('will-quit', () => {
   destroyTray()
   stopUpdater()
   stopLolWatcher()
+  destroyLolOverlay()
 })

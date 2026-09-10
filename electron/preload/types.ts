@@ -347,6 +347,20 @@ export interface GameActivity {
   server?: string
 }
 
+/** Canto da tela onde a sobreposicao fica durante a partida. */
+export type OverlayCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+
+export const OVERLAY_CORNERS: readonly OverlayCorner[] = [
+  'top-left',
+  'top-right',
+  'bottom-left',
+  'bottom-right'
+]
+
+export function isOverlayCorner(value: unknown): value is OverlayCorner {
+  return OVERLAY_CORNERS.includes(value as OverlayCorner)
+}
+
 /** Preferencias da integracao com o LoL. */
 export interface LolSettings {
   /** Ler o cliente do LoL e mostrar presenca pra galera. */
@@ -359,7 +373,94 @@ export interface LolSettings {
   postGameCard: boolean
   /** Caminho manual do lockfile, quando a deteccao automatica falha. */
   lockfilePath: string
+  /** Sobreposicao por cima do jogo enquanto a partida roda. */
+  overlay: boolean
+  /** Onde ela fica na tela. */
+  overlayCorner: OverlayCorner
 }
+
+// ============================================
+// SOBREPOSICAO EM PARTIDA (janela por cima do jogo)
+// ============================================
+
+/**
+ * A janela da sobreposicao NAO fala com o servidor: ela e uma tela burra.
+ * Quem tem token, socket e apostas e a janela principal — ela empurra este
+ * retrato por IPC (`overlay:push`) e recebe de volta as acoes de quem clicou
+ * (`overlay:action`). Assim nao existe segundo login, segundo socket nem
+ * segundo poll de /wagers/live.
+ */
+
+/**
+ * Uma PARTIDA em que da pra apostar, ja resolvida em nome e numeros.
+ *
+ * E partida, nao pessoa: quando varios do grupo caem no mesmo jogo o servidor
+ * junta as sessoes num `matchId` so, e uma aposta cobre todo mundo. A ponte
+ * manda uma linha por partida — sem isso um 5-stack viraria cinco linhas
+ * identicas no painel.
+ */
+export interface OverlayBetTarget {
+  /** Chave da partida. E o que a ponte usa pra nao repetir linha. */
+  matchId: string
+  /** Sessao pra onde a aposta vai; ela cobre a partida inteira. */
+  sessionId: string
+  /** Quem encabeca a linha. */
+  displayName: string
+  /** Os OUTROS do grupo na mesma partida, so os nomes. */
+  squad: string[]
+  game: ActivityGame
+  champion?: string
+  queue?: string
+  pool: { win: number; loss: number }
+  myWager: { prediction: 'win' | 'loss'; amount: number } | null
+  /** Epoch ms do fim da janela de aposta (5 min do inicio da partida). */
+  closesAt: number
+  /** Teto pessoal de quem esta apostando — sobe de 50 a 500 conforme aposta. */
+  maxAmount: number
+}
+
+/**
+ * Como a galera esta apostando NA MINHA partida. So leitura: apostar em
+ * qualquer sessao da propria partida da 403 no servidor.
+ */
+export interface OverlayMyGame {
+  champion?: string
+  queue?: string
+  /** Epoch ms do comeco, pro cronometro. */
+  since: number
+  pool: { win: number; loss: number }
+  /** Quantas pessoas apostaram. */
+  bettors: number
+  /** O servidor ainda nao registrou a partida (sem sessao, sem pool). */
+  pending: boolean
+  /** Epoch ms em que as apostas em mim fecham; 0 quando ainda nao da pra saber. */
+  closesAt: number
+}
+
+/** Aviso curto depois de uma aposta feita pela sobreposicao. */
+export interface OverlayNotice {
+  kind: 'ok' | 'error'
+  text: string
+  /** Epoch ms — a tela usa pra sumir sozinha e pra nao repetir aviso velho. */
+  at: number
+}
+
+export interface OverlayState {
+  /** Da pra apostar: tem login e o servidor respondeu. */
+  ready: boolean
+  /** Meu saldo de murchos. */
+  coins: number
+  myGame: OverlayMyGame | null
+  targets: OverlayBetTarget[]
+  notice: OverlayNotice | null
+  /** Aposta minima do sistema. O TETO e por partida (`maxAmount`), nao global. */
+  wagerMin: number
+}
+
+export type OverlayAction =
+  | { type: 'bet'; sessionId: string; prediction: 'win' | 'loss'; amount: number }
+  /** Trazer a janela principal pra frente. */
+  | { type: 'open-app' }
 
 /**
  * Temas. Cada um e uma folha de tokens em src/styles/globals.css, aplicada
@@ -585,7 +686,12 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     shareLiveScore: true,
     autoJoinVoice: 'ask',
     postGameCard: true,
-    lockfilePath: ''
+    lockfilePath: '',
+    // Ligada por padrao pelo mesmo motivo da presenca: o launcher fica na
+    // bandeja e a graca e ele aparecer sozinho na hora certa. Quem acha
+    // poluicao desliga numa chave.
+    overlay: true,
+    overlayCorner: 'top-right'
   },
 
   voice: {
@@ -741,6 +847,35 @@ export interface BocasAPI {
     onGameEnded: (cb: (result: LolGameResult) => void) => () => void
     /** Forca uma releitura agora (botao "testar" nas configuracoes). */
     refresh: () => Promise<LolStatus>
+  }
+  /**
+   * Sobreposicao em partida. Os dois lados usam o MESMO objeto: a janela
+   * principal chama `push`/`onAction`, a janela da sobreposicao chama
+   * `onState`/`send`/`setInteractive`.
+   */
+  overlay: {
+    // --- lado da janela principal ---
+    /** Manda o retrato atual pra sobreposicao (e guarda como ultimo estado). */
+    push: (state: OverlayState) => Promise<void>
+    /** Clique de quem esta na sobreposicao. */
+    onAction: (cb: (action: OverlayAction) => void) => () => void
+    /** A sobreposicao abriu e quer dados frescos. */
+    onStateRequested: (cb: () => void) => () => void
+
+    // --- lado da sobreposicao ---
+    /** Ultimo retrato empurrado (undefined antes do primeiro). */
+    state: () => Promise<OverlayState | null>
+    onState: (cb: (state: OverlayState) => void) => () => void
+    send: (action: OverlayAction) => Promise<void>
+    requestState: () => Promise<void>
+    /**
+     * Ligar/desligar o clique. Desligado (padrao) o mouse ATRAVESSA a janela
+     * e vai pro jogo; ligado, a sobreposicao recebe o clique. A tela liga
+     * quando o ponteiro entra no painel e desliga quando sai.
+     */
+    setInteractive: (interactive: boolean) => Promise<void>
+    /** Fecha a sobreposicao ate a proxima partida. */
+    dismiss: () => Promise<void>
   }
   app: {
     /** Aplica iniciar-com-o-Windows AGORA (a preferencia ja foi salva). */

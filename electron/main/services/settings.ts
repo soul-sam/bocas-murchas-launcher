@@ -11,7 +11,7 @@ import {
   type MusicSettings,
   type ScreenShareSettings,
   type VoiceSettings,
-  type VoiceMode, isScreenShareQuality, isScreenShareContent, isThemeId } from '../../preload/types.js'
+  type VoiceMode, isOverlayCorner, isScreenShareQuality, isScreenShareContent, isThemeId } from '../../preload/types.js'
 
 export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, MusicSettings, ScreenShareSettings, VoiceSettings, VoiceMode }
 
@@ -138,7 +138,9 @@ function normalizeLol(raw: Partial<LolSettings> | undefined): LolSettings {
         ? l.autoJoinVoice
         : d.autoJoinVoice,
     postGameCard: l.postGameCard ?? d.postGameCard,
-    lockfilePath: typeof l.lockfilePath === 'string' ? l.lockfilePath.trim() : d.lockfilePath
+    lockfilePath: typeof l.lockfilePath === 'string' ? l.lockfilePath.trim() : d.lockfilePath,
+    overlay: l.overlay ?? d.overlay,
+    overlayCorner: isOverlayCorner(l.overlayCorner) ? l.overlayCorner : d.overlayCorner
   }
 }
 

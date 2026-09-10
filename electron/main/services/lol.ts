@@ -20,6 +20,7 @@ import {
   queueName
 } from './lol-client.js'
 import { eogToResult, isUsableEogBlock, type EogStatsBlock } from './lol-eog.js'
+import { syncOverlayWithLol } from './lol-overlay.js'
 
 /**
  * LEITURA DO CLIENTE DO LEAGUE OF LEGENDS (LCU).
@@ -210,6 +211,9 @@ function sleep(ms: number): Promise<void> {
 export function publishLolStatus(status: LolStatus): void {
   current = status
   broadcast('lol:status', status)
+  // A sobreposicao segue a FASE, nao o renderer: ela precisa aparecer mesmo
+  // com o launcher guardado na bandeja, que e onde ele passa a partida.
+  syncOverlayWithLol(status)
 }
 
 export function publishLolGameEnded(result: LolGameResult): void {

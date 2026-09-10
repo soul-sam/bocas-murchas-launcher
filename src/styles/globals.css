@@ -189,6 +189,21 @@
     overflow: hidden;
   }
 
+  /* A JANELA DA SOBREPOSICAO (overlay.html).
+     Ela e transparente de verdade: o que nao for pintado por um componente
+     mostra o JOGO por baixo. Um fundo no <body> — ate a vinheta radial de
+     3% — viraria um retangulo cinza cobrindo a tela inteira em partida.
+     `pointer-events: none` no corpo e o par do `setIgnoreMouseEvents` do
+     processo main: o painel devolve o clique pra si com `pointer-events:auto`
+     (utilitario .overlay-hit), o resto da janela nunca segura o mouse. */
+  body.overlay-root {
+    background-color: transparent;
+    background-image: none;
+    pointer-events: none;
+    user-select: none;
+    cursor: default;
+  }
+
   /* user-select global impedia copiar mensagem sem passar por menu. Agora o
      bloqueio vale so pro cromo (barra de titulo, rails, botoes) — conteudo e
      selecionavel por padrao. */
@@ -253,6 +268,18 @@
 }
 
 @layer components {
+  /* ------------------------------------------------------------------
+     SOBREPOSICAO EM PARTIDA
+     ------------------------------------------------------------------
+     O `body.overlay-root` desliga o mouse na janela inteira (ver @layer base);
+     esta classe devolve pros pedacos que sao painel de verdade. O seletor de
+     atributo e o mesmo gancho que o renderer usa pra decidir quando pedir
+     `setInteractive(true)` ao processo main — um marcador so, em vez de um
+     por classe e outro por atributo saindo de sincronia. */
+  [data-overlay-hit] {
+    pointer-events: auto;
+  }
+
   /* ------------------------------------------------------------------
      SUPERFICIES
      ------------------------------------------------------------------

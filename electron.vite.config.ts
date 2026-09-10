@@ -29,7 +29,13 @@ export default defineConfig({
     build: {
       outDir: resolve(__dirname, 'out/renderer'),
       rollupOptions: {
-        input: resolve(__dirname, 'src/index.html')
+        // Duas paginas: o app e a sobreposicao que aparece por cima do jogo.
+        // Sao janelas diferentes (a segunda e transparente e sem foco), entao
+        // precisam de HTML e arvore React proprios — nao e uma rota.
+        input: {
+          index: resolve(__dirname, 'src/index.html'),
+          overlay: resolve(__dirname, 'src/overlay.html')
+        }
       }
     },
     resolve: {

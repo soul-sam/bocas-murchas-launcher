@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      CSP bem mais curta que a do app de propósito: esta janela não fala com a
+      API, não abre socket, não toca áudio e não embute vídeo. Tudo o que ela
+      mostra chega por IPC da janela principal (ver electron/main/services/
+      lol-overlay.ts), então nada aqui precisa de connect-src.
+
+      As fontes ficam porque o painel usa a mesma tipografia do app — sem elas
+      a sobreposição apareceria numa fonte de sistema, destoando do resto.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'none'; img-src 'self' data:;"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Bocas Murchas — sobreposição</title>
+  </head>
+  <!--
+    A janela é transparente: qualquer fundo pintado aqui viraria um retângulo
+    opaco por cima do jogo. O `overlay-root` desliga o fundo que o globals.css
+    põe no <body> — ver src/styles/globals.css.
+  -->
+  <body class="overlay-root">
+    <div id="root"></div>
+    <script type="module" src="./overlay.tsx"></script>
+  </body>
+</html>

@@ -53,6 +53,7 @@ import { WrappedModal } from '@/components/social/WrappedModal'
 import { ShopModal } from '@/components/social/ShopModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
+import { LolOverlayBridge } from '@/lib/lol-overlay-bridge'
 import { MusicHost } from '@/components/social/MusicHost'
 import { MusicPanel } from '@/components/social/MusicPanel'
 import { ProfileModal } from '@/components/social/ProfileModal'
@@ -172,6 +173,10 @@ function GlobalOverlays() {
       {/* Banners: drops de admin e "tem gente do grupo no seu lobby". */}
       <DropHost />
       <PartyCallPrompt />
+      {/* A sobreposição em partida NÃO é desenhada aqui: ela é outra janela.
+          Isto é só a ponte que alimenta aquela janela com as apostas ao vivo
+          e executa os cliques que voltam de lá — ver lib/lol-overlay-bridge. */}
+      <LolOverlayBridge />
       {/* A jukebox. Mora AQUI, e não no palco da call, porque a música tem que
           continuar quando a pessoa vai pra tela de jogar — que é quando ela
           serve pra alguma coisa. Ver components/social/MusicHost.tsx. */}
