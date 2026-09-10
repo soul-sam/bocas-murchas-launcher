@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.6.0',
+    headline: 'A conta do servidor, na mesa',
+    items: [
+      'Tudo isso aqui — chat, calls, tela compartilhada, o servidor de Minecraft, os clipes, as fotos — mora num computador alugado que custa R$ 125 por mês. Isso sempre saiu do bolso de uma pessoa só, e ninguém mais via o número. Agora ele aparece, dividido pelo tanto de gente que realmente usa.',
+      'Tem um Pix na tela e um botão "já paguei". É na palavra: marcar só tira o aviso da sua tela até virar o mês. Ninguém é bloqueado, ninguém fica devendo, ninguém é obrigado a nada.',
+      'Quem ajuda leva a conquista Paga o Boleto 🧾 no perfil — e Sustenta o Rolê 🏛️ depois de ajudar em três meses. A tela mostra quem já botou a parte dele no mês.',
+      'O ícone de servidor na barra da esquerda abre isso a qualquer hora, com um pontinho laranja enquanto você não marcou o mês.'
+    ],
+    note: 'A divisão é só por quem apareceu nos últimos 30 dias: conta parada não entra e não empurra a parte de ninguém pra cima. O valor arredonda pra cima nos centavos, senão a soma nunca fecha a conta.'
+  },
+  {
     version: '1.5.0',
     headline: 'Aposta sem sair da partida',
     items: [

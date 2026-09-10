@@ -22,6 +22,7 @@ import { PartyProvider } from '@/lib/party-context'
 import { SmokeProvider } from '@/lib/smoke-context'
 import { ClipProvider } from '@/lib/clip-context'
 import { GamificationProvider } from '@/lib/gamification-context'
+import { CostsProvider } from '@/lib/costs-context'
 import { WatchProvider } from '@/lib/watch-context'
 import { EmojiProvider } from '@/lib/emoji-context'
 import { PrintProvider } from '@/lib/print-context'
@@ -58,6 +59,8 @@ import { MusicHost } from '@/components/social/MusicHost'
 import { MusicPanel } from '@/components/social/MusicPanel'
 import { ProfileModal } from '@/components/social/ProfileModal'
 import { AdminModal } from '@/components/AdminModal'
+import { CostsModal } from '@/components/CostsModal'
+import { CostShareBanner } from '@/components/social/CostShareBanner'
 import { WhatsNewModal } from '@/components/WhatsNewModal'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -173,6 +176,10 @@ function GlobalOverlays() {
       {/* Banners: drops de admin e "tem gente do grupo no seu lobby". */}
       <DropHost />
       <PartyCallPrompt />
+      {/* Quanto custa manter isto de pé, e quanto cabe a cada um. A faixa
+          some sozinha pra quem já marcou "paguei" no mês. */}
+      <CostShareBanner />
+      <CostsModal />
       {/* A sobreposição em partida NÃO é desenhada aqui: ela é outra janela.
           Isto é só a ponte que alimenta aquela janela com as apostas ao vivo
           e executa os cliques que voltam de lá — ver lib/lol-overlay-bridge. */}
@@ -262,6 +269,11 @@ function AuthedLayout() {
                             desenha. Os outros só precisam de socket/overlays. */}
                         <EmojiProvider>
                           <GamificationProvider>
+                            {/* A conta da hospedagem. Só precisa de token, mas
+                                fica aqui em cima porque a barra da esquerda
+                                (AppRail) mostra o pontinho de "ainda não
+                                paguei" — e ela vive dentro do AuthedShell. */}
+                            <CostsProvider>
                             <PartyProvider>
                               <SmokeProvider>
                               <WatchProvider>
@@ -278,6 +290,7 @@ function AuthedLayout() {
                               </WatchProvider>
                               </SmokeProvider>
                             </PartyProvider>
+                            </CostsProvider>
                           </GamificationProvider>
                         </EmojiProvider>
                       </LayoutProvider>

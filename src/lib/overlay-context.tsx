@@ -143,6 +143,18 @@ interface OverlayContextValue {
   whatsNewOpen: boolean
   openWhatsNew: () => void
   closeWhatsNew: () => void
+
+  /**
+   * A conta da hospedagem: quanto custa, quanto cabe a cada um e o Pix.
+   *
+   * Camada global porque é aberta de dois lugares que vivem em telas
+   * diferentes — a faixa do topo e o botão da barra lateral — e porque a
+   * faixa SOME assim que a pessoa marca "paguei" lá dentro: uma modal
+   * ancorada nela morreria junto com quem a abriu.
+   */
+  costsOpen: boolean
+  openCosts: () => void
+  closeCosts: () => void
 }
 
 const OverlayContext = React.createContext<OverlayContextValue | null>(null)
@@ -169,6 +181,7 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [musicPanelSeed, setMusicPanelSeed] = React.useState<string | null>(null)
   const [adminOpen, setAdminOpen] = React.useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = React.useState(false)
+  const [costsOpen, setCostsOpen] = React.useState(false)
 
   const openUserMenu = React.useCallback((event: React.MouseEvent, userId: string) => {
     event.preventDefault()
@@ -290,7 +303,11 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
 
       whatsNewOpen,
       openWhatsNew: () => setWhatsNewOpen(true),
-      closeWhatsNew: () => setWhatsNewOpen(false)
+      closeWhatsNew: () => setWhatsNewOpen(false),
+
+      costsOpen,
+      openCosts: () => setCostsOpen(true),
+      closeCosts: () => setCostsOpen(false)
     }),
     [
       profileEditorOpen,
@@ -314,7 +331,8 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       musicPanelOpen,
       musicPanelSeed,
       adminOpen,
-      whatsNewOpen
+      whatsNewOpen,
+      costsOpen
     ]
   )
 

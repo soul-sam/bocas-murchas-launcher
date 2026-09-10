@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { MessagesSquare, Gamepad2, LogOut, Keyboard, Trophy, Flame, Printer } from 'lucide-react'
+import { MessagesSquare, Gamepad2, LogOut, Keyboard, Trophy, Flame, Printer, Server } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
@@ -10,6 +10,7 @@ import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { useGamification } from '@/lib/gamification-context'
 import { useCargos } from '@/lib/cargos-context'
+import { useCosts } from '@/lib/costs-context'
 
 /**
  * Barra estreita da esquerda: alterna entre o social e o launcher do Minecraft.
@@ -24,7 +25,8 @@ export function AppRail() {
   const { logout } = useAuth()
   const { unread, mentions, dmChannels, conversations, textChannels, activeChannelId, setActiveChannel } =
     useChat()
-  const { toggleShortcuts, openUserMenu } = useOverlays()
+  const { toggleShortcuts, openUserMenu, openCosts } = useOverlays()
+  const { summary: costs } = useCosts()
   const { view, setView, leaderboardOpen, toggleLeaderboard } = useLayout()
   const { profile } = useGamification()
   const { can } = useCargos()
@@ -186,6 +188,24 @@ export function AppRail() {
           )
         })}
       </div>
+
+      {/* A conta da hospedagem. Fica aqui embaixo, sempre no mesmo lugar,
+          porque a faixa do topo pode ter sido dispensada — e depois de
+          marcar "paguei" ela some de vez no mês, mas a tela precisa
+          continuar alcançável (pra desfazer, ou pra ver quem já ajudou).
+          O ponto laranja é o único aviso que sobra quando a faixa não está. */}
+      <button
+        type="button"
+        title="A conta do servidor"
+        aria-label="A conta do servidor"
+        onClick={openCosts}
+        className="relative rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
+      >
+        <Server className="h-4 w-4" />
+        {costs && !costs.iPaid && (
+          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border border-void bg-burn" />
+        )}
+      </button>
 
       <button
         type="button"
