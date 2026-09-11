@@ -312,13 +312,13 @@ export function BetForm({
     <div className={cn('space-y-2', className)}>
       {self ? (
         <div className="rounded-brutal border border-acid-dark/60 bg-acid/[0.06] px-2 py-1.5">
-          <p className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest">
+          <h3 className="flex items-center justify-between font-mono text-[11px] font-normal uppercase tracking-widest">
             <span className="flex items-center gap-1 text-acid-text">
               <TrendingUp className="h-2.5 w-2.5" />
               sua vitória
             </span>
             <span className="text-burn">{self.odds.multiplier.toFixed(2)}x</span>
-          </p>
+          </h3>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
             {self.odds.sample > 0
               ? `${self.odds.wins}/${self.odds.sample} vitórias recentes — quanto melhor você joga, menos a aposta paga.`

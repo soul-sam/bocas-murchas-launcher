@@ -399,6 +399,13 @@ export const WAGER_RAMP_BETS = 20
 export const WAGER_WINDOW_MS = 5 * 60 * 1000
 
 /**
+ * Quanto a aposta no COLEGA paga (2x, fixo). A aposta em si mesmo não tem
+ * constante porque a odd é pessoal e muda a cada partida: vem do servidor em
+ * `LiveWagerGame.self.odds.multiplier`.
+ */
+export const WAGER_PAYOUT_MULTIPLIER = 2
+
+/**
  * Por que ganhou XP, em português de gente. O servidor manda a chave técnica;
  * o toast mostra isto. Chave desconhecida cai no próprio texto da chave.
  */

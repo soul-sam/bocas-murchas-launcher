@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { ApiError } from './api'
 import {
+  WAGER_PAYOUT_MULTIPLIER,
   gamification as api,
   cosmeticEmoji as glyphOf,
   cosmeticFallbackName,
@@ -407,16 +408,27 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       setLiveGames((prev) => {
         const target = prev.find((g) => g.session.id === sessionId)
         const matchId = target?.matchId ?? sessionId
+        // Apostei em MIM? Só o board da minha própria sessão traz `self`, e é
+        // ele que carrega a odd. Vale igual pros outros boards da mesma
+        // partida: a aposta é uma só e foi registrada nesta sessão.
+        const self = Boolean(target?.self)
+        const potential = target?.self
+          ? Math.round(amount * target.self.odds.multiplier)
+          : amount * WAGER_PAYOUT_MULTIPLIER
+
         return prev.map((game) => {
           if (game.matchId !== matchId && game.session.id !== sessionId) return game
           const bets = me
-            ? [...game.bets.filter((b) => b.userId !== me), { userId: me, prediction, amount }]
+            ? [
+                ...game.bets.filter((b) => b.userId !== me),
+                { userId: me, prediction, amount, potential, self }
+              ]
             : game.bets
           return {
             ...game,
             bets,
             pool: { ...game.pool, [prediction]: game.pool[prediction] + amount },
-            myWager: { prediction, amount }
+            myWager: { prediction, amount, potential, self }
           }
         })
       })

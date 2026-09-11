@@ -494,10 +494,10 @@ function SelfBet({
 
   return (
     <div className="mt-2 border-t border-line pt-2" data-overlay-hit>
-      <p className="mb-1.5 flex items-center justify-between font-mono text-[11px] uppercase tracking-widest">
+      <h3 className="mb-1.5 flex items-center justify-between font-mono text-[11px] font-normal uppercase tracking-widest">
         <span className="text-acid-text">apostar em mim</span>
         <span className="text-burn">{self.multiplier.toFixed(2)}x</span>
-      </p>
+      </h3>
 
       {!podeMais ? (
         <p className="text-[11.5px] text-destructive">
