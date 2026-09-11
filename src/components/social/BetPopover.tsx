@@ -8,10 +8,10 @@ import {
   WAGER_MIN,
   formatCompact,
   type MatchPlayer,
+  type SelfWagerBoard,
   type WagerPool,
   type WagerPrediction
 } from '@/lib/api-gamification'
-import { useAuth } from '@/lib/auth-context'
 import { useGamification } from '@/lib/gamification-context'
 import { queueLabel } from '@/lib/activity-context'
 import { cn } from '@/lib/utils'
@@ -34,6 +34,13 @@ import { cn } from '@/lib/utils'
  * conforme a pessoa aposta). Quando várias pessoas do grupo estão na MESMA
  * partida, o board já traz a aposta do grupo em `myWager` — uma aposta só
  * vale por todos, e o formulário nem aparece pros outros.
+ *
+ * NA PRÓPRIA PARTIDA o formulário muda de forma, porque as regras são outras
+ * (ver SELF_WAGER no servidor): não há escolha de lado — é sempre vitória —,
+ * a janela é de 3 min e não 5, e o retorno não é 2x fixo, é a odd da própria
+ * winrate, que vem pronta em `game.self.odds`. O board de quem está na minha
+ * partida mas não é minha sessão vem com `mine` e sem `self`: ali a aposta
+ * não cabe, e o texto manda a pessoa apostar na própria.
  */
 export function BetPopover({
   userId,
@@ -53,7 +60,6 @@ export function BetPopover({
   /** O gatilho — um <button>. */
   children: React.ReactElement
 }) {
-  const { user } = useAuth()
   const { liveGames, refreshLiveGames, profile } = useGamification()
   const [open, setOpen] = React.useState(false)
 
@@ -77,7 +83,6 @@ export function BetPopover({
     } as Record<string, unknown>)
   }
 
-  const isMine = game.session.userId === user?.id
   const name = targetName ?? game.session.user?.displayName ?? 'essa pessoa'
   const GameIcon = game.session.game === 'minecraft' ? Pickaxe : Swords
   const detail = [game.session.champion, queueLabel(game.session.queue ?? undefined)]
@@ -107,19 +112,40 @@ export function BetPopover({
 
         <PoolBars pool={game.pool} className="mb-3" />
 
-        {isMine ? (
-          <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
-            Não dá pra apostar no próprio jogo. Vai lá ganhar.
-          </p>
-        ) : game.myWager ? (
+        {game.myWager ? (
           <p className="rounded-brutal border border-burn/40 bg-burn/[0.06] px-2 py-1.5 text-xs text-foreground">
             Você já apostou{' '}
             <span className="font-mono text-burn">{game.myWager.amount}</span> murchos em{' '}
             <span className={game.myWager.prediction === 'win' ? 'text-acid' : 'text-destructive'}>
-              {game.myWager.prediction === 'win' ? 'vitória' : 'derrota'}
+              {game.myWager.self
+                ? 'você mesmo'
+                : game.myWager.prediction === 'win'
+                  ? 'vitória'
+                  : 'derrota'}
             </span>
             {others.length > 0 ? ' nessa partida — vale pro grupo todo.' : '.'}
           </p>
+        ) : game.mine && !game.self ? (
+          <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
+            Vocês estão na mesma partida. Aposte na SUA vitória — é uma aposta
+            só e ela cobre o jogo inteiro.
+          </p>
+        ) : game.self ? (
+          game.self.open ? (
+            <BetForm
+              sessionId={game.session.id}
+              coins={profile?.coins ?? 0}
+              max={game.self.maxAmount}
+              closesAt={game.self.closesAt}
+              self={game.self}
+              onPlaced={() => setOpen(false)}
+            />
+          ) : (
+            <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
+              Aposta em si mesmo fechada. Ela vale só nos 3 primeiros minutos —
+              depois disso você já sabe demais.
+            </p>
+          )
         ) : !game.open ? (
           <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
             Aposta fechada. Só dá nos 5 primeiros minutos da partida.
@@ -226,6 +252,7 @@ export function BetForm({
   coins,
   max = WAGER_MAX,
   closesAt,
+  self,
   onPlaced,
   className
 }: {
@@ -233,14 +260,21 @@ export function BetForm({
   coins: number
   /** Teto pessoal desta aposta. */
   max?: number
-  /** ISO do fim da janela de 5 min, pro contador. */
+  /** ISO do fim da janela, pro contador. */
   closesAt?: string
+  /**
+   * Presente = é a MINHA partida. Some o seletor de lado (só vitória) e o
+   * retorno passa a sair da odd em vez do 2x.
+   */
+  self?: SelfWagerBoard
   onPlaced?: () => void
   className?: string
 }) {
   const { placeWager } = useGamification()
   const limit = Math.min(WAGER_MAX, Math.max(WAGER_MIN, Math.floor(max)))
   const presets = React.useMemo(() => PRESETS.filter((p) => p <= limit), [limit])
+  // Em si mesmo não existe lado: apostar na própria derrota é dinheiro de
+  // graça, e o servidor recusa. O estado fica travado em 'win'.
   const [prediction, setPrediction] = React.useState<WagerPrediction>('win')
   const [amount, setAmount] = React.useState<number>(presets[0] ?? WAGER_MIN)
   const [custom, setCustom] = React.useState('')
@@ -272,26 +306,45 @@ export function BetForm({
     }
   }
 
+  const payout = self ? Math.round(value * self.odds.multiplier) : value * 2
+
   return (
     <div className={cn('space-y-2', className)}>
-      <div className="grid grid-cols-2 gap-1">
-        <SideButton
-          active={prediction === 'win'}
-          tone="acid"
-          onClick={() => setPrediction('win')}
-          icon={<TrendingUp className="h-3 w-3" />}
-        >
-          vitória
-        </SideButton>
-        <SideButton
-          active={prediction === 'loss'}
-          tone="destructive"
-          onClick={() => setPrediction('loss')}
-          icon={<TrendingDown className="h-3 w-3" />}
-        >
-          derrota
-        </SideButton>
-      </div>
+      {self ? (
+        <div className="rounded-brutal border border-acid-dark/60 bg-acid/[0.06] px-2 py-1.5">
+          <p className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest">
+            <span className="flex items-center gap-1 text-acid-text">
+              <TrendingUp className="h-2.5 w-2.5" />
+              sua vitória
+            </span>
+            <span className="text-burn">{self.odds.multiplier.toFixed(2)}x</span>
+          </p>
+          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            {self.odds.sample > 0
+              ? `${self.odds.wins}/${self.odds.sample} vitórias recentes — quanto melhor você joga, menos a aposta paga.`
+              : 'Sem histórico ainda: paga o dobro, com teto menor.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-1">
+          <SideButton
+            active={prediction === 'win'}
+            tone="acid"
+            onClick={() => setPrediction('win')}
+            icon={<TrendingUp className="h-3 w-3" />}
+          >
+            vitória
+          </SideButton>
+          <SideButton
+            active={prediction === 'loss'}
+            tone="destructive"
+            onClick={() => setPrediction('loss')}
+            icon={<TrendingDown className="h-3 w-3" />}
+          >
+            derrota
+          </SideButton>
+        </div>
+      )}
 
       <div className="flex items-center gap-1">
         {presets.map((preset) => (
@@ -337,6 +390,13 @@ export function BetForm({
         </span>
       </div>
 
+      {valid && (
+        <p className="text-center font-mono text-[11px] text-muted-foreground">
+          se ganhar volta <span className="text-acid-text">{payout}</span>
+          {self && <span className="text-muted-foreground"> · perde tudo se não ganhar</span>}
+        </p>
+      )}
+
       {closesAt && (
         <p className="text-center text-[11px] text-muted-foreground">
           {left ? (
@@ -373,7 +433,8 @@ export function BetForm({
         )}
       >
         {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Coins className="h-3 w-3" />}
-        apostar {valid ? value : '—'} em {prediction === 'win' ? 'vitória' : 'derrota'}
+        apostar {valid ? value : '—'} em{' '}
+        {self ? 'mim' : prediction === 'win' ? 'vitória' : 'derrota'}
       </button>
     </div>
   )

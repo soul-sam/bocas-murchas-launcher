@@ -53,7 +53,7 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center p-8">
+    <div className="flex flex-1 items-center justify-center overflow-y-auto p-8">
       <div className="card-acid w-full max-w-md rounded-brutal p-8 scanlines-brand">
         <div className="mb-6 flex flex-col items-center gap-2">
           <KeyRound className="h-10 w-10 text-burn drop-shadow-[0_0_15px_rgba(242,183,5,0.6)]" />

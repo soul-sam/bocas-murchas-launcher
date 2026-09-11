@@ -190,6 +190,21 @@ export interface EarnRules {
     /** Janela pra apostar, do início da partida. */
     betWindowMs: number
     payoutMultiplier: number
+    /**
+     * Aposta na PRÓPRIA partida. A odd não vem aqui: ela é por jogo e muda a
+     * cada partida, então chega em `LiveWagerGame.self.odds`.
+     */
+    self: {
+      /** Janela mais curta que a dos outros — quem joga lê o placar na hora. */
+      betWindowMs: number
+      /** Partidas mínimas pra odd sair da winrate em vez do fixo. */
+      minSample: number
+      sampleSize: number
+      rookieMultiplier: number
+      rookieMax: number
+      minMultiplier: number
+      maxMultiplier: number
+    }
   }
 }
 
@@ -204,6 +219,27 @@ export interface WagerBet {
   userId: string
   prediction: WagerPrediction
   amount: number
+  /** Quanto volta se ganhar — odd travada quando a aposta entrou. */
+  potential: number
+  /** Apostou na PRÓPRIA partida (só existe em `win`). */
+  self: boolean
+}
+
+/** Odd de apostar em si mesmo: `1 ÷ winrate`, presa entre 1,3x e 3x. */
+export interface SelfWagerOdds {
+  multiplier: number
+  /** Partidas na conta. Abaixo de `minSample` a odd é a de estreante. */
+  sample: number
+  wins: number
+}
+
+/** O lado "apostar em mim" de uma partida minha. */
+export interface SelfWagerBoard {
+  odds: SelfWagerOdds
+  /** Janela de 3 min ainda aberta? */
+  open: boolean
+  closesAt: string
+  maxAmount: number
 }
 
 export interface LiveWagerGame {
@@ -217,7 +253,20 @@ export interface LiveWagerGame {
   }
   pool: WagerPool
   bets: WagerBet[]
-  myWager: { prediction: WagerPrediction; amount: number } | null
+  myWager: {
+    prediction: WagerPrediction
+    amount: number
+    potential: number
+    self: boolean
+  } | null
+  /** Estou DENTRO dessa partida (eu ou alguém do meu grupo). */
+  mine: boolean
+  /**
+   * Aposta em mim. Só vem preenchido no board da MINHA sessão — nem no dos
+   * colegas da mesma partida, porque a aposta em si é registrada na sessão de
+   * quem aposta.
+   */
+  self: SelfWagerBoard | null
   /** Sessão que representa a partida (a primeira do grupo). */
   matchId: string
   /** Todo mundo do grupo na MESMA partida — uma aposta cobre todos. */

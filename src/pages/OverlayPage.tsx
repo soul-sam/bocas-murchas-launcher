@@ -63,6 +63,12 @@ const OFFLINE_AFTER_MS = 5_000
  * conforme a pessoa aposta) são retirados em vez de aparecerem pra dar erro.
  */
 const PRESETS = [10, 50, 100] as const
+/**
+ * Passos do seletor da aposta EM MIM. Sem teclado (ver o cabecalho), entao o
+ * valor livre vem de clique: os dois passos cobrem 10..500 sem virar maratona
+ * de cliques — 500 e quatro toques no +100 mais um no +10 a partir do minimo.
+ */
+const SELF_STEPS = [10, 100] as const
 
 /**
  * "Agora", de segundo em segundo, pro cronômetro da partida e pra contagem
@@ -342,7 +348,14 @@ function Panel({
           <Hint>Entre no launcher pra ver e fazer apostas.</Hint>
         ) : (
           <>
-            {state.myGame && <MyGameBlock game={state.myGame} now={now} />}
+            {state.myGame && (
+              <MyGameBlock
+                game={state.myGame}
+                coins={state.coins}
+                wagerMin={state.wagerMin}
+                now={now}
+              />
+            )}
             <TargetList state={state} now={now} />
           </>
         )}
@@ -369,7 +382,17 @@ function Panel({
 }
 
 /** Como a galera está apostando em MIM. Só leitura: ninguém aposta em si. */
-function MyGameBlock({ game, now }: { game: OverlayMyGame; now: number }) {
+function MyGameBlock({
+  game,
+  coins,
+  wagerMin,
+  now
+}: {
+  game: OverlayMyGame
+  coins: number
+  wagerMin: number
+  now: number
+}) {
   const elapsed = Math.max(0, Math.round((now - game.since) / 1000))
   const detail = [game.champion, game.queue].filter(Boolean).join(' · ')
   const left = countdown(game.closesAt, now)
@@ -400,9 +423,150 @@ function MyGameBlock({ game, now }: { game: OverlayMyGame; now: number }) {
                 : 'ninguém apostou em você'
               : `${game.bettors} ${game.bettors === 1 ? 'pessoa apostou' : 'pessoas apostaram'} em você`}
           </p>
+          <SelfBet game={game} coins={coins} wagerMin={wagerMin} now={now} />
         </>
       )}
     </section>
+  )
+}
+
+/**
+ * APOSTAR EM MIM — o "aposto que eu ganho", direto de dentro do jogo.
+ *
+ * So aparece nos 3 primeiros minutos (janela mais curta que a dos outros:
+ * quem esta jogando le o placar na hora). Nao ha escolha de lado — apostar na
+ * propria derrota seria pago pra intar, e o servidor recusa — e o retorno vem
+ * da odd da propria winrate, ja calculada la.
+ *
+ * O valor e por CLIQUE, nao por campo: esta janela e `focusable: false` e
+ * nunca recebe tecla. Os passos de 10 e 100 cobrem o intervalo inteiro.
+ */
+function SelfBet({
+  game,
+  coins,
+  wagerMin,
+  now
+}: {
+  game: OverlayMyGame
+  coins: number
+  wagerMin: number
+  now: number
+}) {
+  const self = game.self
+  const teto = Math.min(self?.maxAmount ?? 0, coins)
+  const [amount, setAmount] = React.useState(wagerMin)
+  const [sending, setSending] = React.useState(false)
+
+  // O teto so chega junto com o primeiro retrato do servidor; quando ele
+  // encolhe (saldo caiu), o valor escolhido nao pode ficar acima dele.
+  React.useEffect(() => {
+    setAmount((v) => Math.max(wagerMin, Math.min(v, Math.max(wagerMin, teto))))
+  }, [teto, wagerMin])
+
+  if (game.myWager) {
+    return (
+      <p className="mt-2 rounded-brutal border border-acid-dark/60 bg-acid/[0.06] px-2 py-1.5 text-center text-[11.5px] text-foreground">
+        você apostou <span className="font-mono text-acid">{game.myWager.amount}</span> em
+        você — volta <span className="font-mono text-acid">{game.myWager.potential}</span> se
+        ganhar
+      </p>
+    )
+  }
+
+  if (!self) return null
+  const left = countdown(self.closesAt, now)
+  if (!left) return null
+
+  const podeMais = teto >= wagerMin
+  const passo = (delta: number): void =>
+    setAmount((v) => Math.max(wagerMin, Math.min(teto, v + delta)))
+
+  const apostar = (): void => {
+    if (sending || !podeMais) return
+    setSending(true)
+    void window.bocas.overlay.send({
+      type: 'bet',
+      sessionId: self.sessionId,
+      prediction: 'win',
+      amount
+    })
+  }
+
+  return (
+    <div className="mt-2 border-t border-line pt-2" data-overlay-hit>
+      <p className="mb-1.5 flex items-center justify-between font-mono text-[11px] uppercase tracking-widest">
+        <span className="text-acid-text">apostar em mim</span>
+        <span className="text-burn">{self.multiplier.toFixed(2)}x</span>
+      </p>
+
+      {!podeMais ? (
+        <p className="text-[11.5px] text-destructive">
+          Você não tem murchos pra apostar em você.
+        </p>
+      ) : (
+        <>
+          <div className="flex items-center gap-1">
+            {[...SELF_STEPS].reverse().map((s) => (
+              <StepButton key={`-${s}`} onClick={() => passo(-s)} disabled={amount <= wagerMin}>
+                −{s}
+              </StepButton>
+            ))}
+            <span className="flex-1 text-center font-mono text-sm text-foreground">{amount}</span>
+            {SELF_STEPS.map((s) => (
+              <StepButton key={`+${s}`} onClick={() => passo(s)} disabled={amount >= teto}>
+                +{s}
+              </StepButton>
+            ))}
+          </div>
+
+          <p className="mt-1 text-center font-mono text-[11px] text-muted-foreground">
+            se ganhar volta{' '}
+            <span className="text-acid-text">{Math.round(amount * self.multiplier)}</span> · fecha
+            em {left}
+          </p>
+
+          <button
+            type="button"
+            disabled={sending}
+            onClick={apostar}
+            className={cn(
+              'mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-brutal border px-2 py-1',
+              'border-acid-dark font-mono text-xs uppercase tracking-widest text-acid transition-colors',
+              'hover:bg-acid/20 disabled:cursor-not-allowed disabled:opacity-40'
+            )}
+          >
+            {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Dices className="h-3 w-3" />}
+            apostar {amount}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** Passo do seletor de valor. Quadradinho: a janela tem 360px. */
+function StepButton({
+  onClick,
+  disabled,
+  children
+}: {
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'rounded-brutal border border-line px-1.5 py-1 font-mono text-[11px] text-muted-foreground',
+        'transition-colors hover:border-acid-dark hover:text-acid',
+        'disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-line disabled:hover:text-muted-foreground'
+      )}
+    >
+      {children}
+    </button>
   )
 }
 

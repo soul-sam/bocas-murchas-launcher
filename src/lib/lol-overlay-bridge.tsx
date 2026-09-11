@@ -136,7 +136,22 @@ export function LolOverlayBridge(): null {
       // activity-context); até a resposta voltar não há pool nenhuma, e dizer
       // isso é melhor que mostrar 0 × 0 como se ninguém tivesse apostado.
       pending: !myBoard,
-      closesAt: myBoard ? Date.parse(myBoard.closesAt) : 0
+      closesAt: myBoard ? Date.parse(myBoard.closesAt) : 0,
+      // O board de quem está na MINHA partida mas não é a minha sessão vem
+      // sem `self` — a aposta em mim é registrada na minha sessão, não na do
+      // colega. Por isso o `self` sai daqui e não do `myBoard` genérico.
+      self: myBoard?.self
+        ? {
+            sessionId: myBoard.session.id,
+            multiplier: myBoard.self.odds.multiplier,
+            closesAt: Date.parse(myBoard.self.closesAt),
+            maxAmount: myBoard.self.maxAmount
+          }
+        : undefined,
+      myWager:
+        myBoard?.myWager && myBoard.myWager.self
+          ? { amount: myBoard.myWager.amount, potential: myBoard.myWager.potential }
+          : null
     }
   }, [lol, myBoard])
 
@@ -193,14 +208,18 @@ export function LolOverlayBridge(): null {
 
       const target = liveGames.find((game) => game.session.id === action.sessionId)
       const name = target?.session.user?.displayName ?? 'essa partida'
+      // Aposta em mim: o board da minha sessão é o único com `self`.
+      const self = Boolean(target?.self)
 
       void placeWager(action.sessionId, action.prediction, action.amount)
         .then(() => {
           setNotice({
             kind: 'ok',
-            text: `${action.amount} murchos em ${
-              action.prediction === 'win' ? 'vitória' : 'derrota'
-            } de ${name}.`,
+            text: self
+              ? `${action.amount} murchos em você. Agora ganha.`
+              : `${action.amount} murchos em ${
+                  action.prediction === 'win' ? 'vitória' : 'derrota'
+                } de ${name}.`,
             at: Date.now()
           })
         })

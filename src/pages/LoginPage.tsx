@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Skull, LogIn } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,16 @@ export function LoginPage() {
   const [password, setPassword] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
+  const [version, setVersion] = React.useState<string | null>(null)
+
+  // A versao vinha escrita a mao no JSX e envelheceu 15 releases atras
+  // (dizia 0.1.0 com o package.json em 1.6.0). Vem do main agora.
+  React.useEffect(() => {
+    void window.bocas.app
+      .version()
+      .then(setVersion)
+      .catch(() => setVersion(null))
+  }, [])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -38,13 +48,23 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center p-8">
+    <div className="flex flex-1 items-center justify-center overflow-y-auto p-8">
       <div className="card-acid w-full max-w-md rounded-brutal p-8 scanlines-brand">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <Skull className="h-12 w-12 text-muted-foreground drop-shadow-[0_0_15px_rgb(var(--neon-rgb)/0.3)]" />
-          <h1 className="title-brutal brand-wordmark text-4xl">Bocas Murchas</h1>
+          {/* A logo de login e a UNICA que ja traz o wordmark desenhado —
+              por isso nao ha <h1> aqui. O resto do app usa a versao so-cara
+              (bocas-murchas-transp.png), que some em tamanho pequeno se
+              vier com as letras junto. */}
+          <img
+            src="logo-login.png"
+            alt="Bocas Murchas"
+            width={640}
+            height={640}
+            className="h-40 w-auto select-none"
+            draggable={false}
+          />
           <p className="text-xs text-muted-foreground">
-            Launcher v0.1.0 <span className="terminal-cursor" />
+            Launcher {version ? `v${version}` : '—'} <span className="terminal-cursor" />
           </p>
         </div>
 

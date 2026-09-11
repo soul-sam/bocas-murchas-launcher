@@ -420,8 +420,7 @@ export interface OverlayBetTarget {
 }
 
 /**
- * Como a galera esta apostando NA MINHA partida. So leitura: apostar em
- * qualquer sessao da propria partida da 403 no servidor.
+ * Como a galera esta apostando NA MINHA partida — e onde EU aposto em mim.
  */
 export interface OverlayMyGame {
   champion?: string
@@ -435,6 +434,24 @@ export interface OverlayMyGame {
   pending: boolean
   /** Epoch ms em que as apostas em mim fecham; 0 quando ainda nao da pra saber. */
   closesAt: number
+  /**
+   * Apostar em MIM. Ausente = nao da (ja apostei, passou dos 3 min, ou o
+   * servidor ainda nao registrou a partida).
+   *
+   * Regras que a tela so espelha, decididas no servidor (SELF_WAGER):
+   * so vitoria, janela de 3 min, e o retorno sai da odd da propria winrate.
+   */
+  self?: {
+    /** Sessao pra onde a aposta vai — a minha. */
+    sessionId: string
+    /** Odd travada no momento em que a aposta entrar. */
+    multiplier: number
+    /** Epoch ms do fim da janela de 3 min. */
+    closesAt: number
+    maxAmount: number
+  }
+  /** Ja apostei em mim nesta partida. */
+  myWager?: { amount: number; potential: number } | null
 }
 
 /** Aviso curto depois de uma aposta feita pela sobreposicao. */

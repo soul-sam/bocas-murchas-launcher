@@ -142,8 +142,11 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
                     {who?.displayName ?? 'alguém'}
                   </span>
                   <NameEmoji id={who?.emoji} />
-                  <span className={bet.prediction === 'win' ? 'text-acid' : 'text-destructive'}>
-                    {bet.amount} {bet.prediction === 'win' ? 'W' : 'L'}
+                  <span
+                    className={bet.prediction === 'win' ? 'text-acid' : 'text-destructive'}
+                    title={bet.self ? 'apostou na própria vitória' : undefined}
+                  >
+                    {bet.amount} {bet.self ? 'EM SI' : bet.prediction === 'win' ? 'W' : 'L'}
                   </span>
                   {settled && payout !== undefined && (
                     <span className={cn('font-bold', payout > 0 ? 'text-acid' : 'text-destructive')}>
@@ -211,15 +214,21 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
         <p className="mt-2 rounded-brutal border border-burn/40 bg-burn/[0.06] px-2 py-1 text-xs text-foreground">
           Você apostou <span className="font-mono text-burn">{myBet.amount}</span> em{' '}
           <span className={myBet.prediction === 'win' ? 'text-acid' : 'text-destructive'}>
-            {myBet.prediction === 'win' ? 'vitória' : 'derrota'}
+            {myBet.self ? 'você mesmo' : myBet.prediction === 'win' ? 'vitória' : 'derrota'}
           </span>
+          {myBet.self && (
+            <>
+              {' '}— volta <span className="font-mono text-acid">{myBet.potential}</span> se ganhar
+            </>
+          )}
           .
         </p>
       )}
 
-      {!settled && isMine && (
+      {!settled && isMine && !myBet && (
         <p className="mt-2 text-[11px] text-muted-foreground">
-          é a sua partida — a galera está apostando em você
+          é a sua partida — a galera está apostando em você, e você pode apostar
+          em si nos 3 primeiros minutos
         </p>
       )}
     </CardFrame>
