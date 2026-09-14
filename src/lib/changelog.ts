@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.8.0',
+    headline: 'Mural do LoL, com tudo que dá pra contar',
+    items: [
+      'As partidas de LoL agora caem num canal só delas, em vez de se misturarem com o resto. Ninguém escreve nesse canal — o que entra ali é partida.',
+      'No cabeçalho do mural tem o botão Painel: filtre por período, por quem jogou, por fila, por campeão ou só as partidas em que a galera estava junta, e veja winrate, KDA, CS por minuto, dano, participação nos abates, tempo morto e o resto.',
+      'Melhores e piores partidas com nota de atuação, melhores e piores campeões, tabela de cada um, duplas que funcionam (e as que não funcionam), sequências de vitória e derrota, e 14 recordes com a partida que fez cada um.',
+      'A aba Padrões responde as perguntas de madrugada: a que horas o grupo ganha, que dia é dia de apanhar, se a quarta partida seguida ainda vale a pena e se ir de revanche na hora dá certo.',
+      'O cartão de fim de partida voltou a mostrar CS, ouro, dano e visão — estavam vazios desde sempre por um erro de leitura do fim de jogo. Pentakill agora também é premiado de verdade.',
+      'Som comprido no soundboard: dá pra cortar o trecho na hora de subir, arrastando as alças na forma de onda, sem precisar editar o arquivo em outro programa.'
+    ],
+    note: 'O painel só afirma o que a amostra sustenta: pouca partida não vira verdade, e o que não passa nessa régua fica de fora em vez de virar conselho errado. O canal do mural precisa ser criado uma vez por um admin (gerenciar canais → tipo "Mural do LoL"); enquanto ele não existe, as partidas continuam caindo onde caíam.'
+  },
+  {
     version: '1.6.0',
     headline: 'A conta do servidor, na mesa',
     items: [
