@@ -104,7 +104,19 @@ interface LcuChampionSummary {
 interface LcuGameflowSession {
   gameData?: {
     gameId?: number
-    queue?: { id?: number }
+    /**
+     * O cliente manda a fila INTEIRA aqui, nao so o id — inclusive o nome como
+     * ele mesmo chama ("ARAM: Mayhem", "Swiftplay"). Ate agora so o id era
+     * lido, e o que a tabela de traducao nao conhecia virava "queue 4310" na
+     * tela do mural. A tabela sempre fica velha; o cliente, nunca.
+     */
+    queue?: {
+      id?: number
+      name?: string
+      shortName?: string
+      description?: string
+      gameMode?: string
+    }
     playerChampionSelections?: Array<{ championId?: number; puuid?: string }>
   }
 }
@@ -145,6 +157,10 @@ interface PendingGame {
   key: string
   gameId?: number
   queue?: string
+  /** Nome da fila do jeito que o cliente chama. Vale mais que a traducao. */
+  queueLabel?: string
+  /** `CLASSIC`, `ARAM`, `TFT`, `CHERRY`… o servidor separa o que nao e LoL. */
+  gameMode?: string
   champion?: string
   startedAt: number
   lastScore?: LolLiveScore
@@ -661,6 +677,9 @@ async function startGame(s: Session, now: number): Promise<PendingGame> {
       if (resolvingKey === game.key) resolvingKey = null
     }
     if (typeof data?.queue?.id === 'number' && data.queue.id >= 0) game.queue = queueName(data.queue.id)
+    const rotulo = data?.queue?.name || data?.queue?.shortName || data?.queue?.description
+    if (typeof rotulo === 'string' && rotulo.trim()) game.queueLabel = rotulo.trim().slice(0, 60)
+    if (typeof data?.queue?.gameMode === 'string') game.gameMode = data.queue.gameMode
     if (!game.champion && s.me?.puuid) {
       const mine = data?.playerChampionSelections?.find((p) => p.puuid === s.me?.puuid)
       if (mine?.championId) game.champion = await championName(s, mine.championId)
@@ -767,7 +786,15 @@ async function resolveEog(s: Session, game: PendingGame, gen: number): Promise<v
     try {
       const block = await lcuGet<unknown>(s.creds, '/lol-end-of-game/v1/eog-stats-block')
       if (isUsableEogBlock(block) && blockMatches(s, game, block)) {
-        emitResult(game, eogToResult(block, { queue: game.queue, champion: game.champion }))
+        emitResult(
+          game,
+          eogToResult(block, {
+            queue: game.queue,
+            champion: game.champion,
+            queueLabel: game.queueLabel,
+            gameMode: game.gameMode
+          })
+        )
         return
       }
     } catch {
@@ -798,6 +825,15 @@ function unknownResult(game: PendingGame): LolGameResult {
     gold: score?.gold,
     durationSec: score?.gameTimeSec ?? Math.max(0, Math.round((now - game.startedAt) / 1000)),
     teammates: game.teammates,
+    // Sem bloco de fim de jogo nao ha ficha nenhuma; o que o placar ao vivo
+    // deixou (CS, ouro) e o nome da fila vao no formato achatado, que o
+    // servidor tambem sabe ler. Melhor isso do que partida sem nada.
+    raw: {
+      cs: score?.cs,
+      gold: score?.gold,
+      ...(game.queueLabel ? { queueName: game.queueLabel } : {}),
+      ...(game.gameMode ? { gameMode: game.gameMode } : {})
+    },
     endedAt: now
   }
 }

@@ -237,8 +237,10 @@ export function StackedColumns({
           const pct = max > 0 ? (total / max) * 100 : 0
           const show = emphasis ? emphasis(item.key, index) : true
           return (
+            // max-w na coluna: com dez dias no filtro, uma barra de 200px de
+            // largura por 8 de altura não é gráfico, é tarja.
             <div key={item.key} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-              <div className="flex w-full items-end" style={{ height }}>
+              <div className="flex w-full max-w-[28px] items-end self-center" style={{ height }}>
                 <span
                   title={`${item.label}: ${item.wins}V · ${item.losses}D`}
                   className="flex w-full flex-col-reverse gap-[2px]"

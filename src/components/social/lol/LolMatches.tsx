@@ -50,7 +50,8 @@ export function MatchLine({ match, rank }: { match: LolMatchWire; rank?: number 
           </span>
         </div>
         <p className="truncate font-mono text-[11px] text-muted-foreground">
-          {lolQueueLabel(match.queue)} · {fmtDuration(match.durationSec)} · {whenLabel(match.endedAt)}
+          {match.queueLabel ?? lolQueueLabel(match.queue)} · {fmtDuration(match.durationSec)} ·{' '}
+          {whenLabel(match.endedAt)}
           {match.killParticipation !== null && ` · ${fmtPercent(match.killParticipation)} dos abates`}
         </p>
       </div>

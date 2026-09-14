@@ -32,6 +32,8 @@ export interface LolMatchWire {
   user: LolPlayerRef | null
   champion: string | null
   queue: string | null
+  /** Nome da fila já resolvido pelo servidor (o cliente do LoL é quem sabe). */
+  queueLabel: string | null
   result: 'win' | 'loss' | 'remake' | 'unknown'
   kills: number
   deaths: number
@@ -168,6 +170,12 @@ export interface LolStats {
     deadSec: number
     /** Bateu no teto de partidas por consulta: o período é maior que a amostra. */
     truncated: boolean
+    /** Partidas que têm a ficha do fim de jogo (CS, dano, visão…). */
+    withStats: number
+    /** Partidas que têm também os totais do time (participação, fatia do dano). */
+    withTeamStats: number
+    /** Partidas de TFT que ficaram de fora — não são LoL. */
+    tftIgnored: number
   }
   averages: Record<string, LolAvg>
   players: LolGroupRow[]
@@ -190,7 +198,7 @@ export interface LolStats {
 export interface LolFilterOptions {
   players: Array<LolPlayerRef & { games: number }>
   champions: Array<{ name: string; games: number }>
-  queues: Array<{ id: string; games: number }>
+  queues: Array<{ id: string; label: string; games: number }>
   since: string | null
 }
 
@@ -328,9 +336,17 @@ const QUEUE_LABEL: Record<string, string> = {
   tutorial: 'Tutorial'
 }
 
+/**
+ * Só para quando o servidor não mandou rótulo (cliente velho). A verdade sobre
+ * nome de fila mora no servidor, que por sua vez prefere o nome que o cliente
+ * do LoL deu — a tabela aqui embaixo é a última reserva.
+ */
 export function lolQueueLabel(queue: string | null | undefined): string {
   if (!queue) return 'Sem fila'
-  return QUEUE_LABEL[queue] ?? queue.replace(/_/g, ' ')
+  const known = QUEUE_LABEL[queue]
+  if (known) return known
+  const id = /^queue_(\d+)$/.exec(queue)
+  return id ? `Fila ${id[1]}` : queue.replace(/_/g, ' ')
 }
 
 export const RESULT_LABEL: Record<LolMatchWire['result'], string> = {

@@ -98,11 +98,20 @@ export function LolPanel() {
     }
   }, [socket])
 
+  // Os rótulos de fila que o recorte carregado conhece, pro chip do filtro
+  // falar a mesma língua da tabela.
+  const queueNames = React.useMemo(() => {
+    const map = new Map<string, string>()
+    for (const row of stats?.queues ?? []) map.set(row.key, row.label)
+    return map
+  }, [stats])
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <LolFilters
         query={query}
         options={options}
+        queueNames={queueNames}
         onChange={setQuery}
         onReset={() => setQuery(DEFAULT_QUERY)}
       />

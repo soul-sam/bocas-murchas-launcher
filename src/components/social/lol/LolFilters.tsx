@@ -69,11 +69,19 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
 export function LolFilters({
   query,
   options,
+  queueNames,
   onChange,
   onReset
 }: {
   query: LolQuery
   options: LolFilterOptions | null
+  /**
+   * Nome de fila que veio das partidas do recorte — é o que o cliente do LoL
+   * chamou aquela fila. A lista de filtros sozinha só conhece o queueId, então
+   * sem isto o mesmo modo aparecia como "Modo do Evento" na tabela e
+   * "Fila 4310" no chip logo acima dela.
+   */
+  queueNames?: Map<string, string>
   onChange: (next: LolQuery) => void
   onReset: () => void
 }) {
@@ -152,7 +160,7 @@ export function LolFilters({
               onClick={() => toggle('queues', queue.id)}
               title={`${queue.games} partidas`}
             >
-              {lolQueueLabel(queue.id)}
+              {queueNames?.get(queue.id) ?? queue.label ?? lolQueueLabel(queue.id)}
             </Chip>
           ))}
         </Group>

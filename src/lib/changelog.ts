@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.9.0',
+    headline: 'O mural do LoL agora tem os números de verdade',
+    items: [
+      'CS, ouro, dano, visão, participação nos abates e fatia do dano do time voltaram a aparecer. Estavam todos vazios: o pacote que o cliente do LoL manda no fim da partida era grande demais pro servidor guardar, e ele descartava o pacote inteiro em vez de guardar o que interessa.',
+      "TFT saiu das estatísticas de LoL. O cliente abre a sala do TFT marcando todo mundo com o mesmo campeão — era por isso que Kai'Sa aparecia como a campeã mais jogada do grupo, sem nunca ter sido escolhida por ninguém.",
+      'As filas têm nome de novo: "ARAM: Mayhem" e "Swiftplay" no lugar de "queue 2400" e "queue 480". O nome agora vem do próprio cliente do LoL, então fila nova de evento já entra com o nome certo.',
+      '"Partidas sem morrer" parou de contar as partidas 0/0/0, que não eram atuação perfeita — eram partida sem dado nenhum.'
+    ],
+    note: 'As partidas antigas não têm como voltar: aqueles números nunca chegaram a ser gravados. O painel agora diz quantas partidas do período estão nessa situação, em vez de mostrar um traço e deixar parecer defeito da tela.'
+  },
+  {
     version: '1.8.0',
     headline: 'Mural do LoL, com tudo que dá pra contar',
     items: [

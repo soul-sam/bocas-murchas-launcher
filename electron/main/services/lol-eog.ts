@@ -116,6 +116,28 @@ export interface EogFallback {
   /** Fila e campeao vistos antes da partida, caso o bloco nao traga. */
   queue?: string
   champion?: string
+  /** Nome da fila do jeito que o cliente chama ("ARAM: Mayhem"). */
+  queueLabel?: string
+  /** `CLASSIC`, `ARAM`, `TFT`, `CHERRY`… */
+  gameMode?: string
+}
+
+/**
+ * Carimba o nome da fila e o modo no bloco que vai pro servidor.
+ *
+ * Sao duas strings dentro de um payload de dezenas de KB — e sao elas que
+ * fazem o painel escrever "ARAM: Mayhem" em vez de "queue 2400", e que dizem
+ * ao servidor que aquilo era TFT e nao uma partida de LoL com todo mundo de
+ * Kai'Sa.
+ */
+function stampQueue(raw: unknown, fallback: EogFallback): unknown {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw
+  const bag = raw as Record<string, unknown>
+  return {
+    ...bag,
+    ...(fallback.queueLabel ? { queueName: fallback.queueLabel } : {}),
+    ...(fallback.gameMode && !bag.gameMode ? { gameMode: fallback.gameMode } : {})
+  }
 }
 
 export function eogToResult(block: EogStatsBlock, fallback: EogFallback): LolGameResult {
@@ -172,7 +194,7 @@ export function eogToResult(block: EogStatsBlock, fallback: EogFallback): LolGam
     pentaKills: stat(stats, 'PENTA_KILLS'),
     durationSec: gameLength,
     teammates: teammates.length > 0 ? teammates : undefined,
-    raw: capRaw(block),
+    raw: stampQueue(capRaw(block), fallback),
     endedAt: Date.now()
   }
 }

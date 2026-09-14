@@ -41,6 +41,7 @@ export function LolOverview({ stats }: { stats: LolStats }) {
   const timelineEmphasis = (_key: string, index: number): boolean =>
     timeline.length <= 12 || index % Math.ceil(timeline.length / 8) === 0
 
+  const semFicha = Math.max(0, totals.games - totals.withStats)
   const winrateRows = [...stats.dayparts].filter((row) => row.decided > 0)
   const maxDecided = winrateRows.reduce((acc, row) => Math.max(acc, row.decided), 0)
 
@@ -107,8 +108,28 @@ export function LolOverview({ stats }: { stats: LolStats }) {
           />
         </div>
 
+        {/* Por que metade dos números está vazia: a partida antiga perdeu a
+            ficha do fim de jogo no teto de gravação do servidor. Dizer isso é
+            melhor do que mostrar "—" e deixar parecer defeito da tela. */}
+        {semFicha > 0 && (
+          <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+            <span className="text-burn">{semFicha}</span> das {totals.games} partidas não têm os dados
+            do fim de jogo (CS, ouro, dano, visão) — o bloco do cliente era maior que o limite de
+            gravação e era descartado inteiro. Já está corrigido: quem jogar daqui pra frente aparece
+            completo.
+          </p>
+        )}
+
+        {totals.tftIgnored > 0 && (
+          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            {totals.tftIgnored} {totals.tftIgnored === 1 ? 'partida' : 'partidas'} de TFT
+            {totals.tftIgnored === 1 ? ' ficou' : ' ficaram'} de fora: o cliente abre a sala com todo
+            mundo no mesmo campeão e sem KDA, e isso não é partida de LoL.
+          </p>
+        )}
+
         {totals.truncated && (
-          <p className="mt-1.5 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-[11px] text-muted-foreground">
             O período tem mais partidas do que o painel carrega de uma vez — estas são as mais recentes.
           </p>
         )}

@@ -173,13 +173,19 @@ export function mapGameflowPhase(raw: unknown): LolPhase {
 }
 
 /**
- * queueId -> texto curto que o renderer sabe rotular. O que nao esta aqui
- * vira `queue_<id>`, que a tela mostra como esta — melhor que sumir a fila.
+ * queueId -> texto curto que o renderer sabe rotular.
+ *
+ * Esta tabela SEMPRE fica velha: a Riot cria fila a cada evento, e o que nao
+ * esta aqui virava "queue 4310" na tela. Por isso ela deixou de ser a unica
+ * fonte — o nome de verdade vem do proprio cliente, pelo `queue.name` do
+ * gameflow (ver lol.ts), e a tabela ficou como reserva pra quando aquele campo
+ * nao vier.
  */
 const QUEUE_NAMES: Record<number, string> = {
   0: 'custom',
   400: 'normal_draft',
   430: 'normal_blind',
+  480: 'swiftplay',
   490: 'normal_quickplay',
   420: 'ranked_solo',
   440: 'ranked_flex',
@@ -205,6 +211,8 @@ const QUEUE_NAMES: Record<number, string> = {
   1400: 'ultimate_spellbook',
   1700: 'arena',
   1710: 'arena',
+  2300: 'brawl',
+  2400: 'aram_mayhem',
   2000: 'tutorial',
   2010: 'tutorial',
   2020: 'tutorial'
