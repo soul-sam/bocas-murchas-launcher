@@ -9,7 +9,8 @@ import {
   Square,
   MoreHorizontal,
   Ban,
-  Check
+  Check,
+  Headphones
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -17,15 +18,27 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { useSoundboard, readAudioDuration } from '@/lib/soundboard-context'
+import { useSoundboard } from '@/lib/soundboard-context'
 import { useSettings } from '@/lib/settings-context'
 import { useAuth } from '@/lib/auth-context'
 import { useVoice } from '@/lib/voice-context'
 import { useGamification } from '@/lib/gamification-context'
+import { useHotkeys } from '@/lib/hotkeys-context'
 import { HotkeyRecorder } from './HotkeyRecorder'
+import { AudioTrimmer, type TrimRange } from './AudioTrimmer'
+import {
+  MAX_SOURCE_BYTES,
+  TRIM_MIN_MS,
+  decodeAudioFile,
+  estimateWavBytes,
+  trimToFile
+} from '@/lib/audio-trim'
 import type { Sound } from '@/lib/api'
 
+/** Os dois tetos do servidor (routes/sounds.routes.ts). Repetidos aqui pra
+ *  recusar antes de subir 4 MB pra ouvir "não". */
 const MAX_DURATION_MS = 8_000
+const MAX_UPLOAD_BYTES = 4_000_000
 
 /** Aba "todas" — não é categoria de verdade, é a ausência de filtro. */
 const ALL = '*'
@@ -59,8 +72,18 @@ export function SoundboardPanel() {
 
   const visible = category === ALL ? sounds : (byCategory[category] ?? [])
 
+  /**
+   * O mapa de atalhos INTEIRO tem que voltar no patch.
+   *
+   * Ele é um objeto só (`hotkeys.sounds`), não um campo por som: mandar
+   * `{ [soundId]: tecla }` substituía o mapa e apagava o atalho de todos os
+   * outros sons — amarrar o segundo som desamarrava o primeiro.
+   */
   const bindHotkey = (soundId: string, accelerator: string): void => {
-    void update({ hotkeys: { ...settings.hotkeys, sounds: { [soundId]: accelerator } } })
+    const next = { ...settings.hotkeys.sounds }
+    if (accelerator) next[soundId] = accelerator
+    else delete next[soundId]
+    void update({ hotkeys: { ...settings.hotkeys, sounds: next } })
   }
 
   return (
@@ -302,8 +325,14 @@ function SoundTile({
         )}
       </button>
 
-      {/* Ações secundárias por cima do canto direito, só no hover: o tile fica
-          limpo como botão e ainda dá pra ouvir sozinho ou editar. */}
+      {/* Ações por cima do canto direito, só no hover: o tile fica limpo como
+          botão e ainda dá pra ouvir sozinho ou editar.
+
+          O ▶ FAZ O MESMO QUE O TILE de propósito. Ele cobre a direita do tile,
+          e antes era o "ouvir só eu": quem mirava a seta pra soltar o som na
+          call ouvia sozinho e achava que o botão estava quebrado. Um triângulo
+          de play promete tocar pra sala — agora cumpre. Quem quer conferir
+          antes tem o fone ao lado. */}
       <div
         className={cn(
           'absolute inset-y-1 right-1 flex items-center gap-0.5 rounded-md bg-void-light pl-1 transition-opacity',
@@ -312,12 +341,27 @@ function SoundTile({
       >
         <button
           type="button"
+          onClick={onPlay}
+          disabled={disabled}
+          title={disabled ? 'Entre num canal de voz' : `Tocar pra sala · ${info}`}
+          aria-label="Tocar pra sala"
+          className={cn(
+            'rounded-md p-1.5 transition-colors',
+            disabled
+              ? 'cursor-not-allowed text-muted-foreground opacity-50'
+              : 'text-acid hover:bg-acid/15'
+          )}
+        >
+          <Play className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
           onClick={onPreview}
-          title="Ouvir só eu"
+          title="Ouvir só eu — não vai pra sala"
           aria-label="Ouvir só eu"
           className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          <Play className="h-3.5 w-3.5" />
+          <Headphones className="h-3.5 w-3.5" />
         </button>
         <SoundMenu
           sound={sound}
@@ -360,6 +404,14 @@ function SoundMenu({
   onOpenChange: (open: boolean) => void
 }) {
   const { update, remove, setBlocked } = useSoundboard()
+  const { registrations } = useHotkeys()
+
+  /**
+   * O Windows pode recusar a tecla (já é de outro programa, ou de outro som).
+   * Quando isso acontece o atalho fica salvo e MUDO, e o aviso só existia na
+   * aba Atalhos das configurações — longe de onde a tecla foi escolhida.
+   */
+  const hotkeyProblem = registrations.find((r) => r.id === `sound:${sound.id}` && !r.ok)
 
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState(sound.name)
@@ -469,6 +521,12 @@ function SoundMenu({
         <div className="space-y-1">
           <Label>Atalho</Label>
           <HotkeyRecorder value={hotkey} onChange={onBind} placeholder="Atalho" className="w-full" />
+          {hotkeyProblem && (
+            <p className="flex items-start gap-1.5 text-[11.5px] text-destructive">
+              <TriangleAlert className="mt-0.5 h-3 w-3 shrink-0" />
+              {hotkeyProblem.error ?? 'O Windows não aceitou essa tecla.'}
+            </p>
+          )}
         </div>
 
         {canEdit && (
@@ -633,58 +691,109 @@ function UploadSoundDialog({
   onClose: () => void
 }) {
   const { upload } = useSoundboard()
+  const { settings } = useSettings()
 
   const [file, setFile] = React.useState<File | null>(null)
+  const [buffer, setBuffer] = React.useState<AudioBuffer | null>(null)
+  const [range, setRange] = React.useState<TrimRange>({ startMs: 0, endMs: 0 })
   const [name, setName] = React.useState('')
   const [emoji, setEmoji] = React.useState('🔊')
   const [category, setCategory] = React.useState('')
-  const [duration, setDuration] = React.useState<number | null>(null)
+  const [decoding, setDecoding] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  /**
+   * Qual escolha de arquivo ainda vale.
+   *
+   * Decodificar um mp3 de minutos leva tempo, e trocar de arquivo no meio
+   * disso é comum ("não era esse"). Sem o cartão, a decodificação abandonada
+   * terminava depois e pintava a onda do arquivo errado.
+   */
+  const pickRef = React.useRef(0)
+
   const reset = (): void => {
+    pickRef.current++
     setFile(null)
+    setBuffer(null)
+    setRange({ startMs: 0, endMs: 0 })
     setName('')
     setEmoji('🔊')
     setCategory('')
-    setDuration(null)
+    setDecoding(false)
     setError(null)
   }
 
   const handleFile = async (picked: File | null): Promise<void> => {
+    const ticket = ++pickRef.current
+
     setFile(picked)
-    setDuration(null)
+    setBuffer(null)
     setError(null)
     if (!picked) return
 
     // Sem o nome preenchido, usa o do arquivo — economiza um passo.
     if (!name) setName(picked.name.replace(/\.[^.]+$/, '').slice(0, 24))
 
+    setDecoding(true)
     try {
-      const ms = await readAudioDuration(picked)
-      setDuration(ms)
-      if (ms > MAX_DURATION_MS) {
-        setError(
-          `Som de ${(ms / 1000).toFixed(1)}s. O máximo é ${MAX_DURATION_MS / 1000}s.`
-        )
-      }
+      const decoded = await decodeAudioFile(picked)
+      if (pickRef.current !== ticket) return
+      setBuffer(decoded)
+      // Arquivo curto entra inteiro; comprido abre nos primeiros 8s, que é de
+      // onde a pessoa arrasta até o trecho que quer.
+      setRange({ startMs: 0, endMs: Math.min(decoded.duration * 1000, MAX_DURATION_MS) })
     } catch (err) {
+      if (pickRef.current !== ticket) return
       setError(err instanceof Error ? err.message : 'Arquivo inválido')
+    } finally {
+      if (pickRef.current === ticket) setDecoding(false)
     }
   }
 
+  const totalMs = buffer ? buffer.duration * 1000 : 0
+  const lengthMs = range.endMs - range.startMs
+  /** Não mexeu nas alças: não há o que renderizar. */
+  const trimmed = !!buffer && lengthMs < totalMs - 1
+  const outputBytes = buffer
+    ? trimmed
+      ? estimateWavBytes(buffer, lengthMs)
+      : (file?.size ?? 0)
+    : 0
+
   const canSubmit =
-    !!file && !!name.trim() && !!duration && duration <= MAX_DURATION_MS && !busy
+    !!file && !!buffer && !!name.trim() && lengthMs >= TRIM_MIN_MS && !busy && !decoding
 
   const handleSubmit = async (): Promise<void> => {
-    if (!file || !canSubmit) return
+    if (!file || !buffer || !canSubmit) return
     setBusy(true)
     setError(null)
     try {
+      /**
+       * Arquivo que já cabe sobe COMO VEIO.
+       *
+       * Reencodar um mp3 de 3s em wav só pra passar pelo mesmo caminho
+       * multiplicaria o tamanho por dez e perderia qualidade de graça. O
+       * cortador só entra quando há corte de verdade.
+       */
+      const keepOriginal = !trimmed && file.size <= MAX_UPLOAD_BYTES
+      const outgoing = keepOriginal
+        ? file
+        : await trimToFile(buffer, file.name, range.startMs, range.endMs)
+
+      if (outgoing.size > MAX_UPLOAD_BYTES) {
+        throw new Error(
+          `O trecho ficou com ${formatBytes(outgoing.size)}. O máximo é ${formatBytes(
+            MAX_UPLOAD_BYTES
+          )} — encurta um pouco.`
+        )
+      }
+
       await upload({
-        file,
+        file: outgoing,
         name: name.trim(),
         emoji,
+        durationMs: Math.round(lengthMs),
         ...(category.trim() ? { category: category.trim() } : {})
       })
       reset()
@@ -706,15 +815,15 @@ function UploadSoundDialog({
         }
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Novo som</DialogTitle>
           <DialogDescription>
-            mp3, ogg, wav, m4a… · até {MAX_DURATION_MS / 1000}s · até 4 MB
+            mp3, ogg, wav, m4a… · escolhe {MAX_DURATION_MS / 1000}s de qualquer arquivo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           <div className="space-y-1.5">
             <Label htmlFor="sound-file">Arquivo</Label>
             <input
@@ -726,17 +835,36 @@ function UploadSoundDialog({
               onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
               className="input-terminal w-full rounded-brutal p-2 text-xs file:mr-2 file:rounded-brutal file:border-0 file:bg-acid file:px-2 file:py-1 file:text-[11.5px] file:font-bold file:uppercase file:text-void"
             />
-            {duration !== null && (
-              <p
-                className={cn(
-                  'text-[11.5px]',
-                  duration > MAX_DURATION_MS ? 'text-destructive' : 'text-muted-foreground'
-                )}
-              >
-                {(duration / 1000).toFixed(1)}s
-              </p>
-            )}
+            <p className="text-[11.5px] text-muted-foreground">
+              até {MAX_SOURCE_BYTES / 1_000_000} MB — o que passar de{' '}
+              {MAX_DURATION_MS / 1000}s você corta aqui embaixo
+            </p>
           </div>
+
+          {decoding && (
+            <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              lendo o áudio…
+            </div>
+          )}
+
+          {buffer && (
+            <div className="space-y-1.5">
+              <Label>Trecho</Label>
+              <AudioTrimmer
+                buffer={buffer}
+                range={range}
+                maxDurationMs={MAX_DURATION_MS}
+                volume={settings.soundboardVolume}
+                onChange={setRange}
+              />
+              <p className="text-[11.5px] text-muted-foreground">
+                {trimmed
+                  ? `o trecho vira wav · ~${formatBytes(outputBytes)}`
+                  : `sobe como veio · ${formatBytes(outputBytes)}`}
+              </p>
+            </div>
+          )}
 
           <div className="flex gap-3">
             <div className="w-20 space-y-1.5">
@@ -800,4 +928,10 @@ function UploadSoundDialog({
       </DialogContent>
     </Dialog>
   )
+}
+
+function formatBytes(bytes: number): string {
+  return bytes >= 1_000_000
+    ? `${(bytes / 1_000_000).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1000))} KB`
 }

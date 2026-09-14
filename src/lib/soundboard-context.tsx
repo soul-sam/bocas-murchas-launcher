@@ -56,6 +56,14 @@ interface SoundboardContextValue {
     name: string
     emoji: string
     category?: string
+    /**
+     * Duração já conhecida — o cortador sabe exatamente quanto renderizou.
+     *
+     * Sem isso o arquivo seria decodificado de novo só pra medir, e o que sai
+     * do cortador é wav de segundos: pagar um segundo decode por uma conta que
+     * já foi feita.
+     */
+    durationMs?: number
   }) => Promise<Sound>
   update: (
     id: string,
@@ -313,6 +321,15 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
   /** Toca só pra mim — usado ao escolher/testar um som. */
   const preview = React.useCallback(
     (sound: Sound) => {
+      // Compartilhando o som do sistema, o launcher fica mudo do que é dele
+      // (ver launcher-silence). Tocar pra sala continua valendo — os outros
+      // recebem pelo socket —, mas a escuta local não sai do lugar, e sumir
+      // em silêncio é o mesmo "apertei e não aconteceu nada" que acabou de
+      // sair do botão de play.
+      if (isLauncherSilenced()) {
+        setCooldownMessage('Launcher mudo enquanto você compartilha o som da tela.')
+        return
+      }
       const url = resolveAssetUrl(sound.url)
       if (url) playFile(url, sound.volume ?? 1)
     },
@@ -325,10 +342,16 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
   }, [])
 
   const upload = React.useCallback(
-    async (payload: { file: File; name: string; emoji: string; category?: string }) => {
+    async (payload: {
+      file: File
+      name: string
+      emoji: string
+      category?: string
+      durationMs?: number
+    }) => {
       if (!token) throw new Error('Sem sessão')
 
-      const durationMs = await readAudioDuration(payload.file)
+      const durationMs = payload.durationMs ?? (await readAudioDuration(payload.file))
       const sound = await soundsApi.create(token, { ...payload, durationMs })
 
       setSounds((prev) => (prev.some((s) => s.id === sound.id) ? prev : [...prev, sound]))
