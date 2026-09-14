@@ -1,6 +1,7 @@
 import * as React from 'react'
 import {
   Hash,
+  Swords,
   Volume2,
   Megaphone,
   Lightbulb,
@@ -42,6 +43,10 @@ const TYPE_META: Record<ChannelType, { icon: React.ReactNode; label: string }> =
   voice: { icon: <Volume2 className="h-3.5 w-3.5" />, label: 'Voz' },
   announcements: { icon: <Megaphone className="h-3.5 w-3.5" />, label: 'Avisos' },
   suggestions: { icon: <Lightbulb className="h-3.5 w-3.5" />, label: 'Sugestões' },
+  // Um servidor tem UM mural do LoL: é pra ele que o card de pós-jogo vai
+  // sozinho. Criar o segundo não quebra nada, mas as partidas continuam caindo
+  // no primeiro.
+  lol: { icon: <Swords className="h-3.5 w-3.5" />, label: 'Mural do LoL' },
   dm: { icon: <Hash className="h-3.5 w-3.5" />, label: 'Conversa' }
 }
 
@@ -157,6 +162,7 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
             <option value="voice">Voz</option>
             <option value="announcements">Avisos</option>
             <option value="suggestions">Sugestões</option>
+            <option value="lol">Mural do LoL</option>
           </select>
 
           <Button size="sm" onClick={create} disabled={!newName.trim() || busy}>

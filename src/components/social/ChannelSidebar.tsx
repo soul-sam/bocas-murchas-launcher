@@ -1,5 +1,6 @@
 import * as React from 'react'
 import {
+  Swords,
   Hash,
   Megaphone,
   Volume2,
@@ -241,6 +242,8 @@ export function ChannelSidebar({
                   <Megaphone className="h-3.5 w-3.5 shrink-0" />
                 ) : channel.type === 'suggestions' ? (
                   <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+                ) : channel.type === 'lol' ? (
+                  <Swords className="h-3.5 w-3.5 shrink-0" />
                 ) : (
                   <Hash className="h-3.5 w-3.5 shrink-0" />
                 )}

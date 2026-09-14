@@ -319,7 +319,12 @@ export const uploads = {
  * por cima de cada conversa direta, pra que a tela de conversa seja
  * literalmente a mesma tela de canal. Ver lib/chat-context.tsx.
  */
-export type ChannelType = 'text' | 'voice' | 'announcements' | 'suggestions' | 'dm'
+/**
+ * `lol` é o mural de partidas: um canal de texto que ninguém escreve. Quem
+ * posta nele é o servidor, quando uma partida acaba — e ele traz junto o
+ * painel de estatísticas (components/social/lol).
+ */
+export type ChannelType = 'text' | 'voice' | 'announcements' | 'suggestions' | 'lol' | 'dm'
 
 export interface VoiceUser {
   id: string

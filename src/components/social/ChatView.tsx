@@ -14,7 +14,10 @@ import {
   CalendarDays,
   Lightbulb,
   ListOrdered,
-  Plus
+  Plus,
+  Swords,
+  BarChart3,
+  ScrollText
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
@@ -29,6 +32,7 @@ import type { ChatMessage } from '@/lib/api'
 import { MessageItem } from './MessageItem'
 import { MessageComposer } from './MessageComposer'
 import { DropComposer } from './DropComposer'
+import { LolPanel } from './lol/LolPanel'
 
 /** Mensagens seguidas do mesmo autor em até 5 min viram um bloco só. */
 const GROUP_WINDOW_MS = 5 * 60_000
@@ -108,6 +112,20 @@ export function ChatView() {
    * que veio do "/drop ..." (vazio quando abriu pelo "+").
    */
   const [dropSeed, setDropSeed] = React.useState<string | null>(null)
+  /**
+   * Mural do LoL: 'mural' são os cards de partida no histórico, 'painel' é a
+   * estatística. Fica aqui (e não no layout-context) porque só existe enquanto
+   * este canal está aberto — trocar de canal volta pro mural, que é o que a
+   * pessoa espera ver ao clicar num canal.
+   */
+  const [lolView, setLolView] = React.useState<'mural' | 'painel'>('mural')
+
+  // Trocar de canal volta pro mural: clicar num canal é pedir pra ver o que
+  // tem nele, e o ChatView não desmonta na troca — sem isto, o painel ficaria
+  // aberto de uma visita anterior.
+  React.useEffect(() => {
+    setLolView('mural')
+  }, [activeChannelId])
 
   const scrollRef = React.useRef<HTMLDivElement>(null)
 
@@ -219,6 +237,9 @@ export function ChatView() {
 
   const isAnnouncement = activeChannel.type === 'announcements'
   const isSuggestions = activeChannel.type === 'suggestions'
+  // Mural do LoL: canal sem caixa de texto. O que entra aqui é partida, e
+  // quem posta é o servidor.
+  const isLol = activeChannel.type === 'lol'
   const isDm = isDmId(activeChannel.id)
   const muted = isMuted(activeChannel.id)
 
@@ -256,6 +277,8 @@ export function ChatView() {
           <Megaphone className="h-4 w-4 shrink-0 text-burn" />
         ) : isSuggestions ? (
           <Lightbulb className="h-4 w-4 shrink-0 text-burn" />
+        ) : isLol ? (
+          <Swords className="h-4 w-4 shrink-0 text-burn" />
         ) : (
           <Hash className="h-4 w-4 shrink-0 text-muted-foreground" />
         )}
@@ -308,6 +331,31 @@ export function ChatView() {
                 </button>
               </Hint>
 
+              <span className="mx-1 h-4 w-px shrink-0 bg-surface-raised" />
+            </>
+          )}
+
+          {/* O mural do LoL tem as duas metades num botão só: o histórico de
+              partidas e o painel de estatística. É o que faz dele um canal
+              próprio e não um canal de texto com nome bonito. */}
+          {isLol && (
+            <>
+              <HeaderButton
+                label="Mural"
+                description="Os cards de pós-jogo, na ordem em que as partidas acabaram."
+                active={lolView === 'mural'}
+                onClick={() => setLolView('mural')}
+              >
+                <ScrollText className="h-4 w-4" />
+              </HeaderButton>
+              <HeaderButton
+                label="Painel"
+                description="Filtros, médias, melhores e piores partidas, campeões, duplas e o que os números dizem."
+                active={lolView === 'painel'}
+                onClick={() => setLolView('painel')}
+              >
+                <BarChart3 className="h-4 w-4" />
+              </HeaderButton>
               <span className="mx-1 h-4 w-px shrink-0 bg-surface-raised" />
             </>
           )}
@@ -394,10 +442,15 @@ export function ChatView() {
         </div>
       </header>
 
+      {isLol && lolView === 'painel' && <LolPanel />}
+
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto py-3"
+        className={cn(
+          'flex min-h-0 flex-1 flex-col overflow-y-auto py-3',
+          isLol && lolView === 'painel' && 'hidden'
+        )}
       >
         {loadingMessages && messages.length === 0 ? (
           <MessagesSkeleton />
@@ -419,7 +472,9 @@ export function ChatView() {
                 ? 'Começo da conversa. Só vocês dois veem isso aqui.'
                 : isSuggestions
                   ? 'Aqui é onde se pede o que falta e se avisa o que quebrou. Cada sugestão vira um card que a galera vota — e o que tem mais voto é o que vem primeiro.'
-                  : 'Ninguém falou nada aqui ainda. Começa você.'}
+                  : isLol
+                    ? 'Aqui caem as partidas de LoL sozinhas, assim que o cliente fecha o placar. Ninguém escreve neste canal — o que se faz aqui é olhar o painel.'
+                    : 'Ninguém falou nada aqui ainda. Começa você.'}
             </p>
 
             {isSuggestions && (
@@ -512,15 +567,19 @@ export function ChatView() {
         )}
       </div>
 
-      <MessageComposer
-        placeholderTarget={isDm ? activeChannel.name : '#' + activeChannel.name}
-        replyTo={replyTo}
-        onCancelReply={() => setReplyTo(null)}
-        onSend={send}
-        onTyping={notifyTyping}
-        onEditLast={editLast}
-        onDrop={user?.role === 'admin' ? setDropSeed : undefined}
-      />
+      {/* Mural do LoL não tem composer: partida entra pelo launcher de quem
+          jogou, e o servidor recusa mensagem neste canal de qualquer jeito. */}
+      {!isLol && (
+        <MessageComposer
+          placeholderTarget={isDm ? activeChannel.name : '#' + activeChannel.name}
+          replyTo={replyTo}
+          onCancelReply={() => setReplyTo(null)}
+          onSend={send}
+          onTyping={notifyTyping}
+          onEditLast={editLast}
+          onDrop={user?.role === 'admin' ? setDropSeed : undefined}
+        />
+      )}
 
       <DropComposer
         open={dropSeed !== null}

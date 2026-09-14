@@ -183,7 +183,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const textChannels = React.useMemo(
     () =>
       channels.filter(
-        (c) => c.type === 'text' || c.type === 'announcements' || c.type === 'suggestions'
+        (c) =>
+          c.type === 'text' ||
+          c.type === 'announcements' ||
+          c.type === 'suggestions' ||
+          c.type === 'lol'
       ),
     [channels]
   )
