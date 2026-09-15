@@ -30,7 +30,7 @@ TRANSMISSOR
   ScreenSharePicker → screen.selectSource (IPC) → setDisplayMediaRequestHandler (main)
   → getDisplayMedia (WGC agora, GDI antes) → LocalVideoTrack
   → setScreenShareEnabled({ contentHint }, { videoCodec: 'h264', degradationPreference, simulcast })
-  → SFU (1 fluxo, 2 camadas: original + ~360p3fps)
+  → SFU (1 fluxo, 2 camadas: original + metade da resolução, mesmo fps)
 
 ESPECTADOR (antes)
   connect(autoSubscribe: true) → TrackSubscribed(video+audio da tela) pra todos
@@ -155,3 +155,47 @@ mas o `qualityLimitationReason: cpu` some — era ele que virava frame drop e
   ouvindo o amigo). Quem quiser silêncio total usa "Parar de ver".
 - **Sem entrada no changelog / bump de versão.** Release é decisão do dono do
   repo (ver processo em memória: bump + entrada em `src/lib/changelog.ts`).
+
+## 8. Correção do teto de 15 fps (2026-09-14)
+
+**Sintoma:** em nenhuma máquina o compartilhamento passava de 15 fps, em
+nenhuma das três opções do seletor.
+
+**Causa:** o publish mandava o teto em `videoEncoding`. Para faixa de TELA o
+livekit-client descarta esse campo — `computeVideoEncodings()` começa com
+
+```js
+let videoEncoding = options?.videoEncoding
+if (isScreenShare) {
+  videoEncoding = options?.screenShareEncoding   // ← o outro é jogado fora
+}
+```
+
+Sem `screenShareEncoding`, valia o padrão do SDK
+(`publishDefaults.screenShareEncoding = ScreenSharePresets.h1080fps15`):
+**15 fps e 2.5 Mbps fixos**, independentes de máquina, preset e rede. Por isso
+o teto era idêntico em todo lugar — não era CPU, GPU nem upload.
+
+A captura nunca esteve capada: `resolution.frameRate` vai para o
+`getDisplayMedia` normalmente (30 ou 60). O estrangulamento era só no que subia
+para o SFU — o Chromium capturava a 60 e descartava mais da metade dos quadros
+no encoder.
+
+**Correção:** `src/lib/voice-context.tsx` passa `screenShareEncoding` no lugar
+de `videoEncoding`. Os presets de `SCREEN_QUALITY` passam a valer de verdade —
+inclusive o bitrate, que também estava vindo do padrão (2.5 Mbps) em vez dos
+1.8 / 3.0 / 5.0 Mbps da tabela.
+
+**Cuidado que vem junto:** no livekit-client 2.22 a segunda camada do simulcast
+herda o fps da original (`computeDefaultScreenShareSimulcastPresets` usa
+`fps: fromPreset.encoding.maxFramerate`), não os 3 fps que a §2 deste documento
+descrevia. Em `1080p60` são dois encodes H.264 a 60 fps (1080p + 960×540). Com
+encoder da GPU isso passa; se algum PC cair no OpenH264 por software (ver §7),
+é nele que vai doer.
+
+**Como conferir:** em quem transmite, `await __voiceStats()` → linha
+`outbound video` com `fps` perto de 30 (ou 60 em `1080p60`) e `codec` h264.
+Lembrando que o padrão do seletor é `720p30`: para 60 fps é preciso escolher
+`1080p60`. Se o fps ficar abaixo do preset com `limitation: cpu`, aí sim é
+carga — e o `degradationPreference: 'balanced'` do perfil `game` vai derrubar a
+resolução antes dos quadros.

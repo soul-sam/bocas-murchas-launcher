@@ -1375,7 +1375,20 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
             contentHint: profile.contentHint
           },
           {
-            videoEncoding: {
+            /**
+             * `screenShareEncoding`, NAO `videoEncoding`.
+             *
+             * Pra faixa de tela o livekit-client joga o `videoEncoding`
+             * fora: `computeVideoEncodings()` comeca com
+             * `if (isScreenShare) videoEncoding = options.screenShareEncoding`.
+             * Sem este campo valia o padrao do SDK
+             * (`publishDefaults.screenShareEncoding = ScreenSharePresets.h1080fps15`):
+             * 15 fps e 2.5 Mbps FIXOS, em qualquer maquina e em qualquer
+             * opcao do seletor. Era esse o teto de 15 fps. A captura sempre
+             * veio a 30/60 (o `resolution` acima vai pro getDisplayMedia);
+             * o que estava capado era o que subia pro SFU.
+             */
+            screenShareEncoding: {
               maxBitrate: preset.maxBitrate,
               maxFramerate: preset.frameRate
             },
@@ -1391,9 +1404,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
              */
             videoCodec: 'h264',
             degradationPreference: profile.degradationPreference,
-            // Duas camadas (original + ~360p a 3 fps): a miniatura e a janela
-            // pequena recebem a menor, sem o custo de um segundo encoder
-            // pesado — a camada baixa e barata de codificar.
+            // Duas camadas: a original e uma de metade da resolucao. No
+            // livekit-client 2.22 a camada baixa herda o fps da original
+            // (`computeDefaultScreenShareSimulcastPresets` usa
+            // `fps: fromPreset.encoding.maxFramerate`) com 1/4 do bitrate —
+            // nao os 3 fps de versoes antigas. Quem esta com o launcher em
+            // janela pequena recebe ela pelo adaptiveStream; o custo e um
+            // segundo encode em H.264 na GPU.
             simulcast: true,
             // O audio da tela e MUSICA/JOGO, nao voz: o preset da call (48k
             // mono, que serve pra fala) espremia trilha e efeito. O LiveKit
