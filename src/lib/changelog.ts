@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.10.0',
+    headline: 'A tela vai fluida e o GIF finalmente roda no chat',
+    items: [
+      'Compartilhar tela deixou de ser slideshow. Estava preso em 15 quadros por segundo em QUALQUER máquina: o app mandava a qualidade escolhida por um caminho que o compartilhamento de tela ignora, e valia um padrão escondido de 15. Não era o seu PC nem a sua internet — agora vale o que você escolhe.',
+      'GIF no chat aparece rodando. Antes, GIF que entrava pelo clipe de papel virava cartão de arquivo com botão de baixar; agora qualquer imagem vira imagem na conversa, venha arrastada, colada ou pelo clipe de papel.',
+      'Sticker agora vai até 4 MB, era 1 MB. GIF animado raramente cabia no teto antigo.',
+      'Foto de perfil também vai até 4 MB, era 2 MB. Era o mesmo teto que o GIF escolhido no seletor já tinha: quem pegava pelo seletor passava, quem baixava e subia o arquivo esbarrava.'
+    ],
+    note: 'Pra 60 quadros por segundo escolha 1080p60 na hora de compartilhar; o padrão continua 720p30, que é o que aguenta internet ruim. Imagem acima de 8 MB continua indo como anexo, com botão de baixar, em vez de dar erro.'
+  },
+  {
     version: '1.9.0',
     headline: 'O mural do LoL agora tem os números de verdade',
     items: [
