@@ -42,7 +42,7 @@ export type ManagerTab = 'emojis' | 'stickers'
 /** Mesmas regras da API: 2 a 32 de a-z, 0-9 e _. */
 const EMOJI_NAME_RE = /^[a-z0-9_]{2,32}$/
 const MAX_EMOJI_BYTES = 256_000
-const MAX_STICKER_BYTES = 1_000_000
+const MAX_STICKER_BYTES = 4_000_000
 
 /** Digitou "KEKW!" ou "Pog Champ" -> "kekw", "pog_champ". */
 function toEmojiName(raw: string): string {
@@ -59,6 +59,7 @@ function nameFromFile(file: File): string {
 }
 
 function formatKb(bytes: number): string {
+  if (bytes >= 1_000_000) return (bytes / 1_000_000).toFixed(1).replace(/\.0$/, '') + ' MB'
   return Math.round(bytes / 1000) + ' KB'
 }
 
@@ -451,7 +452,7 @@ function StickersTab() {
       </div>
 
       <p className="mb-2 shrink-0 font-mono text-[11.5px] text-muted-foreground">
-        png, gif ou webp até 1 MB · qualquer um cria pack e sobe sticker · só admin apaga ·{' '}
+        png, gif ou webp até 4 MB · qualquer um cria pack e sobe sticker · só admin apaga ·{' '}
         {packs.length}/30 packs · {totalStickers}/300 stickers
       </p>
 
@@ -475,7 +476,7 @@ function StickersTab() {
               </span>
 
               <label
-                title="Subir sticker neste pack (png, gif ou webp até 1 MB)"
+                title="Subir sticker neste pack (png, gif ou webp até 4 MB)"
                 className={cn(
                   'flex cursor-pointer items-center gap-1 rounded-brutal border border-line px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground',
                   busy && 'pointer-events-none opacity-50'

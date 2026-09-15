@@ -79,6 +79,16 @@ interface MessageComposerProps {
   onDrop?: (seed: string) => void
 }
 
+/**
+ * Teto da rota de IMAGEM no servidor (`LIMITS.image` em uploads.routes.ts).
+ *
+ * Espelhado aqui pra escolher o caminho ANTES de subir: acima disto a
+ * imagem vai pela rota de anexo, que aceita 50 MB. Se o servidor mudar, o
+ * pior que acontece e uma imagem grande tentar a rota errada e voltar com o
+ * erro dele.
+ */
+const MAX_INLINE_IMAGE_BYTES = 8_000_000
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB'
@@ -371,10 +381,22 @@ export function MessageComposer({
     [token]
   )
 
-  /** Imagem vira preview; o resto vira anexo. */
-  const acceptDropped = React.useCallback(
+  /**
+   * Imagem vira preview; o resto vira anexo — venha de onde vier.
+   *
+   * Vale tambem pro clipe de papel, e o GIF e o motivo: escolhido por ali
+   * ele virava cartao de anexo (nome do arquivo + botao de baixar) em vez de
+   * aparecer rodando na conversa, porque aquele caminho mandava tudo pra rota
+   * de arquivo. Arrastar e colar ja rendiam imagem; agora os tres combinam.
+   *
+   * Acima do teto da rota de imagem a decisao se inverte: continua indo como
+   * anexo, que aceita 50 MB. Melhor um GIF de 20 MB que chega como cartao do
+   * que um erro de "arquivo muito grande" onde antes funcionava.
+   */
+  const attach = React.useCallback(
     (picked: File) => {
-      if (picked.type.startsWith('image/')) void uploadImage(picked)
+      const inline = picked.type.startsWith('image/') && picked.size <= MAX_INLINE_IMAGE_BYTES
+      if (inline) void uploadImage(picked)
       else void uploadFile(picked)
     },
     [uploadImage, uploadFile]
@@ -608,7 +630,7 @@ export function MessageComposer({
         event.preventDefault()
         setDragging(false)
         const picked = event.dataTransfer.files[0]
-        if (picked) acceptDropped(picked)
+        if (picked) attach(picked)
       }}
     >
       {suggestions.length > 0 && mentionQuery && (
@@ -820,7 +842,7 @@ export function MessageComposer({
         </label>
 
         <label
-          title="Anexar arquivo (até 50 MB)"
+          title="Anexar arquivo (até 50 MB) — imagem e GIF aparecem na conversa"
           className="hidden shrink-0 cursor-pointer rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:block"
         >
           <Paperclip className="h-4 w-4" />
@@ -829,7 +851,7 @@ export function MessageComposer({
             className="hidden"
             onChange={(e) => {
               const picked = e.target.files?.[0]
-              if (picked) void uploadFile(picked)
+              if (picked) attach(picked)
               e.target.value = ''
             }}
           />

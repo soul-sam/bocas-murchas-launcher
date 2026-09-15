@@ -365,7 +365,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <ImageField
                     label="Foto de perfil"
-                    hint="quadrada · até 2 MB (GIF vale)"
+                    hint="quadrada · até 4 MB (GIF vale)"
                     value={avatar}
                     working={working === 'avatar'}
                     onFile={(file) => void handleFile('avatar', file)}
