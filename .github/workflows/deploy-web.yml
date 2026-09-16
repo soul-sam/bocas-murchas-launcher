@@ -74,6 +74,13 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # O NOME DO SEGREDO MENTE: `SSH_PASSPHRASE` guarda a SENHA DO
+          # USUARIO, nao a frase-secreta da chave. Por isso vai em `password`
+          # — e e por `password` que a autenticacao passa de verdade. Vai
+          # tambem em `passphrase` so pra espelhar o deploy do repositorio do
+          # site, que e o que comprovadamente funciona nesta VPS. So com
+          # `passphrase` o login falha.
+          password: ${{ secrets.SSH_PASSPHRASE }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           source: "site.tar.gz,nginx.web.conf,docker-compose.web.yml"
           target: ${{ secrets.SSH_WEB_DIR }}
@@ -85,6 +92,8 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # `SSH_PASSPHRASE` guarda a SENHA DO USUARIO (ver o passo de envio).
+          password: ${{ secrets.SSH_PASSPHRASE }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           # ATENCAO: com script_stop, QUALQUER comando que devolva != 0 mata o
           # script na hora. Tudo que pode legitimamente falhar (container que

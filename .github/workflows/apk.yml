@@ -163,6 +163,10 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # O NOME DO SEGREDO MENTE: `SSH_PASSPHRASE` guarda a SENHA DO
+          # USUARIO, nao a frase-secreta da chave — e e por `password` que a
+          # autenticacao passa. Mesmo par do deploy-web.yml.
+          password: ${{ secrets.SSH_PASSPHRASE }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           source: "bocas-murchas.apk"
           # ./app e um volume separado do ./html de proposito: publicar o site
