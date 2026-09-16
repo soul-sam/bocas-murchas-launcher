@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.11.0',
+    headline: 'Cada coisa no seu canal',
+    items: [
+      'Evento, enquete e "bora?" pararam de nascer no canal errado. Marcar um treino com o mural do LoL aberto criava um card de agenda dentro do mural do LoL — o app mandava o card pro canal que VOCÊ estava lendo na hora. Agora cada tipo de card tem canal próprio, e o compositor mostra pra onde vai antes de você confirmar, e deixa trocar quando for de propósito.',
+      'A barra de canais tem grupos: Conversa, Jogos, Grupo, Servidor e Voz. Dá pra dobrar o que você não usa, e o grupo fechado continua mostrando quantas não-lidas tem dentro — menção em vermelho, como sempre.',
+      'Recap da semana, fechamento do dia, "naquele dia", aposta e clipe pararam de empilhar todos em #anuncios. Cada um tem o canal dele agora.',
+      'Dá pra arrumar a ordem dos canais de verdade. As setinhas do gerenciador salvavam e a lista voltava ao que era: não havia como colocar #geral acima de #anuncios.',
+      'A sessão não vence mais no meio do uso. Quem deixa o launcher aberto a semana toda era derrubado sem aviso: a tela seguia mostrando você logado enquanto aposta era recusada, saldo congelava e o chat ficava preso em "Reconectando...".',
+      'Marcar na agenda aceita mais que jogo: rodízio, aniversário, filme, churrasco. Antes só dava pra escolher entre três jogos e o resto ia digitado no "Outro".'
+    ],
+    note: 'Os canais novos (agenda, enquetes, apostas, clipes) aparecem depois que um admin abrir o gerenciador de canais e clicar em "Organizar". Nada do que já existe é mexido: ninguém perde mensagem, canal, nem a ordem que já estava montada.'
+  },
+  {
     version: '1.10.0',
     headline: 'A tela vai fluida e o GIF finalmente roda no chat',
     items: [
