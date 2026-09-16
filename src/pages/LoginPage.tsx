@@ -10,7 +10,7 @@ import { useSettings } from '@/lib/settings-context'
 import { playUiSound } from '@/lib/ui-sounds'
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { login, expired } = useAuth()
   const navigate = useNavigate()
   const { settings } = useSettings()
   // Avisos sintetizados (ui-sounds), no volume que a pessoa escolheu.
@@ -67,6 +67,15 @@ export function LoginPage() {
             Launcher {version ? `v${version}` : '—'} <span className="terminal-cursor" />
           </p>
         </div>
+
+        {/* Caiu sozinho: a sessao venceu e o app devolveu a tela de login sem
+            ninguem clicar em sair. Sem esta linha, voltar pra ca do nada
+            parece bug — e era, enquanto o token vencido nao derrubava nada. */}
+        {expired && !error && (
+          <p className="mb-5 rounded-brutal border-2 border-burn/60 bg-burn/10 px-3 py-2 text-xs text-burn">
+            Sua sessão venceu. Entra de novo que a gente continua de onde parou.
+          </p>
+        )}
 
         <form onSubmit={onSubmit} className="space-y-5">
           <div className="space-y-2">

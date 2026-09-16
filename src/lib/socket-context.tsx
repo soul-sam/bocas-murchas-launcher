@@ -9,6 +9,17 @@ import {
 } from './api'
 import { useAuth } from './auth-context'
 
+/**
+ * O servidor recusou o handshake POR CAUSA DO TOKEN — as mensagens saem do
+ * `io.use` de server.ts. Sem tratar, o cliente reconectaria pra sempre com uma
+ * sessao morta: sem chat, sem presenca e sem nada na tela explicando.
+ *
+ * "Authentication failed" fica de fora de proposito: e o catch generico do
+ * middleware (banco fora do ar, por exemplo). Derrubar a sessao por causa dele
+ * mandaria pra tela de login quem so pegou um engasgo da VPS.
+ */
+const AUTH_REJECTED = ['Authentication required', 'Invalid token', 'User not found']
+
 /** Atividade de alguem, como o servidor guarda (com quem e quando). */
 export interface ActivityEntry extends GameActivity {
   userId: string
@@ -77,7 +88,7 @@ export interface VoiceFlags {
 const SocketContext = React.createContext<SocketContextValue | null>(null)
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
-  const { token, user } = useAuth()
+  const { token, user, expireSession } = useAuth()
 
   const [socket, setSocket] = React.useState<Socket | null>(null)
   const [connected, setConnected] = React.useState(false)
@@ -140,8 +151,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     const handleConnectError = (err: Error): void => {
       setConnected(false)
-      // Unica pista quando o app fica preso em "Reconectando...": token
-      // vencido, proxy sem upgrade, CORS, servidor fora do ar.
+      // Token vencido: e o sinal mais rapido de que a sessao caiu (chega antes
+      // do proximo poll de API). Quem trata e o AuthProvider — daqui a pessoa
+      // sai pra tela de login em vez de ficar em "Reconectando..." pra sempre.
+      if (AUTH_REJECTED.includes(err.message)) {
+        expireSession()
+        return
+      }
+      // Unica pista pro resto: proxy sem upgrade, CORS, servidor fora do ar.
       console.warn('[socket] falha ao conectar:', err.message)
     }
 
@@ -302,7 +319,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setSocket(null)
       setConnected(false)
     }
-  }, [token, user?.id])
+  }, [token, user?.id, expireSession])
 
   const onlineIds = React.useMemo(
     () => new Set(onlineUsers.map((u) => u.id)),

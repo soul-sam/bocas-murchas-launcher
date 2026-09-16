@@ -185,6 +185,30 @@ export function LolOverlayBridge(): null {
     void window.bocas.overlay.push(state)
   }, [active, state])
 
+  /**
+   * A ponte saiu do ar: logout, sessão vencida ou o app fechando.
+   *
+   * A sobreposição é OUTRA janela e não some junto — ela ficaria na tela com o
+   * último retrato de uma sessão morta (saldo, pool e partidas pra apostar),
+   * e o clique de apostar cairia no vazio, porque quem executava era este
+   * componente. Um último retrato vazio troca isso por "Entre no launcher pra
+   * ver e fazer apostas", que é a verdade.
+   */
+  const activeRef = React.useRef(active)
+  React.useEffect(() => {
+    activeRef.current = active
+  }, [active])
+  React.useEffect(() => {
+    return () => {
+      if (!activeRef.current) return
+      void window.bocas.overlay
+        .push({ ready: false, coins: 0, myGame: null, targets: [], notice: null, wagerMin: WAGER_MIN })
+        // A janela pode estar sendo destruída junto (app fechando): aqui não
+        // há mais ninguém pra tratar a promessa recusada.
+        .catch(() => {})
+    }
+  }, [])
+
   // --- a sobreposição abriu e quer dados frescos ---------------------------
   const lastRequestRef = React.useRef(0)
   React.useEffect(() => {
