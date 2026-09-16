@@ -28,7 +28,16 @@ const RULES = [
     // effects.css sao COSMETICOS (arco-iris, fogo, moldura acida/dourada):
     // cor fixa ali e conteudo, nao cromo. DEFAULT_NAME_COLOR e um dado que
     // vai pro servidor, nao um estilo — idem os presets de cor de cargo.
-    allowFiles: ['styles/effects.css', 'lib/api-gamification.ts', 'components/admin/CargosTab.tsx']
+    // index.web.html: `<meta name="theme-color">` e os apple-* do PWA
+    // sao lidos pelo SISTEMA OPERACIONAL antes de existir CSS — barra do
+    // navegador no Android, tela de abertura no iPhone. Token CSS nao serve
+    // ali: tem que ser hex literal, e tem que ser o mesmo do manifesto.
+    allowFiles: [
+      'styles/effects.css',
+      'lib/api-gamification.ts',
+      'components/admin/CargosTab.tsx',
+      'index.web.html'
+    ]
   },
   {
     id: 'raw-neon',

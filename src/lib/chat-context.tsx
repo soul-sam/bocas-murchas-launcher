@@ -49,7 +49,13 @@ export function conversationIdOf(channelId: string): string {
   return channelId.slice(DM_PREFIX.length)
 }
 
-function dmChannelId(conversationId: string): string {
+/**
+ * Id de canal a partir do id da CONVERSA. Exportado por causa do deep link
+ * do push: a API manda `?dm=<conversationId>` (ver `targetUrl` em
+ * bocas-murchas-api/src/modules/push.ts), e quem abre a conversa precisa
+ * traduzir isso pro id que o `setActiveChannel` entende.
+ */
+export function dmChannelId(conversationId: string): string {
   return DM_PREFIX + conversationId
 }
 

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      viewport-fit=cover: no celular o app ocupa a tela toda, inclusive atras
+      do notch e da barra de gestos. Quem compensa e o layout, com
+      env(safe-area-inset-*).
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B0B0B" />
+    <meta name="color-scheme" content="dark" />
+
+    <!--
+      CSP: mesma do index.html do Electron, com UMA diferenca que importa —
+      `connect-src` ganha o proprio dominio implicitamente por 'self', mas
+      aqui 'self' e https://bocasmurchas.com.br, e nao o app://. Manter a
+      lista explicita evita a mesma armadilha de la: o WebSocket do LiveKit
+      bloqueado ANTES de sair da maquina, com erro de ~1ms e sem mensagem,
+      parecendo que "entrar na call nao faz nada".
+
+      ATENCAO: se o LIVEKIT_URL do servidor mudar de host, este valor muda
+      junto — o CSP e estatico e nao enxerga o que a API devolve em
+      /api/livekit/config.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://api.bocasmurchas.com.br wss://api.bocasmurchas.com.br https://live.bewhale.com.br wss://live.bewhale.com.br https://crafatar.com https://www.youtube.com; img-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*; media-src 'self' blob: https: http://localhost:* http://127.0.0.1:*; frame-src https://www.youtube-nocookie.com https://www.youtube.com;"
+    />
+
+    <!--
+      PWA: e por aqui que o app vira icone na tela inicial do celular, no
+      Android e no iPhone. O iOS ignora o manifesto pro icone e pra tela de
+      abertura — por isso os apple-* logo abaixo.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/clover.svg" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Bocas" />
+    <meta name="application-name" content="Bocas Murchas" />
+
+    <!-- SPLASH DO iPHONE - gerado por scripts/gen-splash.mjs, NAO editar na mao.
+         O iOS so mostra a tela de abertura se a media query casar exatamente
+         ponto + DPR do aparelho; sem isso o app abre com flash branco. Mudou o
+         logo? `npm i --no-save sharp && node scripts/gen-splash.mjs` e cole a
+         saida de scripts/splash-links.html aqui. -->
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1320x2868.png"
+      media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1290x2796.png"
+      media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1284x2778.png"
+      media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1206x2622.png"
+      media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1179x2556.png"
+      media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1170x2532.png"
+      media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1125x2436.png"
+      media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1242x2688.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-828x1792.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1242x2208.png"
+      media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-750x1334.png"
+      media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-640x1136.png"
+      media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-2048x2732.png"
+      media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1668x2388.png"
+      media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1640x2360.png"
+      media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1620x2160.png"
+      media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash/splash-1536x2048.png"
+      media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Mesmas tres familias do app de desktop (ver docs/tipografia.md):
+         Inter (titulo/corpo), JetBrains Mono (SO dado), Anton (wordmark). -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Anton&display=swap"
+      rel="stylesheet"
+    />
+    <title>Bocas Murchas</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.web.tsx"></script>
+  </body>
+</html>

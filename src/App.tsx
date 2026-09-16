@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { HashRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/lib/auth-context'
 import { McAuthProvider } from '@/lib/mc-auth-context'
 import { InstallProvider } from '@/lib/install-context'
@@ -8,6 +8,7 @@ import { UpdaterProvider } from '@/lib/updater-context'
 import { SettingsProvider } from '@/lib/settings-context'
 import { ServerStatusProvider } from '@/lib/server-status-context'
 import { SocketProvider } from '@/lib/socket-context'
+import { isWeb } from '@/lib/platform'
 import { MembersProvider } from '@/lib/members-context'
 import { ChatProvider } from '@/lib/chat-context'
 import { VoiceProvider, useVoice } from '@/lib/voice-context'
@@ -33,6 +34,7 @@ import { HomePage } from '@/pages/HomePage'
 import { SocialPage } from '@/pages/SocialPage'
 import { PrintPage } from '@/pages/PrintPage'
 import { TitleBar } from '@/components/TitleBar'
+import { DeepLink } from '@/components/DeepLink'
 import { AppRail } from '@/components/social/AppRail'
 import { NudgeOverlay } from '@/components/social/NudgeOverlay'
 import { SettingsModal } from '@/components/SettingsModal'
@@ -87,11 +89,28 @@ function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * O ROUTER MUDA POR PLATAFORMA.
+ *
+ * No Electron o app carrega por `file://` (`loadFile`, que e o caminho de
+ * producao), e ali o caminho da URL e o caminho do DISCO: so o hash
+ * sobrevive a um recarregamento. Dai o HashRouter.
+ *
+ * Na web e o contrario. Hash quebra o deep link do push (`/chat?channel=`),
+ * nao casa com o `start_url` do manifesto e atrapalha o service worker, que
+ * decide o que servir pelo CAMINHO — e o hash nem chega ao servidor.
+ *
+ * O nginx ja devolve `index.html` pra qualquer rota (fallback do SPA), entao
+ * `BrowserRouter` funciona sem mais nada.
+ */
+const Router = isWeb() ? BrowserRouter : HashRouter
+
+/**
  * Rota que exige permissão de cargo.
  *
- * Esconder o link da barra não basta: a rota é `#/impressao` numa HashRouter,
- * fica no histórico da janela e sobrevive a um logout/login com outra conta —
- * quem já entrou uma vez voltaria pra tela da impressora ao abrir o launcher.
+ * Esconder o link da barra não basta: a rota `/impressao` (`#/impressao` no
+ * Electron) fica no histórico da janela e sobrevive a um logout/login com
+ * outra conta — quem já entrou uma vez voltaria pra tela da impressora ao
+ * abrir o launcher.
  *
  * Enquanto o catálogo de cargos não chegou a resposta é "espera", não "não":
  * mandar pra home quem TEM o cargo, só porque o fetch não voltou ainda, seria
@@ -284,6 +303,9 @@ function AuthedLayout() {
                                       token, mas fica aqui pra a fila e a cota
                                       não remontarem ao trocar de aba. */}
                                   <PrintProvider>
+                                    {/* Sem tela: leva o toque da
+                                        notificacao pra conversa certa. */}
+                                    <DeepLink />
                                     <AuthedShell />
                                   </PrintProvider>
                                 </RichTextProvider>
@@ -330,7 +352,7 @@ export function App() {
             <LaunchProvider>
               <UpdaterProvider>
                 <ServerStatusProvider>
-                  <HashRouter>
+                  <Router>
                     <div className="flex h-screen flex-col overflow-hidden bg-background">
                       <TitleBar />
                       <InterfaceGuardNotice />
@@ -355,6 +377,12 @@ export function App() {
 
                           <Route element={<AuthedLayout />}>
                             <Route path="/" element={<SocialPage />} />
+                            {/* Apelido de `/`: a API manda `/chat?channel=`
+                                no push, heranca do site antigo. Sem esta
+                                linha o link cai no `path="*"` e vira um
+                                redirecionamento que perde a query — e com
+                                ela o canal. Quem le a query e o DeepLink. */}
+                            <Route path="/chat" element={<SocialPage />} />
                             <Route
                               path="/impressao"
                               element={
@@ -379,7 +407,7 @@ export function App() {
                         </Routes>
                       </main>
                     </div>
-                  </HashRouter>
+                  </Router>
                 </ServerStatusProvider>
               </UpdaterProvider>
             </LaunchProvider>

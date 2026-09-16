@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Minus, Square, Copy, X } from 'lucide-react'
 import { UpdatePill } from '@/components/UpdatePill'
 import { useUpdater } from '@/lib/updater-context'
+import { isWeb } from '@/lib/platform'
 
 export function TitleBar() {
   const [maximized, setMaximized] = React.useState(false)
@@ -12,6 +13,15 @@ export function TitleBar() {
     const off = window.bocas.appWindow.onStateChanged((s) => setMaximized(s.maximized))
     return off
   }, [])
+
+  // No navegador nao existe moldura de janela pra minimizar, maximizar ou
+  // fechar, e a versao aqui era o botao de procurar atualizacao — que na web
+  // e trabalho do service worker. A barra inteira perde sentido: some.
+  //
+  // O early return vem DEPOIS dos hooks de proposito: antes deles seria
+  // chamada condicional de hook, e o React quebra na primeira vez que este
+  // componente montasse nas duas plataformas.
+  if (isWeb()) return null
 
   return (
     <div
