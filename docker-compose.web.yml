@@ -1,0 +1,44 @@
+# O SITE (bocasmurchas.com.br) — nginx servindo o build web do launcher.
+#
+# Nao ha `build:` aqui, e isso e de proposito. A Action compila o `dist-web/`
+# no runner (onde o `actions/checkout` ja resolve o repositorio PRIVADO) e
+# manda so o resultado pra VPS. Construir na VPS exigiria credencial de git pra
+# um repo privado dentro do servidor — uma chave a mais pra vazar, em troca de
+# nada.
+#
+# Os dois volumes sao separados de proposito:
+#   ./html  — o site, trocado inteiro a cada deploy;
+#   ./app   — o APK, publicado por OUTRO workflow, em outra hora.
+# Fossem um so, publicar o site apagaria o APK (e vice-versa), e o link que a
+# galera tem no grupo morreria sem ninguem entender por que.
+
+services:
+  site:
+    image: nginx:1.27-alpine
+    # Mesmo nome do container do stack ANTIGO (que vinha do repositorio do
+    # site). O Docker recusa dois containers com o mesmo nome, entao um deploy
+    # que esqueca de derrubar o velho FALHA em vez de deixar dois brigando
+    # pela porta 8081. O workflow derruba antes de subir.
+    container_name: bocas-murchas
+    restart: unless-stopped
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+      - ./app:/srv/apk:ro
+      - ./nginx.web.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      # 8081 no host, 80 no container. O nginx da VPS ja faz
+      # `proxy_pass http://127.0.0.1:8081` pra bocasmurchas.com.br — este numero
+      # nao e escolha, e contrato com uma config que vive FORA deste repo
+      # (/etc/nginx/sites-available/bocasmurchas). Mudar aqui derruba o site
+      # pra 502 com o deploy passando e o container de pe.
+      #
+      # Preso em 127.0.0.1: em 0.0.0.0 o site ficaria aberto direto no IP
+      # publico da VPS, sem TLS e sem passar pelo nginx.
+      - "127.0.0.1:8081:80"
+    networks:
+      - bocas-network
+
+networks:
+  bocas-network:
+    external: true
+    name: bocas-network

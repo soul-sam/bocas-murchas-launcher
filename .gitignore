@@ -1,6 +1,8 @@
 node_modules/
 out/
 dist/
+# build do navegador (vite.web.config.ts)
+dist-web/
 release/
 .env
 .env.local
@@ -23,3 +25,24 @@ ds-bundle/
 .design-sync/node_modules
 .design-sync/compiled.css
 .design-sync/.tw-out.css
+
+# Projeto Android gerado pelo Bubblewrap (workflow apk.yml).
+# E efemero: a Action gera, compila, assina e joga fora. Se voce rodar na
+# mao pra depurar, nao commite nada disso.
+/app/
+/gradle/
+/gradlew
+/gradlew.bat
+/build.gradle
+/settings.gradle
+/gradle.properties
+/manifest-checksum.txt
+/store_icon.png
+*.apk
+*.aab
+
+# A CHAVE DE ASSINATURA NUNCA ENTRA AQUI. Ela vive fora de qualquer repo
+# (../chave-apk) e chega na Action pelo segredo ANDROID_KEYSTORE_BASE64.
+# Perder a chave = ninguem mais consegue ATUALIZAR o app instalado.
+*.keystore
+*.jks

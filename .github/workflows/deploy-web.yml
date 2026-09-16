@@ -1,0 +1,169 @@
+name: Deploy do site (bocasmurchas.com.br)
+
+# O MESMO codigo do launcher, publicado como site. Roda em todo push na main:
+# e isso que faz o navegador espelhar o app de desktop sem ninguem lembrar de
+# nada. Mudanca so de Electron tambem redeploya — e barato e evita a pergunta
+# "sera que essa mexida conta pro site?".
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-site
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Conferir os segredos
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PASSPHRASE: ${{ secrets.SSH_PASSPHRASE }}
+          SSH_WEB_DIR: ${{ secrets.SSH_WEB_DIR }}
+        run: |
+          set -e
+          faltando=0
+          for v in SSH_HOST SSH_USER SSH_PORT SSH_PRIVATE_KEY SSH_PASSPHRASE SSH_WEB_DIR; do
+            if [ -z "${!v}" ]; then
+              echo "Falta o segredo: $v" >&2
+              faltando=1
+            fi
+          done
+          if [ "$faltando" -ne 0 ]; then
+            echo "Configure em: Settings -> Secrets and variables -> Actions" >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # O MESMO portao do release do desktop: lint de design + os dois
+      # tsconfig. Site quebrado no ar e pior que site velho no ar.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Compilar o site
+        run: npm run web:build
+
+      # Um .tar.gz sobe MUITO mais rapido e confiavel que 2.000 arquivinhos por
+      # SCP, e chega inteiro ou nao chega — sem estado pela metade no servidor.
+      - name: Empacotar
+        run: |
+          set -e
+          tar -czf site.tar.gz -C dist-web .
+          ls -la site.tar.gz
+
+      - name: Enviar pra VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          source: "site.tar.gz,nginx.web.conf,docker-compose.web.yml"
+          target: ${{ secrets.SSH_WEB_DIR }}
+
+      - name: Publicar
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          # ATENCAO: com script_stop, QUALQUER comando que devolva != 0 mata o
+          # script na hora. Tudo que pode legitimamente falhar (container que
+          # ainda nao existe, diretorio vazio) leva `|| true`.
+          script_stop: true
+          command_timeout: 15m
+          script: |
+            set -e
+            cd "${{ secrets.SSH_WEB_DIR }}"
+
+            # ./app guarda o APK e e publicado por OUTRO workflow. Criar se nao
+            # existir, NUNCA apagar: o nginx nao sobe com um volume apontando
+            # pra caminho inexistente, e apagar aqui mataria o link do grupo.
+            mkdir -p app html
+
+            # Troca do site em duas etapas pra janela de site quebrado ser a
+            # menor possivel: extrai ao lado, depois troca de nome. Extrair por
+            # cima deixaria o site servindo metade novo e metade velho enquanto
+            # o tar roda.
+            rm -rf html-novo
+            mkdir -p html-novo
+            tar -xzf site.tar.gz -C html-novo
+            rm -f site.tar.gz
+
+            # Prova que o pacote veio inteiro ANTES de aposentar o site que
+            # esta no ar. Sem isso, um tar truncado publica uma pasta vazia.
+            test -f html-novo/index.html
+            test -f html-novo/manifest.webmanifest
+            test -f html-novo/sw.js
+            test -f html-novo/.well-known/assetlinks.json
+
+            # VALIDA A CONFIG ANTES DE ENCOSTAR NO QUE ESTA NO AR.
+            # Um erro de sintaxe no nginx.web.conf so apareceria depois de o
+            # container antigo ja estar derrubado — e ai o site fica FORA, com
+            # o deploy falhando e nada pra voltar. Um container descartavel
+            # roda `nginx -t` e a gente descobre antes de mexer em nada.
+            docker run --rm \
+              -v "$PWD/nginx.web.conf:/etc/nginx/conf.d/default.conf:ro" \
+              -v "$PWD/html-novo:/usr/share/nginx/html:ro" \
+              -v "$PWD/app:/srv/apk:ro" \
+              nginx:1.27-alpine nginx -t
+
+            rm -rf html-antigo
+            if [ -d html ]; then mv html html-antigo; fi
+            mv html-novo html
+
+            # O stack ANTIGO (do repositorio do site) segura o nome
+            # `bocas-murchas` e a porta 8081. Enquanto ele estiver de pe, este
+            # aqui nao sobe. Derruba pelo container que ESTA publicando a 8081,
+            # em vez de chutar o nome do projeto do compose.
+            velho=$(docker ps -q --filter "publish=8081" || true)
+            if [ -n "$velho" ]; then
+              echo "Derrubando o container antigo da 8081: $velho"
+              docker stop $velho || true
+              docker rm $velho || true
+            fi
+
+            docker compose -f docker-compose.web.yml up -d --remove-orphans
+
+            docker compose -f docker-compose.web.yml ps
+
+      - name: Conferir no ar (pela URL publica)
+        shell: bash
+        run: |
+          set -e
+          # Pela URL PUBLICA, nao pelo 127.0.0.1 de dentro da VPS: era
+          # exatamente ai que o health check antigo dizia "ok" com o nginx do
+          # host respondendo 502 pra todo mundo.
+          for tentativa in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://bocasmurchas.com.br/ || true)
+            tipo=$(curl -s -o /dev/null -w "%{content_type}" https://bocasmurchas.com.br/.well-known/assetlinks.json || true)
+            echo "tentativa $tentativa: site=$code assetlinks=$tipo"
+            if [ "$code" = "200" ] && [ "${tipo#application/json}" != "$tipo" ]; then
+              echo "No ar."
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "O site nao respondeu como esperado." >&2
+          echo "assetlinks precisa sair como application/json — se veio text/html," >&2
+          echo "o arquivo nao chegou e o fallback do SPA devolveu o index." >&2
+          exit 1

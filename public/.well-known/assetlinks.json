@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.bocasmurchas.app",
+      "sha256_cert_fingerprints": [
+        "11:6B:6D:B9:A4:BD:40:B5:E5:00:21:F5:41:27:FE:0D:A0:DA:AE:6F:94:4C:4D:7C:C3:6A:A7:1D:07:0C:7E:7D"
+      ]
+    }
+  }
+]

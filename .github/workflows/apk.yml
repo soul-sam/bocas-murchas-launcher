@@ -1,0 +1,190 @@
+name: APK do Android (TWA)
+
+# Gera o APK que a galera instala pelo link, e publica em
+# https://bocasmurchas.com.br/app/bocas-murchas.apk
+#
+# NAO vai pra loja nenhuma: o app e uma casca (Trusted Web Activity) que abre
+# o proprio site em tela cheia, usando o Chrome por baixo. Por isso o push, a
+# voz e tudo o mais continuam funcionando exatamente como no navegador — e
+# feature nova chega pelo deploy do site, sem ninguem reinstalar nada.
+#
+# So roda quando voce manda (workflow_dispatch): o APK nao precisa ser
+# regerado a cada commit, so quando a casca mudar (icone, nome, cor) ou
+# quando voce quiser um numero de versao novo.
+on:
+  workflow_dispatch:
+    inputs:
+      publicar:
+        description: "Publicar no site depois de assinar?"
+        type: boolean
+        default: true
+
+concurrency:
+  group: apk-android
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Conferir os segredos
+        shell: bash
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SENHA: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -e
+          [ -n "$KEYSTORE" ] || { echo "Falta o segredo ANDROID_KEYSTORE_BASE64" >&2; exit 1; }
+          [ -n "$SENHA" ] || { echo "Falta o segredo ANDROID_KEYSTORE_PASSWORD" >&2; exit 1; }
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar o Bubblewrap
+        run: npm install -g @bubblewrap/cli@latest
+
+      # Sem este arquivo o Bubblewrap PERGUNTA se pode baixar o JDK — em
+      # qualquer comando, inclusive `help` — e o job trava ate o timeout sem
+      # dizer o que quer. Escrevendo os dois caminhos, ele nao pergunta nada.
+      - name: Apontar o Bubblewrap pro JDK e pro SDK
+        run: |
+          set -e
+          mkdir -p ~/.bubblewrap
+          cat > ~/.bubblewrap/config.json <<EOF
+          {
+            "jdkPath": "${JAVA_HOME}",
+            "androidSdkPath": "${ANDROID_HOME}"
+          }
+          EOF
+          cat ~/.bubblewrap/config.json
+
+      - name: Recuperar a chave de assinatura
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -e
+          echo "$KEYSTORE" | base64 -d > bocas-murchas.keystore
+          ls -la bocas-murchas.keystore
+
+      # A CHECAGEM QUE EVITA O FRACASSO SILENCIOSO DO TWA.
+      #
+      # Se a impressao digital da chave que esta assinando aqui nao for a mesma
+      # que esta no assetlinks.json publicado, o APK instala e ABRE — mas com a
+      # barra de endereco do Chrome em cima, parecendo um atalho de site
+      # qualquer. Nao ha erro, nao ha aviso: so fica feio. Descobrir isso
+      # depois de mandar o link no grupo e o pior jeito.
+      - name: A chave bate com o assetlinks que esta no ar?
+        env:
+          SENHA: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -e
+          local_fp=$(keytool -list -v -keystore bocas-murchas.keystore -alias bocas \
+            -storepass "$SENHA" 2>/dev/null \
+            | grep -i "SHA256:" | head -1 | sed 's/.*SHA256: *//' | tr -d ' \r')
+
+          publicado=$(curl -fsS https://bocasmurchas.com.br/.well-known/assetlinks.json)
+          echo "$publicado" | head -20
+
+          remoto_fp=$(echo "$publicado" | python3 -c \
+            "import json,sys; print(json.load(sys.stdin)[0]['target']['sha256_cert_fingerprints'][0].strip())")
+
+          echo "chave que assina : $local_fp"
+          echo "site diz que e   : $remoto_fp"
+
+          if [ "$local_fp" != "$remoto_fp" ]; then
+            echo "" >&2
+            echo "NAO BATE. O APK ficaria com a barra do navegador em cima." >&2
+            echo "Atualize public/.well-known/assetlinks.json com a impressao" >&2
+            echo "digital de cima e rode o deploy do site ANTES deste workflow." >&2
+            exit 1
+          fi
+          echo "Confere."
+
+      # A versao do APK acompanha a do launcher, e o versionCode vem do numero
+      # da execucao: o Android SO aceita atualizar pra um versionCode MAIOR, e
+      # o numero da run cresce sozinho — nao da pra esquecer de incrementar.
+      - name: Carimbar a versao
+        run: |
+          set -e
+          versao=$(node -p "require('./package.json').version")
+          node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('twa-manifest.json', 'utf8'));
+            m.appVersion = '$versao';
+            m.appVersionCode = ${{ github.run_number }};
+            m.signingKey.path = process.cwd() + '/bocas-murchas.keystore';
+            fs.writeFileSync('twa-manifest.json', JSON.stringify(m, null, 2));
+            console.log('appVersion', m.appVersion, '| appVersionCode', m.appVersionCode);
+          "
+
+      - name: Gerar o projeto Android
+        env:
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -e
+          # `yes |` por garantia: o `update` confirma a regeneracao do projeto
+          # quando nao acha o manifest-checksum.txt (que nao vai pro git).
+          yes | bubblewrap update --skipVersionUpgrade
+
+      - name: Compilar e assinar
+        env:
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -e
+          yes | bubblewrap build --skipPwaValidation
+          ls -la *.apk
+          cp app-release-signed.apk bocas-murchas.apk
+
+      - name: Guardar o APK na execucao
+        uses: actions/upload-artifact@v4
+        with:
+          name: bocas-murchas-apk
+          path: bocas-murchas.apk
+          retention-days: 90
+
+      - name: Publicar no site
+        if: ${{ inputs.publicar }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          source: "bocas-murchas.apk"
+          # ./app e um volume separado do ./html de proposito: publicar o site
+          # nao apaga o APK, e publicar o APK nao mexe no site.
+          target: ${{ secrets.SSH_WEB_DIR }}/app
+
+      - name: Conferir o link que vai pro grupo
+        if: ${{ inputs.publicar }}
+        run: |
+          set -e
+          url="https://bocasmurchas.com.br/app/bocas-murchas.apk"
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
+            tipo=$(curl -s -o /dev/null -w "%{content_type}" "$url" || true)
+            echo "tentativa $i: $code ($tipo)"
+            if [ "$code" = "200" ]; then
+              echo ""
+              echo "Pronto. Manda no grupo:"
+              echo "  $url"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "O APK nao ficou acessivel na URL publica." >&2
+          exit 1
