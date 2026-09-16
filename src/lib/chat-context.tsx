@@ -3,7 +3,10 @@ import {
   channels as channelsApi,
   messages as messagesApi,
   dm as dmApi,
+  parseChannelFeeds,
   type Channel,
+  type ChannelFeed,
+  type ChannelType,
   type ChatMessage,
   type Conversation,
   type SendMessagePayload
@@ -50,16 +53,83 @@ function dmChannelId(conversationId: string): string {
   return DM_PREFIX + conversationId
 }
 
+/**
+ * Ordem dos grupos na barra lateral.
+ *
+ * E uma lista fixa, e nao ordem alfabetica, porque a barra tem uma leitura
+ * natural: onde se conversa, onde se joga, o que o grupo combinou, o que o
+ * servidor avisa. Categoria que nao esta aqui (alguem criou a dele no
+ * gerenciador) entra depois, em ordem alfabetica, e canal sem categoria
+ * nenhuma cai em "Outros", no fim.
+ */
+const CATEGORY_ORDER = ['Conversa', 'Jogos', 'Grupo', 'Servidor', 'Voz']
+
+/**
+ * Tipo de canal que atendia o feed antes de `feeds` existir — espelha
+ * `LEGACY_TYPE` da API. E o que faz um servidor que nunca configurou nada
+ * continuar mandando pos-jogo pro mural do LoL.
+ */
+const LEGACY_TYPE_BY_FEED: Partial<Record<ChannelFeed, ChannelType>> = {
+  jogos: 'lol',
+  sugestoes: 'suggestions',
+  sistema: 'announcements'
+}
+const UNCATEGORIZED = 'Outros'
+
+function groupByCategory(list: Channel[]): ChannelGroup[] {
+  const buckets = new Map<string, Channel[]>()
+  for (const channel of list) {
+    const key = channel.category?.trim() || UNCATEGORIZED
+    const bucket = buckets.get(key)
+    if (bucket) bucket.push(channel)
+    else buckets.set(key, [channel])
+  }
+
+  return [...buckets.entries()]
+    .map(([category, channels]) => ({ category, channels }))
+    .sort((a, b) => {
+      // "Outros" sempre por ultimo; o resto pela lista fixa, e o que nao esta
+      // nela vai pro fim, em ordem alfabetica.
+      if (a.category === UNCATEGORIZED) return 1
+      if (b.category === UNCATEGORIZED) return -1
+      const ia = CATEGORY_ORDER.indexOf(a.category)
+      const ib = CATEGORY_ORDER.indexOf(b.category)
+      if (ia === -1 && ib === -1) return a.category.localeCompare(b.category)
+      if (ia === -1) return 1
+      if (ib === -1) return -1
+      return ia - ib
+    })
+}
+
 interface TypingUser {
   id: string
   displayName: string
   at: number
 }
 
+/** Um bloco da barra lateral: o rotulo da categoria e os canais dela. */
+export interface ChannelGroup {
+  category: string
+  channels: Channel[]
+}
+
 interface ChatContextValue {
   channels: Channel[]
   textChannels: Channel[]
   voiceChannels: Channel[]
+  /** Canais de texto ja divididos por categoria, na ordem de exibicao. */
+  textGroups: ChannelGroup[]
+  /** Canais de voz por categoria — na pratica quase sempre um grupo so. */
+  voiceGroups: ChannelGroup[]
+  /**
+   * Onde um card desse tipo cai hoje.
+   *
+   * O composer usa isso pra ja vir com o destino certo escolhido, em vez de
+   * mandar o canal que a pessoa estava olhando — que era como a agenda ia
+   * parar no mural do LoL. Null quando nenhum canal declara o feed: ai o
+   * servidor decide sozinho pela cadeia de fallback.
+   */
+  feedChannel: (feed: ChannelFeed) => Channel | null
   /** Canais sinteticos das conversas, ja ordenados por atividade. */
   dmChannels: Channel[]
   conversations: Conversation[]
@@ -194,6 +264,40 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const voiceChannels = React.useMemo(
     () => channels.filter((c) => c.type === 'voice'),
     [channels]
+  )
+
+  const textGroups = React.useMemo(() => groupByCategory(textChannels), [textChannels])
+  const voiceGroups = React.useMemo(() => groupByCategory(voiceChannels), [voiceChannels])
+
+  /**
+   * Onde um card desse tipo cai — a MESMA cadeia de `feedChannelId` na API.
+   *
+   * Sao duas copias da mesma regra, e e de proposito: o composer precisa
+   * MOSTRAR o destino antes de mandar, e mostrar "#agenda" pra depois o card
+   * nascer em outro lugar seria pior que nao mostrar nada. A lista ja chega
+   * ordenada por `position`, igual a consulta do servidor, entao os dois
+   * escolhem o mesmo canal.
+   *
+   * Se mexer aqui, mexa tambem em api/src/lib/channel-routing.ts.
+   */
+  const feedChannel = React.useCallback(
+    (feed: ChannelFeed): Channel | null => {
+      const declared = textChannels.find((c) => parseChannelFeeds(c.feeds).includes(feed))
+      if (declared) return declared
+
+      const legacy = LEGACY_TYPE_BY_FEED[feed]
+      if (legacy) {
+        const byType = textChannels.find((c) => c.type === legacy)
+        if (byType) return byType
+      }
+
+      return (
+        textChannels.find((c) => c.type === 'announcements') ??
+        textChannels.find((c) => c.type === 'text') ??
+        null
+      )
+    },
+    [textChannels]
   )
 
   /** Cada conversa vira um canal de mentira — ver o comentario do arquivo. */
@@ -1136,6 +1240,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       channels,
       textChannels,
       voiceChannels,
+      textGroups,
+      voiceGroups,
+      feedChannel,
       dmChannels,
       conversations,
       loading,
@@ -1172,6 +1279,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       channels,
       textChannels,
       voiceChannels,
+      textGroups,
+      voiceGroups,
+      feedChannel,
       dmChannels,
       conversations,
       loading,

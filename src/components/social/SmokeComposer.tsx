@@ -1,8 +1,8 @@
 import * as React from 'react'
 import { Flame, Loader2, X } from 'lucide-react'
 import { useOverlays } from '@/lib/overlay-context'
-import { isDmId, useChat } from '@/lib/chat-context'
 import { useSmoke, smokeCountdown } from '@/lib/smoke-context'
+import { CardTargetPicker, useCardTarget } from './CardTarget'
 import { cn } from '@/lib/utils'
 
 /**
@@ -32,7 +32,7 @@ const NOTE_MAX = 140
 
 export function SmokeComposer() {
   const { smokeComposerOpen: open, closeSmokeComposer: close } = useOverlays()
-  const { activeChannelId, activeChannel } = useChat()
+  const { targetId, setTargetId, options, suggested, reset: resetTarget } = useCardTarget('jogos')
   const { raiseSmoke, mySmoke } = useSmoke()
 
   const [minutes, setMinutes] = React.useState(30)
@@ -48,9 +48,10 @@ export function SmokeComposer() {
     setNote('')
     setBusy(false)
     setError(null)
+    resetTarget()
     const timer = setTimeout(() => noteRef.current?.focus(), 0)
     return () => clearTimeout(timer)
-  }, [open])
+  }, [open, resetTarget])
 
   React.useEffect(() => {
     if (!open) return
@@ -63,10 +64,12 @@ export function SmokeComposer() {
     return () => window.removeEventListener('keydown', handle)
   }, [open, close])
 
-  const targetChannel =
-    activeChannelId && !isDmId(activeChannelId) && activeChannel && activeChannel.type !== 'voice'
-      ? activeChannel
-      : null
+  /**
+   * Onde o card cai.
+   *
+   * Era o canal ATIVO — o que a pessoa estava lendo na hora. Agora o padrao
+   * vem do feed `jogos` e aparece escrito no formulario. Ver CardTarget.tsx.
+   */
 
   // O servidor também barra, mas avisar antes poupa o clique.
   const already = !!mySmoke
@@ -80,7 +83,7 @@ export function SmokeComposer() {
     const ack = await raiseSmoke({
       minutes,
       note: note.trim() ? note.trim().slice(0, NOTE_MAX) : undefined,
-      channelId: targetChannel?.id
+      channelId: targetId ?? undefined
     })
     setBusy(false)
 
@@ -183,6 +186,15 @@ export function SmokeComposer() {
           </p>
         )}
 
+        <CardTargetPicker
+          className="mt-4"
+          feed="jogos"
+          targetId={targetId}
+          onChange={setTargetId}
+          options={options}
+          suggested={suggested}
+        />
+
         {error && (
           <p className="mt-3 rounded-brutal border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
             {error}
@@ -190,11 +202,7 @@ export function SmokeComposer() {
         )}
 
         <div className="mt-5 flex items-center gap-3">
-          <p className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground">
-            {targetChannel
-              ? `o card vai pro #${targetChannel.name}`
-              : 'sem canal de texto aberto: só a faixa da barra'}
-          </p>
+          <div className="flex-1" />
           <button
             type="button"
             onClick={close}

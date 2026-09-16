@@ -22,7 +22,8 @@ import {
   X,
   Eye,
   MessageSquare,
-  Settings2
+  Settings2,
+  ChevronRight
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import {
@@ -80,8 +81,8 @@ export function ChannelSidebar({
   // Emoji equipado de quem está na call: o VoiceUser do socket é só id/nome/avatar.
   const { byId: memberById } = useMembers()
   const {
-    textChannels,
-    voiceChannels,
+    textGroups,
+    voiceGroups,
     activeChannelId,
     unread,
     mentions,
@@ -104,6 +105,59 @@ export function ChannelSidebar({
    * estou, porque é o único que o meu launcher está ouvindo. Por isso o anel
    * aparece só nas pessoas da minha sala — nas outras seria chute.
    */
+  /**
+   * Grupos dobrados.
+   *
+   * Fica no localStorage, e nao no servidor: dobrar "Servidor" e uma decisao
+   * de quem esta olhando esta tela, nesta maquina — nao uma configuracao do
+   * grupo. O conjunto guarda quem esta FECHADO, entao um grupo novo (criado
+   * depois, no gerenciador) nasce aberto em vez de sumir sem aviso.
+   */
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSED_KEY)
+      return new Set<string>(raw ? (JSON.parse(raw) as string[]) : [])
+    } catch {
+      return new Set<string>()
+    }
+  })
+
+  const toggleGroup = React.useCallback((key: string): void => {
+    setCollapsed((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      try {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next]))
+      } catch {
+        // Sem localStorage (ou cheio) o app continua; so nao lembra amanha.
+      }
+      return next
+    })
+  }, [])
+
+  /**
+   * O que fica escondido quando o grupo esta fechado.
+   *
+   * Dobrar um grupo nao pode ESCONDER que tem coisa nova la dentro — seria
+   * trocar bagunca por mensagem perdida. O cabecalho fechado carrega a soma:
+   * mencao em vermelho, porque 2 mensagens que falam com voce importam mais
+   * que 200 que nao falam.
+   */
+  const groupTotals = React.useCallback(
+    (channels: Channel[]) => {
+      let count = 0
+      let pings = 0
+      for (const channel of channels) {
+        if (isMuted(channel.id)) continue
+        count += unread[channel.id] ?? 0
+        pings += mentions[channel.id] ?? 0
+      }
+      return { count, pings }
+    },
+    [isMuted, mentions, unread]
+  )
+
   const speakingIds = React.useMemo(
     () => new Set(voice.participants.filter((p) => p.isSpeaking).map((p) => p.identity)),
     [voice.participants]
@@ -192,10 +246,18 @@ export function ChannelSidebar({
       </p>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-2">
+        {/* Um bloco por categoria. A engrenagem de gerenciar canais fica no
+            PRIMEIRO grupo e nao em todos: um botao por cabecalho viraria
+            ruido, e ele abre a mesma tela de qualquer lugar. */}
+        {textGroups.map((group, groupIndex) => (
         <Section
-          label="Texto"
+          key={group.category}
+          label={group.category}
+          collapsed={collapsed.has(group.category)}
+          onToggle={() => toggleGroup(group.category)}
+          totals={groupTotals(group.channels)}
           action={
-            user?.role === 'admin' ? (
+            groupIndex === 0 && user?.role === 'admin' ? (
               <Hint
                 label="Gerenciar canais"
                 description="Criar, renomear, reordenar e apagar canais."
@@ -213,7 +275,7 @@ export function ChannelSidebar({
             ) : undefined
           }
         >
-          {textChannels.map((channel) => {
+          {group.channels.map((channel) => {
             const count = unread[channel.id] ?? 0
             const pings = mentions[channel.id] ?? 0
             const active = view === 'chat' && channel.id === activeChannelId
@@ -282,9 +344,18 @@ export function ChannelSidebar({
             )
           })}
         </Section>
+        ))}
 
-        <Section label="Voz">
-          {voiceChannels.map((channel) => {
+        {/* Canal de voz quase sempre mora num grupo so; quando e esse o caso o
+            rotulo continua sendo "Voz", que e como a galera chama. */}
+        {voiceGroups.map((group) => (
+        <Section
+          key={group.category}
+          label={voiceGroups.length === 1 ? 'Voz' : group.category}
+          collapsed={collapsed.has(VOICE_PREFIX + group.category)}
+          onToggle={() => toggleGroup(VOICE_PREFIX + group.category)}
+        >
+          {group.channels.map((channel) => {
             const occupants = voiceByChannel[channel.id] ?? []
             const sharing = screenShares[channel.id] ?? []
             const isCurrent = voice.channel?.id === channel.id
@@ -420,6 +491,7 @@ export function ChannelSidebar({
             )
           })}
         </Section>
+        ))}
       </div>
 
       {/* Dock da call */}
@@ -691,23 +763,70 @@ export function ChannelSidebar({
   )
 }
 
+const COLLAPSED_KEY = 'bm:canais:dobrados'
+/** Prefixo pra um grupo de voz nao brigar com um de texto de mesmo nome. */
+const VOICE_PREFIX = 'voz:'
+
 function Section({
   label,
   action,
+  collapsed,
+  onToggle,
+  totals,
   children
 }: {
   label: string
+  /** Fechado? Sem `onToggle`, a secao e fixa e nao mostra setinha. */
+  collapsed?: boolean
+  onToggle?: () => void
+  /** Nao-lidas somadas do grupo, pra aparecer quando ele esta fechado. */
+  totals?: { count: number; pings: number }
   /** Botãozinho no canto do título (ex.: engrenagem de gerenciar canais). */
   action?: React.ReactNode
   children: React.ReactNode
 }) {
+  const isCollapsed = collapsed === true
+
   return (
     <section className="mb-3 px-2">
       <h3 className="flex items-center gap-1 px-2 pb-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
-        <span className="flex-1 truncate">{label}</span>
+        {onToggle ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={!isCollapsed}
+            className="flex min-w-0 flex-1 items-center gap-1 text-left uppercase tracking-widest transition-colors hover:text-foreground"
+          >
+            <ChevronRight
+              className={cn(
+                'h-3 w-3 shrink-0 transition-transform',
+                !isCollapsed && 'rotate-90'
+              )}
+            />
+            <span className="truncate">{label}</span>
+          </button>
+        ) : (
+          <span className="flex-1 truncate">{label}</span>
+        )}
+
+        {/* So com o grupo fechado: aberto, cada canal ja mostra o proprio. */}
+        {isCollapsed && totals && totals.pings > 0 && (
+          <span
+            title={`${totals.pings} ${totals.pings === 1 ? 'menção' : 'menções'}`}
+            className="shrink-0 rounded-full bg-destructive px-1.5 font-mono text-[11.5px] font-bold text-dirty-white"
+          >
+            @{totals.pings > 9 ? '9+' : totals.pings}
+          </span>
+        )}
+        {isCollapsed && totals && totals.count > 0 && totals.pings === 0 && (
+          <span className="shrink-0 rounded-full bg-surface-strong px-1.5 font-mono text-[11.5px] font-bold text-dirty-white">
+            {totals.count > 99 ? '99+' : totals.count}
+          </span>
+        )}
+
         {action}
       </h3>
-      <div className="space-y-0.5">{children}</div>
+      {!isCollapsed && <div className="space-y-0.5">{children}</div>}
     </section>
   )
 }

@@ -2,8 +2,9 @@ import * as React from 'react'
 import { CalendarPlus, Loader2, X } from 'lucide-react'
 import { useOverlays } from '@/lib/overlay-context'
 import { useAuth } from '@/lib/auth-context'
-import { isDmId, useChat } from '@/lib/chat-context'
-import { events as eventsApi, guessGame, type KnownGame } from '@/lib/api-events'
+import { EVENT_KINDS, events as eventsApi, gameLabel, guessEventKind } from '@/lib/api-events'
+import { GameIcon } from './GameIcon'
+import { CardTargetPicker, useCardTarget } from './CardTarget'
 import {
   formatDayLabel,
   formatRelative,
@@ -27,12 +28,6 @@ import { cn } from '@/lib/utils'
  * mas a regra vale pra qualquer modal — ver lib/interaction-guard.ts.
  */
 
-const GAMES: Array<{ id: KnownGame; label: string }> = [
-  { id: 'lol', label: 'LoL' },
-  { id: 'minecraft', label: 'Minecraft' },
-  { id: 'outro', label: 'Outro' }
-]
-
 const TITLE_MAX = 80
 const NOTE_MAX = 300
 const MAX_DAYS_AHEAD = 60
@@ -47,11 +42,13 @@ function toInputValue(d: Date): string {
 export function EventComposer() {
   const { eventComposerOpen: open, eventComposerSeed: seed, closeEventComposer: close } = useOverlays()
   const { token } = useAuth()
-  const { activeChannelId, activeChannel } = useChat()
+  const { targetId, setTargetId, options, suggested, reset: resetTarget } = useCardTarget('agenda')
 
   const [title, setTitle] = React.useState('')
-  const [game, setGame] = React.useState<KnownGame>('lol')
-  const [gameOther, setGameOther] = React.useState('')
+  // Vai no campo `game` do evento, que hoje guarda mais que jogo — a lista
+  // inteira (e o porquê da chave sem acento) está em lib/api-events.ts.
+  const [kind, setKind] = React.useState<string>('lol')
+  const [kindOther, setKindOther] = React.useState('')
   const [whenText, setWhenText] = React.useState('')
   const [whenManual, setWhenManual] = React.useState('')
   const [note, setNote] = React.useState('')
@@ -73,9 +70,10 @@ export function EventComposer() {
     setTitle(parsed ? parsed.rest : raw)
     setWhenText(parsed ? parsed.matched : '')
     setWhenManual('')
-    setGame(guessGame(raw) ?? 'lol')
-    setGameOther('')
+    setKind(guessEventKind(raw) ?? 'lol')
+    setKindOther('')
     setNote('')
+    resetTarget()
     setBusy(false)
     setError(null)
 
@@ -83,7 +81,7 @@ export function EventComposer() {
     const target = raw && !parsed ? whenRef : titleRef
     const timer = setTimeout(() => target.current?.focus(), 0)
     return () => clearTimeout(timer)
-  }, [open, seed])
+  }, [open, seed, resetTarget])
 
   React.useEffect(() => {
     if (!open) return
@@ -119,14 +117,13 @@ export function EventComposer() {
         : null
 
   /**
-   * Onde o card cai. Só canal de texto de verdade: em conversa direta o
-   * evento fica só na agenda (a agenda é do grupo, a DM não), e canal de voz
-   * não tem chat.
+   * Onde o card cai.
+   *
+   * Era o canal ATIVO: quem marcasse um treino com o mural do LoL aberto
+   * criava um card de agenda dentro do mural do LoL, e nem via acontecer,
+   * porque o composer nao dizia o destino. Agora o padrao vem do feed
+   * `agenda`, aparece escrito e da pra trocar — ver CardTarget.tsx.
    */
-  const targetChannel =
-    activeChannelId && !isDmId(activeChannelId) && activeChannel && activeChannel.type !== 'voice'
-      ? activeChannel
-      : null
 
   const canSubmit = title.trim().length > 0 && !!resolved && !dateProblem && !busy
 
@@ -139,10 +136,10 @@ export function EventComposer() {
     try {
       await eventsApi.create(token, {
         title: title.trim().slice(0, TITLE_MAX),
-        game: game === 'outro' ? gameOther.trim().toLowerCase() || 'outro' : game,
+        game: kind === 'outro' ? kindOther.trim().toLowerCase() || 'outro' : kind,
         note: note.trim() ? note.trim().slice(0, NOTE_MAX) : undefined,
         startsAt: resolved.toISOString(),
-        channelId: targetChannel?.id
+        channelId: targetId ?? undefined
       })
       close()
     } catch (err) {
@@ -194,36 +191,40 @@ export function EventComposer() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={TITLE_MAX}
-              placeholder="Ranked flex, server novo, noite de ARAM…"
+              placeholder="Ranked flex, rodízio no japonês, server novo…"
               className="input-terminal w-full rounded-brutal px-3 py-2 text-sm"
             />
           </label>
 
-          {/* Jogo */}
+          {/* Tipo — jogo ou não. Era só "Jogo", com três opções; a agenda do
+              grupo sempre marcou rodízio e aniversário no "Outro", digitando. */}
           <div>
             <span className="mb-1 block text-[11.5px] text-muted-foreground">
-              Jogo
+              Tipo
             </span>
             <div className="flex flex-wrap items-center gap-1.5">
-              {GAMES.map((option) => (
+              {EVENT_KINDS.map((option) => (
                 <button
-                  key={option.id}
+                  key={option}
                   type="button"
-                  onClick={() => setGame(option.id)}
+                  onClick={() => setKind(option)}
                   className={cn(
-                    'rounded-brutal border-2 px-2.5 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
-                    game === option.id
+                    'flex items-center gap-1.5 rounded-brutal border-2 px-2.5 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
+                    kind === option
                       ? 'border-acid bg-acid/10 text-acid'
                       : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
                   )}
                 >
-                  {option.label}
+                  {/* Com dez opções o rótulo sozinho vira parede de texto: o
+                      ícone é o que deixa achar "Rodízio" sem ler tudo. */}
+                  <GameIcon game={option} className="h-3 w-3" />
+                  {gameLabel(option)}
                 </button>
               ))}
-              {game === 'outro' && (
+              {kind === 'outro' && (
                 <input
-                  value={gameOther}
-                  onChange={(e) => setGameOther(e.target.value)}
+                  value={kindOther}
+                  onChange={(e) => setKindOther(e.target.value)}
                   maxLength={32}
                   placeholder="qual?"
                   className="input-terminal min-w-0 flex-1 rounded-brutal px-2 py-1 text-xs"
@@ -298,6 +299,14 @@ export function EventComposer() {
               className="input-terminal w-full resize-none rounded-brutal px-3 py-2 text-sm"
             />
           </label>
+
+          <CardTargetPicker
+            feed="agenda"
+            targetId={targetId}
+            onChange={setTargetId}
+            options={options}
+            suggested={suggested}
+          />
         </div>
 
         {error && (
@@ -307,11 +316,7 @@ export function EventComposer() {
         )}
 
         <div className="mt-5 flex items-center gap-3">
-          <p className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground">
-            {targetChannel
-              ? `o card vai pro #${targetChannel.name}`
-              : 'sem canal de texto aberto: fica só na agenda'}
-          </p>
+          <div className="flex-1" />
           <button
             type="button"
             onClick={close}

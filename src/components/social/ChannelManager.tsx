@@ -12,7 +12,9 @@ import {
   ChevronUp,
   ChevronDown,
   Loader2,
-  Pencil
+  Pencil,
+  SlidersHorizontal,
+  Wand2
 } from 'lucide-react'
 import {
   Dialog,
@@ -23,7 +25,15 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { channels as channelsApi, type Channel, type ChannelType } from '@/lib/api'
+import {
+  CHANNEL_FEEDS,
+  FEED_LABEL,
+  channels as channelsApi,
+  parseChannelFeeds,
+  type Channel,
+  type ChannelFeed,
+  type ChannelType
+} from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useChat } from '@/lib/chat-context'
 
@@ -36,6 +46,18 @@ import { useChat } from '@/lib/chat-context'
  * A reordenação é por setas, não por arrastar. Numa lista de 5–10 itens dentro
  * de uma modal, arrastar é mais difícil de acertar do que clicar — e ainda
  * teria que funcionar com a lista rolando.
+ *
+ * Cada canal tem duas coisas além do nome, no painel da chave inglesa:
+ *
+ *   CATEGORIA  o grupo na barra lateral. Texto livre — criar um grupo novo não
+ *              pode exigir um deploy.
+ *   RECEBE     o que NASCE ali (agenda, enquetes, jogos…). É isto que impede a
+ *              agenda de cair no mural do LoL: antes, evento e enquete nasciam
+ *              no canal que a pessoa estava OLHANDO. Ver api/lib/channel-routing.
+ *
+ * Um feed mora num canal só. Marcar "agenda" aqui tira a agenda de onde ela
+ * estava, e por isso o painel avisa de quem está tirando em vez de fazer
+ * calado.
  */
 
 const TYPE_META: Record<ChannelType, { icon: React.ReactNode; label: string }> = {
@@ -62,6 +84,31 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [editName, setEditName] = React.useState('')
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null)
+  /** Canal com o painel de categoria/feeds aberto. */
+  const [tuningId, setTuningId] = React.useState<string | null>(null)
+  const [seedNote, setSeedNote] = React.useState<string | null>(null)
+
+  /**
+   * Categorias que ja existem, pro `datalist` do campo.
+   *
+   * Sugerir o que o servidor ja usa e o que evita "Jogos" e "jogos" virarem
+   * dois grupos na barra lateral por causa de uma maiuscula.
+   */
+  const knownCategories = React.useMemo(() => {
+    const found = new Set<string>(['Conversa', 'Jogos', 'Grupo', 'Servidor', 'Voz'])
+    for (const channel of channels) {
+      const value = channel.category?.trim()
+      if (value) found.add(value)
+    }
+    return [...found].sort((a, b) => a.localeCompare(b))
+  }, [channels])
+
+  /** Quem recebe cada feed hoje — pra avisar de quem o feed esta saindo. */
+  const ownerOf = React.useCallback(
+    (feed: ChannelFeed): Channel | null =>
+      channels.find((c) => parseChannelFeeds(c.feeds).includes(feed)) ?? null,
+    [channels]
+  )
 
   /**
    * A lista local é um RASCUNHO.
@@ -127,6 +174,47 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
     void run(() => channelsApi.remove(token, id))
   }
 
+  const setCategory = (channel: Channel, value: string): void => {
+    if (!token) return
+    const next = value.trim()
+    if ((channel.category ?? '') === next) return
+    void run(() => channelsApi.update(token, channel.id, { category: next || null }))
+  }
+
+  /**
+   * Liga/desliga um feed num canal.
+   *
+   * Ligar TIRA o feed de quem tinha: o servidor escolhe o primeiro canal que
+   * declara, entao deixar dois marcados nao daria erro — daria um destino
+   * decidido pela posicao, que e pior que um erro porque parece funcionar.
+   */
+  const toggleFeed = (channel: Channel, feed: ChannelFeed): void => {
+    if (!token) return
+    const current = parseChannelFeeds(channel.feeds)
+    const turningOn = !current.includes(feed)
+    const next = turningOn ? [...current, feed] : current.filter((f) => f !== feed)
+    const previousOwner = turningOn ? ownerOf(feed) : null
+
+    void run(async () => {
+      await channelsApi.update(token, channel.id, { feeds: next })
+      if (previousOwner && previousOwner.id !== channel.id) {
+        await channelsApi.update(token, previousOwner.id, {
+          feeds: parseChannelFeeds(previousOwner.feeds).filter((f) => f !== feed)
+        })
+      }
+    })
+  }
+
+  /** Cria o que falta e preenche categoria/feeds vazios. Nao sobrescreve nada. */
+  const organize = (): void => {
+    if (!token) return
+    setSeedNote(null)
+    void run(async () => {
+      const result = await channelsApi.seedDefaults(token)
+      setSeedNote(result.message)
+    })
+  }
+
   const saveOrder = (): void => {
     if (!token) return
     void run(() => channelsApi.reorder(token, draft.map((c) => c.id)))
@@ -175,12 +263,14 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
           {draft.map((channel, index) => {
             const meta = TYPE_META[channel.type]
             const isEditing = editingId === channel.id
+            const channelFeeds = parseChannelFeeds(channel.feeds)
 
             return (
               <div
                 key={channel.id}
-                className="flex items-center gap-2 rounded-brutal border border-line bg-void-light/30 px-2 py-1.5"
+                className="rounded-brutal border border-line bg-void-light/30"
               >
+              <div className="flex items-center gap-2 px-2 py-1.5">
                 <span className="shrink-0 text-muted-foreground">{meta.icon}</span>
 
                 {isEditing ? (
@@ -200,8 +290,11 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
                     <span className="block truncate text-sm text-foreground">
                       {channel.name}
                     </span>
-                    <span className="block text-[11px] text-muted-foreground">
+                    <span className="block truncate text-[11px] text-muted-foreground">
+                      {channel.category?.trim() || 'sem grupo'}
+                      {' · '}
                       {meta.label}
+                      {channelFeeds.length > 0 && ` · recebe ${channelFeeds.join(', ')}`}
                       {channel._count ? ` · ${channel._count.messages} msg` : ''}
                     </span>
                   </span>
@@ -222,6 +315,14 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
                     onClick={() => move(index, 1)}
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
+                  </IconButton>
+
+                  <IconButton
+                    label="Grupo e o que nasce aqui"
+                    disabled={busy}
+                    onClick={() => setTuningId(tuningId === channel.id ? null : channel.id)}
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
                   </IconButton>
 
                   <IconButton
@@ -259,6 +360,66 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
                   )}
                 </div>
               </div>
+
+              {tuningId === channel.id && (
+                <div className="space-y-2.5 border-t border-line px-2 py-2.5">
+                  <label className="block">
+                    <span className="mb-1 block text-[11.5px] text-muted-foreground">
+                      Grupo na barra
+                    </span>
+                    <input
+                      list="bm-categorias"
+                      defaultValue={channel.category ?? ''}
+                      disabled={busy}
+                      onBlur={(event) => setCategory(channel, event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') event.currentTarget.blur()
+                      }}
+                      placeholder="Conversa, Jogos, Grupo…"
+                      className="input-terminal w-full rounded-brutal px-2 py-1 text-sm"
+                    />
+                  </label>
+
+                  {/* Canal de voz nao tem chat: card nenhum nasce ali. */}
+                  {channel.type !== 'voice' && (
+                    <div>
+                      <span className="mb-1 block text-[11.5px] text-muted-foreground">
+                        Nasce aqui
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {CHANNEL_FEEDS.map((feed) => {
+                          const on = channelFeeds.includes(feed)
+                          const owner = ownerOf(feed)
+                          const takenFrom = !on && owner && owner.id !== channel.id ? owner : null
+
+                          return (
+                            <button
+                              key={feed}
+                              type="button"
+                              disabled={busy}
+                              onClick={() => toggleFeed(channel, feed)}
+                              title={
+                                takenFrom
+                                  ? `${FEED_LABEL[feed]} — hoje cai em #${takenFrom.name}`
+                                  : FEED_LABEL[feed]
+                              }
+                              className={cn(
+                                'rounded-brutal border-2 px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest transition-colors disabled:opacity-40',
+                                on
+                                  ? 'border-acid bg-acid/10 text-acid'
+                                  : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
+                              )}
+                            >
+                              {feed}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              </div>
             )
           })}
 
@@ -267,9 +428,18 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
               Nenhum canal ainda.
             </p>
           )}
+
+          <datalist id="bm-categorias">
+            {knownCategories.map((category) => (
+              <option key={category} value={category} />
+            ))}
+          </datalist>
         </div>
 
         {error && <p className="mt-2 shrink-0 text-xs text-destructive">{error}</p>}
+        {seedNote && !error && (
+          <p className="mt-2 shrink-0 text-xs text-acid">{seedNote}</p>
+        )}
 
         <div className="mt-3 flex shrink-0 items-center gap-2 border-t border-line pt-3">
           {confirmDelete && (
@@ -279,6 +449,14 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
           )}
 
           <span className="flex-1" />
+
+          {/* Cria os canais que faltam e preenche grupo/feeds dos que ja
+              existem. Nao sobrescreve escolha de ninguem nem mexe na ordem —
+              ver a rota /channels/seed. */}
+          <Button variant="ghost" size="sm" onClick={organize} disabled={busy}>
+            <Wand2 className="mr-1 h-3.5 w-3.5" />
+            Organizar
+          </Button>
 
           {dirty && (
             <Button variant="ghost" size="sm" onClick={() => setDraft(channels)} disabled={busy}>

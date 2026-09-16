@@ -21,8 +21,8 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { polls as pollsApi, type PollType } from '@/lib/api-polls'
 import { useAuth } from '@/lib/auth-context'
-import { useChat, isDmId } from '@/lib/chat-context'
 import { useOverlays } from '@/lib/overlay-context'
+import { CardTargetPicker, useCardTarget } from './CardTarget'
 
 /**
  * Compositor de enquete.
@@ -67,7 +67,7 @@ export function PollComposer() {
   const pickerTheme = THEME_LABEL[useSettings().settings.theme].light ? Theme.LIGHT : Theme.DARK
   const { pollComposerOpen: open, closePollComposer } = useOverlays()
   const { token } = useAuth()
-  const { activeChannelId, activeChannel } = useChat()
+  const { targetId, setTargetId, options: targetOptions, suggested } = useCardTarget('enquetes')
 
   const [question, setQuestion] = React.useState('')
   const [options, setOptions] = React.useState<OptionDraft[]>(initialOptions)
@@ -121,11 +121,15 @@ export function PollComposer() {
 
   if (!open) return null
 
-  const blocked = !activeChannelId
-    ? 'Abre um canal de texto primeiro.'
-    : isDmId(activeChannelId)
-      ? 'Enquete é coisa de canal — numa conversa a dois não rola.'
-      : null
+  /**
+   * Antes isto dizia "abre um canal de texto primeiro" e "enquete nao rola em
+   * conversa a dois": a enquete nascia onde a pessoa ESTAVA, entao estar no
+   * lugar errado travava tudo. O destino agora vem do feed `enquetes`, e a
+   * unica coisa que ainda impede de criar e o servidor nao ter canal nenhum.
+   */
+  const blocked = targetOptions.length === 0 ? 'Esse servidor nao tem canal de texto.' : null
+
+  const targetName = targetOptions.find((c) => c.id === targetId)?.name ?? null
 
   const filled = options.filter((option) => option.text.trim())
   const canSubmit = !blocked && !busy && question.trim().length > 0 && filled.length >= MIN_OPTIONS
@@ -159,7 +163,7 @@ export function PollComposer() {
   }
 
   const submit = async (): Promise<void> => {
-    if (!token || !activeChannelId || !canSubmit) return
+    if (!token || !targetId || !canSubmit) return
 
     setBusy(true)
     setError(null)
@@ -174,7 +178,7 @@ export function PollComposer() {
         type,
         isAnonymous: anonymous,
         endsAt: ms ? new Date(Date.now() + ms).toISOString() : null,
-        channelId: activeChannelId
+        channelId: targetId
       })
       close()
     } catch (err) {
@@ -207,10 +211,10 @@ export function PollComposer() {
           <div className="min-w-0">
             <h2 className="title-brutal text-2xl">Enquete</h2>
             <p className="flex items-center gap-1 truncate text-[11.5px] text-muted-foreground">
-              {activeChannel && !blocked ? (
+              {targetName && !blocked ? (
                 <>
                   vai pra <Hash className="h-3 w-3" />
-                  {activeChannel.name}
+                  {targetName}
                 </>
               ) : (
                 'a galera decide'
@@ -225,6 +229,14 @@ export function PollComposer() {
               {blocked}
             </p>
           )}
+
+          <CardTargetPicker
+            feed="enquetes"
+            targetId={targetId}
+            onChange={setTargetId}
+            options={targetOptions}
+            suggested={suggested}
+          />
 
           <div className="space-y-1.5">
             <label

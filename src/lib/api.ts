@@ -12,6 +12,42 @@ export function resolveAssetUrl(raw: string | null | undefined): string | undefi
   return API_ORIGIN + (raw.startsWith('/') ? raw : '/' + raw)
 }
 
+/**
+ * SESSÃO MORTA — um aviso só, pro app inteiro.
+ *
+ * Todo 401 desta API é sobre o token: ou venceu, ou o dono sumiu do banco.
+ * Quem escuta é o AuthProvider, que limpa o cofre e devolve a tela de login.
+ * Sem isto o 401 morria no `catch {}` de cada contexto e o launcher ficava
+ * zumbi — logado na tela, recusado no servidor: aposta que não entra, saldo e
+ * estatísticas congelados no último valor que deu certo.
+ *
+ * Só dispara quando a chamada LEVOU token: senha errada no login também
+ * responde 401, e ali não há sessão nenhuma pra derrubar.
+ */
+let unauthorizedHandler: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler
+}
+
+/**
+ * Quando este JWT vence, em ms — lido do próprio token, sem perguntar ao
+ * servidor. É só o payload (base64url); quem valida de verdade é a API.
+ *
+ * Token estranho volta `null`, e quem chama trata como "não sei" em vez de
+ * derrubar a sessão por causa de um parse que falhou.
+ */
+export function tokenExpiresAt(token: string): number | null {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return null
+    const exp = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))?.exp
+    return typeof exp === 'number' ? exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -41,6 +77,7 @@ export async function request<T>(
   })
 
   if (!res.ok) {
+    if (res.status === 401 && token) unauthorizedHandler?.()
     const body = await res.json().catch(() => ({ error: 'Falha na requisição' }))
     throw new ApiError(res.status, body.error || `HTTP ${res.status}`)
   }
@@ -62,6 +99,7 @@ export async function upload<T>(
   })
 
   if (!res.ok) {
+    if (res.status === 401 && token) unauthorizedHandler?.()
     const body = await res.json().catch(() => ({ error: 'Falha no upload' }))
     throw new ApiError(res.status, body.error || `HTTP ${res.status}`)
   }
@@ -188,6 +226,15 @@ export const auth = {
   async me(token: string): Promise<AuthUser> {
     const res = await request<{ user: AuthUser }>('/auth/me', { token })
     return res.user
+  },
+
+  /**
+   * Estica a sessão por mais 7 dias. Só funciona com token VIVO: vencido volta
+   * 401 e a pessoa entra de novo com senha (ver POST /auth/refresh na API).
+   */
+  async refresh(token: string): Promise<string> {
+    const res = await request<{ token: string }>('/auth/refresh', { method: 'POST', token })
+    return res.token
   }
 }
 
@@ -326,6 +373,49 @@ export const uploads = {
  */
 export type ChannelType = 'text' | 'voice' | 'announcements' | 'suggestions' | 'lol' | 'dm'
 
+/**
+ * O que NASCE em cada canal.
+ *
+ * Espelha `FEEDS` de lib/channel-routing.ts na API — a lista vive nos dois
+ * lados porque o servidor precisa dela pra rotear e o gerenciador de canais
+ * precisa dela pra desenhar as opcoes. Feed que o servidor nao conhece e
+ * ignorado por ele, entao o pior caso de as duas listas divergirem e uma
+ * opcao que nao faz nada, e nao um card perdido.
+ */
+export const CHANNEL_FEEDS = [
+  'agenda',
+  'enquetes',
+  'jogos',
+  'apostas',
+  'clipes',
+  'sistema',
+  'sugestoes'
+] as const
+
+export type ChannelFeed = (typeof CHANNEL_FEEDS)[number]
+
+export const FEED_LABEL: Record<ChannelFeed, string> = {
+  agenda: 'Eventos marcados',
+  enquetes: 'Enquetes',
+  jogos: 'Pos-jogo, party e fumaca',
+  apostas: 'Apostas e lojinha',
+  clipes: 'Clipes da call',
+  sistema: 'Recap, fechamento do dia e avisos',
+  sugestoes: 'Sugestoes'
+}
+
+/** "agenda,jogos" -> ['agenda','jogos']. Feed desconhecido cai fora. */
+export function parseChannelFeeds(raw: string | null | undefined): ChannelFeed[] {
+  if (!raw) return []
+  const known = new Set<string>(CHANNEL_FEEDS)
+  const out: ChannelFeed[] = []
+  for (const piece of raw.split(',')) {
+    const value = piece.trim().toLowerCase()
+    if (known.has(value) && !out.includes(value as ChannelFeed)) out.push(value as ChannelFeed)
+  }
+  return out
+}
+
 export interface VoiceUser {
   id: string
   displayName: string
@@ -341,6 +431,10 @@ export interface Channel {
   icon?: string | null
   position: number
   isPrivate: boolean
+  /** Grupo na barra lateral. Sem categoria, o canal cai em "Outros". */
+  category?: string | null
+  /** CSV do que nasce aqui — ler com `parseChannelFeeds`. */
+  feeds?: string | null
   voiceUsers?: VoiceUser[]
   _count?: { messages: number }
 }
@@ -353,7 +447,14 @@ export const channels = {
 
   async create(
     token: string,
-    payload: { name: string; description?: string; type?: ChannelType; icon?: string }
+    payload: {
+      name: string
+      description?: string
+      type?: ChannelType
+      icon?: string
+      category?: string | null
+      feeds?: ChannelFeed[]
+    }
   ): Promise<Channel> {
     const res = await request<{ channel: Channel }>('/channels', {
       method: 'POST',
@@ -366,7 +467,14 @@ export const channels = {
   async update(
     token: string,
     id: string,
-    patch: { name?: string; description?: string | null; icon?: string | null }
+    patch: {
+      name?: string
+      description?: string | null
+      icon?: string | null
+      category?: string | null
+      // Omitir `feeds` preserva o que ja estava la; mandar [] limpa de verdade.
+      feeds?: ChannelFeed[]
+    }
   ): Promise<Channel> {
     const res = await request<{ channel: Channel }>(`/channels/${id}`, {
       method: 'PUT',
@@ -390,8 +498,19 @@ export const channels = {
     return res.channels
   },
 
-  async seedDefaults(token: string): Promise<void> {
-    await request('/channels/seed', { method: 'POST', token })
+  /**
+   * Cria os canais que faltam e preenche categoria/feeds dos que ja existem.
+   *
+   * Nao sobrescreve nada nem mexe na ordem — ver a rota. Devolve o que mudou
+   * pra tela poder dizer o que aconteceu em vez de um "pronto!" cego.
+   */
+  async seedDefaults(
+    token: string
+  ): Promise<{ message: string; created: string[]; organized: string[] }> {
+    return request<{ message: string; created: string[]; organized: string[] }>(
+      '/channels/seed',
+      { method: 'POST', token }
+    )
   }
 }
 
