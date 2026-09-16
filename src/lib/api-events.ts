@@ -131,18 +131,55 @@ export const events = {
 }
 
 // ============================================
-// JOGOS — rótulos compartilhados por card, painel e compositores
+// O QUE DÁ PRA MARCAR — rótulos compartilhados por card, painel e compositores
 // ============================================
 
+/** O que o "bora?" aceita: aquilo que dá pra entrar e jogar agora. */
 export type KnownGame = 'lol' | 'minecraft' | 'outro'
 
+/**
+ * Os rótulos. A chave é o que vai no campo `game` do evento.
+ *
+ * A agenda nasceu só com jogo e o campo no banco ainda se chama `game`, mas o
+ * que a galera marca não é só partida — rodízio, churrasco, aniversário. Dá
+ * pra crescer esta lista sem tocar no servidor: lá o campo é texto livre em
+ * minúsculas, sem lista fechada (ver events.routes.ts).
+ */
 const GAME_LABELS: Record<string, string> = {
   lol: 'LoL',
   minecraft: 'Minecraft',
+  valorant: 'Valorant',
+  cs2: 'CS2',
+  rodizio: 'Rodízio',
+  churrasco: 'Churrasco',
+  bar: 'Bar',
+  cinema: 'Cinema',
+  aniversario: 'Aniversário',
   outro: 'Outro'
 }
 
-/** "lol" -> "LoL"; jogo livre ("valorant") volta como veio. */
+/**
+ * As opções do compositor de evento, na ordem em que aparecem: o que se joga,
+ * depois o que se faz fora do jogo, e "Outro" no fim — que abre campo livre.
+ *
+ * Chave sem acento e sem espaço de propósito: o servidor guarda em minúsculas,
+ * então é "aniversario" que volta do banco pra casar com o rótulo aqui e com o
+ * ícone em components/social/GameIcon.tsx. Chave nova precisa das duas coisas.
+ */
+export const EVENT_KINDS: readonly string[] = [
+  'lol',
+  'minecraft',
+  'valorant',
+  'cs2',
+  'rodizio',
+  'churrasco',
+  'bar',
+  'cinema',
+  'aniversario',
+  'outro'
+]
+
+/** "lol" -> "LoL"; chave que ninguém cadastrou ("boliche") volta como veio. */
 export function gameLabel(game: string | null | undefined): string {
   if (!game) return 'Outro'
   return GAME_LABELS[game] ?? game
@@ -157,4 +194,26 @@ export function guessGame(text: string): KnownGame | null {
   if (/\b(lol|league|aram|ranked|flex|arena)\b/.test(flat)) return 'lol'
   if (/\b(minecraft|mine|mc)\b/.test(flat)) return 'minecraft'
   return null
+}
+
+/**
+ * O mesmo palpite, mas pra agenda — que aceita muito mais que jogo.
+ *
+ * Serve o seed do "/marcar sexta 21h rodízio": a data sai no parser de
+ * natural-date e o resto do texto passa por aqui pra já deixar o chip certo
+ * marcado. Errar não custa nada — a pessoa clica no chip.
+ *
+ * Separado do `guessGame` porque quem chama aquele é o "bora?", e lá um
+ * churrasco não é resposta possível: não existe lobby de churrasco pra entrar.
+ */
+export function guessEventKind(text: string): string | null {
+  const flat = text.toLowerCase()
+  if (/\b(rod[íi]zio|jap[aã]|japon[êe]s|pizza)\b/.test(flat)) return 'rodizio'
+  if (/\b(churras|churrasco|espeto)\b/.test(flat)) return 'churrasco'
+  if (/\b(bar|boteco|breja|cerveja)\b/.test(flat)) return 'bar'
+  if (/\b(cinema|filme|estreia)\b/.test(flat)) return 'cinema'
+  if (/\b(anivers[áa]rio|aniver|niver)\b/.test(flat)) return 'aniversario'
+  if (/\b(valorant|valo)\b/.test(flat)) return 'valorant'
+  if (/\b(cs2|csgo|counter)\b/.test(flat)) return 'cs2'
+  return guessGame(text)
 }

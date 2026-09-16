@@ -1,13 +1,18 @@
 import {
+  Beer,
   Boxes,
+  Cake,
   Car,
   Crosshair,
+  Film,
+  Flame,
   Gamepad2,
   Ghost,
   Pickaxe,
   Radiation,
   Swords,
   Target,
+  UtensilsCrossed,
   type LucideIcon
 } from 'lucide-react'
 
@@ -15,11 +20,11 @@ import {
  * Ícone do jogo. Um lugar só pra agenda, os cards, a faixa de "bora?" e os
  * jogos favoritos do perfil desenharem igual.
  *
- * A chave é a mesma string que o servidor guarda (`favoriteGames`) e que a
- * presença de jogo usa (`lol`, `minecraft`). Chave desconhecida cai no
- * controle genérico — é de propósito: a lista de jogos NÃO é fechada no
- * servidor, senão cada jogo novo que a galera resolvesse jogar viraria um
- * deploy de API.
+ * A chave é a mesma string que o servidor guarda (`favoriteGames`), que a
+ * presença de jogo usa (`lol`, `minecraft`) e que a agenda grava no campo
+ * `game` — que hoje também guarda rodízio e churrasco. Chave desconhecida cai
+ * no controle genérico — é de propósito: a lista NÃO é fechada no servidor,
+ * senão cada jogo novo que a galera resolvesse jogar viraria um deploy de API.
  */
 
 const GAME_ICON: Record<string, LucideIcon> = {
@@ -30,7 +35,14 @@ const GAME_ICON: Record<string, LucideIcon> = {
   'arc-raiders': Radiation,
   fortnite: Boxes,
   'rocket-league': Car,
-  'among-us': Ghost
+  'among-us': Ghost,
+  // A agenda marca coisa que não é jogo (EVENT_KINDS em lib/api-events.ts).
+  // Sem ícone próprio, um rodízio apareceria com um controle de videogame do lado.
+  rodizio: UtensilsCrossed,
+  churrasco: Flame,
+  bar: Beer,
+  cinema: Film,
+  aniversario: Cake
 }
 
 /**
