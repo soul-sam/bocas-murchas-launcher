@@ -132,7 +132,41 @@ function targetBounds(): Electron.Rectangle {
   return screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds
 }
 
+/**
+ * O ouvinte de troca de monitor, ligado UMA vez e SO DEPOIS do `ready`.
+ *
+ * Trocar de resolucao (ou desligar um monitor) com a sobreposicao aberta
+ * deixaria a janela com o tamanho da tela antiga — sobrando pra fora ou
+ * cobrindo um pedaco. Como ela e do tamanho da TELA, isso aparece na hora.
+ *
+ * O REGISTRO E PREGUICOSO POR OBRIGACAO, nao por elegancia. Isto ja foi um
+ * `screen.on(...)` solto no corpo do modulo, e aquilo derrubava o launcher
+ * inteiro no boot: "The 'screen' module can't be used before the app 'ready'
+ * event". O `screen` do Electron so existe depois do `ready`, e este arquivo e
+ * importado pelo ipc.ts no topo — ou seja, roda muito antes disso. Nao e erro
+ * que apareca em typecheck nem em build: o processo main morre com um diálogo
+ * de "A JavaScript error occurred in the main process", antes de qualquer
+ * janela.
+ *
+ * Pendurar no `createOverlayWindow` resolve pela raiz: se ha janela pra
+ * redimensionar, o app esta de pe.
+ */
+let watchingDisplays = false
+
+function watchDisplayMetrics(): void {
+  if (watchingDisplays) return
+  watchingDisplays = true
+
+  screen.on('display-metrics-changed', () => {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.setBounds(targetBounds())
+    }
+  })
+}
+
 function createOverlayWindow(): BrowserWindow {
+  watchDisplayMetrics()
+
   const bounds = targetBounds()
 
   const win = new BrowserWindow({
@@ -354,17 +388,6 @@ export function destroyOverlay(): void {
   dockFromMatch = false
   currentPhaseSince = 0
 }
-
-/**
- * Trocar de resolucao (ou desligar um monitor) com a sobreposicao aberta
- * deixaria a janela com o tamanho da tela antiga — sobrando pra fora ou
- * cobrindo um pedaco. Como ela e do tamanho da TELA, isso e visivel na hora.
- */
-screen.on('display-metrics-changed', () => {
-  if (overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.setBounds(targetBounds())
-  }
-})
 
 // ---------------- ponte entre as duas janelas ----------------
 
