@@ -13,6 +13,7 @@ import {
   Power,
   Swords,
   Headphones,
+  Layers,
   RefreshCw,
   Sparkles,
   Smartphone
@@ -70,7 +71,7 @@ export function SettingsModal() {
         </DialogHeader>
 
         <Tabs defaultValue="voz" className="flex min-h-0 flex-1 flex-col">
-          {/* flex-wrap: sete abas cabem numa linha na largura normal, mas a
+          {/* flex-wrap: oito abas cabem numa linha na largura normal, mas a
               janela mínima é apertada e uma aba caindo pra linha de baixo é
               melhor que uma aba cortada. */}
           <TabsList className="flex-wrap">
@@ -97,6 +98,10 @@ export function SettingsModal() {
             <TabsTrigger value="inicio">
               <Power className="mr-1.5 inline h-3 w-3" />
               Início
+            </TabsTrigger>
+            <TabsTrigger value="sobreposicao">
+              <Layers className="mr-1.5 inline h-3 w-3" />
+              Sobreposição
             </TabsTrigger>
             <TabsTrigger value="lol">
               <Swords className="mr-1.5 inline h-3 w-3" />
@@ -129,6 +134,9 @@ export function SettingsModal() {
           </TabsContent>
           <TabsContent value="inicio">
             <StartupTab />
+          </TabsContent>
+          <TabsContent value="sobreposicao">
+            <OverlayTab />
           </TabsContent>
           <TabsContent value="lol">
             <LolTab />
@@ -746,6 +754,106 @@ function HotkeysTab() {
           atalho de cada som fica no painel do soundboard
         </p>
       </section>
+
+      <section className="space-y-3">
+        <SectionTitle>Por cima do jogo</SectionTitle>
+        <HotkeyRow
+          label="Roda de sons"
+          hint="Abre os sons do servidor em volta do meio da tela. Aperte de novo pra fechar — a sobreposição não recebe teclado, então não há Esc."
+          value={hotkeys.soundWheel}
+          onChange={(soundWheel) => patch({ soundWheel })}
+        />
+        <HotkeyRow
+          label="Painel de canto"
+          hint="Microfone, clipe, cutucada e as apostas da partida, sem sair do jogo."
+          value={hotkeys.overlay}
+          onChange={(overlay) => patch({ overlay })}
+        />
+      </section>
+    </div>
+  )
+}
+
+/**
+ * A sobreposição — a janela que fica por cima do jogo.
+ *
+ * Ganhou aba própria quando deixou de ser coisa de League. Ela morava dentro
+ * da aba LoL, e isso era verdade enquanto o único conteúdo dela era a pool de
+ * apostas de uma partida; hoje ela leva a roda de sons e as ações rápidas do
+ * servidor, e ninguém procuraria a roda de sons embaixo de "LoL".
+ */
+function OverlayTab() {
+  const { settings, update } = useSettings()
+  const overlay = settings.overlay
+  const lol = settings.lol
+  const hotkeys = settings.hotkeys
+
+  const patch = (part: Partial<typeof overlay>): void => {
+    void update({ overlay: { ...overlay, ...part } })
+  }
+
+  return (
+    <div className="space-y-5 pr-1">
+      <section>
+        <SectionTitle>Sobreposição</SectionTitle>
+        <SwitchRow
+          label="Mostrar por cima do jogo"
+          hint="Microfone, roda de sons, clipe, cutucada — e as apostas quando tem partida rolando. Desligado, nem o atalho abre."
+          checked={overlay.enabled}
+          onCheckedChange={(enabled) => patch({ enabled })}
+        />
+
+        <label className="flex items-center justify-between gap-3 py-2">
+          <span className="min-w-0">
+            <span className="block text-sm font-medium">Canto da tela</span>
+            <span className="block text-xs leading-snug text-muted-foreground">
+              Escolha o canto que o seu HUD deixa livre. A roda de sons ignora
+              isto — ela abre sempre no meio.
+            </span>
+          </span>
+          <select
+            value={overlay.corner}
+            disabled={!overlay.enabled}
+            onChange={(e) => patch({ corner: e.target.value as OverlayCorner })}
+            className="input-terminal h-8 w-40 shrink-0 rounded-brutal px-2 text-xs disabled:opacity-50"
+          >
+            <option value="top-left">Superior esquerdo</option>
+            <option value="top-right">Superior direito</option>
+            <option value="bottom-left">Inferior esquerdo</option>
+            <option value="bottom-right">Inferior direito</option>
+          </select>
+        </label>
+      </section>
+
+      <section>
+        <SectionTitle>Como abrir</SectionTitle>
+        <p className="py-1 text-xs leading-snug text-muted-foreground">
+          Roda de sons:{' '}
+          <strong className="font-mono font-medium text-foreground">
+            {formatAccelerator(hotkeys.soundWheel)}
+          </strong>
+          . Painel de canto:{' '}
+          <strong className="font-mono font-medium text-foreground">
+            {formatAccelerator(hotkeys.overlay)}
+          </strong>
+          . Os dois valem com o jogo em primeiro plano e são trocáveis na aba
+          Atalhos.
+        </p>
+
+        <SwitchRow
+          label="Abrir o painel sozinho quando a partida começa"
+          hint="Vale só pra partida de League. Desligado, o painel continua vindo no atalho — o que muda é ele aparecer por conta própria."
+          checked={lol.overlay}
+          disabled={!overlay.enabled || !lol.enabled}
+          onCheckedChange={(next) => void update({ lol: { ...lol, overlay: next } })}
+        />
+      </section>
+
+      <p className="text-xs leading-snug text-muted-foreground">
+        O jogo precisa estar em <strong className="font-medium text-foreground">janela sem
+        bordas</strong> (o padrão do League). Em tela cheia exclusiva o Windows não deixa
+        nenhuma sobreposição aparecer — nem esta, nem a da Riot, nem a do Discord.
+      </p>
     </div>
   )
 }
@@ -1213,38 +1321,11 @@ function LolTab() {
 
       <section>
         <SectionTitle>Sobreposição em partida</SectionTitle>
-        <SwitchRow
-          label="Mostrar por cima do jogo"
-          hint="Quando a partida começa, um painel aparece num canto da tela com as apostas em você e a chance de apostar em quem do grupo está jogando. Ele encolhe sozinho depois de alguns segundos."
-          checked={lol.overlay}
-          disabled={!lol.enabled}
-          onCheckedChange={(overlay) => patch({ overlay })}
-        />
-
-        <label className="flex items-center justify-between gap-3 py-2">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium">Canto da tela</span>
-            <span className="block text-xs leading-snug text-muted-foreground">
-              Escolha o canto que o seu HUD deixa livre.
-            </span>
-          </span>
-          <select
-            value={lol.overlayCorner}
-            disabled={!lol.enabled || !lol.overlay}
-            onChange={(e) => patch({ overlayCorner: e.target.value as OverlayCorner })}
-            className="input-terminal h-8 w-40 shrink-0 rounded-brutal px-2 text-xs disabled:opacity-50"
-          >
-            <option value="top-left">Superior esquerdo</option>
-            <option value="top-right">Superior direito</option>
-            <option value="bottom-left">Inferior esquerdo</option>
-            <option value="bottom-right">Inferior direito</option>
-          </select>
-        </label>
-
         <p className="text-xs leading-snug text-muted-foreground">
-          O jogo precisa estar em <strong className="font-medium text-foreground">janela sem
-          bordas</strong> (o padrão do League). Em tela cheia exclusiva o Windows não deixa
-          nenhuma sobreposição aparecer — nem esta, nem a da Riot.
+          O painel que aparece por cima do jogo com as apostas da partida agora
+          mora na aba <strong className="font-medium text-foreground">Sobreposição</strong> —
+          ele deixou de ser só de League e ganhou a roda de sons e as ações
+          rápidas do servidor.
         </p>
       </section>
 

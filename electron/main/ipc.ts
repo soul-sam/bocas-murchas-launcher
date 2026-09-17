@@ -16,6 +16,7 @@ import {
   setHotkeys,
   probeAccelerator,
   clearHotkeys,
+  onHotkeyInMain,
   type HotkeyBinding
 } from './services/hotkeys.js'
 import { listSources, selectSource, cancelSelection } from './services/screen-share.js'
@@ -25,13 +26,16 @@ import { getLolStatus, refreshLolNow, startLolWatcher, stopLolWatcher } from './
 import {
   applyOverlaySettings,
   dismissOverlay,
+  getOverlayMode,
   getOverlayState,
   pushOverlayState,
   relayOverlayAction,
   requestOverlayState,
-  setOverlayInteractive
-} from './services/lol-overlay.js'
-import type { OverlayAction, OverlayState } from '../preload/types.js'
+  setOverlayInteractive,
+  setOverlayMode,
+  toggleOverlayPart
+} from './services/overlay.js'
+import type { OverlayAction, OverlayMode, OverlayState } from '../preload/types.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 import { app, powerMonitor } from 'electron'
 
@@ -115,7 +119,7 @@ export function registerIpcHandlers(): void {
     }
     // Depois do watcher: desligar a leitura ja derruba a sobreposicao junto,
     // e esta chamada so precisa cuidar do resto (ligar/desligar e o canto).
-    applyOverlaySettings(next.lol)
+    applyOverlaySettings(next)
 
     return next
   })
@@ -131,7 +135,7 @@ export function registerIpcHandlers(): void {
   // SOBREPOSICAO EM PARTIDA
   // ============================================
   // Ponte entre a janela principal (que tem token e apostas) e a janela da
-  // sobreposicao (que so desenha). Ver services/lol-overlay.ts.
+  // sobreposicao (que so desenha). Ver services/overlay.ts.
   ipcMain.handle('overlay:push', async (_e, state: OverlayState) => {
     pushOverlayState(state)
   })
@@ -152,6 +156,12 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('overlay:dismiss', async () => {
     dismissOverlay()
+  })
+
+  ipcMain.handle('overlay:mode', async () => getOverlayMode())
+
+  ipcMain.handle('overlay:set-mode', async (_e, patch: Partial<OverlayMode>) => {
+    setOverlayMode(patch ?? {})
   })
 
   ipcMain.handle('app:apply-autostart', async () => applyAutostart())
@@ -217,6 +227,15 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('hotkeys:clear', async () => {
     clearHotkeys()
+  })
+
+  /**
+   * Os dois atalhos que o main resolve sozinho: eles abrem e fecham uma
+   * JANELA, e janela e assunto do main. Ver services/hotkeys.ts.
+   */
+  onHotkeyInMain((action) => {
+    if (action.kind === 'overlay') toggleOverlayPart('dock')
+    else if (action.kind === 'sound-wheel') toggleOverlayPart('wheel')
   })
 
   // ============================================

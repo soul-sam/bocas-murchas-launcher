@@ -387,8 +387,9 @@ function criarPonte(): BocasAPI {
       refresh: async () => semLol(),
     },
 
-    // Sobreposição em partida é uma segunda janela transparente por cima do
-    // jogo. Não tem equivalente nenhum no navegador.
+    // A sobreposição é uma segunda janela transparente, sem moldura e sempre
+    // por cima do jogo. Não tem equivalente nenhum no navegador — nem a
+    // janela, nem o clique que atravessa, nem o atalho global que a chama.
     overlay: {
       push: async () => {},
       onAction: semEventos,
@@ -397,6 +398,10 @@ function criarPonte(): BocasAPI {
       onState: semEventos,
       send: async () => {},
       requestState: async () => {},
+      mode: async () => ({ dock: false, wheel: false }),
+      onMode: semEventos,
+      setMode: async () => {},
+      onCorner: semEventos,
       setInteractive: async () => {},
       dismiss: async () => {},
     },

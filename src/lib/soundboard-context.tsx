@@ -34,16 +34,9 @@ interface SoundboardContextValue {
   byCategory: Record<string, Sound[]>
 
   /**
-   * O que CADA som custa pra VOCÊ agora, em murchos. Só os pagos entram.
-   *
-   * Não sai do `sound.price` porque a sobretaxa por repetição é por pessoa e
-   * vive na memória do servidor (ver lib/sound-price.ts no servidor): dois
-   * launchers abertos veem preços diferentes pro mesmo som, e é isso mesmo.
+   * Recado curto do servidor quando o toque não saiu ("entra num canal de voz
+   * primeiro"). Tocar som não custa mais nada, então isto ficou raro.
    */
-  prices: Record<string, number>
-  priceOf: (soundId: string) => number
-
-  /** Ultimo erro de cooldown vindo do servidor, pra mostrar na UI. */
   cooldownMessage: string | null
   recent: SoundEvent[]
 
@@ -67,7 +60,7 @@ interface SoundboardContextValue {
   }) => Promise<Sound>
   update: (
     id: string,
-    patch: { name?: string; emoji?: string; category?: string; volume?: number; price?: number }
+    patch: { name?: string; emoji?: string; category?: string; volume?: number }
   ) => Promise<void>
   remove: (id: string) => Promise<void>
   /** Só admin. Bloqueado some pros membros e fica esmaecido pro admin. */
@@ -121,7 +114,6 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
   const [loading, setLoading] = React.useState(true)
   const [cooldownMessage, setCooldownMessage] = React.useState<string | null>(null)
   const [recent, setRecent] = React.useState<SoundEvent[]>([])
-  const [prices, setPrices] = React.useState<Record<string, number>>({})
 
   const activeAudioRef = React.useRef<HTMLAudioElement[]>([])
   const masterVolumeRef = React.useRef(settings.soundboardVolume)
@@ -175,28 +167,6 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
       activeAudioRef.current = activeAudioRef.current.filter((a) => a !== audio)
     })
   }, [])
-
-  /**
-   * Tabela de precos.
-   *
-   * Pedida ao conectar e refeita depois de cada toque SEU — e so depois do
-   * seu: o toque dos outros nao mexe na sua sobretaxa, e refazer a tabela a
-   * cada som da sala seria uma ida ao servidor por piada.
-   */
-  const refreshPrices = React.useCallback(() => {
-    if (!socket?.connected) return
-    socket.emit(
-      'soundboard:prices',
-      {},
-      (response: { ok?: boolean; prices?: Record<string, number> }) => {
-        if (response?.ok && response.prices) setPrices(response.prices)
-      }
-    )
-  }, [socket])
-
-  React.useEffect(() => {
-    refreshPrices()
-  }, [refreshPrices, sounds.length])
 
   // --- som tocado por alguem da sala (inclusive eu) -----------------------
   React.useEffect(() => {
@@ -285,33 +255,16 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
       socket.emit(
         'soundboard:play',
         { soundId },
-        (response: {
-          ok: boolean
-          error?: string
-          paid?: number
-          nextPrice?: number
-        }) => {
-          if (!response?.ok) {
-            // Saldo insuficiente chega pelo mesmo canal do cooldown: os dois
-            // sao "agora nao da", e a frase do servidor ja explica qual e.
-            if (response?.error) setCooldownMessage(response.error)
-            return
-          }
+        (response: { ok: boolean; error?: string; throttled?: boolean }) => {
+          if (response?.ok) return
 
-          // O preco do PROXIMO toque deste som subiu (sobretaxa). Atualizamos
-          // so ele em vez de refazer a tabela: e um numero, nao vale uma volta.
-          if (typeof response.nextPrice === 'number') {
-            setPrices((prev) => {
-              const next = { ...prev }
-              if (response.nextPrice! > 0) next[soundId] = response.nextPrice!
-              else delete next[soundId]
-              return next
-            })
-          }
+          // `throttled` é a trava de 150ms do servidor, e ela só pega o
+          // SEGUNDO disparo de um toque só — clique duplo, tecla presa
+          // repetindo. O primeiro está tocando neste instante; avisar
+          // qualquer coisa seria reclamar de um som que saiu certo.
+          if (response?.throttled) return
 
-          if (response.paid && response.paid > 0) {
-            setCooldownMessage(`-${response.paid} murchos`)
-          }
+          if (response?.error) setCooldownMessage(response.error)
         }
       )
     },
@@ -363,7 +316,7 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
   const update = React.useCallback(
     async (
       id: string,
-      patch: { name?: string; emoji?: string; category?: string; volume?: number; price?: number }
+      patch: { name?: string; emoji?: string; category?: string; volume?: number }
     ) => {
       if (!token) return
       const updated = await soundsApi.update(token, id, patch)
@@ -400,15 +353,11 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
     return groups
   }, [sounds])
 
-  const priceOf = React.useCallback((soundId: string) => prices[soundId] ?? 0, [prices])
-
   const value = React.useMemo<SoundboardContextValue>(
     () => ({
       sounds,
       loading,
       byCategory,
-      prices,
-      priceOf,
       cooldownMessage,
       recent,
       play,
@@ -424,8 +373,6 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
       sounds,
       loading,
       byCategory,
-      prices,
-      priceOf,
       cooldownMessage,
       recent,
       play,

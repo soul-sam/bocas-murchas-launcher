@@ -22,7 +22,6 @@ import { useSoundboard } from '@/lib/soundboard-context'
 import { useSettings } from '@/lib/settings-context'
 import { useAuth } from '@/lib/auth-context'
 import { useVoice } from '@/lib/voice-context'
-import { useGamification } from '@/lib/gamification-context'
 import { useHotkeys } from '@/lib/hotkeys-context'
 import { HotkeyRecorder } from './HotkeyRecorder'
 import { AudioTrimmer, type TrimRange } from './AudioTrimmer'
@@ -50,13 +49,11 @@ const ALL = '*'
  * so pra quem clicou — util pra conferir o som antes de soltar na call.
  */
 export function SoundboardPanel() {
-  const { sounds, byCategory, loading, play, preview, stopAll, cooldownMessage, recent, priceOf } =
+  const { sounds, byCategory, loading, play, preview, stopAll, cooldownMessage, recent } =
     useSoundboard()
   const { settings, update } = useSettings()
   const { user } = useAuth()
   const { connected: inVoice } = useVoice()
-  const { profile } = useGamification()
-  const coins = profile?.coins ?? 0
 
   const [uploadOpen, setUploadOpen] = React.useState(false)
   const [category, setCategory] = React.useState<string>(ALL)
@@ -163,8 +160,6 @@ export function SoundboardPanel() {
                 hotkey={settings.hotkeys.sounds[sound.id] ?? ''}
                 canEdit={sound.uploadedBy.id === user?.id || isAdmin}
                 isAdmin={isAdmin}
-                price={priceOf(sound.id)}
-                coins={coins}
                 disabled={!inVoice || sound.isBlocked}
                 onPlay={() => void play(sound.id)}
                 onPreview={() => preview(sound)}
@@ -240,8 +235,6 @@ function SoundTile({
   sound,
   categories,
   hotkey,
-  price,
-  coins,
   canEdit,
   isAdmin,
   disabled,
@@ -252,10 +245,6 @@ function SoundTile({
   sound: Sound
   categories: string[]
   hotkey: string
-  /** O que ESTE toque custa pra mim agora. 0 = de graça. */
-  price: number
-  /** Meu saldo, pra apagar o tile que não dá pra pagar. */
-  coins: number
   canEdit: boolean
   isAdmin: boolean
   disabled: boolean
@@ -268,14 +257,6 @@ function SoundTile({
   const [menuOpen, setMenuOpen] = React.useState(false)
 
   const info = `${(sound.durationMs / 1000).toFixed(1)}s · ${sound.playCount}x${hotkey ? ` · ${hotkey}` : ''}`
-
-  /**
-   * Sem saldo o tile fica apagado mas NÃO desabilitado.
-   *
-   * O clique ainda vai ao servidor e volta com "faltam 40 murchos", que é uma
-   * frase; um botão morto seria um mistério. A cor só antecipa a má notícia.
-   */
-  const broke = price > 0 && coins < price
 
   return (
     <div
@@ -296,8 +277,6 @@ function SoundTile({
             ? `Bloqueado — ninguém consegue tocar · ${info}`
             : disabled
               ? 'Entre num canal de voz'
-              : price > 0
-              ? `Tocar "${sound.name}" pra sala — ${price} murchos · ${info}`
               : `Tocar "${sound.name}" pra sala · ${info}`
         }
         className={cn(
@@ -313,16 +292,6 @@ function SoundTile({
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
           {sound.name}
         </span>
-        {price > 0 && (
-          <span
-            className={cn(
-              'shrink-0 font-mono text-[11.5px]',
-              broke ? 'text-destructive' : 'text-burn'
-            )}
-          >
-            {price}
-          </span>
-        )}
       </button>
 
       {/* Ações por cima do canto direito, só no hover: o tile fica limpo como
@@ -418,7 +387,6 @@ function SoundMenu({
   const [emoji, setEmoji] = React.useState(sound.emoji)
   const [category, setCategory] = React.useState(sound.category)
   const [volume, setVolume] = React.useState(sound.volume)
-  const [price, setPrice] = React.useState(sound.price ?? 0)
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = React.useState(false)
@@ -430,7 +398,6 @@ function SoundMenu({
       setEmoji(sound.emoji)
       setCategory(sound.category)
       setVolume(sound.volume)
-      setPrice(sound.price ?? 0)
       setError(null)
       setConfirmDelete(false)
     }
@@ -442,8 +409,7 @@ function SoundMenu({
     name.trim() !== sound.name ||
     emoji !== sound.emoji ||
     category.trim() !== sound.category ||
-    Math.abs(volume - sound.volume) > 0.001 ||
-    price !== (sound.price ?? 0)
+    Math.abs(volume - sound.volume) > 0.001
 
   const save = async (): Promise<void> => {
     if (!dirty || busy) return
@@ -454,8 +420,7 @@ function SoundMenu({
         ...(name.trim() !== sound.name ? { name: name.trim() } : {}),
         ...(emoji !== sound.emoji ? { emoji } : {}),
         ...(category.trim() !== sound.category ? { category: category.trim() || 'geral' } : {}),
-        ...(Math.abs(volume - sound.volume) > 0.001 ? { volume } : {}),
-        ...(price !== (sound.price ?? 0) ? { price } : {})
+        ...(Math.abs(volume - sound.volume) > 0.001 ? { volume } : {})
       })
       setOpen(false)
     } catch (err) {
@@ -588,29 +553,8 @@ function SoundMenu({
               />
             </label>
 
-            {/* Preço: metade do que for cobrado volta pra quem subiu o som
-                (ver lib/sound-price.ts no servidor), então quem decide quanto
-                vale é o dono. Zero devolve o som pra faixa grátis. */}
-            <label className="block space-y-1">
-              <span className="flex items-center justify-between">
-                <Label>Preço</Label>
-                <span className="font-mono text-[11.5px] text-burn">
-                  {price === 0 ? 'de graça' : `${price} murchos`}
-                </span>
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={1000}
-                step={25}
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                className="ram-slider w-full"
-              />
-              <span className="block text-[11px] text-muted-foreground">
-                metade volta pra você quando alguém toca
-              </span>
-            </label>
+            {/* Não há mais preço aqui. Tocar som do soundboard é de graça —
+                ver lib/rate-limit.ts no servidor. */}
 
             {error && <p className="text-xs text-destructive">{error}</p>}
 

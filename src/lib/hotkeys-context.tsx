@@ -71,6 +71,21 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
     if (hotkeys.clip) {
       bindings.push({ id: 'clip', accelerator: hotkeys.clip, action: { kind: 'clip' } })
     }
+    /**
+     * Os dois da sobreposição são registrados daqui como todos os outros — o
+     * registro é do renderer, que é quem conhece as preferências —, mas quem
+     * os EXECUTA é o processo main. Ver electron/main/services/hotkeys.ts.
+     */
+    if (hotkeys.overlay) {
+      bindings.push({ id: 'overlay', accelerator: hotkeys.overlay, action: { kind: 'overlay' } })
+    }
+    if (hotkeys.soundWheel) {
+      bindings.push({
+        id: 'sound-wheel',
+        accelerator: hotkeys.soundWheel,
+        action: { kind: 'sound-wheel' }
+      })
+    }
 
     for (const [soundId, accelerator] of Object.entries(hotkeys.sounds)) {
       if (!accelerator) continue
@@ -107,6 +122,13 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
         // lib/clip-context.tsx). O atalho e global e o dedo e rapido.
         case 'clip':
           void c.capture()
+          break
+        // Estes dois chegam pelo broadcast de sempre, mas ja foram executados
+        // no processo main antes de sair de la: abrir e fechar uma janela e
+        // trabalho dele, e a janela principal pode estar na bandeja. Listados
+        // aqui pra ficar dito que o silencio e proposital.
+        case 'overlay':
+        case 'sound-wheel':
           break
       }
     })

@@ -102,7 +102,12 @@ const api: BocasAPI = {
     send: (action) => ipcRenderer.invoke('overlay:action', action),
     requestState: () => ipcRenderer.invoke('overlay:request-state'),
     setInteractive: (interactive) => ipcRenderer.invoke('overlay:set-interactive', interactive),
-    dismiss: () => ipcRenderer.invoke('overlay:dismiss')
+    dismiss: () => ipcRenderer.invoke('overlay:dismiss'),
+
+    mode: () => ipcRenderer.invoke('overlay:mode'),
+    onMode: (cb) => on('overlay:mode', cb),
+    setMode: (patch) => ipcRenderer.invoke('overlay:set-mode', patch),
+    onCorner: (cb) => on('overlay:corner', cb)
   },
   app: {
     applyAutostart: () => ipcRenderer.invoke('app:apply-autostart'),

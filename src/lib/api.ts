@@ -864,14 +864,6 @@ export interface Sound {
   durationMs: number
   sizeBytes: number
   volume: number
-  /**
-   * Preço de tabela, em murchos. 0 = de graça (o padrão).
-   *
-   * NÃO é o que a pessoa vai pagar: a sobretaxa por repetição é por pessoa e
-   * vive na memória do servidor, então o preço real vem pelo socket
-   * (`soundboard:prices`). Este campo é o que o dono configurou.
-   */
-  price: number
   category: string
   playCount: number
   isBlocked: boolean
@@ -916,7 +908,6 @@ export const sounds = {
       emoji?: string
       category?: string
       volume?: number
-      price?: number
     }
   ): Promise<Sound> {
     const res = await request<{ sound: Sound }>(`/sounds/${id}`, {

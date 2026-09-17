@@ -1,50 +1,81 @@
 import * as React from 'react'
 import {
+  ChevronLeft,
+  ChevronRight,
   Coins,
   Dices,
   ExternalLink,
+  Headphones,
+  HeadphoneOff,
   Loader2,
+  Mic,
+  MicOff,
   Minus,
+  Music,
+  PhoneOff,
   Pickaxe,
+  Scissors,
   Swords,
   TrendingDown,
   TrendingUp,
-  X
+  Waves,
+  X,
+  Zap
 } from 'lucide-react'
 import type {
+  OverlayAction,
   OverlayBetTarget,
   OverlayCorner,
+  OverlayMode,
   OverlayState,
-  OverlayMyGame
+  OverlayMyGame,
+  OverlaySound,
+  OverlayVoice
 } from '../../electron/preload/types'
 import { cn, formatClock } from '@/lib/utils'
 
 /**
- * A SOBREPOSIÇÃO — o painel que aparece por cima do League quando a partida
- * começa, com a pool de apostas em você e a chance de apostar em quem do
- * grupo está jogando junto.
+ * A SOBREPOSIÇÃO — o que aparece desenhado por cima do jogo.
  *
- * Ela roda numa janela própria, transparente e sem foco (ver
- * electron/main/services/lol-overlay.ts). Três consequências mandam no
- * desenho desta tela:
+ * Duas peças, e elas convivem:
+ *
+ *   - o PAINEL DE CANTO, com as ações rápidas do servidor (microfone, roda de
+ *     sons, clipe, tremer a sala) e, quando há partida, a pool de apostas em
+ *     você e as partidas do grupo em que dá pra apostar;
+ *   - a RODA DE SONS, no centro da tela.
+ *
+ * Qual delas está na tela não sai do retrato: sai do processo main, que é quem
+ * recebe o atalho global e abre a janela (ver `useOverlayMode` e
+ * electron/main/services/overlay.ts).
+ *
+ * Tudo isso roda numa janela própria, transparente e sem foco. Três
+ * consequências mandam no desenho desta tela:
  *
  *   1. NADA DE TECLADO. A janela é `focusable: false` pra que clicar nela não
  *      minimize o jogo — em troca, ela nunca recebe tecla. Por isso o valor da
- *      aposta é botão (10/50/100), e não um campo pra digitar.
+ *      aposta é botão (10/50/100) e não um campo pra digitar, e por isso a
+ *      roda fecha no mesmo atalho que a abriu: não existe Esc aqui.
  *
  *   2. NADA DE REDE. Não há token nem API aqui: o retrato chega pronto por IPC
- *      da janela principal e os cliques voltam pra lá. `enviando` é local só
- *      pra travar o botão até o próximo retrato chegar.
+ *      da janela principal e os cliques voltam pra lá. Inclusive o som — esta
+ *      janela não toca áudio nenhum, ela só pede. `enviando` é local só pra
+ *      travar o botão até o próximo retrato chegar.
  *
  *   3. O CLIQUE ATRAVESSA por padrão. O corpo da janela é `pointer-events:
  *      none` (globals.css) e só o que tem `data-overlay-hit` recebe mouse.
  *      É o mesmo marcador que `useClickThrough` procura pra avisar o processo
  *      main quando a janela deve, de fato, capturar o ponteiro — sem isso a
- *      sobreposição comeria os cliques do jogo inteiro.
+ *      sobreposição, que cobre a tela inteira, comeria os cliques do jogo.
  *
- * Ela abre aberta e encolhe sozinha depois de 25s, porque a hora de apostar é
- * o começo da partida; passado isso ela vira uma pastilha que só volta a
- * crescer se a pessoa levar o mouse até lá.
+ *      Vale pra roda também: o vão entre os gomos NÃO é marcado, então quem
+ *      abriu a roda no meio de uma luta continua clicando no jogo. Ela não é
+ *      modal, e não teria como ser — sem teclado, uma camada que engolisse
+ *      tudo viraria uma armadilha.
+ *
+ * O painel da PARTIDA abre aberto e encolhe sozinho depois de 25s, porque a
+ * hora de apostar é o começo do jogo; passado isso ele vira uma pastilha que
+ * só volta a crescer se a pessoa levar o mouse até lá. O painel chamado no
+ * atalho não encolhe: quem pediu pra ver quer ver.
  */
 
 /** Depois disso o painel encolhe sozinho — a partida é pra ser jogada. */
@@ -99,46 +130,95 @@ function useOverlayClock(): number {
 
 export function OverlayPage() {
   const { state, offline } = useOverlayState()
+  const mode = useOverlayMode()
   const corner = useCorner()
   const pointerOnPanel = useClickThrough()
   const now = useOverlayClock()
 
   const [collapsed, setCollapsed] = React.useState(false)
 
-  // O relógio da contagem reinicia toda vez que o ponteiro sai do painel: quem
-  // está mexendo nas apostas não pode ver a tela fechar na mão dele.
+  /**
+   * Encolher sozinho vale só pro painel que apareceu SOZINHO.
+   *
+   * Quem apertou o atalho pra ver as ações rápidas não pode ver o painel virar
+   * uma pastilha 25s depois — ele pediu pra ver. Fora de partida o painel fica
+   * como está até o atalho ou o X fecharem.
+   */
+  const inMatch = Boolean(state?.myGame)
+
   React.useEffect(() => {
-    if (collapsed || pointerOnPanel) return
+    if (!mode.dock) {
+      // Fechou e abriu de novo: volta inteiro. Reabrir numa pastilha seria
+      // castigar quem acabou de pedir pra ver.
+      setCollapsed(false)
+      return
+    }
+    if (!inMatch || collapsed || pointerOnPanel) return
+    // O relógio reinicia toda vez que o ponteiro sai do painel: quem está
+    // mexendo nas apostas não pode ver a tela fechar na mão dele.
     const timer = setTimeout(() => setCollapsed(true), AUTO_COLLAPSE_MS)
     return () => clearTimeout(timer)
-  }, [collapsed, pointerOnPanel])
+  }, [mode.dock, inMatch, collapsed, pointerOnPanel])
 
   const atTop = corner === 'top-left' || corner === 'top-right'
   const atLeft = corner === 'top-left' || corner === 'bottom-left'
 
+  // A janela cobre a tela inteira (ver services/overlay.ts), então a posição
+  // de cada peça é CSS: o painel ancorado no canto escolhido, a roda no meio.
   return (
-    <div
-      className={cn(
-        'flex h-screen w-screen flex-col p-1',
-        atTop ? 'justify-start' : 'justify-end'
+    <div className="relative h-screen w-screen overflow-hidden">
+      {/*
+        A roda MANDA O PAINEL EMBORA enquanto está aberta.
+
+        Não é só arrumação: a roda tem 624px e é centrada, o painel tem 352px e
+        é colado num canto — os dois só não se tocam a partir de ~1360px de
+        largura. Em 1280x720, que ainda é resolução de jogo, o gomo da direita
+        entrava por baixo do painel.
+
+        Encolher a roda em tela estreita resolveria a colisão e criaria outra
+        coisa pior: o gomo mudaria de tamanho conforme a máquina, e a memória
+        de mão que faz a roda valer a pena ("o berro fica embaixo à esquerda")
+        deixaria de valer. Sumir é o que toda roda de jogo faz, e o painel
+        volta inteiro assim que a roda fecha.
+      */}
+      {mode.dock && !mode.wheel && (
+        <div
+          className={cn(
+            // A altura é limitada pela tela e não fixa: o painel com cinco
+            // partidas pra apostar é muito mais alto que o de nenhuma.
+            'absolute flex max-h-[calc(100vh-2rem)] w-[22rem] min-h-0 flex-col',
+            atTop ? 'top-4' : 'bottom-4',
+            atLeft ? 'left-4' : 'right-4'
+          )}
+        >
+          {collapsed ? (
+            <CollapsedPill
+              state={state}
+              alignLeft={atLeft}
+              onExpand={() => setCollapsed(false)}
+            />
+          ) : (
+            <Panel
+              state={state}
+              offline={offline}
+              now={now}
+              inMatch={inMatch}
+              onCollapse={() => setCollapsed(true)}
+            />
+          )}
+        </div>
       )}
-    >
-      {collapsed ? (
-        <CollapsedPill
-          state={state}
-          alignLeft={atLeft}
-          onExpand={() => setCollapsed(false)}
-        />
-      ) : (
-        <Panel
-          state={state}
-          offline={offline}
-          now={now}
-          onCollapse={() => setCollapsed(true)}
-        />
+
+      {mode.wheel && (
+        <SoundWheel sounds={state?.sounds ?? []} voice={state?.voice ?? null} />
       )}
     </div>
   )
+}
+
+/** Atalho pros cliques que voltam pra janela principal. */
+function send(action: OverlayAction): void {
+  void window.bocas.overlay.send(action)
 }
 
 // ============================================
@@ -182,10 +262,12 @@ function useOverlayState(): { state: OverlayState | null; offline: boolean } {
 }
 
 /**
- * Onde a janela está na tela. Vale só pra decidir de que lado o conteúdo se
- * ancora — a posição da janela em si é do processo main, que lê a mesma
- * preferência. Lido uma vez: a sobreposição nasce e morre a cada partida, e
- * trocar o canto durante uma refaz a janela (ver lol-overlay.ts).
+ * Em que canto o PAINEL se ancora.
+ *
+ * A janela cobre a tela inteira (ver electron/main/services/overlay.ts), então
+ * o canto não é mais posição de janela: é CSS daqui. Por isso trocar a
+ * preferência não refaz nada — o main só avisa, e a próxima pintura já sai do
+ * outro lado.
  */
 function useCorner(): OverlayCorner {
   const [corner, setCorner] = React.useState<OverlayCorner>('top-right')
@@ -193,11 +275,33 @@ function useCorner(): OverlayCorner {
   React.useEffect(() => {
     void window.bocas.settings
       .get()
-      .then((settings) => setCorner(settings.lol.overlayCorner))
+      .then((settings) => setCorner(settings.overlay.corner))
       .catch(() => {})
+    // A janela não morre mais no fim da partida — ela vive enquanto houver
+    // motivo, e trocar de canto nas configurações precisa aparecer na hora.
+    return window.bocas.overlay.onCorner(setCorner)
   }, [])
 
   return corner
+}
+
+/**
+ * O QUE está aberto agora — o painel, a roda, ou os dois.
+ *
+ * Vem do processo main, dono da janela e de quem recebe o atalho global. O
+ * `mode()` na montagem existe porque o main manda o modo no `did-finish-load`,
+ * que acontece ANTES desta árvore React montar: só o ouvinte perderia o
+ * primeiro aviso, e a janela abriria desenhando a peça errada.
+ */
+function useOverlayMode(): OverlayMode {
+  const [mode, setMode] = React.useState<OverlayMode>({ dock: false, wheel: false })
+
+  React.useEffect(() => {
+    void window.bocas.overlay.mode().then(setMode).catch(() => {})
+    return window.bocas.overlay.onMode(setMode)
+  }, [])
+
+  return mode
 }
 
 /**
@@ -304,11 +408,14 @@ function Panel({
   state,
   offline,
   now,
+  inMatch,
   onCollapse
 }: {
   state: OverlayState | null
   offline: boolean
   now: number
+  /** Há partida em andamento: muda o título, o ícone e o botão de encolher. */
+  inMatch: boolean
   onCollapse: () => void
 }) {
   return (
@@ -320,17 +427,27 @@ function Panel({
       )}
     >
       <header className="flex items-center gap-2 border-b border-line px-3 py-2">
-        <Dices className="h-4 w-4 shrink-0 text-burn" />
+        {inMatch ? (
+          <Dices className="h-4 w-4 shrink-0 text-burn" />
+        ) : (
+          <Zap className="h-4 w-4 shrink-0 text-acid" />
+        )}
         <p className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-foreground">
-          Partida começou
+          {inMatch ? 'Partida começou' : 'Bocas Murchas'}
         </p>
-        <IconButton label="Encolher" onClick={onCollapse}>
-          <Minus className="h-3.5 w-3.5" />
-        </IconButton>
-        <IconButton label="Fechar até a próxima" onClick={() => void window.bocas.overlay.dismiss()}>
+        {/* Encolher só existe em partida: é lá que o painel atrapalha a tela
+            e que a pastilha tem o que resumir. */}
+        {inMatch && (
+          <IconButton label="Encolher" onClick={onCollapse}>
+            <Minus className="h-3.5 w-3.5" />
+          </IconButton>
+        )}
+        <IconButton label="Fechar" onClick={() => void window.bocas.overlay.dismiss()}>
           <X className="h-3.5 w-3.5" />
         </IconButton>
       </header>
+
+      {state?.ready && <QuickActions voice={state.voice} />}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2.5">
         {state === null ? (
@@ -345,7 +462,7 @@ function Panel({
             </Hint>
           )
         ) : !state.ready ? (
-          <Hint>Entre no launcher pra ver e fazer apostas.</Hint>
+          <Hint>Entre no launcher pra usar a sobreposição.</Hint>
         ) : (
           <>
             {state.myGame && (
@@ -929,4 +1046,301 @@ function joinNames(names: string[]): string {
 function compact(value: number): string {
   if (value < 1000) return String(Math.round(value))
   return `${(value / 1000).toFixed(1).replace(/\.0$/, '').replace('.', ',')}k`
+}
+
+// ============================================
+// AÇÕES RÁPIDAS
+// ============================================
+
+/**
+ * A fileira do servidor, por cima do jogo: som, microfone, clipe, cutucada.
+ *
+ * Tudo aqui é BOTÃO DE ÍCONE, sem texto. Não é economia de espaço: é que estas
+ * são as ações que a pessoa faz sem tirar os olhos do jogo, e ícone numa
+ * posição fixa se acha pela memória da mão — uma fileira de palavras obrigaria
+ * a ler. O `title` conta o que é pra quem parar em cima.
+ *
+ * Fora de call quase nada aqui funciona (o soundboard toca PRA SALA, o clipe
+ * grava a call, a cutucada é do canal), então os botões somem em vez de
+ * ficarem ali dando erro — e a linha de baixo diz o porquê.
+ */
+function QuickActions({ voice }: { voice: OverlayVoice | null }) {
+  return (
+    <section className="shrink-0 border-b border-line px-3 py-2">
+      <div className="flex items-center gap-1">
+        {/* A roda é outra peça da MESMA janela, então abrir é só trocar o modo
+            no processo main — não passa pela janela principal. */}
+        <ActionButton
+          label="Roda de sons"
+          onClick={() => void window.bocas.overlay.setMode({ wheel: true })}
+        >
+          <Music className="h-3.5 w-3.5" />
+        </ActionButton>
+
+        {voice && (
+          <>
+            <ActionButton
+              label={voice.micEnabled ? 'Fechar o microfone' : 'Abrir o microfone'}
+              alert={!voice.micEnabled}
+              onClick={() => send({ type: 'mic' })}
+            >
+              {voice.micEnabled ? (
+                <Mic className="h-3.5 w-3.5" />
+              ) : (
+                <MicOff className="h-3.5 w-3.5" />
+              )}
+            </ActionButton>
+
+            <ActionButton
+              label={voice.deafened ? 'Voltar a ouvir' : 'Ensurdecer'}
+              alert={voice.deafened}
+              onClick={() => send({ type: 'deafen' })}
+            >
+              {voice.deafened ? (
+                <HeadphoneOff className="h-3.5 w-3.5" />
+              ) : (
+                <Headphones className="h-3.5 w-3.5" />
+              )}
+            </ActionButton>
+
+            <ActionButton
+              label="Salvar os últimos segundos (confirma no launcher)"
+              onClick={() => send({ type: 'clip' })}
+            >
+              <Scissors className="h-3.5 w-3.5" />
+            </ActionButton>
+
+            <ActionButton label="Tremer a tela da sala" onClick={() => send({ type: 'nudge' })}>
+              <Waves className="h-3.5 w-3.5" />
+            </ActionButton>
+
+            {/* Sair da call fica separado do resto, no canto: é o único aqui
+                que não dá pra desfazer com o mesmo clique. */}
+            <span className="flex-1" />
+            <ActionButton label="Sair da call" danger onClick={() => send({ type: 'leave-voice' })}>
+              <PhoneOff className="h-3.5 w-3.5" />
+            </ActionButton>
+          </>
+        )}
+      </div>
+
+      <p className="mt-1.5 truncate text-[11.5px] text-muted-foreground">
+        {voice
+          ? `${voice.channelName} · ${voice.peers.length} ${
+              voice.peers.length === 1 ? 'pessoa' : 'pessoas'
+            }`
+          : 'Fora de call — entre num canal pra soltar som.'}
+      </p>
+    </section>
+  )
+}
+
+function ActionButton({
+  label,
+  alert,
+  danger,
+  onClick,
+  children
+}: {
+  label: string
+  /** Estado que a pessoa precisa NOTAR: microfone fechado, ouvido tampado. */
+  alert?: boolean
+  danger?: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className={cn(
+        'flex h-7 w-7 shrink-0 items-center justify-center rounded-brutal border transition-colors',
+        alert
+          ? 'border-destructive/60 bg-destructive/15 text-destructive'
+          : danger
+            ? 'border-line text-muted-foreground hover:border-destructive/60 hover:text-destructive'
+            : 'border-line text-muted-foreground hover:border-acid-dark hover:text-foreground'
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ============================================
+// RODA DE SONS
+// ============================================
+
+/** Gomos por volta. Mais que isso e nem um anel maior separa os nomes. */
+const WHEEL_SLOTS = 12
+/** Largura de um gomo, em px. Espelha o `w-[7rem]` lá embaixo. */
+const SLOT_WIDTH = 112
+/**
+ * Raio do anel, em px.
+ *
+ * O aperto NÃO é o perímetro, é o topo e a base da roda: lá os gomos ficam
+ * lado a lado, e o que os separa é só a distância HORIZONTAL entre eles. Pro
+ * gomo do topo e o vizinho, ela vale `R·cos(90° − 360°/N)` — com 12 gomos, um
+ * quinto a menos que o vão calculado pelo perímetro.
+ *
+ * A 196px isso dava 98px de vão pra gomos de 112px, e eles se montavam uns por
+ * cima dos outros no topo e na base (o de cima aparecia com o nome cortado
+ * pelo vizinho, porque quem é desenhado depois pinta por cima). 252 dá 126px —
+ * 14 de folga. A roda inteira fica em 624px, que cabe deitada até em 720p.
+ */
+const WHEEL_RADIUS = 252
+/** Meia-largura de um gomo, pra caixa da roda caber ele inteiro. */
+const SLOT_HALF = SLOT_WIDTH / 2 + 4
+const WHEEL_BOX = (WHEEL_RADIUS + SLOT_HALF) * 2
+
+/**
+ * "Control+Shift+1" -> "Ctrl+Shift+1".
+ *
+ * Cópia enxuta do `formatAccelerator` de components/social/HotkeyRecorder —
+ * ver PoolBars pro motivo de não importar de lá. Aqui, além disso, sai SEM os
+ * espaços que ele põe em volta do "+": o gomo tem 7rem, e "Ctrl + Shift + 1"
+ * não cabe em nenhuma delas.
+ */
+function shortKey(accelerator: string): string {
+  return accelerator.replace('Control', 'Ctrl').replace('Super', 'Win').replace('Return', 'Enter')
+}
+
+/**
+ * A RODA — os sons do servidor em volta de um miolo, no meio da tela.
+ *
+ * Por que roda e não grade: a grade do launcher é pra ESCOLHER som (tem busca,
+ * categoria, edição). Esta é pra ACERTAR som com o jogo rodando, e o que
+ * importa aí é a distância do ponteiro até o alvo. Numa roda todo gomo fica à
+ * mesma distância do centro da tela, sempre no mesmo ângulo — dá pra decorar
+ * "o berro fica embaixo à esquerda" e parar de ler.
+ *
+ * Ela FECHA ao escolher, de propósito: é um gesto, não um painel. Quem quer
+ * dois sons seguidos aperta o atalho de novo, que é o mesmo dedo. E, sem
+ * teclado nesta janela (ver o cabeçalho do arquivo), o atalho é também a única
+ * saída — por isso nada aqui pode prender o ponteiro.
+ *
+ * O vão entre os gomos NÃO tem `data-overlay-hit`: o clique que erra o gomo
+ * vai pro jogo, como sempre.
+ */
+function SoundWheel({ sounds, voice }: { sounds: OverlaySound[]; voice: OverlayVoice | null }) {
+  const [page, setPage] = React.useState(0)
+  const [hovered, setHovered] = React.useState<OverlaySound | null>(null)
+
+  const pages = Math.max(1, Math.ceil(sounds.length / WHEEL_SLOTS))
+  // A lista pode ENCOLHER com a roda aberta (alguém apagou um som lá no
+  // launcher) e deixar a página atual sem existir.
+  const current = Math.min(page, pages - 1)
+  const slice = sounds.slice(current * WHEEL_SLOTS, current * WHEEL_SLOTS + WHEEL_SLOTS)
+
+  /**
+   * Fora de call o som não sai: o soundboard toca PRA SALA, e sala é a call.
+   * O gomo fica apagado e sem clique em vez de mandar um pedido que só voltaria
+   * como erro numa janela que está atrás do jogo.
+   */
+  const canPlay = Boolean(voice)
+
+  const pick = (sound: OverlaySound): void => {
+    send({ type: 'sound', soundId: sound.id })
+    void window.bocas.overlay.setMode({ wheel: false })
+  }
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="relative" style={{ width: WHEEL_BOX, height: WHEEL_BOX }}>
+        {/* Clarão atrás da roda: num jogo claro os gomos sumiriam no fundo.
+            Sem `data-overlay-hit` — o mouse atravessa ele inteiro. */}
+        <div className="absolute inset-[8%] rounded-full bg-void/70 blur-2xl" />
+
+        <div
+          data-overlay-hit
+          className={cn(
+            'absolute left-1/2 top-1/2 flex h-36 w-36 -translate-x-1/2 -translate-y-1/2',
+            'flex-col items-center justify-center gap-1.5 rounded-full border border-line',
+            'bg-void/90 px-4 text-center shadow-neon-2 backdrop-blur-sm'
+          )}
+        >
+          <Music className="h-4 w-4 shrink-0 text-acid" />
+
+          <p
+            className={cn(
+              'w-full truncate text-[11.5px] leading-snug',
+              hovered && canPlay ? 'text-foreground' : 'text-muted-foreground'
+            )}
+          >
+            {sounds.length === 0
+              ? 'ninguém subiu som'
+              : !canPlay
+                ? 'entre numa call'
+                : (hovered?.name ?? 'escolha um som')}
+          </p>
+
+          {pages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <IconButton
+                label="Sons anteriores"
+                onClick={() => setPage((prev) => (prev - 1 + pages) % pages)}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </IconButton>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {current + 1}/{pages}
+              </span>
+              <IconButton
+                label="Próximos sons"
+                onClick={() => setPage((prev) => (prev + 1) % pages)}
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </IconButton>
+            </div>
+          )}
+        </div>
+
+        {slice.map((sound, index) => {
+          // O -90° põe o primeiro gomo no TOPO; daí em diante, sentido
+          // horário. Dividir por `slice.length` (e não por WHEEL_SLOTS) faz a
+          // última página, com 3 sons, virar um triângulo bem distribuído em
+          // vez de três gomos amontoados num quarto da roda.
+          const angle = (index / slice.length) * Math.PI * 2 - Math.PI / 2
+          const x = Math.cos(angle) * WHEEL_RADIUS
+          const y = Math.sin(angle) * WHEEL_RADIUS
+
+          return (
+            <button
+              key={sound.id}
+              type="button"
+              data-overlay-hit
+              disabled={!canPlay}
+              title={canPlay ? `Tocar "${sound.name}" pra sala` : 'Entre num canal de voz'}
+              onMouseEnter={() => setHovered(sound)}
+              onMouseLeave={() =>
+                setHovered((prev) => (prev?.id === sound.id ? null : prev))
+              }
+              onClick={() => pick(sound)}
+              style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}
+              className={cn(
+                'absolute flex w-[7rem] -translate-x-1/2 -translate-y-1/2 flex-col',
+                'items-center gap-0.5 rounded-brutal border border-line bg-void/90',
+                'px-2 py-1.5 shadow-neon-1 backdrop-blur-sm transition-colors',
+                canPlay
+                  ? 'hover:border-acid hover:bg-surface-raised'
+                  : 'cursor-not-allowed opacity-50'
+              )}
+            >
+              <span className="text-xl leading-none">{sound.emoji}</span>
+              <span className="w-full truncate text-[11.5px] leading-tight text-foreground">
+                {sound.name}
+              </span>
+              {sound.hotkey && (
+                <span className="w-full truncate font-mono text-[11px] text-muted-foreground">
+                  {shortKey(sound.hotkey)}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }

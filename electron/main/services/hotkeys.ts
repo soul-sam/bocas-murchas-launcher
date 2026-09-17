@@ -1,4 +1,5 @@
 import { BrowserWindow, globalShortcut } from 'electron'
+import type { HotkeyAction, HotkeyBinding, HotkeyRegistration } from '../../preload/types.js'
 
 /**
  * Atalhos globais (funcionam com o launcher em segundo plano, ex.: jogando).
@@ -6,34 +7,41 @@ import { BrowserWindow, globalShortcut } from 'electron'
  * LIMITACAO CONHECIDA: o globalShortcut do Electron so avisa no key DOWN, nunca
  * no key UP. Entao push-to-talk "segurando a tecla" so existe com a janela em
  * foco (o renderer escuta keydown/keyup direto). Globalmente, o PTT vira
- * alternancia: aperta pra abrir o mic, aperta de novo pra fechar.
+ * alternancia: aperta pra abrir o mic, aperta de novo pra fechar. E o mesmo
+ * motivo pelo qual a roda de sons fecha com o atalho que a abriu.
+ *
+ * OS TIPOS VEM DE preload/types.ts, e nao daqui. Eles ja moraram nos dois
+ * lugares, e as duas copias divergiram: `clip` existia so na do preload, entao
+ * o main recebia um atalho de um tipo que ele jurava nao existir e repassava
+ * sem saber. Como o preload nao importa nada, trazer o tipo de la nao arrasta
+ * dependencia nenhuma pro processo main.
  */
 
-export type HotkeyAction =
-  | { kind: 'sound'; soundId: string }
-  | { kind: 'mute' }
-  | { kind: 'deafen' }
-  | { kind: 'ptt-toggle' }
-  | { kind: 'nudge-channel' }
-
-export interface HotkeyBinding {
-  /** Identificador estavel, ex.: "sound:abc-123" ou "mute". */
-  id: string
-  /** Accelerator do Electron, ex.: "Control+Shift+1". */
-  accelerator: string
-  action: HotkeyAction
-}
-
-export interface HotkeyRegistration {
-  id: string
-  accelerator: string
-  ok: boolean
-  error?: string
-}
+export type { HotkeyAction, HotkeyBinding, HotkeyRegistration }
 
 let registered: HotkeyBinding[] = []
 
+/**
+ * Atalho que o PROPRIO main resolve, sem passar pelo renderer.
+ *
+ * A sobreposicao e uma JANELA: quem abre e fecha janela e o processo main. Se
+ * o atalho fosse tratado no renderer, abrir a roda de sons com o launcher
+ * fechado na bandeja dependeria de mandar um recado pra janela principal pra
+ * ela mandar um recado de volta pro main — com o detalhe de que a janela
+ * principal pode estar destruida.
+ *
+ * Os outros atalhos (mic, clipe, som) continuam indo pro renderer: eles mexem
+ * em socket, em LiveKit e em gravacao, coisas que so existem la.
+ */
+let localHandler: ((action: HotkeyAction) => void) | null = null
+
+export function onHotkeyInMain(handler: (action: HotkeyAction) => void): void {
+  localHandler = handler
+}
+
 function broadcast(binding: HotkeyBinding): void {
+  localHandler?.(binding.action)
+
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send('hotkey:triggered', {
       id: binding.id,

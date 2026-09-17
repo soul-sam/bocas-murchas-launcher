@@ -116,6 +116,17 @@ export interface HotkeySettings {
    * foco não serve pra nada.
    */
   clip: string
+  /**
+   * Abrir e fechar o PAINEL DE CANTO por cima do jogo — apostas da partida,
+   * microfone, clipe e a porta pra roda de sons.
+   *
+   * Global por definicao: um atalho de sobreposicao que so funciona com o
+   * launcher em foco nao serve pra nada, porque a sobreposicao existe
+   * exatamente pra quando o jogo esta na frente.
+   */
+  overlay: string
+  /** Abrir e fechar a RODA DE SONS, no centro da tela. */
+  soundWheel: string
   /** soundId -> accelerator */
   sounds: Record<string, string>
 }
@@ -361,6 +372,26 @@ export function isOverlayCorner(value: unknown): value is OverlayCorner {
   return OVERLAY_CORNERS.includes(value as OverlayCorner)
 }
 
+/**
+ * Preferencias da SOBREPOSICAO — a janela por cima do jogo.
+ *
+ * Saiu de dentro de `lol` na revisao 3 das configuracoes. Enquanto a
+ * sobreposicao so mostrava aposta de partida de League, morar junto do LoL
+ * fazia sentido; agora ela leva a roda de sons e as acoes rapidas do servidor,
+ * que nao tem nada a ver com League. O que continua em `lol` e so a decisao de
+ * ela APARECER SOZINHA quando a partida comeca (`lol.overlay`).
+ */
+export interface OverlaySettings {
+  /**
+   * Chave geral. Desligado, nem o atalho abre — e a saida pra quem joga em
+   * tela cheia exclusiva (onde nenhuma sobreposicao aparece) e nao quer uma
+   * janela invisivel de pe atras do jogo.
+   */
+  enabled: boolean
+  /** Canto em que o painel nasce. A roda de sons ignora isto: ela e centrada. */
+  corner: OverlayCorner
+}
+
 /** Preferencias da integracao com o LoL. */
 export interface LolSettings {
   /** Ler o cliente do LoL e mostrar presenca pra galera. */
@@ -373,10 +404,14 @@ export interface LolSettings {
   postGameCard: boolean
   /** Caminho manual do lockfile, quando a deteccao automatica falha. */
   lockfilePath: string
-  /** Sobreposicao por cima do jogo enquanto a partida roda. */
+  /**
+   * Abrir o painel de canto SOZINHO quando a partida comeca.
+   *
+   * Desligar isto nao desliga a sobreposicao — ela continua vindo pelo atalho
+   * (`hotkeys.overlay`). O que muda e ela aparecer por conta propria ou so
+   * quando chamada. Onde ela nasce mora em `overlay.corner`.
+   */
   overlay: boolean
-  /** Onde ela fica na tela. */
-  overlayCorner: OverlayCorner
 }
 
 // ============================================
@@ -462,6 +497,32 @@ export interface OverlayNotice {
   at: number
 }
 
+/**
+ * Um som do servidor, do jeito que a RODA precisa dele.
+ *
+ * Nao e o `Sound` da API de proposito: aquele carrega url, tamanho, duracao,
+ * quem subiu e contagem de toques — nada disso e desenhado aqui, e tudo isso
+ * atravessaria o IPC a cada retrato. A roda mostra emoji, nome e tecla.
+ *
+ * Nao existe preco. Tocar som e de graca (ver lib/rate-limit.ts no servidor).
+ */
+export interface OverlaySound {
+  id: string
+  name: string
+  emoji: string
+  /** Atalho global deste som, quando tem um. A roda desenha a tecla no gomo. */
+  hotkey?: string
+}
+
+/** A call, pro painel de canto poder mexer nela sem abrir o launcher. */
+export interface OverlayVoice {
+  channelName: string
+  micEnabled: boolean
+  deafened: boolean
+  /** Quem esta na call agora, so os nomes — o painel nao desenha avatar. */
+  peers: string[]
+}
+
 export interface OverlayState {
   /** Da pra apostar: tem login e o servidor respondeu. */
   ready: boolean
@@ -472,10 +533,43 @@ export interface OverlayState {
   notice: OverlayNotice | null
   /** Aposta minima do sistema. O TETO e por partida (`maxAmount`), nao global. */
   wagerMin: number
+  /** O catalogo de sons, ja na ordem em que a roda desenha. */
+  sounds: OverlaySound[]
+  /** Null quando nao estou em call nenhuma. */
+  voice: OverlayVoice | null
+}
+
+/**
+ * POR QUE a sobreposicao esta aberta agora. As duas convivem: da pra estar com
+ * o painel de canto aberto e chamar a roda por cima dele.
+ *
+ * Isto NAO vai dentro do `OverlayState` porque tem dono diferente. O estado e
+ * um retrato que a janela principal empurra (saldo, apostas, sons); o modo e
+ * do processo main, que e quem recebe o atalho global e decide se a janela
+ * existe. Misturar os dois faria um retrato atrasado fechar a roda que o
+ * atalho acabou de abrir.
+ */
+export interface OverlayMode {
+  /** O painel de canto: apostas da partida e as acoes rapidas. */
+  dock: boolean
+  /** A roda de sons, centrada na tela. */
+  wheel: boolean
 }
 
 export type OverlayAction =
   | { type: 'bet'; sessionId: string; prediction: 'win' | 'loss'; amount: number }
+  /** Tocar um som pra sala toda. */
+  | { type: 'sound'; soundId: string }
+  /** Ligar/desligar o microfone. */
+  | { type: 'mic' }
+  /** Ligar/desligar o ensurdecer. */
+  | { type: 'deafen' }
+  /** Sair da call. */
+  | { type: 'leave-voice' }
+  /** Salvar os ultimos segundos (abre a confirmacao na janela principal). */
+  | { type: 'clip' }
+  /** Tremer a tela da sala inteira. */
+  | { type: 'nudge' }
   /** Trazer a janela principal pra frente. */
   | { type: 'open-app' }
 
@@ -506,6 +600,9 @@ export interface LauncherSettings {
    * mudanca deve valer pra quem ja tem o arquivo salvo — `normalize()` no
    * main le a revisao antiga e aplica a migracao.
    *   1 → 2: tema padrao passou de Grafite pra Roxo Murcho (2026-09-07).
+   *   2 → 3: o canto da sobreposicao saiu de `lol.overlayCorner` e virou
+   *          `overlay.corner`, porque a sobreposicao deixou de ser so de
+   *          League (2026-09-17).
    */
   settingsRevision: number
   /** Tema visual (ver ThemeId). */
@@ -531,6 +628,7 @@ export interface LauncherSettings {
   /** Mostrar "jogando Minecraft" pros outros. */
   shareMinecraftActivity: boolean
   lol: LolSettings
+  overlay: OverlaySettings
 
   voice: VoiceSettings
   hotkeys: HotkeySettings
@@ -583,6 +681,15 @@ export type HotkeyAction =
   | { kind: 'ptt-toggle' }
   | { kind: 'nudge-channel' }
   | { kind: 'clip' }
+  /**
+   * Abrir/fechar o painel de canto e a roda de sons.
+   *
+   * Estes dois sao resolvidos no PROCESSO MAIN (ver services/hotkeys.ts):
+   * quem abre e fecha janela e ele. Chegam no renderer mesmo assim, pelo
+   * broadcast de sempre, e o hotkeys-context os ignora de proposito.
+   */
+  | { kind: 'overlay' }
+  | { kind: 'sound-wheel' }
 
 export interface HotkeyBinding {
   id: string
@@ -680,7 +787,7 @@ export const RAM_LIMITS: RamLimits = {
  * settings.json com isso, e o renderer usa como estado inicial pra nao ter que
  * lidar com "settings ainda e null" em todo componente.
  */
-export const SETTINGS_REVISION = 2
+export const SETTINGS_REVISION = 3
 
 export const DEFAULT_SETTINGS: LauncherSettings = {
   settingsRevision: SETTINGS_REVISION,
@@ -707,8 +814,11 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     // Ligada por padrao pelo mesmo motivo da presenca: o launcher fica na
     // bandeja e a graca e ele aparecer sozinho na hora certa. Quem acha
     // poluicao desliga numa chave.
-    overlay: true,
-    overlayCorner: 'top-right'
+    overlay: true
+  },
+  overlay: {
+    enabled: true,
+    corner: 'top-right'
   },
 
   voice: {
@@ -733,6 +843,11 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     // Ctrl+Shift+C é o atalho de clipe que a galera já tem na mão de outros
     // programas, e não conflita com nada nosso.
     clip: 'Control+Shift+C',
+    // Mesma família dos de cima de propósito: quem decorou Ctrl+Shift+M e
+    // Ctrl+Shift+D não precisa aprender um dedilhado novo. O = sobreposição,
+    // S = sons.
+    overlay: 'Control+Shift+O',
+    soundWheel: 'Control+Shift+S',
     sounds: {}
   },
   screenShare: {
@@ -893,6 +1008,25 @@ export interface BocasAPI {
     setInteractive: (interactive: boolean) => Promise<void>
     /** Fecha a sobreposicao ate a proxima partida. */
     dismiss: () => Promise<void>
+
+    // --- modo (quem manda e o processo main; ver OverlayMode) ---
+    /** O que esta aberto agora. */
+    mode: () => Promise<OverlayMode>
+    onMode: (cb: (mode: OverlayMode) => void) => () => void
+    /**
+     * O canto mudou nas configuracoes com a janela ABERTA.
+     *
+     * A janela cobre a tela toda, entao trocar de canto nao mexe nela — muda
+     * so de que lado o painel se ancora, o que e CSS. Sem este aviso a
+     * mudanca so apareceria na proxima vez que a sobreposicao nascesse.
+     */
+    onCorner: (cb: (corner: OverlayCorner) => void) => () => void
+    /**
+     * Abrir/fechar uma parte. Usado pelo botao "sons" do painel de canto e
+     * pelo X de cada peca — o atalho global nao passa por aqui, ele ja chega
+     * no main.
+     */
+    setMode: (patch: Partial<OverlayMode>) => Promise<void>
   }
   app: {
     /** Aplica iniciar-com-o-Windows AGORA (a preferencia ja foi salva). */

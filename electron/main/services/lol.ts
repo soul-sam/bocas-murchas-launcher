@@ -20,7 +20,7 @@ import {
   queueName
 } from './lol-client.js'
 import { eogToResult, isUsableEogBlock, type EogStatsBlock } from './lol-eog.js'
-import { syncOverlayWithLol } from './lol-overlay.js'
+import { syncOverlayWithLol } from './overlay.js'
 
 /**
  * LEITURA DO CLIENTE DO LEAGUE OF LEGENDS (LCU).

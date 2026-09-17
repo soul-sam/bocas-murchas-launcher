@@ -5,14 +5,14 @@ import './styles/globals.css'
 
 /**
  * Ponto de entrada da JANELA DA SOBREPOSIÇÃO (overlay.html) — a que fica por
- * cima do League durante a partida. É uma árvore React própria, separada da
+ * cima do jogo. É uma árvore React própria, separada da
  * do app: janelas diferentes não compartilham contexto.
  *
  * De propósito, NENHUM provider aqui. Ela não tem login, socket, voz nem
  * roteador — tudo o que mostra chega pronto por IPC da janela principal (ver
- * electron/main/services/lol-overlay.ts). Foi o que permitiu não ter um
- * segundo `AuthProvider` disputando o mesmo token nem um segundo poll de
- * apostas na mesma máquina.
+ * electron/main/services/overlay.ts). Foi o que permitiu não ter um
+ * segundo `AuthProvider` disputando o mesmo token, nem um segundo poll de
+ * apostas, nem dois launchers tocando o mesmo som na mesma máquina.
  *
  * Sem `installInteractionGuard()`: o guarda existe pra destravar o `<body>`
  * quando uma camada do Radix é arrancada da árvore, e aqui não há Radix

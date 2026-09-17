@@ -9,11 +9,12 @@ import {
   type LauncherSettings,
   type LolSettings,
   type MusicSettings,
+  type OverlaySettings,
   type ScreenShareSettings,
   type VoiceSettings,
   type VoiceMode, isOverlayCorner, isScreenShareQuality, isScreenShareContent, isThemeId } from '../../preload/types.js'
 
-export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, MusicSettings, ScreenShareSettings, VoiceSettings, VoiceMode }
+export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, MusicSettings, OverlaySettings, ScreenShareSettings, VoiceSettings, VoiceMode }
 
 const FILE = 'settings.json'
 
@@ -77,6 +78,10 @@ function normalizeHotkeys(raw: Partial<HotkeySettings> | undefined): HotkeySetti
     // Arquivo salvo antes do clipe existir nao tem a chave: cai no padrao, e
     // quem atualizar o launcher ja ganha o atalho funcionando.
     clip: typeof h.clip === 'string' ? h.clip : d.clip,
+    // Mesma historia dos de cima: quem ja tinha settings.json antes da
+    // sobreposicao chamavel ganha os dois atalhos prontos na atualizacao.
+    overlay: typeof h.overlay === 'string' ? h.overlay : d.overlay,
+    soundWheel: typeof h.soundWheel === 'string' ? h.soundWheel : d.soundWheel,
     sounds
   }
 }
@@ -139,8 +144,39 @@ function normalizeLol(raw: Partial<LolSettings> | undefined): LolSettings {
         : d.autoJoinVoice,
     postGameCard: l.postGameCard ?? d.postGameCard,
     lockfilePath: typeof l.lockfilePath === 'string' ? l.lockfilePath.trim() : d.lockfilePath,
-    overlay: l.overlay ?? d.overlay,
-    overlayCorner: isOverlayCorner(l.overlayCorner) ? l.overlayCorner : d.overlayCorner
+    overlay: l.overlay ?? d.overlay
+  }
+}
+
+/**
+ * Preferencias da sobreposicao.
+ *
+ * MIGRACAO 2 → 3: o canto morava em `lol.overlayCorner`. Quem ja tinha
+ * escolhido um canto nao pode perde-lo so porque a sobreposicao deixou de ser
+ * so de League — entao, faltando `overlay.corner` no arquivo, o valor antigo
+ * vale. A leitura do campo velho e por cast: ele nao existe mais no tipo,
+ * existe so nos arquivos ja gravados.
+ *
+ * Nao ha "revisao < 3" aqui de proposito. A migracao do tema (1 → 2) precisou
+ * da revisao porque mudava uma escolha VALIDA da pessoa; esta so preenche um
+ * campo que ainda nao existe, e checar a revisao daria o mesmo resultado com
+ * mais uma coisa pra dar errado.
+ */
+function normalizeOverlay(
+  raw: Partial<OverlaySettings> | undefined,
+  lol: Partial<LolSettings> | undefined
+): OverlaySettings {
+  const d = DEFAULTS.overlay
+  const o = raw ?? {}
+  const legacyCorner = (lol as { overlayCorner?: unknown } | undefined)?.overlayCorner
+
+  return {
+    enabled: o.enabled ?? d.enabled,
+    corner: isOverlayCorner(o.corner)
+      ? o.corner
+      : isOverlayCorner(legacyCorner)
+        ? legacyCorner
+        : d.corner
   }
 }
 
@@ -189,6 +225,7 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     startMinimized: raw.startMinimized ?? DEFAULTS.startMinimized,
     shareMinecraftActivity: raw.shareMinecraftActivity ?? DEFAULTS.shareMinecraftActivity,
     lol: normalizeLol(raw.lol),
+    overlay: normalizeOverlay(raw.overlay, raw.lol),
 
     voice: normalizeVoice(raw.voice),
     hotkeys: normalizeHotkeys(raw.hotkeys),
@@ -246,6 +283,7 @@ export async function updateSettings(patch: Partial<LauncherSettings>): Promise<
     ...patch,
     voice: { ...current.voice, ...(patch.voice ?? {}) },
     lol: { ...current.lol, ...(patch.lol ?? {}) },
+    overlay: { ...current.overlay, ...(patch.overlay ?? {}) },
     hotkeys: {
       ...current.hotkeys,
       ...(patch.hotkeys ?? {}),
