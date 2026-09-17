@@ -14,7 +14,8 @@ import {
   Swords,
   Headphones,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  Smartphone
 } from 'lucide-react'
 import { useSettings } from '@/lib/settings-context'
 import { useHotkeys } from '@/lib/hotkeys-context'
@@ -39,6 +40,8 @@ import { SwitchRow } from '@/components/ui/switch'
 import { HotkeyRecorder, formatAccelerator } from '@/components/social/HotkeyRecorder'
 import { MicMeter } from '@/components/social/MicMeter'
 import { VoiceAlertSettings } from '@/components/social/VoiceAlertSettings'
+import { CelularTab } from '@/components/social/CelularTab'
+import { isWeb } from '@/lib/platform'
 
 const DEFAULT_MAX_MB = 4096
 
@@ -99,6 +102,14 @@ export function SettingsModal() {
               <Swords className="mr-1.5 inline h-3 w-3" />
               LoL
             </TabsTrigger>
+            {/* So na web: no desktop a notificacao e nativa (window.bocas.notify)
+                e nao ha o que instalar. */}
+            {isWeb() && (
+              <TabsTrigger value="celular">
+                <Smartphone className="mr-1.5 inline h-3 w-3" />
+                Celular
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="voz">
@@ -122,6 +133,11 @@ export function SettingsModal() {
           <TabsContent value="lol">
             <LolTab />
           </TabsContent>
+          {isWeb() && (
+            <TabsContent value="celular">
+              <CelularTab />
+            </TabsContent>
+          )}
         </Tabs>
       </DialogContent>
     </Dialog>
