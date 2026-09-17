@@ -45,7 +45,22 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      # NAO use `android-actions/setup-android`: ele tenta instalar o pacote
+      # legado `tools`, que nao existe mais nas cmdline-tools atuais, e morre
+      # com "Failed to find package 'tools'" seguido de um exit 1 do
+      # sdkmanager. E ele nem e necessario — a imagem do runner ja vem com o
+      # SDK em $ANDROID_HOME e com as licencas aceitas. O que faltar de
+      # build-tools o proprio Bubblewrap instala.
+      - name: Conferir o Android SDK do runner
+        run: |
+          set -e
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          [ -n "$ANDROID_HOME" ] || { echo "ANDROID_HOME vazio" >&2; exit 1; }
+          ls "$ANDROID_HOME"
+          echo "--- build-tools ---"
+          ls "$ANDROID_HOME/build-tools" 2>/dev/null || echo "(nenhuma ainda; o Bubblewrap instala)"
+          echo "--- platforms ---"
+          ls "$ANDROID_HOME/platforms" 2>/dev/null || echo "(nenhuma ainda)"
 
       - uses: actions/setup-node@v4
         with:
