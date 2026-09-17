@@ -51,16 +51,39 @@ jobs:
       # sdkmanager. E ele nem e necessario — a imagem do runner ja vem com o
       # SDK em $ANDROID_HOME e com as licencas aceitas. O que faltar de
       # build-tools o proprio Bubblewrap instala.
-      - name: Conferir o Android SDK do runner
+      # O Bubblewrap valida o SDK exigindo `tools/` OU `bin/` na RAIZ dele, e
+      # procura o sdkmanager em `<sdk>/tools/bin/` ou `<sdk>/bin/`. O SDK do
+      # runner e moderno: tem `cmdline-tools/<versao>/bin` e mais nada na
+      # raiz. Resultado: "The provided androidSdk isn't correct." — e era por
+      # isso que o setup-android tentava instalar o pacote legado `tools`.
+      #
+      # Um link simbolico resolve os dois de uma vez, e sem mentir sobre o
+      # caminho: `androidSdkPath` continua sendo a raiz de verdade, entao
+      # build-tools, zipalign e apksigner (que o Bubblewrap procura relativos
+      # a ela) continuam onde estao.
+      - name: Preparar o Android SDK pro Bubblewrap
         run: |
           set -e
           echo "ANDROID_HOME=$ANDROID_HOME"
           [ -n "$ANDROID_HOME" ] || { echo "ANDROID_HOME vazio" >&2; exit 1; }
           ls "$ANDROID_HOME"
+
+          if [ ! -e "$ANDROID_HOME/bin" ] && [ ! -e "$ANDROID_HOME/tools" ]; then
+            # A pasta pode se chamar `latest` ou a versao (`16.0`); pega a maior.
+            origem=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin 2>/dev/null | sort -V | tail -1)
+            if [ -z "$origem" ]; then
+              echo "Nao achei cmdline-tools/*/bin dentro de $ANDROID_HOME" >&2
+              ls -R "$ANDROID_HOME" | head -60 >&2
+              exit 1
+            fi
+            ln -s "$origem" "$ANDROID_HOME/bin" 2>/dev/null || sudo ln -s "$origem" "$ANDROID_HOME/bin"
+            echo "link criado: $ANDROID_HOME/bin -> $origem"
+          fi
+
+          test -x "$ANDROID_HOME/bin/sdkmanager" || { echo "sdkmanager nao executavel" >&2; ls -la "$ANDROID_HOME/bin" >&2; exit 1; }
+          echo "sdkmanager ok"
           echo "--- build-tools ---"
           ls "$ANDROID_HOME/build-tools" 2>/dev/null || echo "(nenhuma ainda; o Bubblewrap instala)"
-          echo "--- platforms ---"
-          ls "$ANDROID_HOME/platforms" 2>/dev/null || echo "(nenhuma ainda)"
 
       - uses: actions/setup-node@v4
         with:
