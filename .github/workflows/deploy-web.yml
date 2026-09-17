@@ -67,6 +67,33 @@ jobs:
           tar -czf site.tar.gz -C dist-web .
           ls -la site.tar.gz
 
+      # O scp-action tenta criar o diretorio de destino sozinho e, quando nao
+      # consegue, morre com um "create folder" seguido de "exited with status
+      # 1" — sem dizer QUAL diretorio nem por que. Criar aqui, antes, resolve
+      # o caso comum (o caminho ainda nao existe) e, quando for permissao,
+      # falha dizendo quem somos e onde estamos tentando escrever.
+      - name: Preparar o diretorio na VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.SSH_PASSPHRASE }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          script_stop: true
+          script: |
+            set -e
+            echo "usuario: $(whoami)"
+            echo "home: $HOME"
+            alvo="${{ secrets.SSH_WEB_DIR }}"
+            echo "alvo: $alvo"
+            mkdir -p "$alvo/app" "$alvo/html"
+            cd "$alvo"
+            touch .teste-de-escrita
+            rm -f .teste-de-escrita
+            echo "diretorio pronto e gravavel: $PWD"
+
       - name: Enviar pra VPS
         uses: appleboy/scp-action@v0.1.7
         with:
