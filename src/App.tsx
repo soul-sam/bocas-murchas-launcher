@@ -35,6 +35,7 @@ import { SocialPage } from '@/pages/SocialPage'
 import { PrintPage } from '@/pages/PrintPage'
 import { TitleBar } from '@/components/TitleBar'
 import { DeepLink } from '@/components/DeepLink'
+import { DesktopSiteNotice } from '@/components/DesktopSiteNotice'
 import { AppRail } from '@/components/social/AppRail'
 import { NudgeOverlay } from '@/components/social/NudgeOverlay'
 import { SettingsModal } from '@/components/SettingsModal'
@@ -355,6 +356,7 @@ export function App() {
                   <Router>
                     <div className="flex h-screen flex-col overflow-hidden bg-background">
                       <TitleBar />
+                      <DesktopSiteNotice />
                       <InterfaceGuardNotice />
                       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
                         <Routes>
