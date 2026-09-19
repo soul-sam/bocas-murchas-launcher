@@ -47,6 +47,7 @@ import {
   timezoneOptions
 } from '@/lib/profile-extras'
 import { TitleTag } from '@/lib/cosmetic-icons'
+import { StatusComposer } from './StatusComposer'
 import { GAME_CATALOG, GameIcon, gameLabel } from './GameIcon'
 import { GifPicker } from './GifPicker'
 import { NameEffect } from './NameEffect'
@@ -335,12 +336,10 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="p-status">Recado</Label>
-                  <Input
+                  <StatusComposer
                     id="p-status"
                     value={customStatus}
-                    maxLength={64}
-                    placeholder="jogando, no trampo, dormindo…"
-                    onChange={(e) => setCustomStatus(e.target.value)}
+                    onChange={setCustomStatus}
                   />
                 </div>
 

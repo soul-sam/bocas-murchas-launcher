@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Shield, Search, Volume2, ScreenShare, X, Coins, Coffee } from 'lucide-react'
+import { Shield, Search, Volume2, ScreenShare, X, Coins } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { resolveAssetUrl } from '@/lib/api'
@@ -16,6 +16,7 @@ import { ActivityLine } from './ActivityLine'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { BetPopover } from './BetPopover'
+import { AwayBadge, StatusText } from './AwayBadge'
 
 /**
  * Lista de membros.
@@ -163,10 +164,10 @@ function Group({
           const voice = voiceByUser.get(member.id)
           const activity = member.isOnline ? activities[member.id] : undefined
           const title = cosmeticName(member.title)
-          // "Ausente com recado" é o formato do "Volto logo!": status away +
-          // customStatus. Um "Ausente" marcado na mão com recado próprio
-          // ("no trabalho") entra aqui também — é a mesma informação.
-          const afkNote = member.status === 'away' ? member.customStatus : null
+          // A ausência é CRACHÁ, e o recado é do dono — ver components/social/
+          // AwayBadge. Antes o AFK gravava o texto dele por cima do recado da
+          // pessoa e esta linha lia o estrago como se fosse informação.
+          const away = member.isOnline && member.status === 'away'
           const cargo = topCargoOf(member.id)
           /**
            * Botão de apostar: só em partida de verdade (não em champ select) e
@@ -218,21 +219,21 @@ function Group({
                           crachá. O resto dos cargos está no cartão de perfil,
                           a um clique. */}
                       {cargo && <CargoChip cargo={cargo} compact />}
+                      {away && <AwayBadge />}
                     </span>
 
                     {/* Jogo ganha da call: "em partida 12:30" diz mais do que
                         "na call" — e quem esta em call ja esta na secao certa.
                         O título só aparece quando não tem nada mais vivo pra
                         dizer: é enfeite, não informação. */}
-                    {/* AFK GANHA DE TUDO, inclusive de "na call": alguém
-                        sentado na call mas longe do teclado é exatamente quem
-                        a galera fica chamando sem resposta. Ver
-                        lib/afk-context. */}
-                    {afkNote ? (
-                      <span className="flex items-center gap-1 truncate text-[11px] text-burn/90">
-                        <Coffee className="h-2.5 w-2.5 shrink-0" />
-                        <span className="truncate">{afkNote}</span>
-                      </span>
+                    {/* O RECADO GANHA DE TUDO: é o que a pessoa escolheu
+                        dizer. A ausência não disputa esta linha — ela é o
+                        crachá ali em cima, ao lado do nome. */}
+                    {member.customStatus ? (
+                      <StatusText
+                        text={member.customStatus}
+                        className="flex items-center gap-0.5 truncate text-[11.5px] text-muted-foreground"
+                      />
                     ) : activity ? (
                       <ActivityLine activity={activity} />
                     ) : voice ? (
@@ -245,10 +246,6 @@ function Group({
                             aria-label="transmitindo"
                           />
                         )}
-                      </span>
-                    ) : member.customStatus ? (
-                      <span className="block truncate text-[11.5px] text-muted-foreground">
-                        {member.customStatus}
                       </span>
                     ) : (
                       title && (

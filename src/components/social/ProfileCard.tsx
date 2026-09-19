@@ -28,6 +28,7 @@ import { NameEmoji } from './NameEmoji'
 import { LevelRing } from './LevelRing'
 import { BetPopover } from './BetPopover'
 import { ChessBlock } from './ChessBlock'
+import { StatusText } from './AwayBadge'
 
 const STATUS_LABEL: Record<string, string> = {
   online: 'Online',
@@ -294,7 +295,10 @@ export function ProfileBody({
 
         {member.customStatus && (
           <p className="mt-2 rounded-brutal border border-line bg-void/60 px-2 py-1 text-xs text-foreground">
-            {member.customStatus}
+            <StatusText
+              text={member.customStatus}
+              className="inline-flex flex-wrap items-center gap-0.5"
+            />
           </p>
         )}
 

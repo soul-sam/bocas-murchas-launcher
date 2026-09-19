@@ -49,6 +49,7 @@ import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { useActivity } from '@/lib/activity-context'
 import { useMembers } from '@/lib/members-context'
+import { AFK_AUTO_NOTE } from '@/lib/afk-context'
 import { NameEmoji } from './NameEmoji'
 import { ActivityLine } from './ActivityLine'
 import { OpenPartiesStrip } from './OpenPartiesStrip'
@@ -406,8 +407,7 @@ export function ChannelSidebar({
                       // e é essa diferença que faz alguém chamar três vezes sem
                       // resposta. Ver lib/afk-context.
                       const member = memberById[occupant.id]
-                      const afkNote =
-                        member?.status === 'away' ? member.customStatus : null
+                      const away = member?.status === 'away'
                       // Mudo e ensurdecido vem do socket (e nao do LiveKit)
                       // porque a barra mostra TODOS os canais, e do LiveKit so
                       // chega quem esta na minha sala.
@@ -418,8 +418,11 @@ export function ChannelSidebar({
                           <Hint
                             label={occupant.displayName}
                             description={
-                              afkNote ??
-                              (isSharing ? 'Está transmitindo — clique pra ver' : undefined)
+                              away
+                                ? AFK_AUTO_NOTE
+                                : isSharing
+                                  ? 'Está transmitindo — clique pra ver'
+                                  : undefined
                             }
                             side="right"
                           >
@@ -445,14 +448,14 @@ export function ChannelSidebar({
                               speaking={isSpeaking}
                               className="h-8 w-8 shrink-0 rounded-full"
                             />
-                            <span className={cn('truncate', afkNote && 'opacity-60')}>
+                            <span className={cn('truncate', away && 'opacity-60')}>
                               {occupant.displayName}
                             </span>
                             <NameEmoji id={memberById[occupant.id]?.emoji} />
-                            {afkNote && (
+                            {away && (
                               <Coffee
                                 className="h-3 w-3 shrink-0 text-burn"
-                                aria-label={afkNote}
+                                aria-label={AFK_AUTO_NOTE}
                               />
                             )}
                             {(isSharing || flags?.muted || flags?.deafened) && (

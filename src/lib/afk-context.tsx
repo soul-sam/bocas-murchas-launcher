@@ -20,9 +20,9 @@ import { useVoice } from './voice-context'
  *  - SAI sozinho quando você volta pra janela e mexe em algo.
  *
  * Enquanto está ligado:
- *  - seu status vira "ausente" e o recado aparece do lado do seu nome pra todo
- *    mundo (é o `customStatus`, o mesmo campo que a lista de membros já
- *    desenha);
+ *  - seu status vira "ausente", e é SÓ isso que vai pro servidor. O aviso na
+ *    tela dos outros é um CRACHÁ desenhado a partir do status (ver
+ *    components/social/AwayBadge), não um texto gravado no seu perfil;
  *  - cutucada não te acha (o servidor tem uma lista de quem optou por não
  *    receber, e a gente entra nela sem mexer na preferência salva da pessoa —
  *    ver nudge-context);
@@ -40,13 +40,48 @@ import { useVoice } from './voice-context'
  *
  * O que nunca acontece: sair da call ou parar de receber mensagem. AFK é um
  * recado, não um modo de operação.
+ *
+ * ## O AFK NÃO ESCREVE NO SEU RECADO (consertado)
+ *
+ * Isto já gravou "Longe do teclado" no `customStatus` de quem passasse dez
+ * minutos sem mexer no mouse — por cima do recado que a pessoa tinha escrito.
+ * E o estrago não era temporário: o recado antigo só voltava se o AFK
+ * terminasse NESTA sessão, então fechar o launcher ausente (ou o app cair)
+ * apagava o recado pra sempre. Recado é do dono; ausência é um crachá.
+ *
+ * Quem tiver um dos dois textos do AFK preso no perfil de antes da correção é
+ * limpo uma vez, na montagem — ver `LEGACY_AFK_NOTES`.
+ *
+ * ## VOLTAR TAMBÉM É AUTOMÁTICO PELO SISTEMA (consertado)
+ *
+ * A entrada sempre olhou o ocioso do SISTEMA; a saída só olhava a janela do
+ * launcher (foco + clique/tecla). Quem ficava ausente e voltava pro PC pra
+ * jogar, navegar ou trabalhar — ou seja, quase sempre — continuava "ausente"
+ * pra todo mundo até lembrar de abrir o launcher e arrumar na mão. Era esta a
+ * reclamação de "preciso ficar online manualmente mesmo com o launcher
+ * aberto". Agora o mesmo relógio que marca desmarca: mexeu no computador, o
+ * automático cai sozinho.
+ *
+ * Só o AUTOMÁTICO sai por aqui. Quem clicou "Volto logo!" disse que ia sair;
+ * o mouse encostando na mesa não desmente isso — esse continua saindo pelo
+ * toque na janela (ou por outro clique no botão).
  */
 
-/** O recado padrão. Curto de propósito: cabe na linha da lista de membros. */
+/** O que o crachá diz quando VOCÊ marcou. Curto: cabe na linha da lista. */
 export const AFK_NOTE = 'Volto logo!'
 
-/** Recado de quando o launcher marcou sozinho — diferente do que você marcou. */
+/** O que o crachá diz quando o launcher marcou sozinho. */
 export const AFK_AUTO_NOTE = 'Longe do teclado'
+
+/**
+ * Os textos que o AFK antigo gravava no `customStatus` das pessoas.
+ *
+ * Enquanto existir gente com um deles preso no perfil, o recado que ela
+ * escreveu está perdido e o que se vê é lixo nosso. Limpamos uma vez, ao
+ * montar — só o que bate EXATAMENTE, pra não encostar em quem por acaso
+ * escreveu "volto logo!" de propósito.
+ */
+const LEGACY_AFK_NOTES = [AFK_NOTE, AFK_AUTO_NOTE]
 
 /**
  * De quanto em quanto tempo perguntamos o ocioso do sistema.
@@ -55,6 +90,16 @@ export const AFK_AUTO_NOTE = 'Longe do teclado'
  * "8 minutos" configurado não vire 10 na prática.
  */
 const IDLE_POLL_MS = 30_000
+
+/**
+ * Abaixo disso a pessoa está de volta ao computador.
+ *
+ * Tem que ser MAIOR que o intervalo do poll: com 30s entre perguntas, exigir
+ * "menos de 5s de ocioso" só desmarcaria quem estivesse digitando no instante
+ * exato do tique. Um minuto é folgado o bastante pra pegar qualquer uso real e
+ * curto o bastante pra não deixar o crachá pendurado depois que a pessoa voltou.
+ */
+const BACK_IDLE_SECONDS = 60
 
 /**
  * Carência depois de ligar o AFK na mão.
@@ -93,10 +138,10 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
    * O que devolver quando o AFK sair.
    *
    * Guardado no instante em que o AFK entra, porque é o único momento em que
-   * dá pra saber: depois disso o status NO SERVIDOR já é 'away' e o recado já
-   * é o nosso. Quem estava em "não perturbe" volta pra "não perturbe".
+   * dá pra saber: depois disso o status NO SERVIDOR já é 'away'. Quem estava
+   * em "não perturbe" volta pra "não perturbe".
    */
-  const previousRef = React.useRef<{ status: string; customStatus: string | null } | null>(null)
+  const previousRef = React.useRef<{ status: string } | null>(null)
 
   /**
    * Estado de áudio de antes do AFK — null quando não havia call, ou quando o
@@ -125,6 +170,9 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
   const armedRef = React.useRef(false)
   const afkRef = React.useRef(false)
   afkRef.current = afk
+  /** O poll de ocioso só desfaz o que ele mesmo marcou. */
+  const automaticRef = React.useRef(false)
+  automaticRef.current = automatic
 
   const tokenRef = React.useRef(token)
   tokenRef.current = token
@@ -132,35 +180,49 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
   /** Última vez que ESTE microfone abriu. Ver o poll de ocioso mais abaixo. */
   const lastSpokeRef = React.useRef(0)
 
-  const applyRemote = React.useCallback(
-    (status: 'away' | 'online' | 'dnd' | 'offline', customStatus: string | null) => {
-      const auth = tokenRef.current
-      if (!auth) return
+  /**
+   * FAXINA DO ESTRAGO ANTIGO: limpa o recado que o AFK antigo deixou gravado.
+   *
+   * Uma vez por sessão, e só quando o texto bate exatamente com um dos nossos
+   * — ver LEGACY_AFK_NOTES.
+   */
+  const cleanedLegacyRef = React.useRef(false)
 
-      // Duas chamadas porque status e recado moram em rotas diferentes. Falhar
-      // não desfaz o estado local: o recado é uma cortesia, e insistir numa
-      // rede ruim só deixaria o botão travado.
-      void usersApi.setStatus(auth, status).catch(() => {})
-      void usersApi.updateProfile(auth, { customStatus }).catch(() => {})
-    },
-    []
-  )
+  React.useEffect(() => {
+    if (cleanedLegacyRef.current) return
+    if (!token || !user) return
+    const stuck = user.customStatus?.trim()
+    if (!stuck || !LEGACY_AFK_NOTES.includes(stuck)) return
+
+    cleanedLegacyRef.current = true
+    void usersApi.updateProfile(token, { customStatus: null }).catch(() => {})
+    applyUser({ ...user, customStatus: null })
+  }, [token, user, applyUser])
+
+  /**
+   * Só o STATUS vai pro servidor. O recado é do dono — ver o cabeçalho.
+   *
+   * Falhar não desfaz o estado local: insistir numa rede ruim só deixaria o
+   * botão travado.
+   */
+  const applyRemote = React.useCallback((status: 'away' | 'online' | 'dnd' | 'offline') => {
+    const auth = tokenRef.current
+    if (!auth) return
+    void usersApi.setStatus(auth, status).catch(() => {})
+  }, [])
 
   const enable = React.useCallback(
     (nextNote?: string, auto = false) => {
       if (afkRef.current) return
 
-      previousRef.current = {
-        status: user?.status ?? 'online',
-        customStatus: user?.customStatus ?? null
-      }
+      previousRef.current = { status: user?.status ?? 'online' }
 
       const message = nextNote?.trim() || (auto ? AFK_AUTO_NOTE : AFK_NOTE)
 
       setAfk(true)
       setNote(message)
       setAutomatic(auto)
-      applyRemote('away', message)
+      applyRemote('away')
 
       // Só no clique, e só dentro de uma call. `setDeafen(true)` já muta o
       // microfone junto (ver voice-context): quem não ouve ninguém também não
@@ -174,8 +236,8 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
       }
 
       // O objeto de usuário local também muda: é dele que a barra lateral e o
-      // seu próprio avatar leem status e recado.
-      if (user) applyUser({ ...user, status: 'away', customStatus: message })
+      // seu próprio avatar leem o status. O recado fica como está.
+      if (user) applyUser({ ...user, status: 'away' })
 
       // Marcado sozinho já nasce armado: a pessoa não estava aqui pra clicar,
       // então qualquer toque na janela é volta. Na mão, espera a carência.
@@ -215,10 +277,9 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
     // Voltar pra 'away' não faz sentido: se a pessoa está mexendo, ela está
     // online. Quem estava em "não perturbe" ou invisível mantém a escolha.
     const restored = status === 'away' ? 'online' : status
-    const customStatus = before?.customStatus ?? null
 
-    applyRemote(restored, customStatus)
-    if (user) applyUser({ ...user, status: restored, customStatus })
+    applyRemote(restored)
+    if (user) applyUser({ ...user, status: restored })
   }, [user, applyUser, applyRemote])
 
   const toggle = React.useCallback(() => {
@@ -274,12 +335,24 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
     const limitMs = minutes * 60_000
 
     const check = async (): Promise<void> => {
-      if (afkRef.current) return
+      const idleSeconds = await window.bocas.app.idleSeconds().catch(() => 0)
+
+      /**
+       * JÁ ESTÁ AUSENTE: o mesmo relógio decide a volta.
+       *
+       * Só desfaz o que ELE mesmo marcou (`automaticRef`) — ver o cabeçalho.
+       */
+      if (afkRef.current) {
+        if (!automaticRef.current) return
+        if (idleSeconds > BACK_IDLE_SECONDS) return
+        disable()
+        return
+      }
+
       // Invisível é uma escolha explícita de não aparecer; mexer no status de
       // quem pediu isso seria desfazer a escolha dela.
       if (user?.status === 'offline') return
 
-      const idleSeconds = await window.bocas.app.idleSeconds().catch(() => 0)
       if (idleSeconds * 1000 < limitMs) return
       if (Date.now() - lastSpokeRef.current < limitMs) return
 
@@ -288,7 +361,7 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
 
     const timer = window.setInterval(() => void check(), IDLE_POLL_MS)
     return () => window.clearInterval(timer)
-  }, [settings.afkAutoMinutes, token, user?.status, enable])
+  }, [settings.afkAutoMinutes, token, user?.status, enable, disable])
 
   const value = React.useMemo<AfkContextValue>(
     () => ({
