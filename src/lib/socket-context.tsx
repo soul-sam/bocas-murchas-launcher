@@ -94,6 +94,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [connected, setConnected] = React.useState(false)
   const [onlineUsers, setOnlineUsers] = React.useState<OnlineUser[]>([])
   const [voiceByChannel, setVoiceByChannel] = React.useState<Record<string, VoiceUser[]>>({})
+
+  /**
+   * Qual versão da lista de cada canal eu já tenho.
+   *
+   * O servidor numera cada mudança da sala (ver `voiceRev` no server.ts) porque
+   * entre mudar a lista e mandá-la existe uma ida ao banco — e duas mudanças
+   * quase juntas, que é o normal numa call, chegam aqui fora de ordem. Como o
+   * cliente SUBSTITUI a lista do canal pelo que chega, o retrato velho apagava
+   * quem tinha acabado de entrar. Era este o "sumiu da barra lateral mas está
+   * na sala".
+   *
+   * Num ref e não em estado: isto decide se um evento vale, e essa decisão não
+   * pode esperar o próximo render.
+   */
+  const voiceRevRef = React.useRef<Record<string, number>>({})
   const [screenShares, setScreenShares] = React.useState<ScreenShareMap>({})
   const [voiceFlags, setVoiceFlags] = React.useState<Record<string, VoiceFlags>>({})
   const [profileUpdates, setProfileUpdates] = React.useState<Record<string, AuthUser>>({})
@@ -199,6 +214,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     const handleVoiceState = (data: {
       byChannelId?: Record<string, VoiceUser[]>
+      revByChannelId?: Record<string, number>
       sharingByChannelId?: Record<string, string[]>
       mutedUserIds?: string[]
       deafenedUserIds?: string[]
@@ -206,6 +222,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       // Isto e um RETRATO do servidor, entao SUBSTITUI os dois mapas em vez de
       // misturar: misturar deixaria pra tras gente que saiu da call (ou parou
       // de transmitir) enquanto o socket estava fora.
+      //
+      // E o retrato reinicia a contagem de versoes: ele e, por definicao, a
+      // verdade mais nova que existe.
+      voiceRevRef.current = data?.revByChannelId ?? {}
       setVoiceByChannel(data?.byChannelId ?? {})
       setScreenShares(data?.sharingByChannelId ?? {})
 
@@ -236,9 +256,25 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     const handleVoiceChanged = (data: {
       channelId: string
+      /** Versão da sala que ESTA lista descreve. Ver `voiceRevRef`. */
+      rev?: number
       voiceUsers?: VoiceUser[]
     }): void => {
       if (!data?.channelId) return
+
+      /**
+       * Retrato velho não manda em retrato novo.
+       *
+       * `>=` e não `>`: dois eventos da mesma versão descrevem a mesma sala, e
+       * reaplicar não muda nada — mas o primeiro que chegou já valeu. Servidor
+       * antigo (sem `rev`) continua funcionando como antes: sem número, não há
+       * o que comparar e o evento passa.
+       */
+      if (typeof data.rev === 'number') {
+        const known = voiceRevRef.current[data.channelId] ?? 0
+        if (data.rev < known) return
+        voiceRevRef.current[data.channelId] = data.rev
+      }
 
       const roster = data.voiceUsers ?? []
       setVoiceByChannel((prev) => ({ ...prev, [data.channelId]: roster }))
