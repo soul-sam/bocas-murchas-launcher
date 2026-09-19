@@ -77,18 +77,57 @@ export function PrintProvider({ children }: { children: React.ReactNode }) {
     }
   }, [token, load])
 
-  // Quando o backend passar a emitir os eventos da impressora, eles chegam
-  // por aqui e o poll vira só rede de segurança.
+  // O backend emite os eventos da impressora desde que o agente existe; o poll
+  // virou rede de segurança.
   React.useEffect(() => {
     if (!socket) return
     const onChange = (): void => void load(true)
+
+    /**
+     * Telemetria é evento PRÓPRIO, e não recarrega a tela.
+     *
+     * `print:job` refaz `/print/state` inteiro — mandar isso a cada barra de
+     * progresso seria uma consulta completa de fila a cada 5 s durante nove
+     * horas de impressão, vezes quantas janelas estiverem abertas. Aqui chega
+     * só o número, e ele é costurado na peça que já está desenhada.
+     */
+    const onTelemetry = (payload: {
+      jobId?: string
+      progress?: number | null
+      currLayer?: number | null
+      totalLayers?: number | null
+      remainSeconds?: number | null
+      stage?: string | null
+      percent?: number | null
+    }): void => {
+      setState((prev) => {
+        if (!prev?.running || !payload?.jobId || prev.running.id !== payload.jobId) return prev
+        return {
+          ...prev,
+          running: {
+            ...prev.running,
+            progress: payload.progress ?? prev.running.progress,
+            currLayer: payload.currLayer ?? prev.running.currLayer,
+            totalLayers: payload.totalLayers ?? prev.running.totalLayers,
+            remainSeconds: payload.remainSeconds ?? prev.running.remainSeconds,
+            stage: payload.stage ?? null,
+            stagePercent: payload.stage ? (payload.percent ?? 0) : null,
+            // Chegou número novo: a barra voltou a ser verdade.
+            telemetryStale: false
+          }
+        }
+      })
+    }
+
     socket.on('print:queue', onChange)
     socket.on('print:printer', onChange)
     socket.on('print:job', onChange)
+    socket.on('print:telemetry', onTelemetry)
     return () => {
       socket.off('print:queue', onChange)
       socket.off('print:printer', onChange)
       socket.off('print:job', onChange)
+      socket.off('print:telemetry', onTelemetry)
     }
   }, [socket, load])
 

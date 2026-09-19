@@ -1,5 +1,17 @@
 import * as React from 'react'
-import { HardDrive, Loader2, Printer, RotateCcw, Save, Timer, WifiOff } from 'lucide-react'
+import {
+  Copy,
+  Cpu,
+  HardDrive,
+  Loader2,
+  Plus,
+  Printer,
+  RotateCcw,
+  Save,
+  Timer,
+  Trash2,
+  WifiOff
+} from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePrint } from '@/lib/print-context'
 import { useCargos } from '@/lib/cargos-context'
@@ -7,14 +19,22 @@ import {
   formatSeconds,
   printApi,
   type PrintAccessRow,
+  type PrintAgentRow,
   type PrinterInfo
 } from '@/lib/api-print'
-import { resolveAssetUrl } from '@/lib/api'
+import { API_ORIGIN, resolveAssetUrl } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
-import { ErrorBox, errorMessage, formatRelative, InlineConfirm, useCue } from './shared'
+import {
+  copyText,
+  ErrorBox,
+  errorMessage,
+  formatRelative,
+  InlineConfirm,
+  useCue
+} from './shared'
 
 /**
  * ABA IMPRESSORA — o que o admin ajusta na Kobra S1 do rateio.
@@ -43,6 +63,11 @@ export function PrinterTab() {
 
   const [rows, setRows] = React.useState<PrintAccessRow[] | null>(null)
   const [defaultWindow, setDefaultWindow] = React.useState<number | null>(null)
+  const [connection, setConnection] = React.useState<{
+    host: string | null
+    hasApiKey: boolean
+  } | null>(null)
+  const [agents, setAgents] = React.useState<PrintAgentRow[] | null>(null)
   const [storage, setStorage] = React.useState<Awaited<
     ReturnType<typeof printApi.storage>
   > | null>(null)
@@ -56,18 +81,24 @@ export function PrinterTab() {
     try {
       // As três em paralelo, e uma falhando não derruba as outras: o painel
       // sem o número de armazenamento ainda serve pra mexer em cota.
-      const [access, store] = await Promise.allSettled([
+      const [access, store, agentList] = await Promise.allSettled([
         printApi.listAccess(token),
-        printApi.storage(token)
+        printApi.storage(token),
+        printApi.listAgents(token)
       ])
       if (access.status === 'fulfilled') {
         setRows(access.value.members)
         setDefaultWindow(access.value.printer.defaultWindowSeconds)
+        setConnection({
+          host: access.value.printer.host,
+          hasApiKey: access.value.printer.hasApiKey
+        })
         setError(null)
       } else {
         setError(errorMessage(access.reason, 'Falha ao carregar o acesso'))
       }
       if (store.status === 'fulfilled') setStorage(store.value)
+      if (agentList.status === 'fulfilled') setAgents(agentList.value.agents)
     } finally {
       setReloading(false)
     }
@@ -136,6 +167,17 @@ export function PrinterTab() {
       {error && <ErrorBox>{error}</ErrorBox>}
 
       {state && <MachineSection printer={state.printer} busy={busy} run={run} />}
+
+      {connection && (
+        <ConnectionSection
+          host={connection.host}
+          hasApiKey={connection.hasApiKey}
+          busy={busy}
+          run={run}
+        />
+      )}
+
+      <AgentsSection agents={agents} busy={busy} run={run} reload={load} />
 
       <section className="space-y-2">
         <h3 className="font-mono text-[11.5px] uppercase tracking-widest text-acid">
@@ -257,6 +299,262 @@ function MachineSection({
           </Button>
         )}
       </div>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Onde a máquina mora
+// ---------------------------------------------------------------------------
+
+/**
+ * IP e chave da impressora.
+ *
+ * Isto NÃO fica no cartão SD do Pi de propósito. O IP da impressora muda toda
+ * vez que alguém reinicia o roteador, e a alternativa seria abrir SSH no
+ * aparelho a cada mudança. Guardado aqui, o agente recebe o valor novo no mesmo
+ * segundo em que este botão é apertado.
+ *
+ * A chave nunca volta do servidor — o campo em branco quer dizer "não mexer".
+ */
+function ConnectionSection({
+  host,
+  hasApiKey,
+  busy,
+  run
+}: {
+  host: string | null
+  hasApiKey: boolean
+  busy: boolean
+  run: (action: () => Promise<void>) => Promise<void>
+}) {
+  const { token } = useAuth()
+  const [ip, setIp] = React.useState(host ?? '')
+  const [key, setKey] = React.useState('')
+
+  React.useEffect(() => setIp(host ?? ''), [host])
+
+  const dirty = ip.trim() !== (host ?? '') || key.trim().length > 0
+
+  return (
+    <section className="space-y-2 rounded-brutal border-2 border-border p-3">
+      <h3 className="font-mono text-[11.5px] uppercase tracking-widest text-acid">
+        Onde a máquina está
+      </h3>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="block">
+          <span className="mb-1 block text-[11.5px] text-muted-foreground">
+            IP na rede de casa
+          </span>
+          <input
+            value={ip}
+            onChange={(e) => setIp(e.target.value.trim())}
+            placeholder="192.168.0.50"
+            disabled={busy}
+            className="w-40 rounded-brutal border-2 border-border bg-void px-2 py-1 font-mono text-[11px] outline-none focus:border-acid-dark"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-[11.5px] text-muted-foreground">
+            Chave da API da impressora
+          </span>
+          <input
+            value={key}
+            onChange={(e) => setKey(e.target.value.trim())}
+            placeholder={hasApiKey ? '•••••• (guardada)' : 'em branco = sem chave'}
+            disabled={busy}
+            className="w-56 rounded-brutal border-2 border-border bg-void px-2 py-1 font-mono text-[11px] outline-none focus:border-acid-dark"
+          />
+        </label>
+
+        <Button
+          size="sm"
+          disabled={busy || !dirty}
+          onClick={() =>
+            void run(async () => {
+              await printApi.setPrinter(token, {
+                host: ip,
+                ...(key ? { printerApiKey: key } : {})
+              })
+              setKey('')
+            })
+          }
+        >
+          <Save className="mr-1.5 h-3 w-3" />
+          Salvar
+        </Button>
+      </div>
+
+      <p className="font-mono text-[11px] leading-snug text-muted-foreground">
+        Quem fala com a impressora é o agente, não o servidor — a VPS não
+        alcança a sua rede. Estes dois campos são o que ele recebe ao conectar,
+        e valem na hora: não precisa mexer no Raspberry.
+      </p>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Os agentes
+// ---------------------------------------------------------------------------
+
+/**
+ * Os Raspberry Pi que fazem a ponte.
+ *
+ * O token aparece UMA vez, na criação. Não existe "ver de novo" porque o
+ * servidor guarda só o hash — perdeu, cria outro e revoga o velho, que é
+ * exatamente o que a gente quer que aconteça quando um aparelho some.
+ */
+function AgentsSection({
+  agents,
+  busy,
+  run,
+  reload
+}: {
+  agents: PrintAgentRow[] | null
+  busy: boolean
+  run: (action: () => Promise<void>) => Promise<void>
+  reload: () => Promise<void>
+}) {
+  const { token } = useAuth()
+  const cue = useCue()
+  const [label, setLabel] = React.useState('')
+  const [fresh, setFresh] = React.useState<{ label: string; token: string } | null>(null)
+  const [copied, setCopied] = React.useState(false)
+  const [revoking, setRevoking] = React.useState<string | null>(null)
+
+  const vivos = (agents ?? []).filter((agent) => !agent.revokedAt)
+
+  const create = async (): Promise<void> => {
+    const name = label.trim()
+    if (!name) return
+    const result = await printApi.createAgent(token, name)
+    setFresh({ label: result.agent.label, token: result.token })
+    setLabel('')
+    await reload()
+  }
+
+  return (
+    <section className="space-y-2 rounded-brutal border-2 border-border p-3">
+      <h3 className="font-mono text-[11.5px] uppercase tracking-widest text-acid">
+        Agentes (Raspberry Pi)
+      </h3>
+
+      {agents === null ? (
+        <p className="font-mono text-xs text-muted-foreground">
+          Carregando<span className="terminal-cursor" />
+        </p>
+      ) : vivos.length === 0 ? (
+        <p className="rounded-brutal border-2 border-dashed border-line-strong p-3 font-mono text-[11.5px] leading-relaxed text-muted-foreground">
+          Nenhum aparelho ligado à impressora ainda. Enquanto não existir um, as
+          peças ficam empilhadas em <span className="text-acid">na fila</span> —
+          que é um estado legítimo, não um defeito. O programa que roda no
+          aparelho está em{' '}
+          <span className="text-foreground">bocasmurchas.com.br/agente-impressora.zip</span>.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {vivos.map((agent) => (
+            <li
+              key={agent.id}
+              className="flex items-center gap-2 rounded-brutal border-2 border-border px-2 py-1.5"
+            >
+              <Cpu className="h-3.5 w-3.5 shrink-0 text-acid" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs">{agent.label}</span>
+                <span className="block font-mono text-[11px] text-muted-foreground">
+                  {agent.tokenPrefix}… · {agent.agentVersion ?? 'versão ?'} ·{' '}
+                  {agent.lastSeenAt ? `visto ${formatRelative(agent.lastSeenAt)}` : 'nunca conectou'}
+                  {agent.lastIp ? ` · ${agent.lastIp}` : ''}
+                </span>
+              </span>
+
+              {revoking === agent.id ? (
+                <InlineConfirm
+                  question="Revogar?"
+                  busy={busy}
+                  onYes={() => {
+                    void run(() => printApi.revokeAgent(token, agent.id).then(() => undefined))
+                    setRevoking(null)
+                  }}
+                  onNo={() => setRevoking(null)}
+                />
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => setRevoking(agent.id)}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex items-end gap-2">
+        <label className="block flex-1">
+          <span className="mb-1 block text-[11.5px] text-muted-foreground">
+            Aparelho novo
+          </span>
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value.slice(0, 60))}
+            placeholder="raspberry da sala"
+            disabled={busy}
+            className="w-full rounded-brutal border-2 border-border bg-void px-2 py-1 font-mono text-[11px] outline-none focus:border-acid-dark"
+          />
+        </label>
+        <Button size="sm" disabled={busy || !label.trim()} onClick={() => void run(create)}>
+          <Plus className="mr-1.5 h-3 w-3" />
+          Criar token
+        </Button>
+      </div>
+
+      {fresh && (
+        <div className="space-y-2 rounded-brutal border-2 border-acid-dark bg-void p-2">
+          <p className="font-mono text-[11px] leading-snug text-acid">
+            Token de "{fresh.label}" — copia agora, ele não aparece de novo.
+          </p>
+          <pre className="overflow-x-auto whitespace-pre rounded-brutal border-2 border-border p-2 font-mono text-[11px] leading-relaxed text-foreground">
+{`[server]
+api_url = ${API_ORIGIN}
+token = ${fresh.token}`}
+          </pre>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                void copyText(
+                  `[server]\napi_url = ${API_ORIGIN}\ntoken = ${fresh.token}\n`
+                ).then((ok) => {
+                  setCopied(ok)
+                  cue(ok ? 'self-join' : 'self-leave')
+                })
+              }}
+            >
+              <Copy className="mr-1.5 h-3 w-3" />
+              {copied ? 'Copiado' : 'Copiar'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setFresh(null)}>
+              Já guardei
+            </Button>
+          </div>
+          <p className="font-mono text-[11px] leading-snug text-muted-foreground">
+            Isso é o <span className="text-foreground">agent.conf</span> do aparelho que fica
+            ligado junto da impressora. Num PC: o arquivo dentro da pasta{' '}
+            <span className="text-foreground">windows</span>, e depois feche e abra o{' '}
+            <span className="text-foreground">agente.bat</span>. Num Raspberry:{' '}
+            <span className="text-foreground">/etc/bocas-agent/agent.conf</span> e{' '}
+            <span className="text-foreground">sudo systemctl restart bocas-agent</span>.
+          </p>
+        </div>
+      )}
     </section>
   )
 }

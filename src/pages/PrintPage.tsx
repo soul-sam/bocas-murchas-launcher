@@ -249,12 +249,35 @@ function PrinterCard({
             </span>
           </div>
 
-          <div className="h-3 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void">
-            <div
-              className="h-full bg-acid transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, running.progress))}%` }}
-            />
-          </div>
+          {/*
+            A peça ainda está INDO pra máquina: o G-code sai da VPS, passa pelo
+            Raspberry e sobe pra impressora. Num wifi doméstico isso leva
+            minutos, e uma barra parada em 0% nesse tempo parece travamento —
+            daí a etapa aparecer com nome e porcentagem próprios.
+          */}
+          {running.stage ? (
+            <div className="space-y-1">
+              <div className="h-3 overflow-hidden rounded-brutal border-2 border-border bg-void">
+                <div
+                  className="h-full bg-acid-dark transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, running.stagePercent ?? 0))}%` }}
+                />
+              </div>
+              <p className="text-[11.5px] text-muted-foreground">
+                {running.stage === 'downloading'
+                  ? 'Baixando o arquivo no raspberry'
+                  : 'Mandando o arquivo pra impressora'}{' '}
+                <span className="font-mono text-acid-text">{running.stagePercent ?? 0}%</span>
+              </p>
+            </div>
+          ) : (
+            <div className="h-3 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void">
+              <div
+                className="h-full bg-acid transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.max(0, running.progress))}%` }}
+              />
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
             <span className="text-acid-text">{running.progress}%</span>

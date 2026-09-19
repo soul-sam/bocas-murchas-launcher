@@ -84,6 +84,14 @@ export interface PrintRunning {
   startedAt: string | null
   /** Paramos de receber telemetria — a peça provavelmente continua. */
   telemetryStale: boolean
+  /**
+   * Etapa da ENTREGA do arquivo (`downloading`/`uploading`), enquanto a peça
+   * ainda está indo pro Pi. Não vem de `/print/state`: chega pelo socket
+   * (`print:telemetry`) e só existe nesses minutos — depois some, porque
+   * quem está trabalhando passa a ser a impressora.
+   */
+  stage?: string | null
+  stagePercent?: number | null
 }
 
 export interface PrinterInfo {
@@ -163,6 +171,23 @@ export interface PrintAccessRow {
   reservedSeconds: number
 }
 
+/**
+ * O Raspberry Pi que faz a ponte com a máquina.
+ *
+ * `token` só existe na resposta de quem CRIA — o servidor guarda hash, e não
+ * tem rota pra ver de novo. Perdeu, cria outro e revoga o velho.
+ */
+export interface PrintAgentRow {
+  id: string
+  label: string
+  tokenPrefix: string
+  lastSeenAt: string | null
+  lastIp: string | null
+  agentVersion: string | null
+  revokedAt: string | null
+  createdAt: string
+}
+
 export interface EnqueueResult {
   message: string
   job: PrintQueueItem | null
@@ -218,10 +243,10 @@ export const printApi = {
 
   // ---- admin ----
   listAccess: (token: string | null) =>
-    request<{ members: PrintAccessRow[]; printer: { defaultWindowSeconds: number } }>(
-      '/print/admin/access',
-      { token }
-    ),
+    request<{
+      members: PrintAccessRow[]
+      printer: { defaultWindowSeconds: number; host: string | null; hasApiKey: boolean }
+    }>('/print/admin/access', { token }),
 
   setAccess: (
     token: string | null,
@@ -285,6 +310,19 @@ export const printApi = {
       token,
       body: '{}'
     }),
+
+  listAgents: (token: string | null) =>
+    request<{ connected: boolean; agents: PrintAgentRow[] }>('/print/admin/agents', { token }),
+
+  createAgent: (token: string | null, label: string) =>
+    request<{ message: string; agent: PrintAgentRow; token: string }>('/print/admin/agents', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ label })
+    }),
+
+  revokeAgent: (token: string | null, agentId: string) =>
+    request<{ message: string }>(`/print/admin/agents/${agentId}`, { method: 'DELETE', token }),
 
   storage: (token: string | null) =>
     request<{ files: number; bytes: number; budgetBytes: number; retentionDays: number }>(
