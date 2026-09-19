@@ -95,27 +95,10 @@ import { cn, formatClock } from '@/lib/utils'
  * Carência antes de encolher quando o ponteiro sai do painel.
  *
  * Sem ela, atravessar um vão de 2px entre dois botões fecharia o painel na mão
- * de quem está clicando. É o mesmo motivo do `ARM_MARGIN` logo abaixo, do
- * outro lado do problema.
+ * de quem está clicando. É o mesmo motivo da folga (`HIT_MARGIN`) que o
+ * processo main usa em volta das peças, do outro lado do problema.
  */
 const COLLAPSE_GRACE_MS = 420
-
-/**
- * Quantos pixels ANTES da peça a janela já passa a capturar o mouse.
- *
- * Este número é o conserto do "grande parte das vezes não dá pra apostar".
- * Ligar o clique custa uma ida e volta de IPC até o processo main
- * (`setIgnoreMouseEvents`), e quem move o mouse até um botão e clica não
- * espera esse tempo — o clique saía enquanto a janela ainda estava
- * atravessável e ia inteiro pro jogo. Armando 24px antes, a ida e volta
- * acontece durante o movimento que ainda está chegando, e o clique encontra a
- * janela pronta.
- *
- * Não custa mira do jogo: 24px em volta de uma aba encostada na borda é uma
- * faixa que ninguém usa pra jogar, e ela só existe enquanto o ponteiro está
- * exatamente ali.
- */
-const ARM_MARGIN = 24
 
 /** Abaixo disso o arrasto foi um clique — dedo tremido não move a aba. */
 const DRAG_SLOP = 4
@@ -207,19 +190,25 @@ export function OverlayPage() {
   }, [pointerOnPanel, pinned, dragging])
 
   /**
-   * Partida começou: abre sozinho por alguns segundos e sai da frente.
+   * ABRIU? ENTÃO MOSTRA. Por alguns segundos, e depois sai da frente.
    *
-   * É o que sobrou (e o que bastava) do painel que nascia inteiro: avisar que
-   * dá pra apostar. Quem quiser apostar já está com o mouse lá quando o
-   * relógio acaba, e nesse caso o `pointerOnPanel` segura — o alfinete não
-   * precisa ser clicado.
+   * Vale pra QUALQUER motivo de a sobreposição existir — o atalho global e a
+   * partida começando. Isto já dependeu de haver partida registrada
+   * (`inMatch`), e essa era a versão errada da regra por dois motivos: quem
+   * aperta o atalho apertou pra VER alguma coisa, e não pra caçar uma aba de
+   * 10px com o mouse; e numa partida personalizada não há aposta registrada,
+   * então `inMatch` é falso e não aparecia nada — a sobreposição "não abria".
+   *
+   * Passados os segundos ela encolhe e a partir daí é o mouse que manda. Quem
+   * já levou o ponteiro até lá não vê nada fechar na mão: o `pointerOnPanel`
+   * segura sozinho, sem precisar clicar no alfinete.
    */
   React.useEffect(() => {
-    if (!mode.dock || !inMatch) return
+    if (!mode.dock) return
     setPinned(true)
     const timer = setTimeout(() => setPinned(false), AUTO_OPEN_MS)
     return () => clearTimeout(timer)
-  }, [mode.dock, inMatch])
+  }, [mode.dock])
 
   // Fechou a sobreposição: o alfinete não pode sobreviver pra próxima abertura.
   React.useEffect(() => {
@@ -553,102 +542,62 @@ function useOverlayMode(): OverlayMode {
  */
 function useClickThrough(force: boolean): boolean {
   const [onPanel, setOnPanel] = React.useState(false)
-  const forceRef = React.useRef(force)
-  forceRef.current = force
+
+  /**
+   * PUBLICA ONDE ESTAO OS PEDACOS CLICAVEIS, e deixa o main medir o cursor.
+   *
+   * Isto ja foi um `mousemove` aqui na tela, e era um impasse circular: a
+   * janela atravessavel NAO recebe evento de mouse nenhum (o `forward: true`
+   * nao entrega — medido no app empacotado, com o cursor parado em cima da
+   * aba: zero eventos), entao a tela nunca sabia que devia pedir pra capturar
+   * o mouse, e como nunca pedia, nunca passava a receber evento. Nada abria e
+   * nada era clicavel.
+   *
+   * Quem consegue responder "onde esta o cursor" sem depender de hit-testing e
+   * o processo main, por `screen.getCursorScreenPoint()`. Entao a divisao
+   * agora e: a tela DESENHA e diz onde desenhou; o main mede e avisa. Ver
+   * electron/main/services/overlay.ts.
+   *
+   * O efeito roda a cada pintura de proposito (sem lista de dependencias): o
+   * painel abre, encolhe e cresce sozinho quando chega retrato novo, e cada
+   * uma dessas mexe nos retangulos. Mandar so quando MUDA evita transformar
+   * isso numa enxurrada de IPC.
+   */
+  const ultimoRef = React.useRef('')
 
   React.useEffect(() => {
-    let interactive = false
-
-    const apply = (next: boolean): void => {
-      if (next === interactive) return
-      interactive = next
-      setOnPanel(next)
-      void window.bocas.overlay.setInteractive(next)
-    }
-
-    /**
-     * Perto o bastante pra armar.
-     *
-     * `elementFromPoint` sozinho só acende EM CIMA da peça, e acender em cima
-     * chega tarde (ver ARM_MARGIN). Então, quando o ponto não cai numa peça,
-     * medimos a distância até os retângulos delas — é o mesmo cálculo que o
-     * navegador faria, só que com folga.
-     */
-    const near = (x: number, y: number): boolean => {
-      const el = document.elementFromPoint(x, y)
-      if (el?.closest('[data-overlay-hit]')) return true
-
-      for (const hit of document.querySelectorAll('[data-overlay-hit]')) {
+    const areas = [...document.querySelectorAll('[data-overlay-hit]')]
+      .map((hit) => {
         const r = hit.getBoundingClientRect()
-        if (r.width === 0 && r.height === 0) continue
-        if (
-          x >= r.left - ARM_MARGIN &&
-          x <= r.right + ARM_MARGIN &&
-          y >= r.top - ARM_MARGIN &&
-          y <= r.bottom + ARM_MARGIN
-        ) {
-          return true
+        return {
+          x: Math.round(r.left),
+          y: Math.round(r.top),
+          w: Math.round(r.width),
+          h: Math.round(r.height)
         }
-      }
-      return false
-    }
+      })
+      .filter((a) => a.w > 0 && a.h > 0)
 
-    /**
-     * Uma medida por QUADRO, não por evento.
-     *
-     * Um mouse de jogo manda até 1000 posições por segundo, e tanto
-     * `elementFromPoint` quanto `getBoundingClientRect` obrigam o navegador a
-     * recalcular o layout na hora. Fazer isso mil vezes por segundo numa
-     * janela que existe POR CIMA DE UM JOGO é o tipo de coisa que vira queda
-     * de quadros no jogo — o contrário do que a sobreposição promete.
-     *
-     * Guardar a última posição e medir no próximo quadro dá exatamente a mesma
-     * resposta (o ponteiro não some entre quadros) por uma fração do custo.
-     */
-    let pending = 0
-    let lastX = 0
-    let lastY = 0
+    const assinatura = JSON.stringify(areas)
+    if (assinatura === ultimoRef.current) return
+    ultimoRef.current = assinatura
+    void window.bocas.overlay.setHitAreas(areas).catch(() => {})
+  })
 
-    const measure = (): void => {
-      pending = 0
-      if (forceRef.current) return apply(true)
-      apply(near(lastX, lastY))
-    }
-
-    const onMove = (event: MouseEvent): void => {
-      // Arrastando: a janela NÃO pode se soltar do mouse no meio do caminho.
-      if (forceRef.current) return apply(true)
-      lastX = event.clientX
-      lastY = event.clientY
-      if (pending) return
-      pending = window.requestAnimationFrame(measure)
-    }
-
-    // O ponteiro pode sair da janela num movimento rápido demais pra cair fora
-    // do painel antes: sem isso a janela ficaria capturando o mouse pra sempre.
-    const onLeave = (): void => {
-      if (forceRef.current) return
-      apply(false)
-    }
-
-    window.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseleave', onLeave)
-    return () => {
-      if (pending) window.cancelAnimationFrame(pending)
-      window.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseleave', onLeave)
-      apply(false)
-    }
+  // O main viu o ponteiro entrar ou sair. E ele quem manda.
+  React.useEffect(() => {
+    return window.bocas.overlay.onPointer(setOnPanel)
   }, [])
 
   /**
-   * Começou (ou terminou) um arrasto fora do movimento do mouse: o efeito
-   * acima só reage a `mousemove`, e soltar o botão parado deixaria a janela
-   * capturando o mouse pra sempre.
+   * Arrastando: prende o clique ligado ate soltar.
+   *
+   * Enquanto a aba esta sendo arrastada a janela nao pode se soltar do mouse
+   * por um instante em que o cursor passe fora dos retangulos — e os
+   * retangulos estao se movendo justamente por causa do arrasto.
    */
   React.useEffect(() => {
-    if (!force) return
-    void window.bocas.overlay.setInteractive(true).catch(() => {})
+    void window.bocas.overlay.setInteractive(force).catch(() => {})
   }, [force])
 
   return onPanel

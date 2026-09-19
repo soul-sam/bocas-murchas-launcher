@@ -7,6 +7,7 @@ import type {
   OverlayAction,
   OverlayCorner,
   OverlayDock,
+  OverlayHitArea,
   OverlayMode,
   OverlayState
 } from '../../preload/types.js'
@@ -93,6 +94,116 @@ let prefs: {
   corner: 'top-right',
   dock: { side: 'right', offset: 0.38 },
   autoOnMatch: true
+}
+
+/**
+ * ===========================================================================
+ * QUEM DECIDE SE A JANELA CAPTURA O MOUSE — e por que e AQUI.
+ * ===========================================================================
+ *
+ * A sobreposicao nasce com `setIgnoreMouseEvents(true, { forward: true })`, e
+ * a ideia do `forward` e que o movimento do mouse continue sendo entregue ao
+ * renderer mesmo com o clique atravessando — era assim que a tela percebia que
+ * o ponteiro tinha entrado numa peca e pedia pra capturar o mouse.
+ *
+ * MEDIDO NESTA MAQUINA, no app empacotado, com o cursor de verdade parado em
+ * cima da aba:
+ *
+ *   clique atravessa  -> 0 eventos de mousemove no renderer
+ *   janela interativa -> os eventos chegam normalmente, e o painel abre
+ *
+ * Ou seja, o `forward` nao entrega nada aqui, e o desenho antigo era um
+ * impasse circular: a janela so recebe evento de mouse DEPOIS de virar
+ * interativa, mas so viraria interativa AO RECEBER um evento de mouse. Nada
+ * abria, nada era clicavel — e quando funcionava (as vezes) era por acidente
+ * de foco. Era esta a causa de "grande parte das vezes nao da pra apostar", e
+ * ela sobreviveu a um redesenho inteiro da tela porque o problema nunca esteve
+ * na tela.
+ *
+ * A saida e nao depender de hit-testing nenhum: `screen.getCursorScreenPoint()`
+ * responde sempre, com a janela atravessavel, sem foco, por cima de um jogo em
+ * tela cheia sem bordas. O main pergunta a posicao num relogio barato, compara
+ * com os retangulos que a tela publicou (`setOverlayHitAreas`) e decide. A tela
+ * so DESENHA; ela nao precisa mais adivinhar onde o mouse esta.
+ *
+ * O relogio so anda enquanto a janela existe, e 50ms e imperceptivel pra quem
+ * leva o mouse ate um painel — e barato o suficiente pra rodar durante uma
+ * partida (uma leitura de cursor, sem layout, sem IPC quando nada muda).
+ */
+const CURSOR_POLL_MS = 50
+
+/**
+ * Folga em volta das pecas, em px.
+ *
+ * Capturar o mouse custa uma chamada ao sistema, e quem leva o ponteiro ate um
+ * botao e clica nao espera. Armando um pouco antes, a janela ja esta pronta
+ * quando o clique chega. Nao custa mira do jogo: e uma faixa estreita em volta
+ * de uma aba encostada na borda, e so existe enquanto o ponteiro esta ali.
+ */
+const HIT_MARGIN = 24
+
+let hitAreas: OverlayHitArea[] = []
+let pointerOn = false
+let interactiveNow = false
+let forcedInteractive = false
+let cursorTimer: NodeJS.Timeout | null = null
+
+function applyInteractive(next: boolean): void {
+  if (!overlayWindow || overlayWindow.isDestroyed()) return
+  if (next === interactiveNow) return
+  interactiveNow = next
+  overlayWindow.setIgnoreMouseEvents(!next, { forward: true })
+}
+
+/**
+ * Uma volta do relogio: onde esta o cursor, e isso muda alguma coisa?
+ *
+ * Tudo em DIP: `getCursorScreenPoint` e `getBounds` falam a mesma unidade, e
+ * ela e a mesma do px CSS do renderer com zoom 1 — por isso os retangulos que
+ * a tela publica podem ser comparados direto, sem converter escala.
+ */
+function pollCursor(): void {
+  const win = overlayWindow
+  if (!win || win.isDestroyed()) return
+
+  if (forcedInteractive) {
+    applyInteractive(true)
+    return
+  }
+
+  const bounds = win.getBounds()
+  const cursor = screen.getCursorScreenPoint()
+  const x = cursor.x - bounds.x
+  const y = cursor.y - bounds.y
+
+  const on = hitAreas.some(
+    (a) =>
+      x >= a.x - HIT_MARGIN &&
+      x <= a.x + a.w + HIT_MARGIN &&
+      y >= a.y - HIT_MARGIN &&
+      y <= a.y + a.h + HIT_MARGIN
+  )
+
+  applyInteractive(on)
+
+  // IPC so quando muda: este relogio bate 20x por segundo.
+  if (on === pointerOn) return
+  pointerOn = on
+  win.webContents.send('overlay:pointer', on)
+}
+
+function startCursorWatch(): void {
+  if (cursorTimer) return
+  cursorTimer = setInterval(pollCursor, CURSOR_POLL_MS)
+}
+
+function stopCursorWatch(): void {
+  if (cursorTimer) clearInterval(cursorTimer)
+  cursorTimer = null
+  hitAreas = []
+  pointerOn = false
+  interactiveNow = false
+  forcedInteractive = false
 }
 
 /** `phaseSince` da partida em andamento (0 fora de partida). */
@@ -211,7 +322,10 @@ function createOverlayWindow(): BrowserWindow {
   // "sem bordas" fica por cima e a sobreposicao simplesmente nao aparece.
   win.setAlwaysOnTop(true, 'screen-saver')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  // Nasce atravessavel; quem liga e desliga daqui pra frente e o `pollCursor`.
   win.setIgnoreMouseEvents(true, { forward: true })
+  interactiveNow = false
+  startCursorWatch()
 
   // Um link na sobreposicao nao pode virar uma segunda janela sem moldura por
   // cima do jogo. Quem quiser abrir algo pede pra janela principal.
@@ -230,7 +344,10 @@ function createOverlayWindow(): BrowserWindow {
   })
 
   win.on('closed', () => {
-    if (overlayWindow === win) overlayWindow = null
+    if (overlayWindow === win) {
+      overlayWindow = null
+      stopCursorWatch()
+    }
   })
 
   const devUrl = process.env['ELECTRON_RENDERER_URL']
@@ -444,10 +561,30 @@ export function requestOverlayState(): void {
 }
 
 /**
- * Liga/desliga o clique. Chamado pela propria sobreposicao conforme o ponteiro
- * entra e sai das pecas — ver o cabecalho.
+ * PRENDE o clique ligado, independente de onde o ponteiro esteja.
+ *
+ * Existe por causa do ARRASTO: enquanto a pessoa segura a aba e a arrasta, a
+ * janela nao pode se soltar do mouse por um instante em que o cursor saia dos
+ * retangulos. A tela liga ao comecar a arrastar e desliga ao soltar; no resto
+ * do tempo quem manda e o `tick` aqui de baixo.
  */
 export function setOverlayInteractive(interactive: boolean): void {
-  if (!overlayWindow || overlayWindow.isDestroyed()) return
-  overlayWindow.setIgnoreMouseEvents(!interactive, { forward: true })
+  forcedInteractive = interactive
+  if (interactive) applyInteractive(true)
+  else pollCursor()
+}
+
+/**
+ * ONDE ESTAO OS PEDACOS CLICAVEIS, em px CSS relativos a janela.
+ *
+ * A tela manda isto a cada mudanca de layout, e e contra estes retangulos que
+ * o `pollCursor` mede o cursor. Sem nenhum retangulo nao ha o que clicar, e a
+ * janela fica atravessavel — que e o estado certo pra uma sobreposicao vazia.
+ */
+export function setOverlayHitAreas(areas: OverlayHitArea[]): void {
+  hitAreas = areas.filter(
+    (a) =>
+      Number.isFinite(a.x) && Number.isFinite(a.y) && Number.isFinite(a.w) && Number.isFinite(a.h)
+  )
+  pollCursor()
 }

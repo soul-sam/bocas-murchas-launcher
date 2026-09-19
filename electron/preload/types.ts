@@ -398,6 +398,20 @@ export function isOverlaySide(value: unknown): value is OverlaySide {
 }
 
 /**
+ * Um retangulo clicavel da sobreposicao, em px CSS relativos a janela.
+ *
+ * A tela publica isto pro processo main porque e o MAIN que decide quando a
+ * janela captura o mouse — ver `setOverlayHitAreas` em
+ * electron/main/services/overlay.ts pro porque.
+ */
+export interface OverlayHitArea {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/**
  * Preferencias da SOBREPOSICAO — a janela por cima do jogo.
  *
  * Saiu de dentro de `lol` na revisao 3 das configuracoes. Enquanto a
@@ -1066,6 +1080,12 @@ export interface BocasAPI {
     onDock: (cb: (dock: OverlayDock) => void) => () => void
     /** A sobreposicao foi arrastada; grava a posicao nas configuracoes. */
     setDock: (dock: OverlayDock) => Promise<void>
+    /**
+     * Onde estao os pedacos clicaveis agora. O main mede o cursor contra isto.
+     */
+    setHitAreas: (areas: OverlayHitArea[]) => Promise<void>
+    /** O main viu o ponteiro entrar (ou sair) dos pedacos clicaveis. */
+    onPointer: (cb: (on: boolean) => void) => () => void
     /**
      * Abrir/fechar uma parte. Usado pelo botao "sons" do painel de canto e
      * pelo X de cada peca — o atalho global nao passa por aqui, ele ja chega

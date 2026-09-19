@@ -32,10 +32,17 @@ import {
   relayOverlayAction,
   requestOverlayState,
   setOverlayInteractive,
+  setOverlayHitAreas,
   setOverlayMode,
   toggleOverlayPart
 } from './services/overlay.js'
-import type { OverlayAction, OverlayDock, OverlayMode, OverlayState } from '../preload/types.js'
+import type {
+  OverlayAction,
+  OverlayDock,
+  OverlayHitArea,
+  OverlayMode,
+  OverlayState
+} from '../preload/types.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 import { app, powerMonitor } from 'electron'
 
@@ -152,6 +159,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('overlay:set-interactive', async (_e, interactive: boolean) => {
     setOverlayInteractive(Boolean(interactive))
+  })
+
+  ipcMain.handle('overlay:set-hit-areas', async (_e, areas: OverlayHitArea[]) => {
+    setOverlayHitAreas(Array.isArray(areas) ? areas : [])
   })
 
   ipcMain.handle('overlay:dismiss', async () => {
