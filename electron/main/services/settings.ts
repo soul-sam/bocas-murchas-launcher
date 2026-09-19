@@ -10,9 +10,11 @@ import {
   type LolSettings,
   type MusicSettings,
   type OverlaySettings,
+  type OverlayCorner,
+  type OverlayDock,
   type ScreenShareSettings,
   type VoiceSettings,
-  type VoiceMode, isOverlayCorner, isScreenShareQuality, isScreenShareContent, isThemeId } from '../../preload/types.js'
+  type VoiceMode, isOverlayCorner, isOverlaySide, isScreenShareQuality, isScreenShareContent, isThemeId } from '../../preload/types.js'
 
 export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, MusicSettings, OverlaySettings, ScreenShareSettings, VoiceSettings, VoiceMode }
 
@@ -170,13 +172,42 @@ function normalizeOverlay(
   const o = raw ?? {}
   const legacyCorner = (lol as { overlayCorner?: unknown } | undefined)?.overlayCorner
 
+  const corner = isOverlayCorner(o.corner)
+    ? o.corner
+    : isOverlayCorner(legacyCorner)
+      ? legacyCorner
+      : d.corner
+
   return {
     enabled: o.enabled ?? d.enabled,
-    corner: isOverlayCorner(o.corner)
-      ? o.corner
-      : isOverlayCorner(legacyCorner)
-        ? legacyCorner
-        : d.corner
+    corner,
+    dock: normalizeDock(o.dock, corner)
+  }
+}
+
+/**
+ * MIGRACAO 3 → 4: o canto vira lado + altura.
+ *
+ * Quem tinha escolhido "inferior esquerdo" nao pode ver a sobreposicao pular
+ * pro outro lado da tela so porque agora ela se arrasta. O lado sai do canto
+ * direto; a altura vira 1/4 ou 3/4 da tela, que e onde os cantos ficavam sem
+ * encostar no placar nem no HUD.
+ */
+function normalizeDock(
+  raw: Partial<OverlayDock> | undefined,
+  corner: OverlayCorner
+): OverlayDock {
+  const fromCorner: OverlayDock = {
+    side: corner === 'top-left' || corner === 'bottom-left' ? 'left' : 'right',
+    offset: corner === 'top-left' || corner === 'top-right' ? 0.25 : 0.75
+  }
+  const dock = raw ?? {}
+
+  return {
+    side: isOverlaySide(dock.side) ? dock.side : fromCorner.side,
+    // Preso longe das bordas: uma aba com o centro em 0 ou 1 sai metade pra
+    // fora da tela e nao da mais pra pegar de volta.
+    offset: clamp(Number(dock.offset), 0.06, 0.94, fromCorner.offset)
   }
 }
 

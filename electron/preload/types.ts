@@ -372,6 +372,31 @@ export function isOverlayCorner(value: unknown): value is OverlayCorner {
   return OVERLAY_CORNERS.includes(value as OverlayCorner)
 }
 
+/** De que lado da tela a aba da sobreposicao fica grudada. */
+export type OverlaySide = 'left' | 'right'
+
+/**
+ * ONDE A ABA MORA — lado da tela e altura, os dois escolhidos ARRASTANDO.
+ *
+ * O canto de quatro posicoes nao dava conta de duas coisas que a galera pediu:
+ * mover a sobreposicao pra onde o HUD do jogo deixa livre (que raramente e um
+ * canto exato) e nao ter que abrir as configuracoes pra isso.
+ *
+ * `offset` e FRACAO da altura da tela, nao pixel: quem joga em 1080p e depois
+ * liga um monitor 1440p mantem a aba na mesma altura relativa, em vez de
+ * acha-la fora da tela. E o mesmo motivo pelo qual a janela usa `bounds` do
+ * monitor do cursor.
+ */
+export interface OverlayDock {
+  side: OverlaySide
+  /** 0 = topo, 1 = base. E o CENTRO da aba. */
+  offset: number
+}
+
+export function isOverlaySide(value: unknown): value is OverlaySide {
+  return value === 'left' || value === 'right'
+}
+
 /**
  * Preferencias da SOBREPOSICAO — a janela por cima do jogo.
  *
@@ -388,8 +413,16 @@ export interface OverlaySettings {
    * janela invisivel de pe atras do jogo.
    */
   enabled: boolean
-  /** Canto em que o painel nasce. A roda de sons ignora isto: ela e centrada. */
+  /**
+   * Canto em que o painel nasce.
+   *
+   * MANTIDO SO PRA MIGRACAO: quem escolheu um canto antes do `dock` existir
+   * ganha um lado e uma altura a partir dele (ver normalizeOverlay). Nada
+   * desenha por este campo hoje.
+   */
   corner: OverlayCorner
+  /** Onde a aba fica grudada. A roda de sons ignora isto: ela e centrada. */
+  dock: OverlayDock
 }
 
 /** Preferencias da integracao com o LoL. */
@@ -818,7 +851,10 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   },
   overlay: {
     enabled: true,
-    corner: 'top-right'
+    corner: 'top-right',
+    // Do lado direito e um pouco acima do meio: fora do HUD de habilidades (que
+    // e embaixo no centro) e fora do placar/minimapa (que sao os cantos).
+    dock: { side: 'right', offset: 0.38 }
   },
 
   voice: {
@@ -1021,6 +1057,15 @@ export interface BocasAPI {
      * mudanca so apareceria na proxima vez que a sobreposicao nascesse.
      */
     onCorner: (cb: (corner: OverlayCorner) => void) => () => void
+    /**
+     * A aba mudou de lugar (arrastada aqui ou mexida nas configuracoes).
+     *
+     * Mesma logica do `onCorner`: a janela cobre a tela toda, entao a posicao
+     * e CSS — o main so avisa.
+     */
+    onDock: (cb: (dock: OverlayDock) => void) => () => void
+    /** A sobreposicao foi arrastada; grava a posicao nas configuracoes. */
+    setDock: (dock: OverlayDock) => Promise<void>
     /**
      * Abrir/fechar uma parte. Usado pelo botao "sons" do painel de canto e
      * pelo X de cada peca — o atalho global nao passa por aqui, ele ja chega

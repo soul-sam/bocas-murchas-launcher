@@ -5,6 +5,7 @@ import {
   Coins,
   Dices,
   ExternalLink,
+  GripVertical,
   Headphones,
   HeadphoneOff,
   Loader2,
@@ -25,8 +26,9 @@ import {
 import type {
   OverlayAction,
   OverlayBetTarget,
-  OverlayCorner,
+  OverlayDock,
   OverlayMode,
+  OverlaySide,
   OverlayState,
   OverlayMyGame,
   OverlaySound,
@@ -72,14 +74,59 @@ import { cn, formatClock } from '@/lib/utils'
  *      modal, e não teria como ser — sem teclado, uma camada que engolisse
  *      tudo viraria uma armadilha.
  *
- * O painel da PARTIDA abre aberto e encolhe sozinho depois de 25s, porque a
- * hora de apostar é o começo do jogo; passado isso ele vira uma pastilha que
- * só volta a crescer se a pessoa levar o mouse até lá. O painel chamado no
- * atalho não encolhe: quem pediu pra ver quer ver.
+ * ## A ABA (o desenho de hoje)
+ *
+ * A sobreposição vive como uma ABA FINA GRUDADA NA LATERAL da tela, e o painel
+ * cresce quando o ponteiro encosta nela — o formato do Overwolf. Ela **se
+ * arrasta**: pegar a aba e levar pra cima, pra baixo ou pro outro lado grava a
+ * posição (ver `useDock`), porque o lugar que o HUD do jogo deixa livre muda de
+ * jogo pra jogo e quase nunca é um canto exato.
+ *
+ * O QUE ISSO SUBSTITUIU, e por quê: antes o painel nascia inteiro num canto
+ * fixo e virava uma pastilha pequena 25 segundos depois. Quem quisesse apostar
+ * no meio da partida tinha que ACERTAR a pastilha com o mouse — um alvo de
+ * ~120x28 que só ficava clicável depois que o processo main respondesse (ver
+ * `useClickThrough`). Errar era a regra, e a aposta simplesmente não
+ * acontecia. A aba é alta, fica sempre no mesmo lugar e não precisa de clique
+ * nenhum pra abrir: encostou, abriu.
  */
 
-/** Depois disso o painel encolhe sozinho — a partida é pra ser jogada. */
-const AUTO_COLLAPSE_MS = 25_000
+/**
+ * Carência antes de encolher quando o ponteiro sai do painel.
+ *
+ * Sem ela, atravessar um vão de 2px entre dois botões fecharia o painel na mão
+ * de quem está clicando. É o mesmo motivo do `ARM_MARGIN` logo abaixo, do
+ * outro lado do problema.
+ */
+const COLLAPSE_GRACE_MS = 420
+
+/**
+ * Quantos pixels ANTES da peça a janela já passa a capturar o mouse.
+ *
+ * Este número é o conserto do "grande parte das vezes não dá pra apostar".
+ * Ligar o clique custa uma ida e volta de IPC até o processo main
+ * (`setIgnoreMouseEvents`), e quem move o mouse até um botão e clica não
+ * espera esse tempo — o clique saía enquanto a janela ainda estava
+ * atravessável e ia inteiro pro jogo. Armando 24px antes, a ida e volta
+ * acontece durante o movimento que ainda está chegando, e o clique encontra a
+ * janela pronta.
+ *
+ * Não custa mira do jogo: 24px em volta de uma aba encostada na borda é uma
+ * faixa que ninguém usa pra jogar, e ela só existe enquanto o ponteiro está
+ * exatamente ali.
+ */
+const ARM_MARGIN = 24
+
+/** Abaixo disso o arrasto foi um clique — dedo tremido não move a aba. */
+const DRAG_SLOP = 4
+
+/**
+ * Quanto tempo o painel fica aberto sozinho quando a partida começa.
+ *
+ * Só pra avisar que dá pra apostar. Quem for apostar já está com o mouse lá
+ * quando o relógio acaba, e aí quem segura é o ponteiro.
+ */
+const AUTO_OPEN_MS = 10_000
 /** Quanto tempo o aviso de "apostou"/"deu erro" fica na tela. */
 const NOTICE_TTL_MS = 6_000
 /**
@@ -131,87 +178,257 @@ function useOverlayClock(): number {
 export function OverlayPage() {
   const { state, offline } = useOverlayState()
   const mode = useOverlayMode()
-  const corner = useCorner()
-  const pointerOnPanel = useClickThrough()
+  const { dock, preview, commit } = useDock()
   const now = useOverlayClock()
 
-  const [collapsed, setCollapsed] = React.useState(false)
+  /** Arrastando a aba: a janela não pode largar o mouse no meio do caminho. */
+  const [dragging, setDragging] = React.useState(false)
+  const pointerOnPanel = useClickThrough(dragging)
 
-  /**
-   * Encolher sozinho vale só pro painel que apareceu SOZINHO.
-   *
-   * Quem apertou o atalho pra ver as ações rápidas não pode ver o painel virar
-   * uma pastilha 25s depois — ele pediu pra ver. Fora de partida o painel fica
-   * como está até o atalho ou o X fecharem.
-   */
+  /** Clicou na aba: fica aberto até clicar de novo. */
+  const [pinned, setPinned] = React.useState(false)
+  const [expanded, setExpanded] = React.useState(false)
+
   const inMatch = Boolean(state?.myGame)
 
+  /**
+   * O ponteiro manda; o alfinete e o arrasto seguram.
+   *
+   * A carência no fechar é o que permite atravessar o vão entre dois botões
+   * sem o painel sumir na mão de quem está clicando.
+   */
   React.useEffect(() => {
-    if (!mode.dock) {
-      // Fechou e abriu de novo: volta inteiro. Reabrir numa pastilha seria
-      // castigar quem acabou de pedir pra ver.
-      setCollapsed(false)
+    if (pointerOnPanel || pinned || dragging) {
+      setExpanded(true)
       return
     }
-    if (!inMatch || collapsed || pointerOnPanel) return
-    // O relógio reinicia toda vez que o ponteiro sai do painel: quem está
-    // mexendo nas apostas não pode ver a tela fechar na mão dele.
-    const timer = setTimeout(() => setCollapsed(true), AUTO_COLLAPSE_MS)
+    const timer = setTimeout(() => setExpanded(false), COLLAPSE_GRACE_MS)
     return () => clearTimeout(timer)
-  }, [mode.dock, inMatch, collapsed, pointerOnPanel])
+  }, [pointerOnPanel, pinned, dragging])
 
-  const atTop = corner === 'top-left' || corner === 'top-right'
-  const atLeft = corner === 'top-left' || corner === 'bottom-left'
+  /**
+   * Partida começou: abre sozinho por alguns segundos e sai da frente.
+   *
+   * É o que sobrou (e o que bastava) do painel que nascia inteiro: avisar que
+   * dá pra apostar. Quem quiser apostar já está com o mouse lá quando o
+   * relógio acaba, e nesse caso o `pointerOnPanel` segura — o alfinete não
+   * precisa ser clicado.
+   */
+  React.useEffect(() => {
+    if (!mode.dock || !inMatch) return
+    setPinned(true)
+    const timer = setTimeout(() => setPinned(false), AUTO_OPEN_MS)
+    return () => clearTimeout(timer)
+  }, [mode.dock, inMatch])
+
+  // Fechou a sobreposição: o alfinete não pode sobreviver pra próxima abertura.
+  React.useEffect(() => {
+    if (!mode.dock) setPinned(false)
+  }, [mode.dock])
+
+  /**
+   * O ARRASTO.
+   *
+   * `setPointerCapture` na própria aba: sem ele, um movimento rápido deixa o
+   * ponteiro fora do elemento e o arrasto morre no meio. Os ouvintes vão na
+   * janela (e não na aba) porque a aba se MOVE enquanto se arrasta.
+   *
+   * Clique e arrasto são o mesmo gesto até andar `DRAG_SLOP` pixels — quem só
+   * clicou não pode ver a aba pular meio centímetro por causa do tremor da mão.
+   */
+  const latestRef = React.useRef(dock)
+  latestRef.current = dock
+
+  const startDrag = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      // Impede o `drag` nativo da imagem/texto de sequestrar o gesto.
+      event.preventDefault()
+      const startX = event.clientX
+      const startY = event.clientY
+      const target = event.currentTarget
+      let moved = false
+
+      try {
+        target.setPointerCapture(event.pointerId)
+      } catch {
+        /* sem captura dá pra viver: os ouvintes são da janela */
+      }
+
+      setDragging(true)
+
+      const onMove = (moveEvent: PointerEvent): void => {
+        if (
+          !moved &&
+          Math.abs(moveEvent.clientX - startX) < DRAG_SLOP &&
+          Math.abs(moveEvent.clientY - startY) < DRAG_SLOP
+        ) {
+          return
+        }
+        moved = true
+
+        const offset = Math.min(
+          0.94,
+          Math.max(0.06, moveEvent.clientY / Math.max(1, window.innerHeight))
+        )
+        const side: OverlaySide =
+          moveEvent.clientX < window.innerWidth / 2 ? 'left' : 'right'
+        preview({ side, offset })
+      }
+
+      const onUp = (): void => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
+        setDragging(false)
+
+        if (moved) commit(latestRef.current)
+        // Clique seco na aba: prende (ou solta) o painel.
+        else setPinned((value) => !value)
+      }
+
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onUp)
+    },
+    [preview, commit]
+  )
 
   // A janela cobre a tela inteira (ver services/overlay.ts), então a posição
-  // de cada peça é CSS: o painel ancorado no canto escolhido, a roda no meio.
+  // de cada peça é CSS: a aba na borda escolhida, a roda no meio.
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       {/*
         A roda MANDA O PAINEL EMBORA enquanto está aberta.
 
         Não é só arrumação: a roda tem 624px e é centrada, o painel tem 352px e
-        é colado num canto — os dois só não se tocam a partir de ~1360px de
+        é colado numa borda — os dois só não se tocam a partir de ~1360px de
         largura. Em 1280x720, que ainda é resolução de jogo, o gomo da direita
         entrava por baixo do painel.
 
         Encolher a roda em tela estreita resolveria a colisão e criaria outra
         coisa pior: o gomo mudaria de tamanho conforme a máquina, e a memória
         de mão que faz a roda valer a pena ("o berro fica embaixo à esquerda")
-        deixaria de valer. Sumir é o que toda roda de jogo faz, e o painel
-        volta inteiro assim que a roda fecha.
+        deixaria de valer. Sumir é o que toda roda de jogo faz, e a aba volta
+        assim que a roda fecha.
       */}
       {mode.dock && !mode.wheel && (
-        <div
-          className={cn(
-            // A altura é limitada pela tela e não fixa: o painel com cinco
-            // partidas pra apostar é muito mais alto que o de nenhuma.
-            'absolute flex max-h-[calc(100vh-2rem)] w-[22rem] min-h-0 flex-col',
-            atTop ? 'top-4' : 'bottom-4',
-            atLeft ? 'left-4' : 'right-4'
+        <>
+          <EdgeTab
+            state={state}
+            side={dock.side}
+            offset={dock.offset}
+            expanded={expanded}
+            pinned={pinned}
+            dragging={dragging}
+            onPointerDown={startDrag}
+          />
+
+          {expanded && (
+            <DockedPanel side={dock.side} offset={dock.offset}>
+              <Panel
+                state={state}
+                offline={offline}
+                now={now}
+                inMatch={inMatch}
+                pinned={pinned}
+                onCollapse={() => setPinned(false)}
+              />
+            </DockedPanel>
           )}
-        >
-          {collapsed ? (
-            <CollapsedPill
-              state={state}
-              alignLeft={atLeft}
-              onExpand={() => setCollapsed(false)}
-            />
-          ) : (
-            <Panel
-              state={state}
-              offline={offline}
-              now={now}
-              inMatch={inMatch}
-              onCollapse={() => setCollapsed(true)}
-            />
-          )}
-        </div>
+        </>
       )}
 
       {mode.wheel && (
         <SoundWheel sounds={state?.sounds ?? []} voice={state?.voice ?? null} />
       )}
+    </div>
+  )
+}
+
+/**
+ * O painel ancorado na aba, sem sair da tela.
+ *
+ * A conta existe porque a altura do painel varia MUITO (nenhuma partida pra
+ * apostar contra cinco), e uma âncora puramente em CSS
+ * (`top: X%; translateY(-50%)`) deixa metade dele pra fora quando a aba está
+ * perto de uma borda. Medindo a altura de verdade dá pra grudar o painel na
+ * aba e, só quando não couber, empurrá-lo pra dentro.
+ *
+ * CRESCER NÃO PODE RECENTRAR — e isto foi medido, não deduzido. Abrir o
+ * formulário de aposta deixa o painel ~60px mais alto; enquanto o painel se
+ * recentrava a cada mudança de tamanho, ele subia 16px NO MESMO INSTANTE em
+ * que o formulário aparecia, e o botão de valor escorregava de baixo do
+ * ponteiro. O clique ia pro vão e a aposta simplesmente não acontecia — com a
+ * tela toda parecendo certa depois, porque o painel estava lá, só que 16px
+ * acima. É o outro lado do "grande parte das vezes não dá pra apostar".
+ *
+ * Então: ancora quando a aba muda de lugar (ou a janela de tamanho), e a
+ * partir daí só se mexe pra não sair da tela. O painel cresce PRA BAIXO, e o
+ * que já estava desenhado fica onde o olho e a mão deixaram.
+ */
+function DockedPanel({
+  side,
+  offset,
+  children
+}: {
+  side: OverlaySide
+  offset: number
+  children: React.ReactNode
+}) {
+  const ref = React.useRef<HTMLDivElement | null>(null)
+  const [top, setTop] = React.useState(0)
+  /** O `top` de agora, legível de dentro do observer sem virar dependência. */
+  const topRef = React.useRef(0)
+
+  React.useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const MARGIN = 16
+    /** Nunca fora da tela, nem em cima nem embaixo. */
+    const dentro = (desired: number, height: number): number => {
+      const most = Math.max(MARGIN, window.innerHeight - height - MARGIN)
+      return Math.min(Math.max(MARGIN, desired), most)
+    }
+
+    const ancorar = (): void => {
+      const height = el.offsetHeight
+      const next = dentro(offset * window.innerHeight - height / 2, height)
+      topRef.current = next
+      setTop(next)
+    }
+
+    ancorar()
+
+    // Mudou de TAMANHO (não de lugar): só corrige se passou da borda.
+    const observer = new ResizeObserver(() => {
+      const height = el.offsetHeight
+      const fixed = dentro(topRef.current, height)
+      if (fixed === topRef.current) return
+      topRef.current = fixed
+      setTop(fixed)
+    })
+    observer.observe(el)
+    window.addEventListener('resize', ancorar)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', ancorar)
+    }
+  }, [offset])
+
+  return (
+    <div
+      ref={ref}
+      style={{ top }}
+      className={cn(
+        // `w-[22rem]` e altura limitada pela tela: o painel com cinco partidas
+        // pra apostar é muito mais alto que o de nenhuma.
+        'absolute z-20 flex max-h-[calc(100vh-2rem)] w-[22rem] min-h-0 flex-col',
+        // Encostado na aba (que tem 12px), não na borda da tela.
+        side === 'left' ? 'left-4' : 'right-4'
+      )}
+    >
+      {children}
     </div>
   )
 }
@@ -262,27 +479,40 @@ function useOverlayState(): { state: OverlayState | null; offline: boolean } {
 }
 
 /**
- * Em que canto o PAINEL se ancora.
+ * ONDE A ABA MORA, e como ela se muda.
  *
  * A janela cobre a tela inteira (ver electron/main/services/overlay.ts), então
- * o canto não é mais posição de janela: é CSS daqui. Por isso trocar a
- * preferência não refaz nada — o main só avisa, e a próxima pintura já sai do
- * outro lado.
+ * a posição não é posição de janela: é CSS daqui. Isso é o que torna o arrasto
+ * barato — mover a aba não redimensiona nem repinta janela nenhuma, e uma
+ * janela transparente que muda de tamanho PISCA por cima do jogo.
+ *
+ * O estado local é a verdade ENQUANTO SE ARRASTA (senão a aba andaria a
+ * solavancos, no ritmo do disco), e a gravação sai no soltar. O aviso que volta
+ * do main é o mesmo valor, e por isso não briga com o que está na tela.
  */
-function useCorner(): OverlayCorner {
-  const [corner, setCorner] = React.useState<OverlayCorner>('top-right')
+function useDock(): {
+  dock: OverlayDock
+  preview: (dock: OverlayDock) => void
+  commit: (dock: OverlayDock) => void
+} {
+  const [dock, setDock] = React.useState<OverlayDock>({ side: 'right', offset: 0.38 })
 
   React.useEffect(() => {
     void window.bocas.settings
       .get()
-      .then((settings) => setCorner(settings.overlay.corner))
+      .then((settings) => setDock(settings.overlay.dock))
       .catch(() => {})
-    // A janela não morre mais no fim da partida — ela vive enquanto houver
-    // motivo, e trocar de canto nas configurações precisa aparecer na hora.
-    return window.bocas.overlay.onCorner(setCorner)
+    return window.bocas.overlay.onDock(setDock)
   }, [])
 
-  return corner
+  const preview = React.useCallback((next: OverlayDock) => setDock(next), [])
+
+  const commit = React.useCallback((next: OverlayDock) => {
+    setDock(next)
+    void window.bocas.overlay.setDock(next).catch(() => {})
+  }, [])
+
+  return { dock, preview, commit }
 }
 
 /**
@@ -321,8 +551,10 @@ function useOverlayMode(): OverlayMode {
  * decide quando a sobreposição encolhe. Este cálculo é o mesmo que já manda no
  * clique — uma fonte só pra "o ponteiro está no painel".
  */
-function useClickThrough(): boolean {
+function useClickThrough(force: boolean): boolean {
   const [onPanel, setOnPanel] = React.useState(false)
+  const forceRef = React.useRef(force)
+  forceRef.current = force
 
   React.useEffect(() => {
     let interactive = false
@@ -334,69 +566,163 @@ function useClickThrough(): boolean {
       void window.bocas.overlay.setInteractive(next)
     }
 
+    /**
+     * Perto o bastante pra armar.
+     *
+     * `elementFromPoint` sozinho só acende EM CIMA da peça, e acender em cima
+     * chega tarde (ver ARM_MARGIN). Então, quando o ponto não cai numa peça,
+     * medimos a distância até os retângulos delas — é o mesmo cálculo que o
+     * navegador faria, só que com folga.
+     */
+    const near = (x: number, y: number): boolean => {
+      const el = document.elementFromPoint(x, y)
+      if (el?.closest('[data-overlay-hit]')) return true
+
+      for (const hit of document.querySelectorAll('[data-overlay-hit]')) {
+        const r = hit.getBoundingClientRect()
+        if (r.width === 0 && r.height === 0) continue
+        if (
+          x >= r.left - ARM_MARGIN &&
+          x <= r.right + ARM_MARGIN &&
+          y >= r.top - ARM_MARGIN &&
+          y <= r.bottom + ARM_MARGIN
+        ) {
+          return true
+        }
+      }
+      return false
+    }
+
+    /**
+     * Uma medida por QUADRO, não por evento.
+     *
+     * Um mouse de jogo manda até 1000 posições por segundo, e tanto
+     * `elementFromPoint` quanto `getBoundingClientRect` obrigam o navegador a
+     * recalcular o layout na hora. Fazer isso mil vezes por segundo numa
+     * janela que existe POR CIMA DE UM JOGO é o tipo de coisa que vira queda
+     * de quadros no jogo — o contrário do que a sobreposição promete.
+     *
+     * Guardar a última posição e medir no próximo quadro dá exatamente a mesma
+     * resposta (o ponteiro não some entre quadros) por uma fração do custo.
+     */
+    let pending = 0
+    let lastX = 0
+    let lastY = 0
+
+    const measure = (): void => {
+      pending = 0
+      if (forceRef.current) return apply(true)
+      apply(near(lastX, lastY))
+    }
+
     const onMove = (event: MouseEvent): void => {
-      const el = document.elementFromPoint(event.clientX, event.clientY)
-      apply(Boolean(el?.closest('[data-overlay-hit]')))
+      // Arrastando: a janela NÃO pode se soltar do mouse no meio do caminho.
+      if (forceRef.current) return apply(true)
+      lastX = event.clientX
+      lastY = event.clientY
+      if (pending) return
+      pending = window.requestAnimationFrame(measure)
     }
 
     // O ponteiro pode sair da janela num movimento rápido demais pra cair fora
     // do painel antes: sem isso a janela ficaria capturando o mouse pra sempre.
-    const onLeave = (): void => apply(false)
+    const onLeave = (): void => {
+      if (forceRef.current) return
+      apply(false)
+    }
 
     window.addEventListener('mousemove', onMove)
     document.addEventListener('mouseleave', onLeave)
     return () => {
+      if (pending) window.cancelAnimationFrame(pending)
       window.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseleave', onLeave)
       apply(false)
     }
   }, [])
 
+  /**
+   * Começou (ou terminou) um arrasto fora do movimento do mouse: o efeito
+   * acima só reage a `mousemove`, e soltar o botão parado deixaria a janela
+   * capturando o mouse pra sempre.
+   */
+  React.useEffect(() => {
+    if (!force) return
+    void window.bocas.overlay.setInteractive(true).catch(() => {})
+  }, [force])
+
   return onPanel
 }
 
 // ============================================
-// PASTILHA (painel encolhido)
+// A ABA LATERAL
 // ============================================
 
-function CollapsedPill({
+/**
+ * A aba grudada na borda — o único pedaço que fica na tela o tempo todo.
+ *
+ * Ela é ALTA e FINA de propósito: 10px de largura não atrapalham o jogo, e
+ * 88px de altura fazem dela um alvo que se acerta sem olhar. Mirar era
+ * exatamente o problema da pastilha que ela substituiu (ver o cabeçalho).
+ *
+ * Encostar abre (quem cuida disso é `useClickThrough` + o `expanded` da tela).
+ * Clicar PRENDE aberta, porque quem vai preencher uma aposta não quer que o
+ * painel dependa de manter o mouse parado. Arrastar muda de lugar.
+ */
+function EdgeTab({
   state,
-  alignLeft,
-  onExpand
+  side,
+  offset,
+  expanded,
+  pinned,
+  dragging,
+  onPointerDown
 }: {
   state: OverlayState | null
-  alignLeft: boolean
-  onExpand: () => void
+  side: OverlaySide
+  offset: number
+  expanded: boolean
+  pinned: boolean
+  dragging: boolean
+  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void
 }) {
   const open = state?.targets.filter((t) => !t.myWager).length ?? 0
-  const myPool = (state?.myGame?.pool.win ?? 0) + (state?.myGame?.pool.loss ?? 0)
 
   return (
-    <button
-      type="button"
+    <div
       data-overlay-hit
-      onMouseEnter={onExpand}
-      onClick={onExpand}
+      onPointerDown={onPointerDown}
+      title="Arraste pra mudar de lugar · clique pra prender aberto"
+      style={{ top: `${offset * 100}%` }}
       className={cn(
-        'flex items-center gap-2 rounded-brutal border border-line bg-void/85 px-2.5 py-1.5',
-        'text-xs text-foreground shadow-neon-1 backdrop-blur-sm transition-colors',
-        'hover:border-burn/60',
-        alignLeft ? 'self-start' : 'self-end'
+        'absolute z-10 flex -translate-y-1/2 cursor-grab flex-col items-center justify-center gap-1',
+        'border-line bg-void/85 shadow-neon-1 backdrop-blur-sm transition-[width,background-color,border-color]',
+        dragging && 'cursor-grabbing',
+        // Colada na borda: o canto de fora é reto e o de dentro arredondado,
+        // que é o que faz ela parecer presa à tela em vez de flutuando.
+        side === 'left'
+          ? 'left-0 rounded-r-brutal border-y border-r'
+          : 'right-0 rounded-l-brutal border-y border-l',
+        expanded ? 'h-24 w-3 border-burn/70 bg-burn/20' : 'h-20 w-2.5',
+        pinned && 'border-acid/70 bg-acid/20'
       )}
     >
-      <Dices className="h-3.5 w-3.5 text-burn" />
-      {open > 0 ? (
-        <span>
-          {open} pra apostar
-        </span>
-      ) : myPool > 0 ? (
-        <span>
-          <span className="font-mono text-burn">{compact(myPool)}</span> em você
-        </span>
-      ) : (
-        <span className="text-muted-foreground">apostas</span>
+      {/* O ponto só aparece quando há aposta esperando: uma aba que pisca sem
+          motivo vira ruído e a pessoa aprende a ignorar. */}
+      {open > 0 && (
+        <span
+          aria-label={`${open} pra apostar`}
+          className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-burn"
+        />
       )}
-    </button>
+      <GripVertical
+        className={cn(
+          'h-3 w-3 shrink-0',
+          pinned ? 'text-acid' : expanded ? 'text-burn' : 'text-muted-foreground'
+        )}
+        aria-hidden
+      />
+    </div>
   )
 }
 
@@ -409,13 +735,16 @@ function Panel({
   offline,
   now,
   inMatch,
+  pinned,
   onCollapse
 }: {
   state: OverlayState | null
   offline: boolean
   now: number
-  /** Há partida em andamento: muda o título, o ícone e o botão de encolher. */
+  /** Há partida em andamento: muda o título e o ícone. */
   inMatch: boolean
+  /** Preso aberto pelo clique na aba — só então há o que soltar. */
+  pinned: boolean
   onCollapse: () => void
 }) {
   return (
@@ -435,10 +764,11 @@ function Panel({
         <p className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-foreground">
           {inMatch ? 'Partida começou' : 'Bocas Murchas'}
         </p>
-        {/* Encolher só existe em partida: é lá que o painel atrapalha a tela
-            e que a pastilha tem o que resumir. */}
-        {inMatch && (
-          <IconButton label="Encolher" onClick={onCollapse}>
+        {/* Soltar só existe quando está preso: fora disso o painel já
+            encolhe sozinho ao tirar o mouse, e um botão que não faz nada de
+            diferente do que já vai acontecer só ocupa espaço. */}
+        {pinned && (
+          <IconButton label="Soltar (volta a fechar sozinho)" onClick={onCollapse}>
             <Minus className="h-3.5 w-3.5" />
           </IconButton>
         )}

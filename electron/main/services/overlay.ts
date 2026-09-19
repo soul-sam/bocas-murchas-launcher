@@ -6,6 +6,7 @@ import type {
   LolStatus,
   OverlayAction,
   OverlayCorner,
+  OverlayDock,
   OverlayMode,
   OverlayState
 } from '../../preload/types.js'
@@ -82,9 +83,15 @@ let lastState: OverlayState | null = null
 /** Nenhum motivo pra estar aberta = nao existe janela. */
 let mode: OverlayMode = { dock: false, wheel: false }
 
-let prefs: { enabled: boolean; corner: OverlayCorner; autoOnMatch: boolean } = {
+let prefs: {
+  enabled: boolean
+  corner: OverlayCorner
+  dock: OverlayDock
+  autoOnMatch: boolean
+} = {
   enabled: true,
   corner: 'top-right',
+  dock: { side: 'right', offset: 0.38 },
   autoOnMatch: true
 }
 
@@ -215,6 +222,7 @@ function createOverlayWindow(): BrowserWindow {
     // primeiro quadro seria o painel de canto, mesmo quando quem abriu a
     // janela foi o atalho da roda.
     win.webContents.send('overlay:mode', mode)
+    win.webContents.send('overlay:dock', prefs.dock)
     // O ultimo retrato ja empurrado pinta a tela no primeiro quadro; o pedido
     // abaixo busca dados frescos (o poll da principal e de 30s).
     if (lastState) win.webContents.send('overlay:state', lastState)
@@ -315,9 +323,14 @@ export function toggleOverlayPart(part: keyof OverlayMode): void {
 /** Chamado no boot e a cada salvamento das configuracoes. */
 export function applyOverlaySettings(settings: LauncherSettings): void {
   const cornerChanged = prefs.corner !== settings.overlay.corner
+  const dockChanged =
+    prefs.dock.side !== settings.overlay.dock.side ||
+    prefs.dock.offset !== settings.overlay.dock.offset
+
   prefs = {
     enabled: settings.overlay.enabled,
     corner: settings.overlay.corner,
+    dock: settings.overlay.dock,
     autoOnMatch: settings.lol.enabled && settings.lol.overlay
   }
 
@@ -333,6 +346,13 @@ export function applyOverlaySettings(settings: LauncherSettings): void {
   // nao mexe em nada dela, so no CSS de dentro.
   if (cornerChanged && overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.webContents.send('overlay:corner', prefs.corner)
+  }
+
+  // A propria janela e quem manda o arrasto, entao na maioria das vezes ela ja
+  // esta desenhada no lugar certo quando este aviso volta. Mandar mesmo assim
+  // e o que faz a posicao valer quando quem mexeu foram as CONFIGURACOES.
+  if (dockChanged && overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.webContents.send('overlay:dock', prefs.dock)
   }
 
   // Desligar "abrir sozinho" no meio de uma partida NAO fecha o que ja esta na

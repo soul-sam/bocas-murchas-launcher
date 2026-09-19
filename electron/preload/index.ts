@@ -107,7 +107,9 @@ const api: BocasAPI = {
     mode: () => ipcRenderer.invoke('overlay:mode'),
     onMode: (cb) => on('overlay:mode', cb),
     setMode: (patch) => ipcRenderer.invoke('overlay:set-mode', patch),
-    onCorner: (cb) => on('overlay:corner', cb)
+    onCorner: (cb) => on('overlay:corner', cb),
+    onDock: (cb) => on('overlay:dock', cb),
+    setDock: (dock) => ipcRenderer.invoke('overlay:set-dock', dock)
   },
   app: {
     applyAutostart: () => ipcRenderer.invoke('app:apply-autostart'),

@@ -27,7 +27,7 @@ import { useVoice } from '@/lib/voice-context'
 import { useAudioDevices, useVideoDevices } from '@/lib/use-audio-devices'
 import { playUiSound } from '@/lib/ui-sounds'
 import { GATE_OFF_DB } from '@/lib/audio-processor'
-import { RAM_LIMITS, type LolPhase, type LolStatus, type OverlayCorner, THEME_IDS, THEME_LABEL, type ThemeId } from '../../electron/preload/types'
+import { RAM_LIMITS, type LolPhase, type LolStatus, type OverlaySide, THEME_IDS, THEME_LABEL, type ThemeId } from '../../electron/preload/types'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -805,23 +805,53 @@ function OverlayTab() {
 
         <label className="flex items-center justify-between gap-3 py-2">
           <span className="min-w-0">
-            <span className="block text-sm font-medium">Canto da tela</span>
+            <span className="block text-sm font-medium">Lado da tela</span>
             <span className="block text-xs leading-snug text-muted-foreground">
-              Escolha o canto que o seu HUD deixa livre. A roda de sons ignora
-              isto — ela abre sempre no meio.
+              A sobreposição fica numa aba fina na lateral e cresce quando você
+              encosta o mouse. Dá pra <strong>arrastar a aba</strong> por cima
+              do jogo pra mudar de lado e de altura — isto aqui é só o atalho. A
+              roda de sons ignora: ela abre sempre no meio.
             </span>
           </span>
           <select
-            value={overlay.corner}
+            value={overlay.dock.side}
             disabled={!overlay.enabled}
-            onChange={(e) => patch({ corner: e.target.value as OverlayCorner })}
+            onChange={(e) =>
+              patch({
+                dock: { ...overlay.dock, side: e.target.value as OverlaySide }
+              })
+            }
             className="input-terminal h-8 w-40 shrink-0 rounded-brutal px-2 text-xs disabled:opacity-50"
           >
-            <option value="top-left">Superior esquerdo</option>
-            <option value="top-right">Superior direito</option>
-            <option value="bottom-left">Inferior esquerdo</option>
-            <option value="bottom-right">Inferior direito</option>
+            <option value="left">Esquerda</option>
+            <option value="right">Direita</option>
           </select>
+        </label>
+
+        <label className="flex items-center justify-between gap-3 py-2">
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">Altura da aba</span>
+            <span className="block text-xs leading-snug text-muted-foreground">
+              Onde ela fica na lateral. Arrastar por cima do jogo mexe nisto.
+            </span>
+          </span>
+          <input
+            type="range"
+            min={0.06}
+            max={0.94}
+            step={0.02}
+            value={overlay.dock.offset}
+            disabled={!overlay.enabled}
+            onChange={(e) =>
+              patch({
+                dock: { ...overlay.dock, offset: Number(e.target.value) }
+              })
+            }
+            className="ram-slider w-28 shrink-0 disabled:opacity-50"
+          />
+          <span className="w-8 shrink-0 text-right font-mono text-[11.5px] text-muted-foreground">
+            {Math.round(overlay.dock.offset * 100)}
+          </span>
         </label>
       </section>
 

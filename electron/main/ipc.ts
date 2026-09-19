@@ -35,7 +35,7 @@ import {
   setOverlayMode,
   toggleOverlayPart
 } from './services/overlay.js'
-import type { OverlayAction, OverlayMode, OverlayState } from '../preload/types.js'
+import type { OverlayAction, OverlayDock, OverlayMode, OverlayState } from '../preload/types.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 import { app, powerMonitor } from 'electron'
 
@@ -162,6 +162,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('overlay:set-mode', async (_e, patch: Partial<OverlayMode>) => {
     setOverlayMode(patch ?? {})
+  })
+
+  /**
+   * A sobreposicao foi arrastada.
+   *
+   * Grava pelo caminho normal e deixa o `applyOverlaySettings` avisar a janela
+   * — sem atalho, senao a posicao ficaria na tela e nao no arquivo.
+   */
+  ipcMain.handle('overlay:set-dock', async (_e, dock: OverlayDock) => {
+    const current = await loadSettings()
+    const next = await updateSettings({ overlay: { ...current.overlay, dock } })
+    applyOverlaySettings(next)
   })
 
   ipcMain.handle('app:apply-autostart', async () => applyAutostart())
