@@ -21,7 +21,13 @@ import { useVoice } from '@/lib/voice-context'
 import { useWatch, type WatchSession } from '@/lib/watch-context'
 import { openExternal } from '@/lib/rich-text'
 import { useYoutubePlayer } from '@/lib/use-youtube-player'
-import { YT_STATE, playerErrorInfo, youtubeThumbnail, youtubeWatchUrl } from '@/lib/youtube'
+import {
+  YT_STATE,
+  playerErrorInfo,
+  playerVolume,
+  youtubeThumbnail,
+  youtubeWatchUrl
+} from '@/lib/youtube'
 
 /**
  * A JUKEBOX DA CALL.
@@ -157,7 +163,10 @@ function MusicBar({ session }: { session: WatchSession }) {
     return () => clearTimeout(timer)
   }, [someoneSpeaking, duckEnabled])
 
-  const effectiveVolume = Math.round(ducked ? volume * settings.music.duckLevel : volume)
+  // `playerVolume` é a curva do ouvido (ver lib/youtube): o slider guarda
+  // POSIÇÃO, o player recebe amplitude. O abaixar-quando-alguém-fala é
+  // aplicado na posição, senão o "um quarto" viraria um dezesseis avos.
+  const effectiveVolume = playerVolume(ducked ? volume * settings.music.duckLevel : volume)
 
   // --- player ---------------------------------------------------------------
   /**
@@ -175,6 +184,26 @@ function MusicBar({ session }: { session: WatchSession }) {
     return driver === user.id
   }, [user, voice.participants, session.hostUserId])
 
+  /**
+   * PULAR PRA PRÓXIMA TEM QUE INSISTIR UMA VEZ.
+   *
+   * O servidor limita troca de faixa a uma a cada 2s (WATCH_RULES.set, em
+   * realtime/watch.ts) — regra boa pra mão nervosa no botão, mas o fim de uma
+   * faixa não é mão nervosa. Quem tivesse acabado de pular uma música caía
+   * exatamente nessa janela, o `watch:next` automático voltava recusado e a
+   * fila parava ali, calada, até alguém perceber e clicar.
+   *
+   * Uma tentativa a mais, depois da janela da regra, resolve sem inventar fila
+   * de retentativa: ou passa, ou parou por um motivo que insistir não conserta
+   * (a fila acabou de verdade, a call caiu).
+   */
+  const advance = React.useCallback(async (): Promise<void> => {
+    const first = await watch.next()
+    if (first.ok) return
+    await new Promise((resolve) => setTimeout(resolve, 2_400))
+    await watch.next()
+  }, [watch])
+
   const player = useYoutubePlayer({
     videoId: session.videoId,
     playing: session.playing,
@@ -184,7 +213,7 @@ function MusicBar({ session }: { session: WatchSession }) {
     muted,
     isDriver,
     onEnded: () => {
-      if ((session.queue ?? []).length > 0) void watch.next()
+      if ((session.queue ?? []).length > 0) void advance()
       // Fila vazia: a sala precisa saber que parou, senão quem entrar depois
       // calcula uma posição além do fim e cai num player travado.
       else void watch.pause(player.timeRef.current)

@@ -23,7 +23,7 @@ import { useMembers } from '@/lib/members-context'
 import { useVoice } from '@/lib/voice-context'
 import { useWatch, type WatchAck, type WatchSession } from '@/lib/watch-context'
 import { openExternal } from '@/lib/rich-text'
-import { YT_STATE, playerErrorInfo, youtubeWatchUrl } from '@/lib/youtube'
+import { YT_STATE, playerErrorInfo, playerVolume, youtubeWatchUrl } from '@/lib/youtube'
 import { useYoutubePlayer } from '@/lib/use-youtube-player'
 
 /**
@@ -315,7 +315,8 @@ function Player({
     playing: session.playing,
     expectedPosition: () => watch.expectedPosition(session),
     syncKey: session.updatedAt,
-    volume,
+    // O slider guarda POSIÇÃO; o player recebe amplitude (ver lib/youtube).
+    volume: playerVolume(volume),
     muted,
     isDriver,
     scrubbing: scrub !== null,

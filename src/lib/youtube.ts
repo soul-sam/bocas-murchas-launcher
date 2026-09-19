@@ -94,6 +94,24 @@ export function youtubeThumbnail(videoId: string): string {
 }
 
 /**
+ * Posição do slider (0..100) -> volume do player (0..100).
+ *
+ * O `setVolume` do YouTube é AMPLITUDE, e amplitude não é o que o ouvido
+ * escuta: metade da amplitude soa como ~80% do volume, não como metade. Com o
+ * slider ligado direto na amplitude, a faixa útil inteira ficava espremida nos
+ * primeiros 15% do curso — era isso que fazia "no mínimo ainda tá alto".
+ *
+ * A curva (potência de 2) espalha o ajuste pelo curso todo: o pé do slider
+ * fica de fato baixinho e o meio vira meio. O número que aparece na tela
+ * continua sendo a POSIÇÃO, não a amplitude — ninguém quer ler "20" e ouvir
+ * "4", e é a posição que a pessoa memoriza.
+ */
+export function playerVolume(sliderPercent: number): number {
+  const position = Math.max(0, Math.min(100, sliderPercent)) / 100
+  return Math.round(position * position * 100)
+}
+
+/**
  * URL do player embutido, pronta pra ser controlada por postMessage.
  *
  * `origin` só entra quando o app roda em http(s) (dev, pelo Vite). Em
@@ -107,6 +125,16 @@ export function youtubeThumbnail(videoId: string): string {
  * `controls=0`: os controles são nossos, pra toda ação local virar evento pro
  * servidor. `disablekb=1` pelo mesmo motivo — espaço/setas dentro do iframe
  * mudariam o player só de quem apertou.
+ *
+ * `mute=1` NASCE LIGADO, e isso não é detalhe: é o conserto do "som tá muito
+ * alto". O player embutido começa SEMPRE em volume 100 e já dá play (autoplay
+ * está ligado); o nosso `setVolume` só chega depois do aperto de mão. Medido
+ * aqui: entre o primeiro quadro e o volume pedido valer havia uma amostra
+ * TOCANDO A 100 — um berro no começo de cada faixa, por cima de qualquer
+ * posição do slider. Com `mute=1` esse instante é silencioso, e quem
+ * desmuta é o próprio aperto de mão, DEPOIS de mandar o volume (a ordem das
+ * mensagens é preservada, então nunca se ouve o volume errado). Medido de
+ * novo com a correção: zero amostras tocando acima do pedido.
  */
 export function youtubeEmbedUrl(videoId: string): string {
   const params = new URLSearchParams({
@@ -117,7 +145,9 @@ export function youtubeEmbedUrl(videoId: string): string {
     controls: '0',
     disablekb: '1',
     modestbranding: '1',
-    iv_load_policy: '3'
+    iv_load_policy: '3',
+    // Ver o cabeçalho: o `unMute` sai no aperto de mão, depois do volume.
+    mute: '1'
   })
   if (/^https?:$/.test(window.location.protocol)) params.set('origin', window.location.origin)
   return `${YT_EMBED_ORIGIN}/embed/${videoId}?${params.toString()}`

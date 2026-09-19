@@ -34,6 +34,21 @@ import {
  * FIM DA FAIXA: só UMA pessoa avisa o servidor (senão cinco players mandariam
  * cinco `watch:next`). Quem é essa pessoa é decisão de quem chama — o hook só
  * recebe `isDriver` e chama `onEnded` uma vez por vídeo.
+ *
+ * E O FIM CHEGA POR `infoDelivery`, NÃO por `onStateChange`. Isto foi medido
+ * num Electron igual ao nosso (`file://`, o mesmo Referer da produção, vídeo
+ * levado até o último segundo): em duas rodadas completas o player mandou
+ * ZERO `onStateChange` — todas as transições de estado, inclusive o `ended`,
+ * vieram dentro do `infoDelivery`. Faz sentido: `onStateChange` é evento que
+ * o SDK oficial registra por `addEventListener`, e aqui não há SDK (ver
+ * lib/youtube.ts).
+ *
+ * Enquanto o `ended` só era tratado no `onStateChange`, a faixa acabava, a
+ * tela até mostrava "parado" — e ninguém mandava `watch:next`. Era este o bug
+ * de "termina a música e não passa pra próxima". Agora o tratamento mora num
+ * lugar só (`noteState`), chamado pelos DOIS caminhos, com a mesma trava de
+ * uma vez por vídeo — se o `onStateChange` voltar a existir um dia, ele não
+ * pula faixa em dobro.
  */
 
 /** Acima disso, em mudança de estado, o player pula pra posição certa. */
@@ -179,6 +194,23 @@ export function useYoutubePlayer(input: YoutubePlayerInput): YoutubePlayer {
         setReady(true)
       }
 
+      /**
+       * Guarda o estado e, se a faixa acabou, avisa quem chamou — uma vez por
+       * vídeo e só pro motorista. O resto da sala recebe a troca pelo
+       * broadcast do servidor.
+       */
+      const noteState = (state: YtPlayerState): void => {
+        stateRef.current = state
+        setPlayerState(state)
+
+        if (state !== YT_STATE.ended) return
+        const { isDriver, playing, videoId, onEnded } = inputRef.current
+        if (!isDriver || !playing) return
+        if (endedHandledRef.current === videoId) return
+        endedHandledRef.current = videoId
+        onEnded()
+      }
+
       switch (message.event) {
         case 'onReady':
           markReady()
@@ -207,10 +239,7 @@ export function useYoutubePlayer(input: YoutubePlayerInput): YoutubePlayer {
           if (typeof info.muted === 'boolean' && info.muted !== inputRef.current.muted) {
             send(inputRef.current.muted ? 'mute' : 'unMute')
           }
-          if (typeof info.playerState === 'number') {
-            stateRef.current = info.playerState as YtPlayerState
-            setPlayerState(info.playerState as YtPlayerState)
-          }
+          if (typeof info.playerState === 'number') noteState(info.playerState as YtPlayerState)
           const videoData = info.videoData as { title?: unknown } | undefined
           if (videoData && typeof videoData.title === 'string' && videoData.title) {
             setPlayerTitle(videoData.title)
@@ -218,23 +247,14 @@ export function useYoutubePlayer(input: YoutubePlayerInput): YoutubePlayer {
           break
         }
 
+        /**
+         * Na prática não chega (ver o cabeçalho), mas custa nada continuar
+         * ouvindo: é o mesmo `noteState`, com a mesma trava.
+         */
         case 'onStateChange': {
           const state = (message as { info?: unknown }).info
           if (typeof state !== 'number') break
-          stateRef.current = state as YtPlayerState
-          setPlayerState(state as YtPlayerState)
-
-          /**
-           * Acabou. Uma vez por vídeo e só pro motorista — o resto da sala
-           * recebe a troca pelo broadcast do servidor.
-           */
-          if (state === YT_STATE.ended) {
-            const { isDriver, playing, videoId, onEnded } = inputRef.current
-            if (!isDriver || !playing) break
-            if (endedHandledRef.current === videoId) break
-            endedHandledRef.current = videoId
-            onEnded()
-          }
+          noteState(state as YtPlayerState)
           break
         }
 
