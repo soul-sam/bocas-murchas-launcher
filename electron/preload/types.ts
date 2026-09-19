@@ -294,6 +294,15 @@ export interface LolLiveScore {
 }
 
 /** Retrato do cliente do LoL na maquina — vem do processo main a cada poll. */
+/**
+ * Modo de video do League. So existe por causa da sobreposicao.
+ *
+ * `fullscreen` (Tela cheia, exclusiva) e o unico em que NENHUMA janela aparece
+ * por cima do jogo — nem a nossa, nem a do Discord, nem a do Overwolf. Ver
+ * electron/main/services/lol-window-mode.ts.
+ */
+export type LolWindowMode = 'fullscreen' | 'borderless' | 'windowed'
+
 export interface LolStatus {
   /** Cliente aberto e respondendo? */
   clientRunning: boolean
@@ -312,6 +321,14 @@ export interface LolStatus {
   score?: LolLiveScore
   /** Ultimo erro de leitura, pra diagnostico na tela de configuracoes. */
   error?: string
+  /**
+   * Modo de video lido do `game.cfg`. Ausente = nao deu pra saber.
+   *
+   * Em `fullscreen` a sobreposicao nao tem como aparecer, e e MELHOR DIZER
+   * ISSO do que abrir uma janela invisivel e deixar a pessoa achando que o
+   * launcher quebrou — que foi exatamente o que aconteceu.
+   */
+  windowMode?: LolWindowMode
   updatedAt: number
 }
 

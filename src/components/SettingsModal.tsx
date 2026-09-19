@@ -1357,6 +1357,21 @@ function LolTab() {
           ele deixou de ser só de League e ganhou a roda de sons e as ações
           rápidas do servidor.
         </p>
+
+        {/* O limite que fazia a sobreposição parecer quebrada. Ver
+            components/LolFullscreenNotice e services/lol-window-mode. */}
+        {status?.windowMode === 'fullscreen' && (
+          <p className="rounded-brutal border border-burn/50 bg-burn/10 p-2 text-xs leading-snug text-foreground">
+            <strong className="font-medium text-burn">
+              O League está em &quot;Tela cheia&quot; — a sobreposição não tem como aparecer.
+            </strong>{' '}
+            Em tela cheia exclusiva o jogo toma conta da saída de vídeo e nenhuma
+            janela aparece por cima: nem a nossa, nem a do Discord, nem a do
+            Overwolf. Troque para{' '}
+            <strong className="font-medium text-foreground">Sem bordas</strong> em{' '}
+            <span className="font-mono">Esc → Vídeo → Modo de janela</span>.
+          </p>
+        )}
       </section>
 
       <section className="space-y-2">

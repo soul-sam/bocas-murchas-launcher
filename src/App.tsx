@@ -65,6 +65,7 @@ import { AdminModal } from '@/components/AdminModal'
 import { CostsModal } from '@/components/CostsModal'
 import { CostShareBanner } from '@/components/social/CostShareBanner'
 import { WhatsNewModal } from '@/components/WhatsNewModal'
+import { LolFullscreenNotice } from '@/components/LolFullscreenNotice'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
@@ -165,6 +166,9 @@ function GlobalOverlays() {
   return (
     <>
       <SettingsModal />
+      {/* Sem tela: conta por que a sobreposicao nao aparece quando o League
+          esta em "Tela cheia". Ver components/LolFullscreenNotice. */}
+      <LolFullscreenNotice />
       <ProfileEditor open={profileEditorOpen} onClose={closeProfileEditor} />
       <ScreenPickerHost />
       <UserContextMenu />

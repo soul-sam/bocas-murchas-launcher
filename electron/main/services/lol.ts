@@ -10,6 +10,7 @@ import type {
 } from '../../preload/types.js'
 import { loadSettings } from './settings.js'
 import { discoverLcu, type LcuCredentials } from './lol-discovery.js'
+import { readLolWindowMode } from './lol-window-mode.js'
 import {
   closeLcuAgents,
   isConnectionError,
@@ -250,7 +251,8 @@ function statusKey(s: LolStatus): string {
     s.lobby ?? null,
     s.score ?? null,
     s.me ?? null,
-    s.error ?? null
+    s.error ?? null,
+    s.windowMode ?? null
   ])
 }
 
@@ -343,6 +345,14 @@ function clearTimer(): void {
 /** Ciclos seguidos de descoberta sem cliente. Zera quando conecta. */
 let discoveryMisses = 0
 
+/**
+ * Modo de video lido do disco. `undefined` = ainda nao li nesta partida;
+ * `null` = li e nao deu pra saber (arquivo ausente ou valor estranho).
+ */
+let windowModeCache: 'fullscreen' | 'borderless' | 'windowed' | null | undefined
+/** Caminho do lockfile que a descoberta usou — o `game.cfg` mora ao lado. */
+let lastLockfilePath: string | undefined
+
 function discoveryInterval(): number {
   return discoveryMisses >= DISCOVERY_FAST_TICKS
     ? DISCOVERY_IDLE_INTERVAL_MS
@@ -383,6 +393,8 @@ async function discover(): Promise<void> {
   await loadLastEmitted()
 
   const outcome = await discoverLcu(settings.lol.lockfilePath)
+  // Guardado pra achar o `game.cfg` de quem instalou fora do padrao.
+  if (settings.lol.lockfilePath) lastLockfilePath = settings.lol.lockfilePath
   const creds = outcome.credentials
   if (!creds) {
     discoveryMisses += 1
@@ -500,6 +512,23 @@ async function pollConnected(s: Session): Promise<void> {
     phaseSince: current.clientRunning && current.phase === phase ? current.phaseSince : now,
     me: s.me,
     updatedAt: now
+  }
+
+  /**
+   * O modo de video, relido a cada ENTRADA em partida.
+   *
+   * Nao vai no poll inteiro porque e disco, e nao precisa: o que interessa e
+   * o modo valendo quando a sobreposicao deveria aparecer. Reler na virada
+   * tambem faz o aviso sumir sozinho quando a pessoa troca pra "Sem bordas" e
+   * entra na partida seguinte.
+   */
+  if (phase === 'in-progress') {
+    if (current.phase !== 'in-progress' || windowModeCache === undefined) {
+      windowModeCache = (await readLolWindowMode(lastLockfilePath)) ?? null
+    }
+    if (windowModeCache) next.windowMode = windowModeCache
+  } else {
+    windowModeCache = undefined
   }
 
   switch (phase) {
