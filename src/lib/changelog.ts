@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.16.0',
+    headline: 'Câmera em tamanho de gente, e a fila de música andando sozinha',
+    items: [
+      'Com uma tela compartilhada no ar, quem liga a câmera virava um retangulinho de 48 pixels lá embaixo — dava pra saber que a webcam estava ligada, e só. Agora a fileira de baixo usa o mesmo card 16:9 da grade: a câmera fica quase cinco vezes maior e dá pra ver a cara da pessoa sem largar a transmissão.',
+      'Dá pra clicar no canto de uma câmera pra jogá-la no palco inteiro; a tela compartilhada desce pra barra fina e volta com um clique, igual ao assistir junto.',
+      'Sem ninguém de câmera ligada a fileira continua enxuta, e a tela compartilhada fica com a altura toda — a fileira grande só aparece quando tem vídeo pra mostrar.',
+      'A música volta a passar sozinha pra próxima da fila. O aviso de "acabou" dependia de UMA pessoa escolhida pela sala, e ninguém conferia se o player dela estava mesmo tocando — quem entra pelo site ou pelo celular tem o autoplay barrado pelo navegador, e quando a vez caia nessa pessoa a fila parava. Agora qualquer um cobre, na ordem, e passar duas de uma vez virou impossível.'
+    ],
+    note: 'O botão de pular na mão continua igual. O que mudou é só quem avisa o servidor quando a faixa termina sozinha.'
+  },
+  {
     version: '1.15.0',
     headline: 'O "já paguei" agora passa por quem recebe',
     items: [

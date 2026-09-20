@@ -24,7 +24,7 @@ import { useVoice } from '@/lib/voice-context'
 import { useWatch, type WatchAck, type WatchSession } from '@/lib/watch-context'
 import { openExternal } from '@/lib/rich-text'
 import { YT_STATE, playerErrorInfo, playerVolume, youtubeWatchUrl } from '@/lib/youtube'
-import { useYoutubePlayer } from '@/lib/use-youtube-player'
+import { BACKUP_STEP_MS, useYoutubePlayer } from '@/lib/use-youtube-player'
 
 /**
  * Palco do "assistir junto".
@@ -296,15 +296,43 @@ function Player({
   const [fullscreen, setFullscreen] = React.useState(false)
   const [queueOpen, setQueueOpen] = React.useState(false)
 
-  /** Quem avisa o servidor que o vídeo acabou. Ver o cabeçalho do arquivo. */
-  const isDriver = React.useMemo(() => {
-    if (!user) return false
-    const identities = voice.participants.map((p) => p.identity)
-    const driver = identities.includes(session.hostUserId)
-      ? session.hostUserId
-      : [...identities].sort()[0]
-    return driver === user.id
+  /**
+   * Minha vez na fila de quem avisa que o vídeo acabou.
+   *
+   * Mesma conta (e mesmo motivo) da jukebox — ver components/social/
+   * MusicHost: era um motorista só, e ninguém conferia se o player DELE
+   * estava tocando. A vez 0 avisa na hora; as outras esperam e conferem se
+   * alguém já passou.
+   */
+  const driverRank = React.useMemo(() => {
+    if (!user) return -1
+    const identities = [...voice.participants.map((p) => p.identity)].sort()
+    const ordem = identities.includes(session.hostUserId)
+      ? [session.hostUserId, ...identities.filter((id) => id !== session.hostUserId)]
+      : identities
+    return ordem.indexOf(user.id)
   }, [user, voice.participants, session.hostUserId])
+
+  /** A sessão de AGORA, pra quem acorda depois da espera da sua vez. */
+  const sessionRef = React.useRef(session)
+  sessionRef.current = session
+
+  const finishVideo = React.useCallback(
+    async (endedVideoId: string, position: number): Promise<void> => {
+      if (driverRank < 0) return
+      if (driverRank > 0) {
+        await new Promise((resolve) => setTimeout(resolve, driverRank * BACKUP_STEP_MS))
+      }
+      const atual = sessionRef.current
+      if (!atual || atual.videoId !== endedVideoId) return
+      if ((atual.queue ?? []).length === 0) {
+        await watch.pause(position)
+        return
+      }
+      await watch.next(endedVideoId)
+    },
+    [driverRank, watch]
+  )
 
   /**
    * A sincronia toda mora no hook (lib/use-youtube-player): aperto de mão,
@@ -318,17 +346,12 @@ function Player({
     // O slider guarda POSIÇÃO; o player recebe amplitude (ver lib/youtube).
     volume: playerVolume(volume),
     muted,
-    isDriver,
     scrubbing: scrub !== null,
-    onEnded: () => {
-      /**
-       * Acabou. Se tem fila, próximo; senão o servidor precisa saber que
-       * parou, ou quem entrar depois calcula uma posição além do fim e vê um
-       * player travado na tela final.
-       */
-      if ((session.queue ?? []).length > 0) void watch.next()
-      else void watch.pause(player.timeRef.current)
-    }
+    /**
+     * Acabou aqui. Quem decide se avisa o servidor (e quando) é o
+     * `finishVideo` acima — depende da minha vez na fila de reservas.
+     */
+    onEnded: () => void finishVideo(session.videoId, player.timeRef.current)
   })
 
   const {

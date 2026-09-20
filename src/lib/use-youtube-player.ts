@@ -31,9 +31,22 @@ import {
  * cada 5s, enquanto toca, confere de novo e corrige se a deriva passar de 2s —
  * buffering de um lado e não do outro acumula segundos em poucos minutos.
  *
- * FIM DA FAIXA: só UMA pessoa avisa o servidor (senão cinco players mandariam
- * cinco `watch:next`). Quem é essa pessoa é decisão de quem chama — o hook só
- * recebe `isDriver` e chama `onEnded` uma vez por vídeo.
+ * FIM DA FAIXA: o hook avisa TODO MUNDO, uma vez por vídeo, e quem chama
+ * decide o que fazer com isso.
+ *
+ * Já foi o contrário — o hook recebia `isDriver` e só o motorista escutava o
+ * fim. O problema é que ninguém sabia se o player DO MOTORISTA estava mesmo
+ * tocando: quem entra pelo site ou pelo celular tem o autoplay barrado pelo
+ * navegador depois do `unMute`, e um player parado nunca chega ao `ended`.
+ * Quando a escolha caía nessa pessoa (e ela é a preferida, porque é quem pôs
+ * a música na fila), a faixa acabava e a sala inteira ficava parada esperando
+ * um aviso que não ia sair de ninguém. Era este o "tem que ficar apertando
+ * Next".
+ *
+ * Só o player de cada um sabe se ele está tocando, então é de cada um que o
+ * aviso tem que poder sair. O revezamento (primeiro na hora, os outros depois
+ * de uma espera) e a trava contra pular em dobro moram em quem chama — ver
+ * components/social/MusicHost.
  *
  * E O FIM CHEGA POR `infoDelivery`, NÃO por `onStateChange`. Isto foi medido
  * num Electron igual ao nosso (`file://`, o mesmo Referer da produção, vídeo
@@ -50,6 +63,18 @@ import {
  * uma vez por vídeo — se o `onStateChange` voltar a existir um dia, ele não
  * pula faixa em dobro.
  */
+
+/**
+ * Quanto cada reserva espera antes de avisar que a faixa acabou.
+ *
+ * Tem que ser MAIOR que a janela do rate limit do servidor (2s pra troca de
+ * faixa): com um passo menor, o reserva chegaria dentro da janela aberta pelo
+ * anterior e levaria "Calma, um vídeo por vez" por ter feito a coisa certa.
+ *
+ * Na prática quase nunca é usado — a vez 0 avisa na hora e resolve. Isto aqui
+ * é o que salva a noite quando a vez 0 está num celular com o autoplay barrado.
+ */
+export const BACKUP_STEP_MS = 3_000
 
 /** Acima disso, em mudança de estado, o player pula pra posição certa. */
 const APPLY_TOLERANCE_SEC = 1
@@ -79,8 +104,15 @@ export interface YoutubePlayerInput {
   /** 0..100, só desta máquina. */
   volume: number
   muted: boolean
-  /** Se EU sou quem avisa o servidor que a faixa acabou. */
-  isDriver: boolean
+  /**
+   * A faixa acabou NESTE player. Uma vez por vídeo.
+   *
+   * Dispara em TODO MUNDO, não só em quem avisa o servidor. O hook não
+   * tem como saber se o player de quem deveria avisar está de fato
+   * tocando — quem sabe disso é o próprio player de cada um, e é
+   * justamente essa informação que faltava. Quem chama é que decide se
+   * avisa agora, depois, ou não avisa.
+   */
   onEnded: () => void
   /** Enquanto alguém arrasta a barra, a correção de deriva fica quieta. */
   scrubbing?: boolean
@@ -204,8 +236,8 @@ export function useYoutubePlayer(input: YoutubePlayerInput): YoutubePlayer {
         setPlayerState(state)
 
         if (state !== YT_STATE.ended) return
-        const { isDriver, playing, videoId, onEnded } = inputRef.current
-        if (!isDriver || !playing) return
+        const { playing, videoId, onEnded } = inputRef.current
+        if (!playing) return
         if (endedHandledRef.current === videoId) return
         endedHandledRef.current = videoId
         onEnded()

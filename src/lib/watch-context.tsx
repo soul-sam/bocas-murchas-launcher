@@ -89,7 +89,15 @@ interface WatchContextValue {
   queueTrack: (track: WatchTrack, mode?: WatchMode) => Promise<WatchAck>
   /** Tira da fila. O videoId confere contra corrida — ver a API. */
   queueRemove: (index: number, videoId: string) => Promise<WatchAck>
-  next: () => Promise<WatchAck>
+  /**
+   * Próxima da fila.
+   *
+   * `afterVideoId` diz de qual faixa o pedido está falando. Com ele, um
+   * aviso de fim que chega atrasado (porque o cliente da frente estava
+   * com o player parado) não pula uma música a mais — o servidor vê que
+   * a sala já passou e não faz nada. O botão de pular na mão não manda.
+   */
+  next: (afterVideoId?: string) => Promise<WatchAck>
   play: (positionSec: number) => Promise<WatchAck>
   pause: (positionSec: number) => Promise<WatchAck>
   seek: (positionSec: number) => Promise<WatchAck>
@@ -272,7 +280,11 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
     [request]
   )
 
-  const next = React.useCallback(() => request('watch:next'), [request])
+  const next = React.useCallback(
+    (afterVideoId?: string) =>
+      request('watch:next', afterVideoId ? { afterVideoId } : undefined),
+    [request]
+  )
   const play = React.useCallback((positionSec: number) => request('watch:play', { positionSec }), [request])
   const pause = React.useCallback((positionSec: number) => request('watch:pause', { positionSec }), [request])
   const seek = React.useCallback((positionSec: number) => request('watch:seek', { positionSec }), [request])

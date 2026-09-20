@@ -20,7 +20,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useVoice } from '@/lib/voice-context'
 import { useWatch, type WatchSession } from '@/lib/watch-context'
 import { openExternal } from '@/lib/rich-text'
-import { useYoutubePlayer } from '@/lib/use-youtube-player'
+import { BACKUP_STEP_MS, useYoutubePlayer } from '@/lib/use-youtube-player'
 import {
   YT_STATE,
   playerErrorInfo,
@@ -65,6 +65,7 @@ const DUCK_RELEASE_MS = 900
 
 /** Arrastar o slider grava no disco só depois que a mão para. */
 const VOLUME_SAVE_MS = 400
+
 
 export function MusicHost() {
   const watch = useWatch()
@@ -170,39 +171,83 @@ function MusicBar({ session }: { session: WatchSession }) {
 
   // --- player ---------------------------------------------------------------
   /**
-   * Quem avisa o servidor que a faixa acabou: quem pediu, se ainda está na
-   * call; senão o primeiro em ordem de identidade, que dá o mesmo nome em
-   * todas as máquinas. Sem isso, cinco pessoas mandariam cinco `watch:next` e
-   * a fila pularia cinco músicas de uma vez.
+   * MINHA VEZ NA FILA DE QUEM AVISA QUE A FAIXA ACABOU.
+   *
+   * Era um motorista só: quem pôs a música, se ainda está na call; senão o
+   * primeiro em ordem de identidade (a mesma ordem em todas as máquinas).
+   * Um só, porque cinco avisos pulariam cinco músicas.
+   *
+   * O furo é que ninguém conferia se o player DESSA pessoa estava tocando.
+   * Quem entra pelo site ou pelo celular tem o autoplay barrado pelo
+   * navegador, e player parado nunca chega ao fim da faixa — quando a vez
+   * caía nela, a sala inteira parava esperando um aviso que não ia sair.
+   * E ela é a PREFERIDA na conta, porque é quem pôs a música na fila.
+   *
+   * Agora é uma fila de reservas: a vez 0 avisa na hora, a vez 1 espera um
+   * pouco e confere se alguém já passou, e assim por diante. Player parado
+   * simplesmente não participa, porque nunca recebe o fim. Pular em dobro é
+   * impossível porque o aviso diz de QUAL faixa está falando (`afterVideoId`,
+   * ver realtime/watch.ts na API).
    */
-  const isDriver = React.useMemo(() => {
-    if (!user) return false
-    const identities = voice.participants.map((participant) => participant.identity)
-    const driver = identities.includes(session.hostUserId)
-      ? session.hostUserId
-      : [...identities].sort()[0]
-    return driver === user.id
+  const driverRank = React.useMemo(() => {
+    if (!user) return -1
+    const identities = [...voice.participants.map((p) => p.identity)].sort()
+    const ordem = identities.includes(session.hostUserId)
+      ? [session.hostUserId, ...identities.filter((id) => id !== session.hostUserId)]
+      : identities
+    return ordem.indexOf(user.id)
   }, [user, voice.participants, session.hostUserId])
 
   /**
-   * PULAR PRA PRÓXIMA TEM QUE INSISTIR UMA VEZ.
+   * A sessão de AGORA, pra quem acorda depois de uma espera.
    *
-   * O servidor limita troca de faixa a uma a cada 2s (WATCH_RULES.set, em
-   * realtime/watch.ts) — regra boa pra mão nervosa no botão, mas o fim de uma
-   * faixa não é mão nervosa. Quem tivesse acabado de pular uma música caía
-   * exatamente nessa janela, o `watch:next` automático voltava recusado e a
-   * fila parava ali, calada, até alguém perceber e clicar.
-   *
-   * Uma tentativa a mais, depois da janela da regra, resolve sem inventar fila
-   * de retentativa: ou passa, ou parou por um motivo que insistir não conserta
-   * (a fila acabou de verdade, a call caiu).
+   * O reserva confere se a sala já passou de faixa antes de avisar, e essa
+   * conferência acontece segundos depois do render que criou a função — o
+   * valor capturado no fecho seria o de antes, e o reserva avisaria sempre.
    */
-  const advance = React.useCallback(async (): Promise<void> => {
-    const first = await watch.next()
-    if (first.ok) return
-    await new Promise((resolve) => setTimeout(resolve, 2_400))
-    await watch.next()
-  }, [watch])
+  const sessionRef = React.useRef(session)
+  sessionRef.current = session
+
+  /**
+   * A FAIXA ACABOU AQUI — e agora?
+   *
+   * Espero a minha vez (a 0 não espera), confiro se a sala ainda está na
+   * faixa que acabou e só então aviso. Se alguém à minha frente já passou,
+   * não faço nada — é o caso normal, não é erro.
+   *
+   * PULAR TEM QUE INSISTIR UMA VEZ. O servidor limita troca de faixa a uma a
+   * cada 2s (WATCH_RULES.set, em realtime/watch.ts) — regra boa pra mão
+   * nervosa no botão, mas o fim de uma faixa não é mão nervosa. Quem tivesse
+   * acabado de pular uma música caía exatamente nessa janela, o `watch:next`
+   * automático voltava recusado e a fila parava ali, calada. Uma tentativa a
+   * mais, depois da janela da regra, resolve sem inventar fila de
+   * retentativa: ou passa, ou parou por um motivo que insistir não conserta.
+   *
+   * Com a fila vazia, quem chega na vez avisa que PAROU: sem isso quem entrar
+   * depois calcula uma posição além do fim e cai num player travado.
+   */
+  const advance = React.useCallback(
+    async (endedVideoId: string, position: number): Promise<void> => {
+      if (driverRank < 0) return
+      if (driverRank > 0) {
+        await new Promise((resolve) => setTimeout(resolve, driverRank * BACKUP_STEP_MS))
+      }
+
+      const atual = sessionRef.current
+      if (!atual || atual.videoId !== endedVideoId) return
+
+      if ((atual.queue ?? []).length === 0) {
+        await watch.pause(position)
+        return
+      }
+
+      const first = await watch.next(endedVideoId)
+      if (first.ok) return
+      await new Promise((resolve) => setTimeout(resolve, 2_400))
+      await watch.next(endedVideoId)
+    },
+    [driverRank, watch]
+  )
 
   const player = useYoutubePlayer({
     videoId: session.videoId,
@@ -211,13 +256,7 @@ function MusicBar({ session }: { session: WatchSession }) {
     syncKey: session.updatedAt,
     volume: effectiveVolume,
     muted,
-    isDriver,
-    onEnded: () => {
-      if ((session.queue ?? []).length > 0) void advance()
-      // Fila vazia: a sala precisa saber que parou, senão quem entrar depois
-      // calcula uma posição além do fim e cai num player travado.
-      else void watch.pause(player.timeRef.current)
-    }
+    onEnded: () => void advance(session.videoId, player.timeRef.current)
   })
 
   const queue = session.queue ?? []
