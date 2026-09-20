@@ -216,7 +216,7 @@ function GroupTable({
 
   return (
     <div className="overflow-x-auto rounded-brutal border border-line">
-      <table className="w-full min-w-[980px] border-collapse">
+      <table className="w-full sm:min-w-[980px] border-collapse">
         <thead>
           <tr className="border-b border-line">
             <Th align="left">{firstLabel}</Th>
@@ -347,7 +347,7 @@ export function PlayersTab({ rows, duos }: { rows: LolGroupRow[]; duos: LolDuoRo
           <Empty>Ninguém jogou junto o bastante nesse recorte pra dar pra comparar.</Empty>
         ) : (
           <div className="overflow-x-auto rounded-brutal border border-line">
-            <table className="w-full min-w-[560px] border-collapse">
+            <table className="w-full sm:min-w-[560px] border-collapse">
               <thead>
                 <tr className="border-b border-line">
                   <Th align="left">Dupla</Th>

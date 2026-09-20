@@ -16,6 +16,7 @@ import { AgendaPanel } from '@/components/social/AgendaPanel'
 import { SuggestionsPanel } from '@/components/social/SuggestionsPanel'
 import { LeaderboardPanel } from '@/components/social/LeaderboardPanel'
 import { useOverlays } from '@/lib/overlay-context'
+import { FolhaDePainel } from '@/components/ui/folha'
 
 /**
  * Tela social: canais à esquerda (as conversas ficam na AppRail), chat ou
@@ -86,6 +87,28 @@ export function SocialPage() {
     setView('chat')
   }, [view, voice.connected, voice.connecting, voice.error, setView])
 
+  // Qual painel ocupa a coluna da direita. Virou uma variável (e não oito
+  // ternários dentro do JSX) porque no celular ele passa por dentro da folha
+  // de baixo — e a folha precisa saber se há ALGUMA coisa aberta, não qual.
+  const painel =
+    searchOpen && view === 'chat' ? (
+      <SearchPanel />
+    ) : pinnedOpen && view === 'chat' ? (
+      <PinnedPanel />
+    ) : linksOpen && view === 'chat' ? (
+      <LinksPanel />
+    ) : clipsOpen ? (
+      <ClipsPanel />
+    ) : agendaOpen ? (
+      <AgendaPanel />
+    ) : suggestionsOpen ? (
+      <SuggestionsPanel />
+    ) : leaderboardOpen ? (
+      <LeaderboardPanel />
+    ) : membersOpen && !dmActive ? (
+      <MemberList />
+    ) : null
+
   return (
     <div className="relative flex min-h-0 flex-1 overflow-hidden">
       {!dmActive && (
@@ -113,23 +136,7 @@ export function SocialPage() {
           inquilino desta coluna — o botão fica no rodapé da barra ESQUERDA, e o
           painel abria do outro lado da tela, fechando o que estivesse aberto
           aqui. */}
-      {searchOpen && view === 'chat' ? (
-        <SearchPanel />
-      ) : pinnedOpen && view === 'chat' ? (
-        <PinnedPanel />
-      ) : linksOpen && view === 'chat' ? (
-        <LinksPanel />
-      ) : clipsOpen ? (
-        <ClipsPanel />
-      ) : agendaOpen ? (
-        <AgendaPanel />
-      ) : suggestionsOpen ? (
-        <SuggestionsPanel />
-      ) : leaderboardOpen ? (
-        <LeaderboardPanel />
-      ) : membersOpen && !dmActive ? (
-        <MemberList />
-      ) : null}
+      {painel && <FolhaDePainel key="painel">{painel}</FolhaDePainel>}
 
       {/* A modal fica AQUI e não na casca porque só existe pra esta tela — e
           fecha por transição, nunca sendo arrancada da árvore. */}

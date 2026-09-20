@@ -174,6 +174,31 @@
 
   html { scroll-behavior: smooth; }
 
+  /* PUXAR PRA BAIXO NAO RECARREGA O APP.
+     No Chrome do Android, arrastar o topo de qualquer area rolavel dispara o
+     "puxe pra atualizar" — que aqui derruba a call, o socket e o que estava
+     escrito no compositor. O `overflow: hidden` do body ja segurava o
+     documento; as LISTAS por dentro (chat, canais, paineis) continuavam
+     encadeando a rolagem pro navegador ao chegar no fim. */
+  html, body { overscroll-behavior: none; }
+
+  /* CAMPO ABAIXO DE 16px = ZOOM AUTOMATICO NO IPHONE.
+     O Safari do iOS da zoom na pagina sempre que o foco cai num campo com
+     fonte menor que 16px, e nao volta sozinho: a tela fica deslocada e a
+     pessoa tem que pinçar pra ler o proprio texto. O app inteiro usa
+     `text-sm` (14px) em campo.
+
+     O corte e por PONTEIRO, nao por largura: so o dedo sofre com isso, e um
+     desktop com tela de toque nao tem o problema (a regra so vale em
+     navegador — no Electron nenhum ponteiro e grosso). */
+  @media (pointer: coarse) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']),
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+
   /* O fundo vem do token, nao de um hex fixo: e o que permite trocar de tema
      sem tocar em componente nenhum.
 
@@ -268,6 +293,106 @@
 }
 
 @layer components {
+  /* ------------------------------------------------------------------
+     A CASCA E AS BORDAS DO APARELHO
+     ------------------------------------------------------------------
+     `h-screen` (100vh) MENTE no celular: o iOS conta a barra de endereco que
+     se esconde ao rolar, entao 100vh e sempre MAIOR que a area visivel e o
+     rodape do app — compositor, botoes de dialogo — fica embaixo da barra.
+     `100dvh` acompanha a barra; a variavel `--altura-visivel`, escrita pelo
+     use-visual-viewport quando o TECLADO abre, e mais exata ainda (o teclado
+     nao muda o dvh no iOS).
+
+     `viewport-fit=cover` (ver index.web.html) faz o app ir ate a borda fisica
+     da tela: o que encosta embaixo precisa somar a safe area, ou cai atras da
+     barra de gestos do iPhone. Em qualquer outro lugar `env()` e zero, entao
+     estas classes nao mudam nada no PC. */
+  .casca-app {
+    height: 100dvh;
+    height: var(--altura-visivel, 100dvh);
+  }
+
+  .area-segura-b { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .area-segura-t { padding-top: env(safe-area-inset-top, 0px); }
+  .area-segura-x {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  /* ------------------------------------------------------------------
+     ALVO DE DEDO
+     ------------------------------------------------------------------
+     O app tem 88 botoes entre 24 e 32px de lado (`h-6`, `h-7`, `h-8`). No
+     mouse isso e preciso; no dedo e sorteio — a recomendacao de acessibilidade
+     e 44px, que e mais ou menos a largura da polpa do dedo.
+
+     A regra e por PONTEIRO e nao por largura: um tablet deitado tem 1024px e
+     so dedo. `hover: none` separa o tablet do notebook com tela sensivel ao
+     toque, onde o mouse ainda existe.
+
+     So min-*: o botao NAO muda de aparencia, so de area clicavel. Trocar o
+     tamanho visual mexeria na densidade de telas inteiras. */
+  @media (pointer: coarse) and (hover: none) {
+    .alvo-dedo {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* A folha de baixo do celular (ver components/ui/folha.tsx). Ela sobe do
+     rodape porque e de la que ela veio — o movimento e a unica pista de que
+     a conversa continua atras, e nao foi trocada por outra tela. */
+  .folha-sobe {
+    animation: folha-sobe 160ms ease-out;
+  }
+
+  @keyframes folha-sobe {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .folha-sobe { animation: none; }
+  }
+
+  /* ------------------------------------------------------------------
+     FILAS DE AVISO (ver components/ui/filas.tsx)
+     ------------------------------------------------------------------
+     Um canto, uma fila. Antes cada aviso se ancorava sozinho com `fixed
+     bottom-N right-4` e chutava a altura do vizinho — o toast de XP e a barra
+     da musica dividiam o MESMO bottom-4 right-4.
+
+     No celular a fila vira uma faixa de borda a borda (um cartao de 320px e
+     89% de um aparelho de 360px) e ganha teto de altura: aviso nenhum pode
+     cobrir a conversa inteira. O teto e rolavel, nunca cortado. */
+  /* `--altura-rail` e' 0 no PC (a barra de icones e' lateral) e a altura real
+     da barra no celular, onde ela deitou no rodape — ver AppRail. Sem somar
+     isso, o toast de XP e a barra da musica cobrem a navegacao. */
+  .fila-canto {
+    bottom: calc(1rem + var(--altura-rail, 0px) + env(safe-area-inset-bottom, 0px));
+    right: 1rem;
+    max-height: 60dvh;
+  }
+
+  /* Pra quem flutua no rodape e nao mora numa fila (os botoes do nudge). */
+  .acima-da-barra {
+    bottom: calc(0.75rem + var(--altura-rail, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .fila-topo {
+    top: calc(var(--altura-titulo, 0px) + env(safe-area-inset-top, 0px) + 0.5rem);
+  }
+
+  @media (max-width: 640px) {
+    .fila-canto {
+      left: 0.5rem;
+      right: 0.5rem;
+      align-items: stretch;
+      max-height: 40dvh;
+    }
+    .fila-canto > * { width: 100% !important; max-width: 100% !important; }
+  }
+
   /* ------------------------------------------------------------------
      SOBREPOSICAO EM PARTIDA
      ------------------------------------------------------------------

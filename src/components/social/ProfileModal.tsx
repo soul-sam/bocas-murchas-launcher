@@ -48,14 +48,14 @@ export function ProfileModal() {
   return (
     <div
       onClick={closeProfile}
-      className="fixed inset-0 z-[58] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-perfil flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
     >
       <div
         ref={panelRef}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-label={`Perfil de ${member.displayName}`}
-        className="card-gradient relative max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-brutal border-2 border-acid-dark shadow-[0_0_50px_rgba(0,0,0,0.8)]"
+        className="card-gradient relative max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-brutal border-2 border-acid-dark shadow-[0_0_50px_rgba(0,0,0,0.8)]"
       >
         {/*
           O X flutua por cima da capa. Fica no canto oposto ao avatar, que
@@ -67,7 +67,7 @@ export function ProfileModal() {
           onClick={closeProfile}
           title="Fechar"
           aria-label="Fechar o perfil"
-          className="absolute right-2 top-2 z-10 rounded-brutal bg-void/80 p-1.5 text-muted-foreground transition-colors hover:bg-void hover:text-dirty-white"
+          className="absolute right-2 top-2 z-conteudo rounded-brutal bg-void/80 p-1.5 text-muted-foreground transition-colors hover:bg-void hover:text-dirty-white"
         >
           <X className="h-4 w-4" />
         </button>

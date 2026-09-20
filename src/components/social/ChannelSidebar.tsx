@@ -37,6 +37,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Hint } from '@/components/ui/tooltip'
 import { useFocusTrap } from '@/lib/use-focus-trap'
+import { useCamadaVoltar } from '@/lib/use-camada-voltar'
 import { resolveAssetUrl, users as usersApi, type Channel, type UserStatus } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useChat } from '@/lib/chat-context'
@@ -56,6 +57,8 @@ import { OpenPartiesStrip } from './OpenPartiesStrip'
 import { SmokeStrip } from './SmokeStrip'
 import { SoundboardPopover } from './SoundboardPopover'
 import { ConnectionBars } from './ConnectionBars'
+import { toqueLongo } from '@/lib/toque-longo'
+import { podeCompartilharTela } from '@/lib/platform'
 
 const STATUS_OPTIONS: Array<{ value: UserStatus; label: string; color: string }> = [
   { value: 'online', label: 'Online', color: 'hsl(var(--acid))' },
@@ -95,7 +98,7 @@ export function ChannelSidebar({
   const { open: openSettings, settings } = useSettings()
   const { pttActive } = useHotkeys()
   const { openUserMenu, openQuickSwitcher, openAdmin, openScreenPicker } = useOverlays()
-  const { view, sidebarIsDrawer, sidebarOpen, closeSidebar } = useLayout()
+  const { view, sidebarIsDrawer, sidebarOpen, closeSidebar, isPhone } = useLayout()
   const { afk, toggle: toggleAfk } = useAfk()
 
   /**
@@ -184,6 +187,10 @@ export function ChannelSidebar({
   // nao vaza pro chat que esta atras do overlay) e Escape fecha.
   const trapRef = useFocusTrap<HTMLElement>(sidebarIsDrawer && sidebarOpen, closeSidebar)
 
+  // No celular esta lista é uma tela inteira; o Voltar do aparelho tem que
+  // devolver pra conversa, não fechar o app (e a call junto).
+  useCamadaVoltar(isPhone && sidebarOpen, closeSidebar)
+
   if (sidebarIsDrawer && !sidebarOpen) return null
 
   const aside = (
@@ -193,8 +200,16 @@ export function ChannelSidebar({
       aria-modal={sidebarIsDrawer ? true : undefined}
       aria-label={sidebarIsDrawer ? 'Canais' : undefined}
       className={cn(
-        'flex w-60 shrink-0 flex-col border-r border-line bg-depth-2',
-        sidebarIsDrawer && 'absolute inset-y-0 left-14 z-30 shadow-[10px_0_30px_rgba(0,0,0,0.6)]'
+        'flex shrink-0 flex-col border-r border-line bg-depth-2',
+        // No celular a lista de canais é uma TELA, não uma gaveta: 240px ao
+        // lado de 64px de conversa aparecendo por trás do véu não é escolher
+        // canal, é espiar. Aqui ela ocupa tudo e o véu some junto.
+        isPhone
+          ? 'absolute inset-0 z-veu w-full border-r-0'
+          : 'w-60',
+        sidebarIsDrawer &&
+          !isPhone &&
+          'absolute inset-y-0 left-14 z-veu shadow-[10px_0_30px_rgba(0,0,0,0.6)]'
       )}
     >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
@@ -429,6 +444,7 @@ export function ChannelSidebar({
                           <button
                             type="button"
                             onContextMenu={(event) => openUserMenu(event, occupant.id)}
+                            {...toqueLongo((event) => openUserMenu(event, occupant.id))}
                             // Clicar em quem está transmitindo leva pro palco
                             // daquele canal — o caminho óbvio pra "quero ver".
                             onClick={() => {
@@ -571,7 +587,11 @@ export function ChannelSidebar({
             )}
 
             {/* Abre o seletor direto. Antes só trocava pro palco da call — e
-                quem já estava nele clicava e não acontecia nada. */}
+                quem já estava nele clicava e não acontecia nada.
+
+                Some onde o aparelho não tem `getDisplayMedia` (iPhone,
+                Android): ver podeCompartilharTela() em lib/platform.ts. */}
+            {podeCompartilharTela() && (
             <DockButton
               label={voice.screenSharing ? 'Parar de compartilhar' : 'Compartilhar tela'}
               description={
@@ -589,6 +609,7 @@ export function ChannelSidebar({
             >
               <MonitorUp className="h-3.5 w-3.5" />
             </DockButton>
+            )}
 
             <SoundboardPopover align="start">
               <DockButton
@@ -628,6 +649,7 @@ export function ChannelSidebar({
             <button
               type="button"
               onContextMenu={(event) => user && openUserMenu(event, user.id)}
+              {...toqueLongo((event) => user && openUserMenu(event, user.id))}
               className="flex min-w-0 flex-1 items-center gap-2 rounded-brutal p-1 text-left transition-colors hover:bg-void-light"
             >
               <UserAvatar
@@ -752,13 +774,17 @@ export function ChannelSidebar({
 
   if (!sidebarIsDrawer) return aside
 
+  // Em tela cheia não há "fora" pra clicar: o véu só existe enquanto a gaveta
+  // deixa conversa à mostra.
+  if (isPhone) return aside
+
   return (
     <>
       {/* Clicar fora fecha a gaveta. Um <div> e não uma camada do Radix: o
           Radix trancaria o <body> e este componente some junto com o resize. */}
       <div
         onClick={closeSidebar}
-        className="absolute inset-0 z-20 bg-black/50"
+        className="absolute inset-0 z-gaveta bg-black/50"
         aria-hidden
       />
       {aside}

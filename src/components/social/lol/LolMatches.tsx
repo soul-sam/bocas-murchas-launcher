@@ -149,7 +149,7 @@ export function MatchTable({ query }: { query: LolQuery }) {
   return (
     <div className="space-y-2">
       <div className="overflow-x-auto rounded-brutal border border-line">
-        <table className="w-full min-w-[900px] border-collapse">
+        <table className="w-full sm:min-w-[900px] border-collapse">
           <thead>
             <tr className="border-b border-line">
               {COLUMNS.map((column, index) => (

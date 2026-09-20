@@ -64,11 +64,11 @@ export function ShortcutsHelp() {
   return (
     <div
       onClick={closeShortcuts}
-      className="fixed inset-0 z-[55] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-sobretela flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="card-gradient relative max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-brutal border-2 border-acid-dark p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)]"
+        className="card-gradient relative max-h-[80dvh] w-full max-w-xl overflow-y-auto rounded-brutal border-2 border-acid-dark p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)]"
       >
         <button
           type="button"

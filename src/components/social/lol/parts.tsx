@@ -433,7 +433,7 @@ export function Th({
       scope="col"
       title={title}
       className={cn(
-        'sticky top-0 z-10 bg-depth-3 px-2 py-1.5 font-normal',
+        'sticky top-0 z-conteudo bg-depth-3 px-2 py-1.5 font-normal',
         align === 'right' ? 'text-right' : 'text-left',
         className
       )}

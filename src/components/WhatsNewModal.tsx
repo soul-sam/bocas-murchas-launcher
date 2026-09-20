@@ -77,7 +77,7 @@ export function WhatsNewModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+      className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/70 p-6"
       onClick={close}
     >
       <div

@@ -145,6 +145,22 @@ export interface ShopItem {
   equipped: boolean
 }
 
+export interface GiftResult {
+  coins: number
+  cosmetic: { id: string; name: string; type: CosmeticType; price: number }
+  to: { id: string; displayName: string }
+}
+
+/** Payload de `gamification:gift` — chega em quem RECEBEU. */
+export interface GiftNotice {
+  fromId: string
+  fromName: string
+  cosmeticId: string
+  cosmeticName: string
+  cosmeticType: CosmeticType
+  message: string | null
+}
+
 export interface ShopResponse {
   coins: number
   items: ShopItem[]
@@ -435,6 +451,7 @@ const XP_REASON_LABEL: Record<string, string> = {
   wager: 'aposta',
   wager_won: 'aposta ganha',
   wager_lost: 'aposta perdida',
+  gift: 'presente',
   purchase: 'compra na lojinha',
   refund: 'reembolso'
 }
@@ -443,6 +460,7 @@ export function xpReasonLabel(reason: string | undefined | null): string {
   if (!reason) return ''
   // Murchos de nível vêm como `levelup:<nível>` (e `levelup:backfill` no
   // ajuste retroativo), então não dá pra ter uma chave fixa no mapa.
+  if (reason.startsWith('gift:')) return 'presente'
   if (reason.startsWith('levelup:')) {
     const level = reason.slice('levelup:'.length)
     return level === 'backfill' ? 'níveis que você já tinha' : `nível ${level}`
@@ -622,6 +640,20 @@ export const gamification = {
       method: 'POST',
       token,
       body: JSON.stringify({ cosmeticId })
+    })
+  },
+
+  /** Presente: eu pago, `toUserId` recebe o item. Mesmo preço da compra. */
+  async gift(
+    token: string,
+    cosmeticId: string,
+    toUserId: string,
+    message?: string
+  ): Promise<{ profile: GamificationProfile; gift: GiftResult }> {
+    return request('/gamification/shop/gift', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ cosmeticId, toUserId, message: message || undefined })
     })
   },
 

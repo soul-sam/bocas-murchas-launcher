@@ -25,3 +25,19 @@ export function isWeb(): boolean {
 export function isDesktop(): boolean {
   return !isWeb()
 }
+
+/**
+ * ESTE APARELHO CONSEGUE COMPARTILHAR A TELA?
+ *
+ * `getDisplayMedia` simplesmente NÃO EXISTE no Safari do iPhone nem no Chrome
+ * do Android — não é permissão negada, é API ausente. O botão estava sempre
+ * lá: tocar nele dava erro de console e nada na tela, que é a pior resposta
+ * possível ("será que sou eu?").
+ *
+ * Assistir a tela de outra pessoa continua funcionando nos dois: o que falta é
+ * só o lado de PUBLICAR.
+ */
+export function podeCompartilharTela(): boolean {
+  if (isDesktop()) return true
+  return typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia
+}

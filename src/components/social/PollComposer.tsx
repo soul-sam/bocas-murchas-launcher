@@ -194,14 +194,14 @@ export function PollComposer() {
       onClick={(event) => {
         if (event.target === event.currentTarget) close()
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
     >
-      <div className="card-acid relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-brutal">
+      <div className="card-acid relative flex max-h-[90dvh] w-full max-w-lg flex-col rounded-brutal">
         <button
           type="button"
           aria-label="Fechar"
           onClick={close}
-          className="absolute right-3 top-3 z-10 rounded-brutal p-1 text-muted-foreground transition-colors hover:text-foreground"
+          className="absolute right-3 top-3 z-conteudo rounded-brutal p-1 text-muted-foreground transition-colors hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>

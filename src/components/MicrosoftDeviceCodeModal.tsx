@@ -33,7 +33,7 @@ export function MicrosoftDeviceCodeModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/85 p-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-dialogo flex items-center justify-center bg-void/85 p-6 backdrop-blur-sm">
       <div className="card-acid w-full max-w-md rounded-brutal p-6">
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-3">

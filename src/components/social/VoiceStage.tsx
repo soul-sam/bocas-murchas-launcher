@@ -30,6 +30,8 @@ import { CallStage, StageStrip, SpotlightStage } from './CallStage'
 import { SoundboardPopover } from './SoundboardPopover'
 import { ScreenStage } from './ScreenStage'
 import { WatchStage } from './WatchStage'
+import { toqueLongo } from '@/lib/toque-longo'
+import { podeCompartilharTela } from '@/lib/platform'
 
 export function VoiceStage() {
   const voice = useVoice()
@@ -321,6 +323,7 @@ export function VoiceStage() {
             volume={voice.userVolume(spotlightParticipant.identity)}
             onVolume={(value) => voice.setUserVolume(spotlightParticipant.identity, value)}
             onContextMenu={(event) => openUserMenu(event, spotlightParticipant.identity)}
+            {...toqueLongo((event) => openUserMenu(event, spotlightParticipant.identity))}
             onClose={() => setSpotlight(null)}
           />
         )}
@@ -385,7 +388,12 @@ export function VoiceStage() {
 
           {/* O botão de compartilhar é o único com texto: é o que mais gera
               dúvida ("estou compartilhando ou não?") e ícone sozinho não
-              responde isso. */}
+              responde isso.
+
+              Ele some inteiro onde o aparelho não sabe publicar tela (iPhone e
+              Android não têm `getDisplayMedia`): botão que só dá erro é pior
+              que botão nenhum — ASSISTIR continua funcionando lá. */}
+          {podeCompartilharTela() && (
           <ControlButton
             active={voice.screenSharing}
             danger={voice.screenSharing}
@@ -402,6 +410,7 @@ export function VoiceStage() {
               <MonitorUp className="h-4 w-4" />
             )}
           </ControlButton>
+          )}
 
           <ControlButton
             active={voice.cameraEnabled}

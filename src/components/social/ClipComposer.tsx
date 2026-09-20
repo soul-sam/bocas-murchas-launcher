@@ -78,7 +78,7 @@ export function ClipComposer() {
     .filter((m): m is NonNullable<typeof m> => Boolean(m))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6">
+    <div className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/70 p-6">
       <form
         onSubmit={(e) => void handleSave(e)}
         className="card-acid relative w-full max-w-md rounded-brutal p-6"

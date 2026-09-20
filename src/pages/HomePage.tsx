@@ -13,6 +13,38 @@ import { PlayCard } from '@/components/PlayCard'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { ServerStatusCard } from '@/components/ServerStatusCard'
 import { ChangelogModal } from '@/components/ChangelogModal'
+import { isWeb } from '@/lib/platform'
+
+/**
+ * NO NAVEGADOR ESTA TELA NÃO TEM O QUE FAZER.
+ *
+ * Conta Microsoft, instalação e o botão JOGAR falam com o processo principal
+ * do Electron; na web a ponte inteira é no-op. O ícone da barra levava a uma
+ * pilha de cartões que não reagiam a clique — a pior versão possível de "não
+ * dá": a que parece que dá.
+ *
+ * Sobra o que é informação de verdade e vale no celular: o servidor está de
+ * pé? tem gente jogando? Isso a API responde em qualquer lugar.
+ */
+function ServidorNaWeb() {
+  return (
+    <div className="flex flex-1 flex-col gap-4 p-4 sm:p-8">
+      <header className="flex flex-wrap items-center gap-3">
+        <img src="bocas-murchas-transp.png" alt="" aria-hidden className="h-10 w-10" />
+        <div className="min-w-0">
+          <h1 className="title-brutal brand-wordmark text-2xl sm:text-3xl">Servidor</h1>
+          <p className="text-xs text-muted-foreground">
+            Pra jogar, abra o launcher no computador.
+          </p>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-2xl">
+        <ServerStatusCard />
+      </main>
+    </div>
+  )
+}
 
 export function HomePage() {
   const { user, logout } = useAuth()
@@ -25,6 +57,10 @@ export function HomePage() {
 
   const readyToPlay = !!mc.profile && install.status.stage === 'done'
   const isAdmin = user?.role === 'admin'
+
+  // Hooks acima do return curto: chamada condicional de hook quebra o React na
+  // primeira vez que este componente montar nas duas plataformas.
+  if (isWeb()) return <ServidorNaWeb />
 
   return (
     <div className="flex flex-1 flex-col p-8">

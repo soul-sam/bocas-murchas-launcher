@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils'
  *
  * - Superfície de POPOVER, borda `line-strong`, sem verde. Dica não é ação —
  *   se ela levasse borda ácida competiria com o botão que a abriu.
- * - `z-[60]`: acima do `z-50` de Dialog/Dropdown, senão a dica de um botão
+ * - `z-topo`: acima do `z-dialogo` de Dialog/Dropdown, senão a dica de um botão
  *   dentro de modal nasce atrás do modal.
  * - Seta pequena: numa fileira de seis botões de ícone (o cabeçalho do chat)
  *   sem seta não dá pra saber de qual botão é a dica.
@@ -45,7 +45,7 @@ export const TooltipContent = React.forwardRef<
       sideOffset={sideOffset}
       collisionPadding={8}
       className={cn(
-        'z-[60] max-w-[17rem] rounded-brutal border border-line-strong bg-popover',
+        'z-topo max-w-[17rem] rounded-brutal border border-line-strong bg-popover',
         // O texto tem tamanho próprio nas duas linhas, mas a CAIXA precisa de
         // um também: sem isto ela herda os 16px da raiz e a quebra de linha é
         // calculada num tamanho que não existe na tela.

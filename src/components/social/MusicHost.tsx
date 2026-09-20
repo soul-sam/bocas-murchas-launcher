@@ -18,6 +18,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { useSettings } from '@/lib/settings-context'
 import { useVoice } from '@/lib/voice-context'
+import { NaFila } from '@/components/ui/filas'
 import { useWatch, type WatchSession } from '@/lib/watch-context'
 import { openExternal } from '@/lib/rich-text'
 import { BACKUP_STEP_MS, useYoutubePlayer } from '@/lib/use-youtube-player'
@@ -305,8 +306,12 @@ function MusicBar({ session }: { session: WatchSession }) {
         />
       </div>
 
-      {/* A BARRA */}
-      <div className="pointer-events-auto fixed bottom-4 right-4 z-40 w-80 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.7)]">
+      {/* A BARRA — na fila do canto (components/ui/filas.tsx), não mais
+          ancorada sozinha em `bottom-4 right-4`, que era o mesmo ponto e o
+          mesmo z do toast de XP. No celular a fila a estica de borda a borda:
+          320px fixos são 89% de um aparelho de 360. */}
+      <NaFila fila="canto" ordem={20}>
+      <div className="pointer-events-auto w-80 max-w-full overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.7)]">
         {queueOpen && (
           <QueuePanel
             queue={queue}
@@ -480,6 +485,7 @@ function MusicBar({ session }: { session: WatchSession }) {
           </p>
         )}
       </div>
+      </NaFila>
     </>
   )
 }

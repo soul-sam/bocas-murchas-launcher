@@ -42,6 +42,7 @@ import { ComposerActions } from './ComposerActions'
 import { EmojiImage } from './CustomEmojiImg'
 import { StickerPicker } from './StickerPicker'
 import { EmojiManager, type ManagerTab } from './EmojiManager'
+import { usePonteiroGrosso } from '@/lib/use-ponteiro-grosso'
 
 /**
  * Um candidato do autocompletar de `@`: pessoa ou cargo.
@@ -132,6 +133,8 @@ export function MessageComposer({
   const [sending, setSending] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [dragging, setDragging] = React.useState(false)
+  // Dedo ou mouse decide o que o Enter faz e o tamanho do botao de enviar.
+  const ponteiroGrosso = usePonteiroGrosso()
 
   /** Índice do candidato destacado no autocompletar de @. */
   const [mentionIndex, setMentionIndex] = React.useState(0)
@@ -590,7 +593,15 @@ export function MessageComposer({
       }
     }
 
-    if (e.key === 'Enter' && !e.shiftKey) {
+    /**
+     * NO TECLADO VIRTUAL, ENTER QUEBRA LINHA.
+     *
+     * No PC, Enter envia e Shift+Enter quebra — é o que todo mundo espera de
+     * um chat. No celular não existe Shift: o Enter do teclado virtual é a
+     * tecla de PARÁGRAFO, e mandá-la enviar significa que ninguém consegue
+     * escrever duas linhas. Lá o envio é o botão, que fica do lado do polegar.
+     */
+    if (e.key === 'Enter' && !e.shiftKey && !ponteiroGrosso) {
       e.preventDefault()
       void submit()
       return
@@ -615,7 +626,11 @@ export function MessageComposer({
 
   return (
     <div
-      className="shrink-0 px-3 pb-4 pt-1 sm:px-4"
+      // `area-segura-b` soma a barra de gestos do iPhone ao `pb-4`: com
+      // `viewport-fit=cover` o app vai até a borda física da tela, e sem isso
+      // a última linha do compositor fica embaixo do risquinho do sistema. Em
+      // qualquer outro lugar `env()` é zero e nada muda.
+      className="area-segura-b shrink-0 px-3 pb-4 pt-1 sm:px-4"
       onDragOver={(event) => {
         // Sem cancelar o padrão o Electron ABRE o arquivo largado, trocando a
         // página do app pelo arquivo — e sem barra de endereço não há volta.
@@ -861,6 +876,10 @@ export function MessageComposer({
           ref={textareaRef}
           value={content}
           rows={1}
+          // A tecla de ação do teclado virtual passa a dizer o que ela faz:
+          // quebrar linha. Antes vinha "ir/enviar" e mandava a mensagem no
+          // meio da frase.
+          enterKeyHint="enter"
           placeholder={
             dragging ? 'Solta aqui que eu mando' : `Mandar mensagem em ${placeholderTarget}`
           }
@@ -983,10 +1002,15 @@ export function MessageComposer({
         <button
           type="button"
           title="Enviar"
+          aria-label="Enviar"
           onClick={() => void submit()}
           disabled={(!content.trim() && !hasAttachment) || sending}
           className={cn(
             'shrink-0 rounded-brutal p-1.5 transition-colors',
+            // No dedo este botão deixa de ser atalho e vira O jeito de enviar
+            // (o Enter passou a quebrar linha): ganha alvo cheio e a cor de
+            // ação, pra ser achado sem procurar.
+            ponteiroGrosso && 'flex min-h-11 min-w-11 items-center justify-center',
             content.trim() || hasAttachment
               ? 'text-acid hover:bg-acid/15'
               : 'text-muted-foreground'

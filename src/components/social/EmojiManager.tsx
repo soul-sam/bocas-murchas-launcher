@@ -81,7 +81,7 @@ export function EmojiManager({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="h-[82vh] max-w-2xl">
+      <DialogContent className="h-[82dvh] max-w-2xl">
         <DialogHeader>
           <DialogTitle>Emojis & stickers</DialogTitle>
           <DialogDescription>

@@ -11,6 +11,8 @@ import { useLayout } from '@/lib/layout-context'
 import { useGamification } from '@/lib/gamification-context'
 import { useCargos } from '@/lib/cargos-context'
 import { useCosts } from '@/lib/costs-context'
+import { toqueLongo } from '@/lib/toque-longo'
+import { isWeb } from '@/lib/platform'
 
 /**
  * Barra estreita da esquerda: alterna entre o social e o launcher do Minecraft.
@@ -27,11 +29,44 @@ export function AppRail() {
     useChat()
   const { toggleShortcuts, openUserMenu, openCosts } = useOverlays()
   const { summary: costs } = useCosts()
-  const { view, setView, leaderboardOpen, toggleLeaderboard } = useLayout()
+  const { view, setView, leaderboardOpen, toggleLeaderboard, isPhone } = useLayout()
   const { profile } = useGamification()
   const { can } = useCargos()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+
+  /**
+   * A altura DESTA barra, publicada pra quem flutua por cima dela.
+   *
+   * No celular ela deitou no rodapé — e é exatamente onde moram as coisas
+   * `fixed` do app: a fila de avisos do canto e os botões do nudge. Sem este
+   * número, o toast de XP e o "voltar" do nudge desenham EM CIMA da navegação.
+   *
+   * Mesma ideia da `--altura-titulo` da TitleBar: uma fonte só, medida de
+   * verdade, em vez de um `bottom-20` chutado em cada componente.
+   */
+  const railRef = React.useRef<HTMLElement>(null)
+  React.useEffect(() => {
+    const raiz = document.documentElement
+    if (!isPhone) {
+      raiz.style.setProperty('--altura-rail', '0px')
+      return
+    }
+
+    const medir = (): void => {
+      const altura = railRef.current?.getBoundingClientRect().height ?? 0
+      raiz.style.setProperty('--altura-rail', `${Math.round(altura)}px`)
+    }
+
+    medir()
+    // A barra cresce quando entra uma conversa nova na fileira de avatares.
+    const observador = new ResizeObserver(medir)
+    if (railRef.current) observador.observe(railRef.current)
+    return () => {
+      observador.disconnect()
+      raiz.style.setProperty('--altura-rail', '0px')
+    }
+  }, [isPhone])
 
   const totalUnread = Object.values(unread).reduce((sum, count) => sum + count, 0)
   const totalMentions = Object.values(mentions).reduce((sum, count) => sum + count, 0)
@@ -80,7 +115,19 @@ export function AppRail() {
   }
 
   return (
-    <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-line bg-void py-2">
+    /* No celular a barra DEITA no rodapé: os mesmos ícones, a mesma ordem, só
+       que na altura do polegar e sem roubar 56px dos 360 de largura. A borda
+       troca de lado junto — ela separa a barra do conteúdo, e o conteúdo
+       passou a ficar em cima. */
+    <nav
+      ref={railRef}
+      className={cn(
+        'area-segura-b flex shrink-0 bg-void',
+        isPhone
+          ? 'w-full flex-row items-center gap-1 border-t border-line px-2 py-1'
+          : 'w-14 flex-col items-center gap-1 border-r border-line py-2'
+      )}
+    >
       <RailLink
         to="/"
         label="Social"
@@ -95,8 +142,12 @@ export function AppRail() {
         <MessagesSquare className="h-5 w-5" />
       </RailLink>
 
-      <RailLink to="/jogo" label="Minecraft">
-        <Gamepad2 className="h-5 w-5" />
+      {/* Na web esta aba não é o launcher: o Minecraft não abre de dentro do
+          navegador, e a tela lá mostra só o estado do servidor. O rótulo e o
+          ícone contam isso antes do toque — antes prometia "Minecraft" e
+          entregava botões que não faziam nada. */}
+      <RailLink to="/jogo" label={isWeb() ? 'Servidor' : 'Minecraft'}>
+        {isWeb() ? <Server className="h-5 w-5" /> : <Gamepad2 className="h-5 w-5" />}
       </RailLink>
 
       {/* A impressora só existe na barra pra quem tem o cargo "Impressora
@@ -115,7 +166,7 @@ export function AppRail() {
         aria-label="Ranking"
         onClick={openRanking}
         className={cn(
-          'relative rounded-brutal p-2.5 transition-colors',
+          'alvo-dedo relative rounded-brutal p-2.5 transition-colors',
           leaderboardOpen && onSocial
             ? 'bg-acid/10 text-acid shadow-[inset_2px_0_0_hsl(var(--acid))]'
             : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
@@ -143,11 +194,23 @@ export function AppRail() {
       {/* Conversas abertas: os ícones acima e os botões abaixo ficam fixos;
           só esta lista rola. `min-h-0` é o que permite ela encolher em vez de
           empurrar o rodapé pra fora da tela. */}
-      {dmChannels.length > 0 && <span className="my-1 h-px w-8 shrink-0 bg-surface-raised" />}
+      {dmChannels.length > 0 && (
+        <span
+          className={cn(
+            'shrink-0 bg-surface-raised',
+            isPhone ? 'mx-1 h-8 w-px' : 'my-1 h-px w-8'
+          )}
+        />
+      )}
 
       <div
         aria-label="Conversas"
-        className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto overflow-x-hidden py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={cn(
+          'flex flex-1 gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+          isPhone
+            ? 'min-w-0 flex-row items-center overflow-x-auto overflow-y-hidden px-1'
+            : 'min-h-0 w-full flex-col items-center overflow-y-auto overflow-x-hidden py-1'
+        )}
       >
         {dmChannels.map((channel) => {
           const peer = conversations.find((c) => 'dm:' + c.id === channel.id)?.other
@@ -170,6 +233,7 @@ export function AppRail() {
                 aria-current={active ? 'true' : undefined}
                 onClick={() => openChannel(channel.id)}
                 onContextMenu={(event) => peer && openUserMenu(event, peer.id)}
+                {...toqueLongo((event) => peer && openUserMenu(event, peer.id))}
                 className="relative block rounded-brutal transition-transform hover:scale-105 focus:outline-none focus-visible:ring-1 focus-visible:ring-acid"
               >
                 <UserAvatar
@@ -199,7 +263,7 @@ export function AppRail() {
         title="A conta do servidor"
         aria-label="A conta do servidor"
         onClick={openCosts}
-        className="relative rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
+        className="alvo-dedo relative rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
       >
         <Server className="h-4 w-4" />
         {costs && !costs.iPaid && (
@@ -207,22 +271,26 @@ export function AppRail() {
         )}
       </button>
 
-      <button
-        type="button"
-        title="Atalhos (Ctrl + /)"
-        aria-label="Atalhos"
-        onClick={toggleShortcuts}
-        className="rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
-      >
-        <Keyboard className="h-4 w-4" />
-      </button>
+      {/* Lista de atalhos de TECLADO. No celular não há teclado pra ter
+          atalho, e cada ícone a menos nesta barra é espaço pro que se usa. */}
+      {!isPhone && (
+        <button
+          type="button"
+          title="Atalhos (Ctrl + /)"
+          aria-label="Atalhos"
+          onClick={toggleShortcuts}
+          className="alvo-dedo rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
+        >
+          <Keyboard className="h-4 w-4" />
+        </button>
+      )}
 
       <button
         type="button"
         title="Sair da conta"
         aria-label="Sair da conta"
         onClick={() => void logout()}
-        className="rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+        className="alvo-dedo rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
       >
         <LogOut className="h-4 w-4" />
       </button>
@@ -256,7 +324,7 @@ function RailLink({
       onClick={onClick}
       className={({ isActive }) =>
         cn(
-          'relative rounded-brutal p-2.5 transition-colors',
+          'alvo-dedo relative rounded-brutal p-2.5 transition-colors',
           isActive && !forceInactive
             ? 'bg-acid/10 text-acid shadow-[inset_2px_0_0_hsl(var(--acid))]'
             : 'text-muted-foreground hover:bg-void-light hover:text-foreground'

@@ -412,7 +412,7 @@ function DockedPanel({
       className={cn(
         // `w-[22rem]` e altura limitada pela tela: o painel com cinco partidas
         // pra apostar é muito mais alto que o de nenhuma.
-        'absolute z-20 flex max-h-[calc(100vh-2rem)] w-[22rem] min-h-0 flex-col',
+        'absolute z-gaveta flex max-h-[calc(100vh-2rem)] w-[22rem] min-h-0 flex-col',
         // Encostado na aba (que tem 12px), não na borda da tela.
         side === 'left' ? 'left-4' : 'right-4'
       )}
@@ -644,7 +644,7 @@ function EdgeTab({
       title="Arraste pra mudar de lugar · clique pra prender aberto"
       style={{ top: `${offset * 100}%` }}
       className={cn(
-        'absolute z-10 flex -translate-y-1/2 cursor-grab flex-col items-center justify-center gap-1',
+        'absolute z-conteudo flex -translate-y-1/2 cursor-grab flex-col items-center justify-center gap-1',
         'border-line bg-void/85 shadow-neon-1 backdrop-blur-sm transition-[width,background-color,border-color]',
         dragging && 'cursor-grabbing',
         // Colada na borda: o canto de fora é reto e o de dentro arredondado,

@@ -15,6 +15,7 @@ import {
 import { useCargos, type Cargo } from '@/lib/cargos-context'
 import { CargoIcon } from '@/lib/cargo-icons'
 import { CustomEmojiImg } from './CustomEmojiImg'
+import { toqueLongo } from '@/lib/toque-longo'
 
 /**
  * Desenha a arvore que o lib/rich-text.ts produz.
@@ -230,6 +231,7 @@ function InlineNodes({ nodes }: { nodes: InlineNode[] }) {
                 key={index}
                 type="button"
                 onContextMenu={(event) => hit && openUserMenu(event, hit.id)}
+                {...toqueLongo((event) => hit && openUserMenu(event, hit.id))}
                 className="rounded-[3px] bg-acid/15 px-1 font-medium text-acid transition-colors hover:bg-acid/25"
                 style={
                   hit?.color

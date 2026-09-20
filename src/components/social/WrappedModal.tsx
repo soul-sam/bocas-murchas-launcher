@@ -127,13 +127,13 @@ export function WrappedModal() {
   const current = slides[Math.min(index, Math.max(0, slides.length - 1))]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6">
+    <div className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/85 p-6">
       <div className="card-acid relative flex h-[min(90vh,700px)] w-full max-w-lg flex-col rounded-brutal p-6">
         <button
           type="button"
           aria-label="Fechar"
           onClick={closeWrapped}
-          className="absolute right-3 top-3 z-10 text-muted-foreground transition-colors hover:text-foreground"
+          className="absolute right-3 top-3 z-conteudo text-muted-foreground transition-colors hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>

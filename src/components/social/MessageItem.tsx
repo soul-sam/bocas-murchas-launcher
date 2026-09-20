@@ -30,6 +30,8 @@ import { AuthorName } from './AuthorName'
 import { useEmojis, toPickerEmojis } from '@/lib/emoji-context'
 import { CustomEmojiImg } from './CustomEmojiImg'
 import { TipButton, TipChip, canTip } from './TipPopover'
+import { toqueLongo } from '@/lib/toque-longo'
+import { usePonteiroGrosso } from '@/lib/use-ponteiro-grosso'
 
 const QUICK_EMOJIS = ['😂', '💀', '🔥', '👍', '❤️', '😭']
 
@@ -111,6 +113,9 @@ export function MessageItem({
   const { emojis, byName } = useEmojis()
   const [draft, setDraft] = React.useState(message.content)
   const [copied, setCopied] = React.useState(false)
+  const ponteiroGrosso = usePonteiroGrosso()
+  /** No dedo, a barra de ações desta mensagem está aberta. */
+  const [acoesNoToque, setAcoesNoToque] = React.useState(false)
 
   // Abrir a edição sempre parte do texto atual — inclusive quando a mensagem
   // foi editada em outro lugar enquanto esta janela estava aberta.
@@ -184,6 +189,27 @@ export function MessageItem({
   return (
     <article
       id={`msg-${message.id}`}
+      /**
+       * NO DEDO, UM TOQUE NA MENSAGEM ABRE AS AÇÕES.
+       *
+       * Responder, reagir, fixar, editar e apagar moravam só no `hover`. Sem
+       * mouse não havia hover — e, portanto, não havia nenhuma dessas coisas:
+       * a conversa no celular era só de leitura.
+       *
+       * O toque não pode engolir o que já tinha dono: link, botão, imagem e
+       * texto sendo selecionado continuam fazendo o que faziam. Só o "vazio"
+       * da mensagem alterna a barra.
+       */
+      onClick={
+        ponteiroGrosso
+          ? (evento) => {
+              const alvo = evento.target as HTMLElement
+              if (alvo.closest('a, button, input, textarea, [role="button"]')) return
+              if (window.getSelection()?.toString()) return
+              setAcoesNoToque((aberto) => !aberto)
+            }
+          : undefined
+      }
       className={cn(
         'group relative flex px-3 transition-colors sm:px-4',
         compact ? 'gap-2 py-px' : 'gap-3 py-0.5',
@@ -206,6 +232,7 @@ export function MessageItem({
           ) : (
             <span
               onContextMenu={(event) => openUserMenu(event, message.author.id)}
+              {...toqueLongo((event) => openUserMenu(event, message.author.id))}
               className="block cursor-default"
             >
               <UserAvatar
@@ -255,6 +282,7 @@ export function MessageItem({
               displayName={message.author.displayName}
               color={color}
               onContextMenu={(event) => openUserMenu(event, message.author.id)}
+              {...toqueLongo((event) => openUserMenu(event, message.author.id))}
               className="shrink-0 cursor-default font-display text-xs uppercase tracking-wide hover:underline"
             />
             <div className="min-w-0 flex-1">
@@ -280,6 +308,7 @@ export function MessageItem({
                   displayName={message.author.displayName}
                   color={color}
                   onContextMenu={(event) => openUserMenu(event, message.author.id)}
+                  {...toqueLongo((event) => openUserMenu(event, message.author.id))}
                   className="cursor-default font-display text-sm leading-tight hover:underline"
                 />
                 <span
@@ -347,12 +376,16 @@ export function MessageItem({
         )}
       </div>
 
-      {/* Ações — só aparecem no hover */}
+      {/* Ações — no mouse aparecem no hover; no dedo, com um toque na
+          mensagem (ver o onClick do <article> acima). */}
       <div
         className={cn(
           'absolute right-3 top-0 flex items-center gap-0.5 rounded-brutal sm:right-4',
           'border border-line bg-void p-0.5 opacity-0 shadow-lg transition-opacity',
-          'group-hover:opacity-100 focus-within:opacity-100'
+          'group-hover:opacity-100 focus-within:opacity-100',
+          acoesNoToque && 'opacity-100',
+          // No dedo o alvo cresce: 28px de ícone é onde o toque erra.
+          ponteiroGrosso && '[&_button]:min-h-11 [&_button]:min-w-11 [&_button]:justify-center'
         )}
       >
         <Popover>

@@ -17,6 +17,7 @@ import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { BetPopover } from './BetPopover'
 import { AwayBadge, StatusText } from './AwayBadge'
+import { toqueLongo } from '@/lib/toque-longo'
 
 /**
  * Lista de membros.
@@ -191,6 +192,7 @@ function Group({
                 <button
                   type="button"
                   onContextMenu={(event) => openUserMenu(event, member.id)}
+                  {...toqueLongo((event) => openUserMenu(event, member.id))}
                   className="flex min-w-0 flex-1 items-center gap-2 rounded-brutal px-2 py-1 text-left"
                 >
                   <UserAvatar

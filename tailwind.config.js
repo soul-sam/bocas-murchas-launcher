@@ -108,6 +108,38 @@ export default {
         // condensada pesada em vez de sans generica.
         display: ['Anton', 'Arial Narrow', 'Impact', 'sans-serif']
       },
+      /* ESCALA DE CAMADAS.
+         Eram dez valores escolhidos a mao em 45 lugares (z-10, z-20, z-30,
+         z-40, z-50, z-[55], z-[58], z-[60], z-[70], z-[90]) — cada camada nova
+         chutava um numero maior que o vizinho que ela lembrava. Duas acabaram
+         no MESMO degrau com a MESMA ancora (o toast de XP e a barra da musica,
+         ambos em z-40 bottom-4 right-4), desenhando uma por cima da outra.
+
+         Agora o nome diz a regra: o que empilha por cima do que, e por que.
+         Nada de `z-[NN]` solto daqui pra frente — se falta um degrau, ele
+         nasce aqui com nome. */
+      zIndex: {
+        /** Cromo da propria tela: cabecalho, botao de descer, rotulos. */
+        conteudo: '10',
+        /** Gaveta de canais em janela estreita. */
+        gaveta: '20',
+        /** Veu escuro que fecha a gaveta ao clicar. */
+        veu: '30',
+        /** Avisos passageiros nas filas de canto e de topo. */
+        flutuante: '40',
+        /** Dialogos, popovers, menus. */
+        dialogo: '50',
+        /** Paineis de tela cheia abertos por atalho (Ctrl+K, jukebox). */
+        sobretela: '55',
+        /** Perfil: abre de DENTRO de um dialogo, entao passa por cima dele. */
+        perfil: '58',
+        /** Passa por cima de dialogo: drop de admin, lightbox, dica em modal. */
+        topo: '60',
+        /** Interrompe: tremida do nudge. */
+        urgente: '70',
+        /** Ultimo recurso: o aviso de que a interface foi destravada. */
+        guarda: '90'
+      },
       // Intensidades de neon padronizadas. N3 e do botao primario (.btn-acid,
       // em globals.css); aqui ficam N1/N2 pra estado ativo e destaque. As
       // sombras solidas deslocadas (`brutal`) e o brilho interno sairam: nao

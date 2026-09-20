@@ -34,14 +34,14 @@ export function AdminModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
       onClick={closeAdmin}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Painel admin"
-        className="card-acid flex h-[80vh] w-full max-w-3xl flex-col rounded-brutal p-6"
+        className="card-acid flex h-[80dvh] w-full max-w-3xl flex-col rounded-brutal p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex shrink-0 items-start justify-between">

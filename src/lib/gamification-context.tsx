@@ -9,6 +9,8 @@ import {
   type Badge,
   type CosmeticType,
   type GamificationProfile,
+  type GiftNotice,
+  type GiftResult,
   type LiveWagerGame,
   type ShopItem,
   type ShopResponse,
@@ -39,7 +41,7 @@ import { XpToasts } from '@/components/social/XpToast'
 
 export interface GamificationToast {
   id: number
-  kind: 'xp' | 'levelup' | 'badge' | 'coins' | 'checkin' | 'info' | 'error'
+  kind: 'xp' | 'levelup' | 'badge' | 'coins' | 'checkin' | 'gift' | 'info' | 'error'
   title: string
   body?: string
   /**
@@ -67,6 +69,8 @@ interface GamificationContextValue {
   shop: ShopResponse | null
   loadShop: () => Promise<ShopResponse | null>
   buy: (cosmeticId: string) => Promise<ShopItem>
+  /** Presente: debita meu saldo, o item vai pra `toUserId`. */
+  gift: (cosmeticId: string, toUserId: string, message?: string) => Promise<GiftResult>
   equip: (type: CosmeticType, cosmeticId: string | null) => Promise<void>
   /** Texto de um cosmético (título) pelo id; cai no id "limpo" se o catálogo não chegou. */
   cosmeticName: (id: string | null | undefined) => string | null
@@ -338,6 +342,17 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     [token]
   )
 
+  const gift = React.useCallback(
+    async (cosmeticId: string, toUserId: string, message?: string): Promise<GiftResult> => {
+      if (!token) throw new ApiError(401, 'Sem sessão')
+      const res = await api.gift(token, cosmeticId, toUserId, message)
+      if (res.profile) setProfile(res.profile)
+      setShop((prev) => (prev ? { ...prev, coins: res.gift.coins } : prev))
+      return res.gift
+    },
+    [token]
+  )
+
   const equip = React.useCallback(
     async (type: CosmeticType, cosmeticId: string | null) => {
       if (!token) throw new ApiError(401, 'Sem sessão')
@@ -547,6 +562,21 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       }
     }
 
+    // Presente chegou: o item já é meu, então a prateleira precisa mostrar
+    // "Equipar" no lugar de "Comprar" — daí o loadShop.
+    const handleGift = (data: GiftNotice): void => {
+      if (!data?.cosmeticId) return
+      pushToast({
+        kind: 'gift',
+        title: `🎁 ${data.fromName} te deu ${data.cosmeticName}`,
+        body: data.message ?? 'já está no seu inventário — vai lá equipar',
+        ttlMs: 8_000
+      })
+      sound('coins')
+      void loadShop()
+    }
+
+    socket.on('gamification:gift', handleGift)
     socket.on('gamification:xp', handleXp)
     socket.on('gamification:levelup', handleLevelUp)
     socket.on('gamification:badge', handleBadge)
@@ -557,8 +587,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       socket.off('gamification:levelup', handleLevelUp)
       socket.off('gamification:badge', handleBadge)
       socket.off('gamification:coins', handleCoins)
+      socket.off('gamification:gift', handleGift)
     }
-  }, [socket, pushToast, pushXp, sound, scheduleRefresh])
+  }, [socket, pushToast, pushXp, sound, scheduleRefresh, loadShop])
 
   React.useEffect(
     () => () => {
@@ -576,6 +607,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       shop,
       loadShop,
       buy,
+      gift,
       equip,
       cosmeticName,
       cosmeticEmoji,
@@ -595,6 +627,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       shop,
       loadShop,
       buy,
+      gift,
       equip,
       cosmeticName,
       cosmeticEmoji,

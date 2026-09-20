@@ -43,6 +43,7 @@ import { MicMeter } from '@/components/social/MicMeter'
 import { VoiceAlertSettings } from '@/components/social/VoiceAlertSettings'
 import { CelularTab } from '@/components/social/CelularTab'
 import { isWeb } from '@/lib/platform'
+import { usePonteiroGrosso } from '@/lib/use-ponteiro-grosso'
 
 const DEFAULT_MAX_MB = 4096
 
@@ -61,20 +62,30 @@ function formatMb(mb: number): string {
  */
 export function SettingsModal() {
   const { settings, isOpen, close, update } = useSettings()
+  const ponteiroGrosso = usePonteiroGrosso()
 
   return (
     <Dialog open={isOpen} onOpenChange={(next) => !next && close()}>
-      <DialogContent className="h-[80vh] max-w-2xl">
+      <DialogContent className="h-[80dvh] max-w-2xl">
         <DialogHeader>
           <DialogTitle>Configurações</DialogTitle>
           <DialogDescription>salva automaticamente</DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="voz" className="flex min-h-0 flex-1 flex-col">
+        {/* No celular a primeira aba é a do CELULAR: instalar na tela de
+            início e ligar a notificação são as duas coisas que fazem o app
+            valer a pena lá — e no iPhone a notificação só existe depois de
+            instalar. Estavam em nono lugar, atrás de oito abas de PC. */}
+        <Tabs
+          defaultValue={isWeb() && ponteiroGrosso ? 'celular' : 'voz'}
+          className="flex min-h-0 flex-1 flex-col"
+        >
           {/* flex-wrap: oito abas cabem numa linha na largura normal, mas a
               janela mínima é apertada e uma aba caindo pra linha de baixo é
               melhor que uma aba cortada. */}
-          <TabsList className="flex-wrap">
+          {/* No celular, quebrar vira quatro linhas de aba e sobra meia tela
+              de conteúdo. Lá elas viram uma faixa que corre pro lado. */}
+          <TabsList className="flex-wrap max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden max-sm:[&>*]:shrink-0">
             <TabsTrigger value="voz">
               <Mic className="mr-1.5 inline h-3 w-3" />
               Voz

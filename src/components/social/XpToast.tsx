@@ -1,5 +1,6 @@
-import { X, Zap, ArrowUp, Award, Coins, Flame, Info, TriangleAlert } from 'lucide-react'
+import { X, Zap, ArrowUp, Award, Coins, Flame, Gift, Info, TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { NaFila } from '@/components/ui/filas'
 import { BadgeIcon } from '@/lib/cosmetic-icons'
 import type { GamificationToast } from '@/lib/gamification-context'
 import '@/styles/effects.css'
@@ -11,8 +12,10 @@ import '@/styles/effects.css'
  * provider que monta este componente — puxar o contexto de dentro dele seria
  * import circular por nada.
  *
- * Fica em z-40 com o PartyCallPrompt (que mora em bottom-20): os dois são
- * avisos passageiros, nenhum precisa passar por cima de modal.
+ * Entra na FILA DO CANTO (components/ui/filas.tsx) com a menor prioridade:
+ * comemoração perde de barra de música e de convite pra call. Antes estava em
+ * `fixed bottom-4 right-4 z-40` — exatamente onde a barra da música também
+ * estava, uma desenhando por cima da outra.
  */
 export function XpToasts({
   toasts,
@@ -25,11 +28,13 @@ export function XpToasts({
 
   return (
     // Mais novo embaixo, colado no canto; os antigos vão subindo até sumir.
-    <div className="pointer-events-none fixed bottom-4 right-4 z-40 flex w-64 flex-col justify-end gap-1.5">
-      {toasts.map((toast) => (
-        <ToastRow key={toast.id} toast={toast} onDismiss={() => onDismiss(toast.id)} />
-      ))}
-    </div>
+    <NaFila fila="canto" ordem={10}>
+      <div className="pointer-events-none flex w-64 flex-col justify-end gap-1.5">
+        {toasts.map((toast) => (
+          <ToastRow key={toast.id} toast={toast} onDismiss={() => onDismiss(toast.id)} />
+        ))}
+      </div>
+    </NaFila>
   )
 }
 
@@ -39,6 +44,7 @@ const ACCENT: Record<GamificationToast['kind'], { border: string; text: string; 
   badge: { border: 'border-burn/60', text: 'text-burn', Icon: Award },
   coins: { border: 'border-burn/60', text: 'text-burn', Icon: Coins },
   checkin: { border: 'border-burn/60', text: 'text-burn', Icon: Flame },
+  gift: { border: 'border-acid', text: 'text-acid', Icon: Gift },
   info: { border: 'border-line-strong', text: 'text-muted-foreground', Icon: Info },
   error: { border: 'border-destructive/60', text: 'text-destructive', Icon: TriangleAlert }
 }
@@ -46,7 +52,7 @@ const ACCENT: Record<GamificationToast['kind'], { border: string; text: string; 
 function ToastRow({ toast, onDismiss }: { toast: GamificationToast; onDismiss: () => void }) {
   const accent = ACCENT[toast.kind] ?? ACCENT.info
   const Icon = accent.Icon
-  const loud = toast.kind === 'levelup' || toast.kind === 'badge'
+  const loud = toast.kind === 'levelup' || toast.kind === 'badge' || toast.kind === 'gift'
 
   return (
     <div

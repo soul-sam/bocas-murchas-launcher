@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { X, Coins, Loader2, Check, ShoppingBag, Tag, Sparkles, Frame, Smile, Volume2, Play } from 'lucide-react'
+import { X, Coins, Loader2, Check, ShoppingBag, Tag, Sparkles, Frame, Smile, Volume2, Play, Gift } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
 import {
@@ -23,6 +23,7 @@ import { useSettings } from '@/lib/settings-context'
 import { playJoinSound } from '@/lib/ui-sounds'
 import { cn } from '@/lib/utils'
 import { EarnRulesPopover } from './EarnRulesPopover'
+import { GiftPanel } from './GiftPanel'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { TitleTag } from '@/lib/cosmetic-icons'
@@ -54,12 +55,14 @@ export function ShopModal() {
   const { shopOpen: open, closeShop: close } = useOverlays()
   const { user } = useAuth()
   const { byId } = useMembers()
-  const { shop, loadShop, buy, equip, profile, catalog } = useGamification()
+  const { shop, loadShop, buy, equip, profile, catalog, pushToast } = useGamification()
   const { settings } = useSettings()
 
   const [tab, setTab] = React.useState<CosmeticType>('title')
   const [hovered, setHovered] = React.useState<ShopItem | null>(null)
   const [confirming, setConfirming] = React.useState<string | null>(null)
+  // Item sendo presenteado: o painel de "pra quem?" cobre a prateleira.
+  const [gifting, setGifting] = React.useState<ShopItem | null>(null)
   const [busy, setBusy] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
@@ -70,13 +73,19 @@ export function ShopModal() {
     setLoading(true)
     setError(null)
     setConfirming(null)
+    setGifting(null)
     void loadShop().finally(() => setLoading(false))
   }, [open, loadShop])
 
   React.useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') close()
+      if (event.key !== 'Escape') return
+      // Esc no painel de presente volta pra prateleira; só o segundo fecha.
+      setGifting((current) => {
+        if (!current) close()
+        return null
+      })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -141,11 +150,11 @@ export function ShopModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+      className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/70 p-6"
       onClick={close}
     >
       <div
-        className="card-acid relative flex max-h-[85vh] w-full max-w-2xl flex-col rounded-brutal p-5"
+        className="card-acid relative flex max-h-[85dvh] w-full max-w-2xl flex-col rounded-brutal p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -222,6 +231,7 @@ export function ShopModal() {
               onClick={() => {
                 setTab(type)
                 setConfirming(null)
+                setGifting(null)
                 setError(null)
               }}
               className={cn(
@@ -243,6 +253,21 @@ export function ShopModal() {
           </p>
         )}
 
+        {gifting ? (
+          <GiftPanel
+            item={gifting}
+            coins={coins}
+            onClose={() => setGifting(null)}
+            onSent={(toName) => {
+              setGifting(null)
+              pushToast({
+                kind: 'gift',
+                title: `🎁 ${gifting.name} foi pra ${toName}`,
+                body: `−${gifting.price.toLocaleString('pt-BR')} murchos`
+              })
+            }}
+          />
+        ) : (
         <div className="min-h-0 flex-1 overflow-y-auto pr-1" onMouseLeave={() => setHovered(null)}>
           {loading && !shop ? (
             <div className="flex h-32 items-center justify-center text-muted-foreground">
@@ -266,6 +291,11 @@ export function ShopModal() {
                   onAskBuy={() => setConfirming(item.id)}
                   onCancel={() => setConfirming(null)}
                   onBuy={() => void handleBuy(item)}
+                  onAskGift={() => {
+                    setConfirming(null)
+                    setError(null)
+                    setGifting(item)
+                  }}
                   onEquip={() => void handleEquip(item, false)}
                   onUnequip={() => void handleEquip(item, true)}
                   onPreview={
@@ -278,6 +308,7 @@ export function ShopModal() {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   )
@@ -306,6 +337,7 @@ function ItemTile({
   onAskBuy,
   onCancel,
   onBuy,
+  onAskGift,
   onEquip,
   onUnequip,
   onPreview
@@ -319,6 +351,8 @@ function ItemTile({
   onAskBuy: () => void
   onCancel: () => void
   onBuy: () => void
+  /** Abre o painel "pra quem?" — dá pra presentear item que eu já tenho. */
+  onAskGift: () => void
   onEquip: () => void
   onUnequip: () => void
   /** Só nos sons: toca o par entrar/sair pra ouvir antes de comprar. */
@@ -425,14 +459,14 @@ function ItemTile({
         )}
       </div>
 
-      <div className="mt-auto">
+      <div className="mt-auto flex gap-1">
         {item.owned ? (
           <button
             type="button"
             disabled={busy}
             onClick={item.equipped ? onUnequip : onEquip}
             className={cn(
-              'flex w-full items-center justify-center gap-1.5 rounded-brutal border px-2 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50',
+              'flex flex-1 items-center justify-center gap-1.5 rounded-brutal border px-2 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50',
               item.equipped
                 ? 'border-acid bg-acid/15 text-acid hover:bg-destructive/15 hover:text-destructive hover:border-destructive/60'
                 : 'border-acid-dark text-acid hover:bg-acid/15'
@@ -443,7 +477,7 @@ function ItemTile({
             {item.equipped ? 'Equipado' : 'Equipar'}
           </button>
         ) : confirming ? (
-          <div className="flex gap-1">
+          <div className="flex flex-1 gap-1">
             <button
               type="button"
               disabled={busy}
@@ -477,7 +511,7 @@ function ItemTile({
                 : `Faltam ${(item.price - coins).toLocaleString('pt-BR')} murchos`
             }
             className={cn(
-              'flex w-full items-center justify-center gap-1.5 rounded-brutal border px-2 py-1.5 text-xs font-semibold transition-colors',
+              'flex flex-1 items-center justify-center gap-1.5 rounded-brutal border px-2 py-1.5 text-xs font-semibold transition-colors',
               affordable
                 ? 'border-acid-dark text-acid hover:bg-acid/15'
                 : 'cursor-not-allowed border-border text-muted-foreground opacity-60'
@@ -485,6 +519,20 @@ function ItemTile({
           >
             <Coins className="h-3 w-3" />
             {affordable ? 'Comprar' : 'Sem saldo'}
+          </button>
+        )}
+        {/* Presente fica fora do fluxo de confirmar: o painel dele já pede
+            "pra quem" antes de gastar. Ícone só — o verbo está no tooltip. */}
+        {!confirming && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onAskGift}
+            title={`Presentear por ${item.price.toLocaleString('pt-BR')} murchos`}
+            aria-label="Presentear"
+            className="flex items-center justify-center rounded-brutal border border-line px-2 py-1.5 text-muted-foreground transition-colors hover:border-acid/60 hover:text-acid disabled:opacity-50"
+          >
+            <Gift className="h-3.5 w-3.5" />
           </button>
         )}
       </div>

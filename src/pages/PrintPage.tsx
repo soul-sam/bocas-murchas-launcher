@@ -75,8 +75,8 @@ export function PrintPage() {
   if (!state) return null
 
   return (
-    <div className="flex flex-1 flex-col overflow-auto p-8">
-      <header className="mb-6 flex items-center justify-between">
+    <div className="flex flex-1 flex-col overflow-auto p-4 sm:p-8">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Printer className="h-9 w-9 text-muted-foreground drop-shadow-[0_0_10px_rgb(var(--neon-rgb)/0.3)]" />
           <div>

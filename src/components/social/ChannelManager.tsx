@@ -224,7 +224,7 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="h-[80vh] max-w-xl">
+      <DialogContent className="h-[80dvh] max-w-xl">
         <DialogHeader>
           <DialogTitle>Canais</DialogTitle>
           <DialogDescription>criar, renomear, reordenar e apagar</DialogDescription>

@@ -8,6 +8,19 @@ export function TitleBar() {
   const [maximized, setMaximized] = React.useState(false)
   const { status, check } = useUpdater()
 
+  /**
+   * A altura DESTA barra, publicada pra quem se ancora abaixo dela.
+   *
+   * A fila do topo (drops de admin, faixa de custos) vivia em `top-12` — 48px
+   * pra uma barra que mede 36, e que na web nem existe, deixando uma faixa
+   * morta acima de todo aviso. Agora a única fonte é esta: `h-9` = 36px no
+   * Electron, 0 no navegador.
+   */
+  React.useEffect(() => {
+    const altura = isWeb() ? '0px' : '36px'
+    document.documentElement.style.setProperty('--altura-titulo', altura)
+  }, [])
+
   React.useEffect(() => {
     void window.bocas.appWindow.isMaximized().then(setMaximized)
     const off = window.bocas.appWindow.onStateChanged((s) => setMaximized(s.maximized))

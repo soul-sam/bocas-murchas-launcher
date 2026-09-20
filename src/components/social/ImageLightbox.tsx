@@ -29,7 +29,7 @@ export function ImageLightbox() {
       role="dialog"
       aria-label="Imagem"
       onClick={closeLightbox}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-topo flex items-center justify-center bg-black/90 p-6 backdrop-blur-sm"
     >
       <img
         src={lightbox}

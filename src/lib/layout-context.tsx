@@ -18,12 +18,30 @@ import * as React from 'react'
  * de haver espaco.
  */
 
-export type Density = 'wide' | 'compact' | 'narrow'
+export type Density = 'wide' | 'compact' | 'narrow' | 'phone'
 
 /** Abaixo disso a lista de membros sai. */
 const COMPACT_AT = 1_180
 /** Abaixo disso a barra de canais vira gaveta. */
 const NARROW_AT = 900
+/**
+ * Abaixo disso não é mais janela apertada: é APARELHO.
+ *
+ * Os dois cortes acima foram desenhados pra janela de desktop espremida, e
+ * paravam aí — um celular de 360px caía na mesma densidade de uma janela de
+ * 899px e recebia o layout de PC encolhido: barra de ícones de 56px fixa,
+ * gaveta de canais de 240px abrindo por cima e deixando 64px de conversa
+ * aparecendo por trás do véu, e os painéis da direita (busca, fixadas,
+ * membros, agenda, ranking) simplesmente inalcançáveis.
+ *
+ * Em `phone` a regra muda de natureza: uma coisa por vez na tela, navegação no
+ * polegar. A barra de ícones deita no rodapé, os canais abrem em tela cheia e
+ * os painéis viram folha de baixo.
+ *
+ * 640 é o `sm` do Tailwind — o mesmo número que as variantes `max-sm:` usam
+ * nos diálogos, pra não haver duas fronteiras de celular no projeto.
+ */
+const PHONE_AT = 640
 
 /** O que ocupa a coluna do meio: a conversa ou a call. */
 export type CenterView = 'chat' | 'voice'
@@ -31,6 +49,11 @@ export type CenterView = 'chat' | 'voice'
 interface LayoutContextValue {
   width: number
   density: Density
+  /**
+   * Aparelho de dedo, não janela apertada. Quem lê isto muda de LAYOUT, não de
+   * tamanho: barra de ícones no rodapé, canais em tela cheia, painéis em folha.
+   */
+  isPhone: boolean
   /** Janela apertada: a barra de canais flutua por cima em vez de empurrar. */
   sidebarIsDrawer: boolean
 
@@ -40,6 +63,15 @@ interface LayoutContextValue {
 
   membersOpen: boolean
   toggleMembers: () => void
+
+  /**
+   * Fecha o que estiver ocupando a coluna da direita, seja qual for.
+   *
+   * Existe pro celular: lá a coluna vira folha de baixo, e quem fecha é um
+   * toque no véu ou o botão Voltar do aparelho — nenhum dos dois sabe QUAL
+   * painel está aberto, e nem deveria.
+   */
+  closeRightColumn: () => void
 
   /**
    * Chat ou palco da call no meio.
@@ -93,7 +125,8 @@ interface LayoutContextValue {
 
 const LayoutContext = React.createContext<LayoutContextValue | null>(null)
 
-function densityFor(width: number): Density {
+export function densityFor(width: number): Density {
+  if (width < PHONE_AT) return 'phone'
   if (width < NARROW_AT) return 'narrow'
   if (width < COMPACT_AT) return 'compact'
   return 'wide'
@@ -172,7 +205,10 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const density = densityFor(width)
-  const sidebarIsDrawer = density === 'narrow'
+  const isPhone = density === 'phone'
+  // No celular a gaveta também flutua — só que em tela cheia, não como uma
+  // coluna de 240px colada ao lado de 64px de conversa.
+  const sidebarIsDrawer = density === 'narrow' || isPhone
 
   // Ao apertar a janela a gaveta comeca fechada — se a preferencia de "aberta"
   // sobrevivesse, a barra apareceria por cima do chat sem ninguem ter pedido.
@@ -187,12 +223,20 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   const membersAuto = density === 'wide'
   // Numa janela estreita nao ha onde colocar a lista de membros, entao a
   // preferencia do usuario nem entra na conta.
-  const membersOpen = density === 'narrow' ? false : (membersPref ?? membersAuto)
+  // No celular a lista de membros deixa de ser coluna e vira folha: não abre
+  // sozinha (não há espaço que a justifique), mas passa a ser ALCANÇÁVEL —
+  // antes ela era a única coisa que a janela estreita apagava de vez.
+  const membersOpen = isPhone
+    ? (membersPref ?? false)
+    : density === 'narrow'
+      ? false
+      : (membersPref ?? membersAuto)
 
   const value = React.useMemo<LayoutContextValue>(
     () => ({
       width,
       density,
+      isPhone,
       sidebarIsDrawer,
       sidebarOpen,
       toggleSidebar: () => setSidebarPref((prev) => !(prev ?? !sidebarIsDrawer)),
@@ -201,8 +245,12 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       setView,
       membersOpen,
       toggleMembers: () => {
-        setMembersPref((prev) => !(prev ?? membersAuto))
+        setMembersPref((prev) => !(prev ?? (isPhone ? false : membersAuto)))
         setPanel(null)
+      },
+      closeRightColumn: () => {
+        setPanel(null)
+        setMembersPref(false)
       },
       pinnedOpen,
       togglePinned: () => togglePanel('pinned'),
@@ -230,6 +278,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
     [
       width,
       density,
+      isPhone,
       sidebarIsDrawer,
       sidebarOpen,
       membersOpen,

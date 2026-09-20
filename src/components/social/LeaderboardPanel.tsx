@@ -393,7 +393,7 @@ function Ranking() {
 
       <div className="relative min-h-[80px] rounded-brutal border border-line bg-void/60">
         {loading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-void/60">
+          <div className="absolute inset-0 z-conteudo flex items-center justify-center bg-void/60">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         )}

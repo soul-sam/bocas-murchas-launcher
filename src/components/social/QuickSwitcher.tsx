@@ -257,7 +257,7 @@ export function QuickSwitcher() {
   return (
     <div
       onClick={closeQuickSwitcher}
-      className="fixed inset-0 z-[55] flex items-start justify-center bg-black/70 pt-[12vh] backdrop-blur-sm"
+      className="fixed inset-0 z-sobretela flex items-start justify-center bg-black/70 pt-[12dvh] backdrop-blur-sm"
     >
       <div
         onClick={(event) => event.stopPropagation()}

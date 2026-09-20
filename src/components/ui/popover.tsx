@@ -17,7 +17,7 @@ export const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        'card-gradient z-50 rounded-brutal border-2 border-acid-dark p-3',
+        'card-gradient z-dialogo rounded-brutal border-2 border-acid-dark p-3',
         'shadow-[0_0_30px_rgba(0,0,0,0.6)] outline-none',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',

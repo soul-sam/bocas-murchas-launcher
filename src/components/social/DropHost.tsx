@@ -11,6 +11,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useChat } from '@/lib/chat-context'
 import { useMembers, type Member } from '@/lib/members-context'
 import { playUiSound } from '@/lib/ui-sounds'
+import { NaFila } from '@/components/ui/filas'
 
 /**
  * DROPS — anúncios animados do admin no topo da tela.
@@ -147,9 +148,15 @@ export function DropHost() {
   if (visible.length === 0) return null
 
   return (
-    // pointer-events-none na faixa: ela ocupa a largura toda e não pode roubar
-    // clique do que está embaixo. Cada banner devolve o clique pra si.
-    <div className="pointer-events-none fixed inset-x-0 top-12 z-[60] flex flex-col items-center gap-2 px-4">
+    // FILA DO TOPO (components/ui/filas.tsx). O `top-12` de antes era 48px
+    // pra uma barra de título de 36 — e na web, onde ela nem existe, sobrava
+    // uma faixa morta. A fila ancora na altura real e soma o entalhe.
+    //
+    // Faixa URGENTE: o drop tem prazo, então continua passando por cima de
+    // diálogo (era o que o z-[60] fazia). A faixa comum, com a cobrança do
+    // mês, desce sozinha pela altura desta — antes as duas ocupavam a MESMA
+    // linha e o drop tapava a cobrança.
+    <NaFila fila="topo-urgente" className="pointer-events-none flex w-full flex-col items-center gap-2">
       {visible.map((drop) => (
         <DropBanner
           key={drop.id}
@@ -160,7 +167,7 @@ export function DropHost() {
           onDelete={() => void destroy(drop.id)}
         />
       ))}
-    </div>
+    </NaFila>
   )
 }
 

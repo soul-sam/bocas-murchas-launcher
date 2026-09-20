@@ -3,6 +3,7 @@ import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
 import { useActivity } from '@/lib/activity-context'
 import { useMembers } from '@/lib/members-context'
+import { NaFila } from '@/components/ui/filas'
 
 /**
  * "Tem gente do grupo no seu lobby — entrar na call?"
@@ -21,7 +22,11 @@ export function PartyCallPrompt() {
   const names = people.map((p) => p.displayName.split(/\s+/)[0]).join(', ')
 
   return (
-    <div className="pointer-events-auto fixed bottom-20 right-4 z-40 w-80 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.7)]">
+    // Maior prioridade da fila do canto: é o único aviso do canto que PEDE uma
+    // decisão, então fica mais perto do polegar. O `bottom-20` de antes era um
+    // chute pra altura da barra da música, que muda com a capa do vídeo.
+    <NaFila fila="canto" ordem={30}>
+    <div className="pointer-events-auto w-80 max-w-full overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.7)]">
       <div className="flex items-center gap-2 border-b border-line px-3 py-1.5">
         <Swords className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="flex-1 text-[11.5px] text-muted-foreground">
@@ -74,5 +79,6 @@ export function PartyCallPrompt() {
         </button>
       </div>
     </div>
+    </NaFila>
   )
 }

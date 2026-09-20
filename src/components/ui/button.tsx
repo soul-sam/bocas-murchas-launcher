@@ -20,7 +20,10 @@ import { cn } from '@/lib/utils'
  * reservada a rotulo de secao (ver docs/tipografia).
  */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-brutal text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  // `alvo-dedo`: no toque, todo botão passa a ter 44px de área clicável sem
+  // mudar de aparência (regra em globals.css). O `sm` tem 32px de altura —
+  // certeiro no mouse, sorteio no dedo.
+  'alvo-dedo inline-flex items-center justify-center whitespace-nowrap rounded-brutal text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {

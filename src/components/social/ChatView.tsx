@@ -300,7 +300,10 @@ export function ChatView() {
           </>
         )}
 
-        <div className="ml-auto flex shrink-0 items-center gap-0.5">
+        {/* Até nove ícones aqui. Numa tela de 360px eles não cabem, e
+            `shrink-0` fazia a fileira empurrar o nome do canal pra fora em vez
+            de ceder. No celular ela corre pro lado; no PC nada muda. */}
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 max-sm:min-w-0 max-sm:shrink max-sm:overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden max-sm:[&>*]:shrink-0">
           {/* O canal de sugestões tem os DOIS botões que ele precisa e que
               nenhum outro canal precisa: o quadro (todas as sugestões, do mais
               votado pro menos) e o de mandar uma. É o que faz dele um canal
@@ -549,7 +552,7 @@ export function ChatView() {
           <button
             type="button"
             onClick={() => scrollToBottom(true)}
-            className="absolute bottom-24 right-4 z-10 flex items-center gap-1.5 rounded-brutal border border-line-strong bg-surface-raised px-2.5 py-1.5 text-[11.5px] font-medium text-foreground shadow-[0_10px_28px_rgba(0,0,0,0.45)] transition-colors hover:border-acid/60 hover:text-acid"
+            className="absolute bottom-24 right-4 z-conteudo flex items-center gap-1.5 rounded-brutal border border-line-strong bg-surface-raised px-2.5 py-1.5 text-[11.5px] font-medium text-foreground shadow-[0_10px_28px_rgba(0,0,0,0.45)] transition-colors hover:border-acid/60 hover:text-acid"
           >
             <ArrowDown className="h-3.5 w-3.5" />
             Fim
@@ -680,7 +683,7 @@ function HeaderButton({
         aria-label={label}
         onClick={onClick}
         className={cn(
-          'rounded-brutal p-1.5 transition-colors',
+          'alvo-dedo rounded-brutal p-1.5 transition-colors',
           active
             ? 'bg-acid/10 text-acid'
             : 'text-muted-foreground hover:bg-void-light hover:text-foreground'

@@ -9,6 +9,9 @@ import { SettingsProvider } from '@/lib/settings-context'
 import { ServerStatusProvider } from '@/lib/server-status-context'
 import { SocketProvider } from '@/lib/socket-context'
 import { isWeb } from '@/lib/platform'
+import { useVisualViewport } from '@/lib/use-visual-viewport'
+import { useWakeLock } from '@/lib/use-wake-lock'
+import { FilasProvider } from '@/components/ui/filas'
 import { MembersProvider } from '@/lib/members-context'
 import { ChatProvider } from '@/lib/chat-context'
 import { VoiceProvider, useVoice } from '@/lib/voice-context'
@@ -17,7 +20,7 @@ import { NudgeProvider, useNudge } from '@/lib/nudge-context'
 import { AfkProvider } from '@/lib/afk-context'
 import { HotkeysProvider } from '@/lib/hotkeys-context'
 import { OverlayProvider, useOverlays } from '@/lib/overlay-context'
-import { LayoutProvider } from '@/lib/layout-context'
+import { LayoutProvider, useLayout } from '@/lib/layout-context'
 import { ActivityProvider } from '@/lib/activity-context'
 import { PartyProvider } from '@/lib/party-context'
 import { SmokeProvider } from '@/lib/smoke-context'
@@ -136,9 +139,22 @@ function RequirePermission({
 /** Casca autenticada: é ela que treme quando chega um nudge. */
 function AuthedShell() {
   const { shaking } = useNudge()
+  const { isPhone } = useLayout()
 
   return (
-    <div className={cn('flex min-h-0 flex-1', shaking && 'nudge-shake')}>
+    /* No celular a casca deita: conteúdo em cima, barra de ícones no rodapé.
+       Os 56px que a barra ocupava DE LADO eram 16% da largura de um aparelho
+       de 360px — e ficavam longe do polegar. A ordem do JSX continua a mesma
+       (a barra primeiro) porque ela é a navegação: quem chega por teclado ou
+       leitor de tela encontra o menu antes do conteúdo. Quem vê, vê embaixo,
+       por conta do `flex-col-reverse`. */
+    <div
+      className={cn(
+        'flex min-h-0 flex-1',
+        isPhone && 'flex-col-reverse',
+        shaking && 'nudge-shake'
+      )}
+    >
       <AppRail />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Outlet />
@@ -162,6 +178,13 @@ function AuthedShell() {
  */
 function GlobalOverlays() {
   const { profileEditorOpen, closeProfileEditor } = useOverlays()
+  const { connected: inVoice } = useVoice()
+
+  // Em call, a tela do celular não apaga: tela apagada é aba em segundo plano,
+  // e aba em segundo plano derruba o vídeo e o assistir junto. Fica AQUI, e
+  // não no palco da call, porque o palco some ao trocar pra aba do Minecraft —
+  // e a call continua.
+  useWakeLock(inVoice)
 
   return (
     <>
@@ -338,6 +361,10 @@ function AuthedLayout() {
 }
 
 export function App() {
+  // Altura visível de verdade (barra do Safari, teclado virtual) numa variável
+  // CSS que a `.casca-app` consome. No PC não muda nada.
+  useVisualViewport()
+
   return (
     /**
      * `delayDuration` 350ms: rápido o bastante pra quem foi ler a dica, lento
@@ -359,7 +386,12 @@ export function App() {
               <UpdaterProvider>
                 <ServerStatusProvider>
                   <Router>
-                    <div className="flex h-screen flex-col overflow-hidden bg-background">
+                    {/* `casca-app` no lugar de `h-screen`: 100vh conta a barra
+                        de endereço do celular como se ela não existisse, e
+                        como nada rola aqui dentro, o compositor ficava embaixo
+                        dela. Ver globals.css e lib/use-visual-viewport. */}
+                    <FilasProvider>
+                    <div className="casca-app flex flex-col overflow-hidden bg-background">
                       <TitleBar />
                       <DesktopSiteNotice />
                       <InterfaceGuardNotice />
@@ -414,6 +446,7 @@ export function App() {
                         </Routes>
                       </main>
                     </div>
+                    </FilasProvider>
                   </Router>
                 </ServerStatusProvider>
               </UpdaterProvider>

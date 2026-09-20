@@ -3,6 +3,7 @@ import { HandCoins, Server, X } from 'lucide-react'
 import { formatBRL } from '@/lib/api-costs'
 import { useCosts } from '@/lib/costs-context'
 import { useOverlays } from '@/lib/overlay-context'
+import { NaFila } from '@/components/ui/filas'
 
 /**
  * A FAIXA DA CONTA — o número na cara de todo mundo, uma vez por sessão.
@@ -44,9 +45,11 @@ export function CostShareBanner() {
   if (!ready || !summary || summary.iPaid || dismissed || costsOpen) return null
 
   return (
-    // z-40: ABAIXO das camadas modais (z-50). Um aviso que fica por cima de
-    // uma modal é um aviso que impede de ler o que ele mesmo pediu pra abrir.
-    <div className="pointer-events-none fixed inset-x-0 top-12 z-40 flex justify-center px-4">
+    // FILA DO TOPO comum — a que fica ABAIXO dos diálogos. Um aviso por cima
+    // de uma modal é um aviso que impede de ler o que ele mesmo pediu pra
+    // abrir. Ela também desce sozinha quando há drop de admin no ar, em vez
+    // de dividir a mesma linha com ele (ver components/ui/filas.tsx).
+    <NaFila fila="topo" className="pointer-events-none flex w-full justify-center">
       <div className="pointer-events-auto flex w-full max-w-2xl items-center gap-3 rounded-brutal border border-burn/50 bg-void/95 px-3 py-2 shadow-glow-burn backdrop-blur-sm">
         <Server className="h-4 w-4 shrink-0 text-burn" />
 
@@ -85,6 +88,6 @@ export function CostShareBanner() {
           <X className="h-4 w-4" />
         </button>
       </div>
-    </div>
+    </NaFila>
   )
 }
