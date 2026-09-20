@@ -26,7 +26,7 @@ import { useMembers } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { useWatch } from '@/lib/watch-context'
-import { CallStage, ParticipantChip } from './CallStage'
+import { CallStage, StageStrip, SpotlightStage } from './CallStage'
 import { SoundboardPopover } from './SoundboardPopover'
 import { ScreenStage } from './ScreenStage'
 import { WatchStage } from './WatchStage'
@@ -43,6 +43,16 @@ export function VoiceStage() {
   const watch = useWatch()
 
   const [focused, setFocused] = React.useState<string | null>(null)
+
+  /**
+   * Câmera de alguém ampliada no palco, pedida pelo card da fileira.
+   *
+   * Existe porque com uma tela no ar não havia NENHUM jeito de olhar pra
+   * cara de quem abriu a webcam: ela ficava num selo de 48px aqui embaixo.
+   * Ampliar manda a tela pra barra fina, que é o caminho de volta — o mesmo
+   * que o assistir junto já fazia.
+   */
+  const [spotlight, setSpotlight] = React.useState<string | null>(null)
 
   /**
    * Assistir junto no palco.
@@ -139,6 +149,23 @@ export function VoiceStage() {
     setFocused(preferred.identity)
   }, [voice.screenShares, focused])
 
+  /**
+   * A câmera ampliada cai sozinha quando a pessoa desliga a webcam ou sai da
+   * call — senão o palco fica preso num card vazio e a tela compartilhada,
+   * que está no ar esse tempo todo, não volta.
+   *
+   * Aqui em cima, antes dos returns curtos: é efeito, e efeito depois de um
+   * `return` condicional é hook condicional.
+   */
+  const spotlightAlive =
+    !!spotlight &&
+    voice.participants.some((p) => p.identity === spotlight) &&
+    !!cameraOf(spotlight)
+
+  React.useEffect(() => {
+    if (spotlight && !spotlightAlive) setSpotlight(null)
+  }, [spotlight, spotlightAlive])
+
   if (voice.connecting) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
@@ -163,7 +190,57 @@ export function VoiceStage() {
   }
 
   const compact = density !== 'wide'
-  const watchIsMain = watchOpen && (!hasStage || watchFocused)
+
+  const spotlightParticipant = spotlight
+    ? voice.participants.find((p) => p.identity === spotlight)
+    : undefined
+  const spotlightCamera = spotlight ? cameraOf(spotlight) : undefined
+
+  /**
+   * QUEM OCUPA O PALCO. Um de cada vez, nesta ordem:
+   *
+   *   câmera ampliada > assistir junto em foco > tela compartilhada > grade
+   *
+   * A câmera vem primeiro porque é a única das três que exige um clique
+   * explícito AGORA — as outras duas entram sozinhas quando alguém começa a
+   * transmitir ou cola um link, e não podem passar por cima do que a pessoa
+   * acabou de pedir pra ver.
+   *
+   * Derivado, e não um quarto pedaço de estado: com três variáveis
+   * independentes decidindo a mesma caixa, a combinação errada apareceria
+   * como palco em branco ou dois palcos empilhados.
+   */
+  const stageOwner: 'camera' | 'watch' | 'screen' | 'grid' =
+    spotlightParticipant && spotlightCamera
+      ? 'camera'
+      : watchOpen && (!hasStage || watchFocused)
+        ? 'watch'
+        : hasStage
+          ? 'screen'
+          : 'grid'
+
+  /**
+   * Trocar quem está no palco é sempre LIGAR UM E DESLIGAR OS OUTROS.
+   *
+   * Mexer só na própria variável deixaria combinações que a ordem do
+   * `stageOwner` resolve calada e errado: pedir a tela com uma câmera
+   * ampliada, por exemplo, não faria nada visível — a câmera ganha, e o
+   * clique viraria um botão morto.
+   */
+  const showCamera = (identity: string | null): void => {
+    setSpotlight(identity)
+    if (identity) setWatchFocused(false)
+  }
+
+  const showScreen = (): void => {
+    setSpotlight(null)
+    setWatchFocused(false)
+  }
+
+  const showWatch = (): void => {
+    setSpotlight(null)
+    setWatchFocused(true)
+  }
   // Música e vídeo são a MESMA sessão no servidor, em modos diferentes.
   const musicPlaying = watch.current?.mode === 'music'
 
@@ -226,17 +303,29 @@ export function VoiceStage() {
         */}
         {watchOpen && (
           <WatchStage
-            collapsed={hasStage && !watchFocused}
-            onExpand={() => setWatchFocused(true)}
+            collapsed={stageOwner !== 'watch'}
+            onExpand={showWatch}
             onClose={() => setWatchOpen(false)}
           />
         )}
 
-        {hasStage && watchIsMain && (
-          <ScreenSharesBar feeds={voice.screenShares} onShow={() => setWatchFocused(false)} />
+        {hasStage && stageOwner !== 'screen' && (
+          <ScreenSharesBar feeds={voice.screenShares} onShow={showScreen} />
         )}
 
-        {hasStage && !watchIsMain && (
+        {stageOwner === 'camera' && spotlightParticipant && spotlightCamera && (
+          <SpotlightStage
+            participant={spotlightParticipant}
+            member={memberOf(spotlightParticipant.identity)}
+            camera={spotlightCamera}
+            volume={voice.userVolume(spotlightParticipant.identity)}
+            onVolume={(value) => voice.setUserVolume(spotlightParticipant.identity, value)}
+            onContextMenu={(event) => openUserMenu(event, spotlightParticipant.identity)}
+            onClose={() => setSpotlight(null)}
+          />
+        )}
+
+        {stageOwner === 'screen' && (
           <ScreenStage
             feeds={voice.screenShares}
             focusedIdentity={focused}
@@ -244,25 +333,21 @@ export function VoiceStage() {
           />
         )}
 
-        {hasStage || watchOpen ? (
-          <>
-            {/* Fila enxuta: com a tela (ou o vídeo) aberta os cards saem, e sem
-                isso não haveria como abaixar o volume de ninguém durante uma
-                gameplay. */}
-            <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:gap-2">
-              {voice.participants.map((participant) => (
-                <ParticipantChip
-                  key={participant.identity}
-                  participant={participant}
-                  member={memberOf(participant.identity)}
-                  camera={cameraOf(participant.identity)}
-                  volume={voice.userVolume(participant.identity)}
-                  onVolume={(value) => voice.setUserVolume(participant.identity, value)}
-                  onContextMenu={(event) => openUserMenu(event, participant.identity)}
-                />
-              ))}
-            </div>
-          </>
+        {stageOwner !== 'grid' ? (
+          /* Com o palco ocupado, a call inteira desce pra fileira daqui de
+             baixo — é ela que segura o volume de cada um durante a gameplay,
+             e agora também mostra a câmera de quem ligou em tamanho de gente. */
+          <StageStrip
+            participants={voice.participants}
+            memberOf={memberOf}
+            cameraOf={cameraOf}
+            volumeOf={voice.userVolume}
+            onVolume={voice.setUserVolume}
+            onContextMenu={openUserMenu}
+            compact={compact}
+            spotlight={spotlight}
+            onSpotlight={showCamera}
+          />
         ) : (
           <CallStage
             participants={voice.participants}

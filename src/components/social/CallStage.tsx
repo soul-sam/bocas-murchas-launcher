@@ -638,6 +638,147 @@ export function ParticipantChip({
 }
 
 // ============================================
+// FILEIRA DO PALCO
+// ============================================
+
+/**
+ * Altura do card da fileira, em px. A largura sai daí, em 16:9.
+ *
+ * É número e não classe do Tailwind porque o CameraTile/AvatarTile recebem
+ * medida — é a mesma conta da grade, só que com a altura fixada por nós em vez
+ * de medida do espaço livre.
+ */
+const STRIP_HEIGHT = { compact: 92, wide: 116 }
+
+/**
+ * A FILEIRA DE QUEM ESTÁ NA CALL ENQUANTO OUTRA COISA OCUPA O PALCO.
+ *
+ * Com uma tela compartilhada no ar, aqui embaixo ficava a fileira de selinhos
+ * (`ParticipantChip`), e a câmera de quem abria a webcam virava um retângulo de
+ * 48×28 — menor que o próprio nome do lado. Dava pra saber que a pessoa estava
+ * com a câmera ligada, e era só isso: não dava pra VER ninguém.
+ *
+ * Agora é o mesmo card 16:9 da grade, com altura fixa: a tela compartilhada
+ * continua ficando com quase toda a altura, e a câmera fica grande o suficiente
+ * pra valer a pena. Clicar no canto de um card sobe aquela câmera pro palco e
+ * manda a tela pra barra fina — que é o caminho de volta.
+ *
+ * SEM NENHUMA CÂMERA LIGADA A FILEIRA CONTINUA ENXUTA. Não é inconsistência: a
+ * fileira alta existe pra mostrar vídeo, e roubar 116px da tela compartilhada
+ * pra desenhar uma fila de avatares em caixa grande seria pagar o preço do
+ * recurso sem receber nada em troca.
+ */
+export function StageStrip({
+  participants,
+  memberOf,
+  cameraOf,
+  volumeOf,
+  onVolume,
+  onContextMenu,
+  compact,
+  spotlight,
+  onSpotlight
+}: CallStageProps & {
+  compact?: boolean
+  /** Quem está ampliado no palco agora. */
+  spotlight?: string | null
+  onSpotlight?: (identity: string | null) => void
+}) {
+  const tileFor = (participant: VoiceParticipant): TileProps => ({
+    participant,
+    member: memberOf(participant.identity),
+    volume: volumeOf(participant.identity),
+    onVolume: (value: number) => onVolume(participant.identity, value),
+    onContextMenu: (event: React.MouseEvent) => onContextMenu(event, participant.identity)
+  })
+
+  const temCamera = participants.some((p) => cameraOf(p.identity))
+
+  if (!temCamera) {
+    return (
+      <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:gap-2">
+        {participants.map((participant) => (
+          <ParticipantChip key={participant.identity} {...tileFor(participant)} />
+        ))}
+      </div>
+    )
+  }
+
+  const height = compact ? STRIP_HEIGHT.compact : STRIP_HEIGHT.wide
+  const width = Math.round((height * 16) / 9)
+
+  return (
+    // `m-auto` na caixa de dentro, e não `justify-center` na de fora: com mais
+    // gente do que cabe, centralizar pelo pai deixa o começo da fila
+    // inalcançável mesmo com barra de rolagem. É a mesma lição da grade acima.
+    <div className="flex shrink-0 overflow-x-auto overflow-y-hidden pb-1">
+      <div className="m-auto flex gap-2">
+        {participants.map((participant) => {
+          const camera = cameraOf(participant.identity)
+          return camera ? (
+            <CameraTile
+              key={participant.identity}
+              {...tileFor(participant)}
+              camera={camera}
+              width={width}
+              height={height}
+              spotlighted={spotlight === participant.identity}
+              onToggleSpotlight={() =>
+                onSpotlight?.(spotlight === participant.identity ? null : participant.identity)
+              }
+            />
+          ) : (
+            <AvatarTile
+              key={participant.identity}
+              {...tileFor(participant)}
+              width={width}
+              height={height}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Uma câmera só, ocupando o palco inteiro.
+ *
+ * Mesmo card da grade, medido pra todo o espaço livre — é o `useTileGrid` com
+ * uma pessoa só. O botão de encolher do próprio card é o caminho de volta.
+ */
+export function SpotlightStage({
+  participant,
+  member,
+  camera,
+  volume,
+  onVolume,
+  onContextMenu,
+  onClose
+}: TileProps & { camera: Track; onClose: () => void }) {
+  const grid = useTileGrid(1)
+
+  return (
+    <div ref={grid.ref} className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="m-auto">
+        <CameraTile
+          participant={participant}
+          member={member}
+          camera={camera}
+          volume={volume}
+          onVolume={onVolume}
+          onContextMenu={onContextMenu}
+          width={grid.width}
+          height={grid.height}
+          spotlighted
+          onToggleSpotlight={onClose}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ============================================
 // PALCO
 // ============================================
 
