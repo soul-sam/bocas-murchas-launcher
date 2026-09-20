@@ -15,6 +15,12 @@ import {
   Settings2
 } from 'lucide-react'
 import {
+  formatBytes,
+  isPlayableVideo,
+  isPlayableVideoFile,
+  MAX_VIDEO_BYTES
+} from '@/lib/attachments'
+import {
   Popover,
   PopoverTrigger,
   PopoverContent,
@@ -90,12 +96,6 @@ interface MessageComposerProps {
  */
 const MAX_INLINE_IMAGE_BYTES = 8_000_000
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
-
 export function MessageComposer({
   placeholderTarget,
   replyTo,
@@ -130,6 +130,11 @@ export function MessageComposer({
   const [image, setImage] = React.useState<string | null>(null)
   const [file, setFile] = React.useState<UploadedFile | null>(null)
   const [uploading, setUploading] = React.useState(false)
+  /**
+   * Quanto do VIDEO ja subiu, 0–100. Null nos outros uploads, que sao
+   * pequenos o bastante pro spinner dar conta de explicar a espera.
+   */
+  const [progress, setProgress] = React.useState<number | null>(null)
   const [sending, setSending] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [dragging, setDragging] = React.useState(false)
@@ -384,6 +389,39 @@ export function MessageComposer({
     [token]
   )
 
+  const uploadVideo = React.useCallback(
+    async (picked: File) => {
+      if (!token) return
+
+      // Recusa ANTES de subir: deixar a barra chegar aos 100% pra so entao o
+      // servidor dizer "arquivo muito grande" e um minuto de internet de casa
+      // jogado fora.
+      if (picked.size > MAX_VIDEO_BYTES) {
+        setError(
+          `Vídeo de ${formatBytes(picked.size)} — o limite é ${Math.round(
+            MAX_VIDEO_BYTES / 1_000_000
+          )} MB.`
+        )
+        return
+      }
+
+      setUploading(true)
+      setProgress(0)
+      setError(null)
+      try {
+        const uploaded = await uploadsApi.video(token, picked, setProgress)
+        setFile(uploaded)
+        setImage(null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao subir vídeo')
+      } finally {
+        setUploading(false)
+        setProgress(null)
+      }
+    },
+    [token]
+  )
+
   /**
    * Imagem vira preview; o resto vira anexo — venha de onde vier.
    *
@@ -395,22 +433,36 @@ export function MessageComposer({
    * Acima do teto da rota de imagem a decisao se inverte: continua indo como
    * anexo, que aceita 50 MB. Melhor um GIF de 20 MB que chega como cartao do
    * que um erro de "arquivo muito grande" onde antes funcionava.
+   *
+   * Video que o app toca (mp4, webm, mov, ogv) tem rota so dele: aceita
+   * 100 MB e chega na conversa como player. `.mkv` e `.avi` caem no anexo
+   * generico de proposito — o Chromium nao toca, e cartao de download e
+   * melhor que um retangulo preto.
    */
   const attach = React.useCallback(
     (picked: File) => {
+      if (isPlayableVideoFile(picked)) {
+        void uploadVideo(picked)
+        return
+      }
+
       const inline = picked.type.startsWith('image/') && picked.size <= MAX_INLINE_IMAGE_BYTES
       if (inline) void uploadImage(picked)
       else void uploadFile(picked)
     },
-    [uploadImage, uploadFile]
+    [uploadImage, uploadFile, uploadVideo]
   )
 
-  // Colar print direto no chat é o caminho mais usado — vale suportar.
+  // Colar print direto no chat é o caminho mais usado — vale suportar. Vídeo
+  // copiado do explorador de arquivos passa pelo mesmo caminho; quem decide a
+  // rota é o `attach`.
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>): void => {
-    const picked = Array.from(e.clipboardData.files).find((f) => f.type.startsWith('image/'))
+    const picked = Array.from(e.clipboardData.files).find(
+      (f) => f.type.startsWith('image/') || isPlayableVideoFile(f)
+    )
     if (!picked) return
     e.preventDefault()
-    void uploadImage(picked)
+    attach(picked)
   }
 
   /** "/marcar sexta 21h" abre o compositor certo em vez de mandar texto. */
@@ -623,6 +675,11 @@ export function MessageComposer({
 
   const remaining = SOFT_LIMIT - content.length
   const hasAttachment = !!image || !!file
+  /** URL absoluta quando o anexo escolhido e um video — senao, nada. */
+  const videoPreview =
+    file && isPlayableVideo({ mime: file.mimeType, name: file.fileName, url: file.url })
+      ? resolveAssetUrl(file.url)
+      : undefined
 
   return (
     <div
@@ -799,6 +856,25 @@ export function MessageComposer({
         </div>
       )}
 
+      {progress !== null && (
+        <div
+          className={cn(
+            'w-fit max-w-full border-2 border-b-0 border-line bg-void-light/60 px-3 py-2',
+            !replyTo && 'rounded-t-brutal'
+          )}
+        >
+          <p className="text-xs text-muted-foreground">Subindo o vídeo… {progress}%</p>
+          {/* Barra de verdade e nao so o numero: em 100 MB a diferenca entre
+              "travou" e "esta indo" e ver a coisa andar. */}
+          <div className="mt-1 h-1 w-40 overflow-hidden rounded-brutal bg-muted">
+            <div
+              className="h-full bg-acid transition-[width] duration-200"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {file && (
         <div
           className={cn(
@@ -806,17 +882,29 @@ export function MessageComposer({
             !replyTo && 'rounded-t-brutal'
           )}
         >
-          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+          {videoPreview ? (
+            // `muted` e sem `controls`: e miniatura do que vai ser enviado, e
+            // som tocando dentro do compositor pegaria todo mundo de surpresa.
+            <video
+              src={videoPreview}
+              muted
+              playsInline
+              preload="metadata"
+              className="h-16 w-24 shrink-0 rounded-brutal border border-line object-cover"
+            />
+          ) : (
+            <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
           <span className="min-w-0 flex-1">
             <span className="block truncate text-xs text-foreground">{file.fileName}</span>
             <span className="block font-mono text-[11.5px] text-muted-foreground">
-              {formatSize(file.sizeBytes)}
+              {formatBytes(file.sizeBytes)}
             </span>
           </span>
           <button
             type="button"
             onClick={() => setFile(null)}
-            title="Tirar o anexo"
+            title={videoPreview ? 'Tirar o vídeo' : 'Tirar o anexo'}
             className="shrink-0 rounded-brutal p-1 text-muted-foreground transition-colors hover:text-destructive"
           >
             <X className="h-3.5 w-3.5" />
@@ -835,8 +923,12 @@ export function MessageComposer({
       >
         <ComposerActions onDrop={onDrop ? () => onDrop('') : undefined} />
 
+        {/* Imagem E video no mesmo botao de proposito: o clipe de papel ao
+            lado fica escondido no celular (`sm:block`), e o celular e
+            justamente de onde sai a maioria dos videos. Quem escolhe a rota
+            de upload e o `attach`. */}
         <label
-          title="Enviar imagem"
+          title="Enviar imagem ou vídeo"
           className="shrink-0 cursor-pointer rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           {uploading ? (
@@ -846,18 +938,18 @@ export function MessageComposer({
           )}
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             className="hidden"
             onChange={(e) => {
               const picked = e.target.files?.[0]
-              if (picked) void uploadImage(picked)
+              if (picked) attach(picked)
               e.target.value = ''
             }}
           />
         </label>
 
         <label
-          title="Anexar arquivo (até 50 MB) — imagem e GIF aparecem na conversa"
+          title="Anexar arquivo (até 50 MB) — imagem, GIF e vídeo aparecem na conversa"
           className="hidden shrink-0 cursor-pointer rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:block"
         >
           <Paperclip className="h-4 w-4" />

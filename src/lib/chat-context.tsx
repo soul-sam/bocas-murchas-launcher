@@ -11,6 +11,7 @@ import {
   type Conversation,
   type SendMessagePayload
 } from './api'
+import { isPlayableVideo } from './attachments'
 import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
@@ -999,12 +1000,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       const body: SendMessagePayload = {
         content: payload.content,
+        // O video viaja nos campos de arquivo; o `type` separa os dois so pra
+        // quem le a mensagem de fora (busca, retrospectiva). Quem desenha o
+        // player olha o MIME — ver lib/attachments.ts.
         type: payload.stickerUrl
           ? 'sticker'
           : payload.imageUrl
             ? 'image'
             : payload.file
-              ? 'file'
+              ? isPlayableVideo({
+                  mime: payload.file.mime,
+                  name: payload.file.name,
+                  url: payload.file.url
+                })
+                ? 'video'
+                : 'file'
               : 'text',
         imageUrl: payload.imageUrl,
         stickerUrl: payload.stickerUrl,

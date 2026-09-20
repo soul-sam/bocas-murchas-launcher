@@ -18,6 +18,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import { Hint } from '@/components/ui/tooltip'
 import { resolveAssetUrl, type ChatMessage } from '@/lib/api'
+import { formatBytes, isPlayableVideo } from '@/lib/attachments'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
@@ -610,10 +611,11 @@ function MessageBody({
       )}
 
       {message.fileUrl && (
-        <FileAttachment
+        <Attachment
           url={message.fileUrl}
           name={message.fileName ?? 'arquivo'}
           size={message.fileSize ?? 0}
+          mime={message.fileMime}
         />
       )}
 
@@ -623,7 +625,55 @@ function MessageBody({
 }
 
 /**
- * Anexo que nao e imagem.
+ * Anexo da mensagem: video toca aqui dentro, o resto vira cartao de download.
+ *
+ * Video e arquivo viajam nos MESMOS campos (`fileUrl`/`fileMime`) — ver
+ * lib/attachments.ts. A escolha e aqui, e nao no servidor, porque quem sabe
+ * se o player aguenta e o cliente: o mesmo `.mov` que toca no launcher pode
+ * nao tocar num navegador velho, e ai o `onError` devolve o cartao.
+ */
+function Attachment({
+  url,
+  name,
+  size,
+  mime
+}: {
+  url: string
+  name: string
+  size: number
+  mime?: string | null
+}) {
+  // Codec que o navegador nao decodifica so aparece na hora de tocar: o
+  // <video> dispara `error` e a gente cai no cartao de download, que pelo
+  // menos deixa a pessoa abrir o arquivo no player do computador.
+  const [broken, setBroken] = React.useState(false)
+  const href = resolveAssetUrl(url)
+
+  if (!broken && href && isPlayableVideo({ mime, name, url })) {
+    return (
+      <video
+        src={href}
+        controls
+        playsInline
+        // `metadata` e nao `auto`: numa conversa com cinco videos, `auto`
+        // baixaria os cinco inteiros so por rolar a tela.
+        preload="metadata"
+        onError={() => setBroken(true)}
+        // `max-w-[min(28rem,100%)]` e nao `w-full max-w-md`: com largura
+        // cheia, video em pe (que e como o celular grava) vira uma caixa
+        // deitada com tarja preta dos dois lados. Com os dois tetos e sem
+        // largura fixa o proprio <video> se encaixa mantendo a proporcao — e
+        // o `100%` impede que os 28rem estourem a coluna no celular.
+        className="mt-1.5 block max-h-80 max-w-[min(28rem,100%)] rounded-brutal border border-line bg-void"
+      />
+    )
+  }
+
+  return <FileAttachment url={url} name={name} size={size} />
+}
+
+/**
+ * Anexo que nao e imagem nem video.
  *
  * O clique abre no NAVEGADOR, nao dentro do app. Duas razoes: o Electron
  * navegaria a propria janela pro arquivo (numa janela sem moldura e sem barra
@@ -653,20 +703,13 @@ function FileAttachment({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-xs text-foreground">{name}</span>
         <span className="block font-mono text-[11.5px] text-muted-foreground">
-          {formatFileSize(size)}
+          {formatBytes(size)}
         </span>
       </span>
 
       <Download className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover/file:text-acid" />
     </button>
   )
-}
-
-function formatFileSize(bytes: number): string {
-  if (!bytes) return 'arquivo'
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
 const actionClass =

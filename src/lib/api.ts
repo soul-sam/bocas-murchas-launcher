@@ -107,6 +107,64 @@ export async function upload<T>(
   return res.json()
 }
 
+/**
+ * Upload que sabe dizer QUANTO ja subiu.
+ *
+ * XMLHttpRequest e nao `fetch` porque o fetch do navegador nao tem evento de
+ * progresso de ENVIO — `duplex: 'half'` com stream no corpo e suportado em
+ * quase nenhum lugar que a gente usa. E o video precisa: 100 MB numa internet
+ * de casa e mais de um minuto olhando pra um spinner parado, e a pessoa
+ * desiste achando que travou.
+ */
+export function uploadWithProgress<T>(
+  endpoint: string,
+  form: FormData,
+  token: string | null,
+  onProgress?: (percent: number) => void
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${API_BASE}${endpoint}`)
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return
+      onProgress?.(Math.round((event.loaded / event.total) * 100))
+    }
+
+    xhr.onload = () => {
+      let body: { error?: string } | T = {} as T
+      try {
+        body = JSON.parse(xhr.responseText)
+      } catch {
+        // Resposta que nao e JSON so importa quando deu errado; o erro
+        // generico abaixo cobre.
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) return resolve(body as T)
+
+      if (xhr.status === 401 && token) unauthorizedHandler?.()
+
+      // 413 quase nunca e a API: e o nginx da frente cortando o corpo antes de
+      // chegar nela, e a resposta vem em HTML, sem `error` nenhum pra mostrar.
+      // Sem esta linha a pessoa via "HTTP 413" depois de esperar o upload
+      // inteiro.
+      const message =
+        (body as { error?: string })?.error ||
+        (xhr.status === 413
+          ? 'O servidor cortou o envio por tamanho. Tenta um arquivo menor.'
+          : `HTTP ${xhr.status}`)
+      reject(new ApiError(xhr.status, message))
+    }
+
+    // Rede caiu, CORS barrou, upload cancelado: nenhum deles tem status.
+    xhr.onerror = () => reject(new ApiError(0, 'Falha no upload'))
+    xhr.onabort = () => reject(new ApiError(0, 'Upload cancelado'))
+
+    xhr.send(form)
+  })
+}
+
 // ============================================
 // AUTENTICACAO
 // ============================================
@@ -335,6 +393,26 @@ export const uploads = {
   },
 
   /**
+   * Video que vai TOCAR na conversa.
+   *
+   * Rota propria pelos mesmos motivos da de arquivo, e mais um: o teto e de
+   * 100 MB (video de celular passa de 50 MB sem esforco) e o servidor devolve
+   * o MIME pela extensao com que gravou, que e o que o launcher olha depois
+   * pra desenhar player em vez de cartao de download.
+   *
+   * O `onProgress` existe porque 100 MB demora — ver uploadWithProgress.
+   */
+  async video(
+    token: string,
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<UploadedFile> {
+    const form = new FormData()
+    form.append('file', file)
+    return uploadWithProgress<UploadedFile>('/uploads/video', form, token, onProgress)
+  },
+
+  /**
    * Copia uma imagem de uma URL pro nosso storage e devolve a URL local.
    *
    * É por aqui que o GIF escolhido no seletor entra no perfil. O servidor
@@ -557,7 +635,7 @@ export type CardMessageType =
   /** Os últimos segundos da call, salvos por alguém. */
   | 'clip'
 
-export type MessageType = 'text' | 'gif' | 'sticker' | 'image' | 'file' | CardMessageType
+export type MessageType = 'text' | 'gif' | 'sticker' | 'image' | 'file' | 'video' | CardMessageType
 
 export const CARD_MESSAGE_TYPES: ReadonlySet<string> = new Set<CardMessageType>([
   'poll',
@@ -602,7 +680,11 @@ export interface ChatMessage {
   gifUrl?: string | null
   stickerUrl?: string | null
   imageUrl?: string | null
-  /** Anexo generico (zip, pdf, log, mod). O nome original vem separado. */
+  /**
+   * Anexo generico (zip, pdf, log, mod) — e tambem o VIDEO. O nome original
+   * vem separado, e quem decide tocar em vez de oferecer download e o
+   * `fileMime` (ver lib/attachments.ts).
+   */
   fileUrl?: string | null
   fileName?: string | null
   fileSize?: number | null
