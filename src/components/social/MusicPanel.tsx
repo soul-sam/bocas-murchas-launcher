@@ -1,5 +1,6 @@
 import * as React from 'react'
 import {
+  Check,
   ChevronLeft,
   Disc3,
   Heart,
@@ -63,6 +64,14 @@ const LINK_POLL_MS = 2_500
 /** Depois disso para de perguntar: a pessoa fechou a aba ou desistiu. */
 const LINK_POLL_TIMEOUT_MS = 3 * 60 * 1000
 
+/**
+ * Quanto tempo a linha fica marcada como "na fila" depois do clique.
+ *
+ * Longo o bastante pra ser visto por quem já está lendo o próximo resultado,
+ * curto o bastante pra não virar enfeite permanente numa busca que fica aberta.
+ */
+const ADDED_MS = 2_500
+
 type Status = 'idle' | 'loading' | 'off' | 'error'
 type Tab = 'search' | 'library'
 
@@ -80,10 +89,56 @@ export function MusicPanel() {
   const [index, setIndex] = React.useState(0)
   /** spotifyId (ou 'link') da que está sendo preparada pra tocar. */
   const [busy, setBusy] = React.useState<string | null>(null)
+  /**
+   * Quem acabou de entrar na fila.
+   *
+   * O painel NÃO fecha mais ao mandar pra fila: quem abre a busca pra botar
+   * música quase nunca quer botar uma só. Mas painel que continua aberto e não
+   * responde vira clique repetido — sem um sinal na linha não há como saber se
+   * pegou, e a mesma música entra duas vezes. Some sozinho: é confirmação, não
+   * é estado da fila (a fila de verdade está na barra da música).
+   */
+  const [added, setAdded] = React.useState<ReadonlySet<string>>(() => new Set())
   const [error, setError] = React.useState<string | null>(null)
   const [providerNote, setProviderNote] = React.useState<string | null>(null)
 
   const panelRef = useFocusTrap<HTMLDivElement>(musicPanelOpen, closeMusicPanel)
+
+  /**
+   * Relógios do sinal de "na fila", um por faixa.
+   *
+   * Em ref e não em estado: quem dispara não precisa de render, e um relógio
+   * que sobrevive ao fechar o painel chamaria `setState` num componente que já
+   * não está na tela.
+   */
+  const addedTimers = React.useRef(new Map<string, ReturnType<typeof setTimeout>>())
+
+  const markAdded = React.useCallback((id: string) => {
+    setAdded((prev) => new Set(prev).add(id))
+    const timers = addedTimers.current
+    const antigo = timers.get(id)
+    if (antigo) clearTimeout(antigo)
+    timers.set(
+      id,
+      setTimeout(() => {
+        timers.delete(id)
+        setAdded((prev) => {
+          if (!prev.has(id)) return prev
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+      }, ADDED_MS)
+    )
+  }, [])
+
+  React.useEffect(() => {
+    const timers = addedTimers.current
+    return () => {
+      timers.forEach(clearTimeout)
+      timers.clear()
+    }
+  }, [])
 
   // Painel novo, campo limpo — a não ser que tenha vindo de "/tocar alguma
   // coisa", que já traz o texto. Reabrir com o pedido antigo lá dentro faria a
@@ -94,6 +149,7 @@ export function MusicPanel() {
     setDebounced(musicPanelSeed?.trim() ?? '')
     setError(null)
     setBusy(null)
+    setAdded(new Set())
     setIndex(0)
     setTab('search')
   }, [musicPanelOpen, musicPanelSeed])
@@ -190,7 +246,11 @@ export function MusicPanel() {
         { videoId, title: resolved.title, artist: resolved.artist, artUrl: resolved.artUrl },
         queue
       )
-      if (ok) closeMusicPanel()
+      if (!ok) return
+      // Pra fila o painel FICA: a intenção de quem enfileira é enfileirar mais.
+      // Tocar agora é o contrário — escolheu, quer ver tocando.
+      if (queue) markAdded(track.spotifyId)
+      else closeMusicPanel()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não deu pra preparar essa música.')
     } finally {
@@ -206,8 +266,19 @@ export function MusicPanel() {
     setError(null)
     try {
       const ack = queue ? await watch.queueAdd(value, 'music') : await watch.set(value, 'music')
-      if (ack.ok) closeMusicPanel()
-      else setError(ack.error ?? 'Não deu.')
+      if (!ack.ok) {
+        setError(ack.error ?? 'Não deu.')
+        return
+      }
+      if (!queue) {
+        closeMusicPanel()
+        return
+      }
+      // Link colado e aceito: o campo esvazia pra receber o próximo. Deixar o
+      // link lá faria o próximo Enter mandar a MESMA música de novo.
+      markAdded('link')
+      setTerm('')
+      setDebounced('')
     } finally {
       setBusy(null)
     }
@@ -325,6 +396,7 @@ export function MusicPanel() {
           ) : tab === 'library' ? (
             <SpotifyLibrary
               busyId={busy}
+              addedIds={added}
               onPick={(track, queue) => void pick(track, queue)}
               onQueueMany={async (tracks) => {
                 for (const track of tracks) {
@@ -338,6 +410,7 @@ export function MusicPanel() {
                     true
                   )
                   if (!ok) return false
+                  markAdded(track.spotifyId)
                 }
                 return true
               }}
@@ -352,6 +425,7 @@ export function MusicPanel() {
                   track={track}
                   active={position === index}
                   busy={busy === track.spotifyId}
+                  added={added.has(track.spotifyId)}
                   onHover={() => setIndex(position)}
                   onPlay={() => void pick(track, false)}
                   onQueue={() => void pick(track, true)}
@@ -447,12 +521,15 @@ function TabButton({
 function SpotifyLibrary({
   busyId,
   onPick,
-  onQueueMany
+  onQueueMany,
+  addedIds
 }: {
   busyId: string | null
   onPick: (track: MusicResult, queue: boolean) => void
   /** Devolve false se a sala recusou (fila cheia, sem call). */
   onQueueMany: (tracks: MusicResult[]) => Promise<boolean>
+  /** Quem acabou de entrar na fila, pro mesmo sinal da busca. */
+  addedIds: ReadonlySet<string>
 }) {
   const { token } = useAuth()
 
@@ -689,6 +766,7 @@ function SpotifyLibrary({
                   track={track}
                   active={false}
                   busy={busyId === track.spotifyId}
+                  added={addedIds.has(track.spotifyId)}
                   onHover={() => {}}
                   onPlay={() => onPick(track, false)}
                   onQueue={() => onPick(track, true)}
@@ -781,6 +859,7 @@ function ResultRow({
   track,
   active,
   busy,
+  added,
   onHover,
   onPlay,
   onQueue
@@ -788,6 +867,8 @@ function ResultRow({
   track: MusicResult
   active: boolean
   busy: boolean
+  /** Acabou de entrar na fila. Some sozinho — é confirmação do clique. */
+  added?: boolean
   onHover: () => void
   onPlay: () => void
   onQueue: () => void
@@ -797,7 +878,10 @@ function ResultRow({
       onMouseEnter={onHover}
       className={cn(
         'group flex items-center gap-2.5 px-3 py-2 transition-colors',
-        active ? 'bg-acid/10' : 'hover:bg-void-light'
+        // O fundo é o que confirma de longe. Ele e não o botão porque o botão
+        // é `shrink-0`: um rótulo aparecendo ali por 2,5s encurtava o título da
+        // música e a linha inteira dava um pulo a cada clique.
+        added ? 'bg-acid/15' : active ? 'bg-acid/10' : 'hover:bg-void-light'
       )}
     >
       <button
@@ -842,13 +926,24 @@ function ResultRow({
         </span>
       )}
 
+      {/*
+        O painel não fecha mais ao enfileirar, então o botão é o único lugar
+        onde dá pra dizer que pegou. Marcado, ele SAI do esconde-esconde do
+        hover: um sinal que só aparece com o mouse em cima não confirma nada
+        pra quem já moveu o cursor pro próximo resultado.
+      */}
       <button
         type="button"
         onClick={onQueue}
-        title="Botar na fila"
-        className="shrink-0 rounded-brutal p-1 text-muted-foreground opacity-0 transition-opacity hover:text-acid focus:opacity-100 group-hover:opacity-100"
+        title={added ? 'Já entrou na fila — clique pra botar de novo' : 'Botar na fila'}
+        className={cn(
+          'flex shrink-0 items-center gap-1 rounded-brutal p-1 transition-opacity',
+          added
+            ? 'text-acid opacity-100'
+            : 'text-muted-foreground opacity-0 hover:text-acid focus:opacity-100 group-hover:opacity-100'
+        )}
       >
-        <ListPlus className="h-4 w-4" />
+        {added ? <Check className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
       </button>
     </li>
   )

@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.17.0',
+    headline: 'A busca de música não fecha mais na sua cara',
+    items: [
+      'Mandar uma música pra fila deixa a busca ABERTA — quem abre a busca pra botar música quase nunca quer botar uma só. A linha fica marcada em verde por uns segundos pra você saber que pegou, e dá pra emendar a próxima sem reabrir nada.',
+      'Colar link continua igual, e o campo esvazia sozinho depois de aceitar — é só colar o próximo.',
+      '"Tocar agora" continua fechando: você escolheu, quer ver tocando.',
+      'O ícone do launcher (barra de tarefas, atalho, bandeja e instalador) finalmente é a marca nova — estava com a arte antiga desde setembro, enquanto o site e o app do celular já tinham trocado.'
+    ],
+    note: 'O Windows guarda ícone em cache. Se o atalho antigo continuar com a cara velha depois de atualizar, ele volta ao normal no próximo login — ou reinstalando pelo site.'
+  },
+  {
     version: '1.16.0',
     headline: 'Câmera em tamanho de gente, e a fila de música andando sozinha',
     items: [
