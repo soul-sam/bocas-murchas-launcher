@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.18.0',
+    headline: 'O Bocas no celular virou app de celular',
+    items: [
+      'Abrir o site no telefone dava o app do computador encolhido: a barra de ícones comendo um sexto da tela, a lista de canais cobrindo a conversa e deixando um dedo dela aparecendo atrás, e busca, fixadas, membros, agenda e ranking sem nenhum jeito de abrir. Agora a barra deita no rodapé, os canais abrem em tela cheia e os painéis sobem de baixo.',
+      'Dá pra reagir, responder, fixar e editar mensagem no toque: um toque na mensagem abre os botões que antes só apareciam com o mouse em cima. Segurar o dedo em alguém abre o menu da pessoa, que era só botão direito.',
+      'O Enter do teclado do celular quebra linha, como em qualquer outro app — quem envia é o botão do lado, agora do tamanho de um dedo. E a barra de digitar não fica mais escondida atrás do teclado nem embaixo da barrinha do iPhone.',
+      'Campo de texto não dá mais aquele zoom no iPhone a cada toque, e puxar a conversa pra baixo parou de recarregar o app no meio da call.',
+      'No PC o que muda é a arrumação das camadas: o aviso de XP e a barra da música dividiam o MESMO canto e desenhavam um por cima do outro; um anúncio do admin tapava a cobrança do mês; o aviso de interface destravada nascia a oito pixels do botão do nudge. Cada coisa tem seu lugar na fila agora.',
+      'Na call pelo celular, a tela não apaga mais no meio da conversa. O botão de compartilhar tela some no iPhone e no Android — lá o navegador não deixa transmitir, e o botão só dava erro. Assistir a tela dos outros funciona igual.'
+    ],
+    note: 'A aba do Minecraft no navegador virou a tela do servidor: o jogo abre pelo launcher do computador, e ali no celular ficou só o que dá pra saber de longe — se o servidor está de pé e quem está jogando.'
+  },
+  {
     version: '1.17.0',
     headline: 'A busca de música não fecha mais na sua cara',
     items: [
