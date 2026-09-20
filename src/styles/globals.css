@@ -310,6 +310,27 @@
   .casca-app {
     height: 100dvh;
     height: var(--altura-visivel, 100dvh);
+
+    /* O TOPO TAMBEM TEM BORDA FISICA.
+       `viewport-fit=cover` manda o app ate a borda da tela — inclusive por
+       BAIXO da barra de status e do entalhe. O rodape ja somava a safe area
+       (compositor, barra de icones); o topo nao, e o cabecalho do canal
+       nascia embaixo do relogio do sistema: cortado, e sem aceitar toque,
+       porque naquela faixa quem recebe o dedo e o sistema, nao a pagina.
+
+       Vai na casca e nao em cada cabecalho: e a casca que encosta na borda.
+       `height` ja conta o padding (border-box global), entao o conteudo
+       encolhe em vez de vazar pra fora embaixo.
+
+       As camadas `fixed` (filas de aviso, gaveta) NAO herdam este padding —
+       elas se ancoram na janela — e por isso continuam somando `env()` por
+       conta propria. */
+    padding-top: env(safe-area-inset-top, 0px);
+
+    /* Paisagem no iPhone: o entalhe vira uma faixa LATERAL. Sem isto, a barra
+       de icones (ou a lista de canais) fica metade embaixo dele. */
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
   }
 
   .area-segura-b { padding-bottom: env(safe-area-inset-bottom, 0px); }
