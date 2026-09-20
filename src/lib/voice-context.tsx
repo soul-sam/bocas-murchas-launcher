@@ -10,6 +10,7 @@ import {
   type RemoteTrackPublication,
   type RemoteParticipant,
   type Participant,
+  type TrackPublication,
   type ConnectionQuality
 } from 'livekit-client'
 import { livekit, type Channel } from './api'
@@ -881,8 +882,56 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
             syncParticipants(next)
           }
         )
-        next.on(RoomEvent.TrackMuted, () => syncParticipants(next))
-        next.on(RoomEvent.TrackUnmuted, () => syncParticipants(next))
+        /**
+         * CAMERA DESLIGADA NAO E FAIXA DESPUBLICADA.
+         *
+         * `setCameraEnabled(false)` do LiveKit MUTA a camera — so o
+         * compartilhamento de tela e despublicado ("screenshare cannot be
+         * muted, unpublish instead", no proprio SDK). Entao nao vem
+         * TrackUnpublished nem TrackUnsubscribed: a faixa continua no ar e
+         * anexada ao <video>, so que sem quadro nenhum. O card da pessoa
+         * ficava um retangulo preto no lugar do rosto ate ela religar.
+         *
+         * O contrario mordia igual: religar a propria camera e um `unmute()`
+         * em cima da publicacao que ja existe, nao um publish novo — o
+         * LocalTrackPublished nao dispara de novo e o proprio espelho nunca
+         * mais voltava depois do primeiro desligar.
+         *
+         * `live` vem do evento em vez de `publication.isMuted` pra nao
+         * depender da ordem entre atualizar a flag e emitir.
+         */
+        const syncCameraFeed = (
+          publication: TrackPublication,
+          participant: Participant,
+          live: boolean
+        ): void => {
+          if (publication.source !== Track.Source.Camera) return
+          const track = publication.track
+          if (!live || !track) {
+            setCameras((prev) => prev.filter((c) => c.identity !== participant.identity))
+            return
+          }
+          const meta = readMetadata(participant)
+          const fallback = participant.isLocal ? 'Você' : participant.identity
+          setCameras((prev) => [
+            ...prev.filter((c) => c.identity !== participant.identity),
+            {
+              identity: participant.identity,
+              name: meta.displayName || participant.name || fallback,
+              track,
+              isLocal: participant.isLocal
+            }
+          ])
+        }
+
+        next.on(RoomEvent.TrackMuted, (publication, participant) => {
+          syncCameraFeed(publication, participant, false)
+          syncParticipants(next)
+        })
+        next.on(RoomEvent.TrackUnmuted, (publication, participant) => {
+          syncCameraFeed(publication, participant, true)
+          syncParticipants(next)
+        })
         next.on(RoomEvent.ActiveSpeakersChanged, () => syncParticipants(next))
         next.on(RoomEvent.LocalTrackPublished, (publication: LocalTrackPublication) => {
           // A propria transmissao entra no palco como qualquer outra: e o
@@ -955,7 +1004,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           RoomEvent.TrackSubscribed,
           (
             track: RemoteTrack,
-            _publication: RemoteTrackPublication,
+            publication: RemoteTrackPublication,
             participant: RemoteParticipant
           ) => {
             if (track.kind === Track.Kind.Audio) {
@@ -980,7 +1029,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
             if (
               track.kind === Track.Kind.Video &&
-              track.source === Track.Source.Camera
+              track.source === Track.Source.Camera &&
+              // Assinar nao e "camera ligada": quem entra numa call em que
+              // alguem ja esta com a webcam desligada recebe a faixa MUTADA
+              // (a camera so despublica quando a pessoa sai). Sem esta guarda
+              // o card dela nascia preto. O TrackUnmuted la embaixo traz o
+              // rosto no segundo em que ela liga.
+              !publication.isMuted
             ) {
               const meta = readMetadata(participant)
               setCameras((prev) => [
@@ -1010,9 +1065,25 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         next.on(
           RoomEvent.TrackUnsubscribed,
           (track: RemoteTrack, _pub, participant: RemoteParticipant) => {
-            track.detach().forEach((el) => el.remove())
-
             if (track.kind === Track.Kind.Audio) {
+              // SO audio. O <audio> foi criado aqui (track.attach() sem
+              // argumento) e appendado no sink — tirar do DOM e limpeza nossa.
+              //
+              // Fazer o mesmo com VIDEO apagava o launcher inteiro. O <video>
+              // da webcam e o da tela sao renderizados pelo React
+              // (ScreenStage.VideoSurface); `track.detach()` sem argumento
+              // devolve TODOS os elementos anexados, e o `.remove()` arrancava
+              // um no que o React ainda tinha na arvore. No render seguinte
+              // (`track: null`) o React tentava desmontar esse no e o
+              // removeChild estourava NotFoundError — erro na fase de commit,
+              // sem ErrorBoundary no caminho, e o React desmonta a RAIZ: tela
+              // preta, so o backgroundColor da janela. Era exatamente o que
+              // acontecia ao minimizar assistindo uma transmissao, porque
+              // janela escondida desassina o video da tela (shouldSubscribe).
+              //
+              // O video nao precisa de nada aqui: o VideoSurface faz
+              // `track.detach(el)` no cleanup quando o React o desmonta.
+              track.detach().forEach((el) => el.remove())
               speakingRef.current?.unwatch(participant.identity)
             }
 
