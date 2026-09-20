@@ -22,6 +22,11 @@ import { cn } from '@/lib/utils'
  * palavra — some da tela até virar o mês e pronto. O empurrão é ver o número
  * dividido e quem já botou a parte dele; não é vergonha, é conta à vista.
  *
+ * QUEM RECEBE CONFERE. A pessoa marca e a cobrança sai da tela dela na hora;
+ * quem é dono da chave Pix — a única que vê o extrato — confirma depois. Essa
+ * fila aparece só pra quem confirma: a lista pública continua sendo a de quem
+ * ajudou, e nunca uma lista de quem disse que ajudou e ainda não bateu.
+ *
  * A chave Pix vem do SERVIDOR, nunca escrita aqui: este repositório é público
  * e a chave é um CPF (ver lib/api-costs.ts).
  *
@@ -154,6 +159,7 @@ export function CostsModal() {
             em três meses.
           </p>
 
+          <PendingQueue />
           <Contributors summary={summary} />
         </div>
 
@@ -180,9 +186,11 @@ export function CostsModal() {
             {summary.iPaid ? 'Marquei sem querer, desfazer' : 'Já paguei a minha parte'}
           </button>
           <p className="mt-2 text-center text-[11.5px] leading-snug text-muted-foreground">
-            {summary.iPaid
-              ? `Valeu. Não te cobro de novo até virar o mês.`
-              : 'É na palavra: marcar aqui só tira o aviso da sua tela até virar o mês.'}
+            {!summary.iPaid
+              ? 'É na palavra: marcar aqui já tira o aviso da sua tela até virar o mês.'
+              : summary.iAmAwaiting
+                ? 'Anotado, e o aviso já saiu da sua tela. Falta só quem recebe conferir que caiu — você não precisa fazer mais nada.'
+                : 'Confirmado, caiu. Não te cobro de novo até virar o mês.'}
           </p>
         </div>
       </div>
@@ -243,13 +251,137 @@ function PixKey({ value }: { value: string }) {
   )
 }
 
+/** "marcou hoje" / "esperando há 3 dias" — a fila precisa dizer o que envelheceu. */
+function waitingFor(since: string): string {
+  const dias = Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000)
+  if (dias <= 0) return 'marcou hoje'
+  if (dias === 1) return 'marcou ontem'
+  return `esperando há ${dias} dias`
+}
+
+/**
+ * A FILA DE QUEM ESTÁ ESPERANDO — só pra quem recebe o Pix.
+ *
+ * Fica ACIMA da lista pública porque é a única parte desta tela que pede uma
+ * ação: quem abriu aqui pra conferir não deveria ter que rolar até o fim pra
+ * achar o que veio fazer.
+ *
+ * Pra todo mundo que não confirma esta seção simplesmente não existe — o
+ * servidor manda a lista vazia (ver lib/costs.ts na API). Uma lista pública de
+ * "disse que pagou e ainda não bateu" seria exatamente o constrangimento que
+ * esta tela inteira é desenhada pra não causar.
+ *
+ * O botão que desfaz NÃO pergunta "tem certeza?": desfazer já é a ação de
+ * corrigir, e a pessoa pode marcar de novo a qualquer momento. Uma caixa de
+ * confirmação em cima de uma ação reversível só ensina a clicar em "sim" sem ler.
+ */
+function PendingQueue() {
+  const { summary, confirmPaid, rejectPaid } = useCosts()
+  const [busy, setBusy] = React.useState<string | null>(null)
+
+  // `pending?.` e não `pending.`: entre o deploy da API e o do launcher existe
+  // uma janela em que a tela nova fala com o servidor velho, que não manda o
+  // campo. Sem a guarda, a conta do grupo virava tela branca nessa janela.
+  if (!summary?.canConfirm || !summary.pending?.length) return null
+
+  const act = async (userId: string, caiu: boolean): Promise<void> => {
+    setBusy(userId)
+    try {
+      await (caiu ? confirmPaid(userId) : rejectPaid(userId))
+    } catch {
+      // Falhou: a pessoa continua na fila e dá pra tentar de novo. Um alerta
+      // aqui seria pior que o silêncio — vê-se que não saiu da lista.
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="mt-5 rounded-brutal border border-burn/40 bg-burn/[0.06] p-3">
+      <h3 className="mb-2 flex items-center gap-1.5 text-[11.5px] text-foreground">
+        <HandCoins className="h-3.5 w-3.5 shrink-0 text-burn" />
+        Esperando você conferir — {summary.pending.length}
+      </h3>
+      <p className="mb-3 text-[11.5px] leading-snug text-muted-foreground">
+        Marcaram que pagaram. Confere no extrato e diz se caiu: só depois do seu
+        ✓ a pessoa entra na lista de baixo e leva a conquista.
+      </p>
+
+      <ul className="space-y-1.5">
+        {summary.pending.map((person) => (
+          <li
+            key={person.userId}
+            className="flex items-center gap-2 rounded-brutal border border-line bg-void/60 py-1 pl-1 pr-1.5"
+          >
+            <UserAvatar
+              src={resolveAssetUrl(person.avatar)}
+              name={person.displayName}
+              userId={person.userId}
+              className="h-6 w-6 shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs text-foreground">{person.displayName}</p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {waitingFor(person.since)}
+              </p>
+            </div>
+
+            {busy === person.userId ? (
+              <Loader2 className="mr-1.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void act(person.userId, false)}
+                  title={`Não achei o Pix de ${person.displayName}`}
+                  aria-label={`Não achei o Pix de ${person.displayName}`}
+                  className="shrink-0 rounded-brutal border border-line p-1.5 text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void act(person.userId, true)}
+                  title={`O Pix de ${person.displayName} caiu`}
+                  aria-label={`O Pix de ${person.displayName} caiu`}
+                  className="shrink-0 rounded-brutal border border-acid-dark bg-acid/10 p-1.5 text-acid-text transition-colors hover:bg-acid/20"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 /**
  * Quem já ajudou no mês. É a parte que faz o empurrão sem ofender ninguém:
  * mostra quem botou, e não quem faltou.
+ *
+ * Pra quem confirma, cada nome tem um desfazer: é por ele que sai uma
+ * marcação antiga que nunca foi conferida — e a conquista junto, recalculada
+ * pelos meses que sobraram.
  */
 function Contributors({ summary }: { summary: ReturnType<typeof useCosts>['summary'] }) {
+  const { rejectPaid } = useCosts()
+  const [busy, setBusy] = React.useState<string | null>(null)
+
   if (!summary) return null
   const { contributors, activeUsers, month } = summary
+
+  const undo = async (userId: string): Promise<void> => {
+    setBusy(userId)
+    try {
+      await rejectPaid(userId)
+    } catch {
+      // Continua na lista; dá pra tentar de novo.
+    } finally {
+      setBusy(null)
+    }
+  }
 
   return (
     <div className="mt-5">
@@ -266,7 +398,10 @@ function Contributors({ summary }: { summary: ReturnType<typeof useCosts>['summa
           {contributors.map((person) => (
             <li
               key={person.userId}
-              className="flex items-center gap-1.5 rounded-brutal border border-acid-dark bg-acid/[0.06] py-1 pl-1 pr-2.5"
+              className={cn(
+                'flex items-center gap-1.5 rounded-brutal border border-acid-dark bg-acid/[0.06] py-1 pl-1',
+                summary.canConfirm ? 'pr-1' : 'pr-2.5'
+              )}
             >
               <UserAvatar
                 src={resolveAssetUrl(person.avatar)}
@@ -275,6 +410,21 @@ function Contributors({ summary }: { summary: ReturnType<typeof useCosts>['summa
                 className="h-5 w-5"
               />
               <span className="text-xs text-foreground">{person.displayName}</span>
+
+              {summary.canConfirm &&
+                (busy === person.userId ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void undo(person.userId)}
+                    title={`Tirar ${person.displayName} da lista — o Pix não caiu`}
+                    aria-label={`Tirar ${person.displayName} da lista`}
+                    className="shrink-0 rounded-brutal p-0.5 text-muted-foreground transition-colors hover:text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                ))}
             </li>
           ))}
         </ul>

@@ -3,14 +3,20 @@ import { request } from './api'
 /**
  * A CONTA DA HOSPEDAGEM — /api/costs
  *
- *   GET    /costs        -> CostSummary
- *   POST   /costs/paid   -> CostSummary  (marca "paguei" no mês corrente)
- *   DELETE /costs/paid   -> CostSummary  (desmarca)
+ *   GET    /costs                -> CostSummary
+ *   POST   /costs/paid           -> CostSummary  (marca "paguei" no mês corrente)
+ *   DELETE /costs/paid           -> CostSummary  (desmarca a própria)
+ *   POST   /costs/confirm/:id    -> CostSummary  (admin: o Pix caiu)
+ *   DELETE /costs/confirm/:id    -> CostSummary  (admin: não caiu, desfaz)
  *
  * Tudo vem pronto do servidor, inclusive a CHAVE PIX: ela é um CPF, e este
  * repositório é público. Escrever a chave aqui a publicaria pra internet
  * inteira — por isso ela chega em tempo de execução, do repositório privado
  * da API.
+ *
+ * QUEM PODE CONFIRMAR TAMBÉM VEM DE LÁ (`canConfirm`), em vez de o launcher
+ * olhar o próprio cargo: o servidor é quem recusa a rota, então deixar o botão
+ * aparecer por uma conta de cliente só criaria um botão que dá 403.
  */
 
 export interface CostContributor {
@@ -19,6 +25,12 @@ export interface CostContributor {
   avatar: string | null
   /** ISO de quando marcou. */
   at: string
+}
+
+/** Marcou e está esperando quem recebe conferir. Só chega pra quem confirma. */
+export interface PendingContribution extends CostContributor {
+  /** ISO de quando entrou na fila. */
+  since: string
 }
 
 export interface CostSummary {
@@ -33,8 +45,16 @@ export interface CostSummary {
   pixKey: string
   /** O que entra na conta, em português de gente. */
   items: string[]
+  /** Quem ajudou e já foi conferido por quem recebe. É a lista pública. */
   contributors: CostContributor[]
+  /** A fila de quem está esperando. Vazia pra quem não confirma. */
+  pending: PendingContribution[]
+  /** Marquei — confirmado ou esperando. É o que tira a cobrança da minha tela. */
   iPaid: boolean
+  /** Marquei e ainda estou na fila. */
+  iAmAwaiting: boolean
+  /** Sou eu quem confirma. */
+  canConfirm: boolean
 }
 
 /** 2423 -> "R$ 24,23". */
@@ -61,5 +81,19 @@ export const costs = {
 
   unmarkPaid(token: string): Promise<CostSummary> {
     return request<CostSummary>('/costs/paid', { method: 'DELETE', token })
+  },
+
+  confirm(token: string, userId: string): Promise<CostSummary> {
+    return request<CostSummary>(`/costs/confirm/${encodeURIComponent(userId)}`, {
+      method: 'POST',
+      token
+    })
+  },
+
+  reject(token: string, userId: string): Promise<CostSummary> {
+    return request<CostSummary>(`/costs/confirm/${encodeURIComponent(userId)}`, {
+      method: 'DELETE',
+      token
+    })
   }
 }

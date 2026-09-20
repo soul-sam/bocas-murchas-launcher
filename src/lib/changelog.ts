@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.15.0',
+    headline: 'O "já paguei" agora passa por quem recebe',
+    items: [
+      'Marcar continua igual pra você: um clique e a cobrança sai da sua tela na hora. O que mudou é o depois — quem é dono da chave Pix confere no extrato e confirma. É aí que você entra na lista do mês e leva a conquista.',
+      'Enquanto isso a tela diz que falta só conferir. Você não precisa fazer mais nada, e ninguém além de quem confirma vê que está esperando.',
+      'Se o Pix não aparecer no extrato, a marcação é desfeita e você é avisado — é só marcar de novo quando pagar.',
+      'A tela ficava toda preta quando você minimizava o launcher assistindo uma transmissão, e sobrava um quadrado preto no lugar de quem desligava a câmera. Os dois acabaram.'
+    ],
+    note: 'A conquista Paga o Boleto 🧾 passou a sair da confirmação, e não do clique. Quem já aparecia na lista dos meses anteriores continua exatamente como estava — nada foi tirado de ninguém.'
+  },
+  {
     version: '1.11.0',
     headline: 'Cada coisa no seu canal',
     items: [
