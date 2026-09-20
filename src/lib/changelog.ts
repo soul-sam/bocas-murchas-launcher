@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.19.0',
+    headline: 'Vídeo no chat, tocando na conversa',
+    items: [
+      'Dá pra mandar vídeo no chat, do computador e do celular. Ele chega tocando ali mesmo, com controles — antes virava um arquivo pra baixar e abrir em outro programa, e ninguém abria.',
+      'No celular o vídeo sai da galeria pelo mesmo botão da foto. Aquele era só de imagem, e o clipe de papel (que aceitava qualquer arquivo) não aparece no telefone — por isso não dava.',
+      'Vídeo demora pra subir, então agora tem barra mostrando o quanto já foi. O limite é 100 MB por arquivo.',
+      'Arrastar pra cima da conversa, colar ou usar o clipe de papel dá no mesmo: o app escolhe sozinho o caminho certo pro que você mandou.'
+    ],
+    note: 'Vídeo em .mkv ou .avi continua chegando como arquivo pra baixar — esses dois o navegador não toca, e um retângulo preto seria pior que um botão. O que o celular e o PC gravam (mp4, mov, webm) toca normal.'
+  },
+  {
     version: '1.18.0',
     headline: 'O Bocas no celular virou app de celular',
     items: [
