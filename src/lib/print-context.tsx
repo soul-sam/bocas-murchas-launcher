@@ -119,15 +119,24 @@ export function PrintProvider({ children }: { children: React.ReactNode }) {
       })
     }
 
+    // Luz: só o booleano muda, não vale refazer `/print/state`.
+    const onLight = (payload: { on?: boolean | null }): void => {
+      setState((prev) =>
+        prev ? { ...prev, printer: { ...prev.printer, lightOn: payload?.on ?? null } } : prev
+      )
+    }
+
     socket.on('print:queue', onChange)
     socket.on('print:printer', onChange)
     socket.on('print:job', onChange)
     socket.on('print:telemetry', onTelemetry)
+    socket.on('print:light', onLight)
     return () => {
       socket.off('print:queue', onChange)
       socket.off('print:printer', onChange)
       socket.off('print:job', onChange)
       socket.off('print:telemetry', onTelemetry)
+      socket.off('print:light', onLight)
     }
   }, [socket, load])
 

@@ -5,6 +5,8 @@ import {
   Clock,
   Hourglass,
   Layers,
+  Lightbulb,
+  LightbulbOff,
   Pause,
   Play,
   Printer,
@@ -12,11 +14,14 @@ import {
   Square,
   Trash2,
   Upload,
+  Video,
+  VideoOff,
   WifiOff
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
 import { usePrint } from '@/lib/print-context'
+import { useSocket } from '@/lib/socket-context'
 import {
   formatSeconds,
   printApi,
@@ -101,6 +106,8 @@ export function PrintPage() {
         )}
 
         <PrinterCard printer={state.printer} running={state.running} canOperate={state.me.canOperate} />
+
+        {state.me.canQueue && <CameraCard printer={state.printer} />}
 
         {state.me.canQueue ? (
           <>
@@ -349,6 +356,189 @@ function PrinterCard({
             </Button>
           )}
           {msg && <span className="font-mono text-[11.5px] text-muted-foreground">{msg}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================
+// CÂMERA
+// ============================================
+
+const CAMERA_PREF_KEY = 'print.camera.open'
+/** Sem quadro novo há isso tudo: a imagem na tela já não é "ao vivo". */
+const CAMERA_STALE_MS = 8_000
+
+function readCameraPref(): boolean {
+  try {
+    return localStorage.getItem(CAMERA_PREF_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
+/**
+ * Câmera da impressora, ao vivo.
+ *
+ * Os quadros vêm pelo socket: o agente na impressora lê o snapshot da câmera e
+ * manda pra API, que repassa pra quem está na sala. O agente SÓ manda enquanto
+ * alguém está olhando, então esta tela sai da sala quando a janela some (vai
+ * pra bandeja, minimiza) — senão o roteador de quem hospeda a impressora
+ * subiria imagem o dia inteiro pra ninguém.
+ */
+function CameraCard({ printer }: { printer: PrinterInfo }) {
+  const { token } = useAuth()
+  const { socket } = useSocket()
+  const [open, setOpen] = React.useState(readCameraPref)
+  const [visible, setVisible] = React.useState(() => !document.hidden)
+  const [frameUrl, setFrameUrl] = React.useState<string | null>(null)
+  const [lastFrameAt, setLastFrameAt] = React.useState<number | null>(null)
+  const [now, setNow] = React.useState(() => Date.now())
+  const [error, setError] = React.useState<string | null>(null)
+  const [lightBusy, setLightBusy] = React.useState(false)
+  const [lightMsg, setLightMsg] = React.useState<string | null>(null)
+
+  const watching = open && visible && printer.agentOnline
+
+  React.useEffect(() => {
+    const onVisibility = (): void => setVisible(!document.hidden)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
+
+  React.useEffect(() => {
+    if (!socket || !watching) return
+
+    let current: string | null = null
+    const onFrame = (payload: { jpeg?: ArrayBuffer }): void => {
+      if (!payload?.jpeg) return
+      const url = URL.createObjectURL(new Blob([payload.jpeg], { type: 'image/jpeg' }))
+      // Um blob por quadro: sem revogar o anterior, duas horas de câmera
+      // aberta seguram gigas de JPEG na memória do renderer.
+      if (current) URL.revokeObjectURL(current)
+      current = url
+      setFrameUrl(url)
+      setLastFrameAt(Date.now())
+    }
+
+    const join = (): void => {
+      socket.emit('print:camera:watch', {}, (res: { ok?: boolean; error?: string }) => {
+        setError(res?.ok ? null : (res?.error ?? 'Não deu pra abrir a câmera.'))
+      })
+    }
+
+    socket.on('print:camera:frame', onFrame)
+    // Reconectou (queda de rede, deploy da API): a sala era do socket antigo.
+    socket.on('connect', join)
+    join()
+
+    return () => {
+      socket.off('print:camera:frame', onFrame)
+      socket.off('connect', join)
+      socket.emit('print:camera:unwatch', {})
+      if (current) URL.revokeObjectURL(current)
+      setFrameUrl(null)
+      setLastFrameAt(null)
+    }
+  }, [socket, watching])
+
+  // Relógio só pra decidir "ao vivo" × "congelou"; parado quando fechada.
+  React.useEffect(() => {
+    if (!watching) return
+    const timer = setInterval(() => setNow(Date.now()), 2_000)
+    return () => clearInterval(timer)
+  }, [watching])
+
+  function toggleOpen(): void {
+    setOpen((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(CAMERA_PREF_KEY, next ? '1' : '0')
+      } catch {
+        // Sem storage: vale só pra esta sessão.
+      }
+      return next
+    })
+  }
+
+  async function toggleLight(): Promise<void> {
+    if (printer.lightOn == null) return
+    setLightBusy(true)
+    setLightMsg(null)
+    try {
+      await printApi.light(token, !printer.lightOn)
+    } catch (err) {
+      setLightMsg(err instanceof Error ? err.message : 'Não deu')
+    } finally {
+      setLightBusy(false)
+    }
+  }
+
+  const live = lastFrameAt !== null && now - lastFrameAt < CAMERA_STALE_MS
+  const lightKnown = printer.agentOnline && printer.lightOn != null
+
+  return (
+    <div className="card-gradient rounded-brutal p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="font-display text-sm uppercase tracking-wider text-foreground">Câmera</span>
+          {watching && (
+            <span
+              className={cn(
+                'flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest',
+                live ? 'text-acid-text' : 'text-muted-foreground'
+              )}
+            >
+              <span
+                className={cn('h-1.5 w-1.5 rounded-full', live ? 'animate-pulse bg-acid' : 'bg-surface-strong')}
+                aria-hidden
+              />
+              {live ? 'ao vivo' : frameUrl ? 'congelou' : 'conectando'}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void toggleLight()}
+            disabled={!lightKnown || lightBusy}
+            title={lightKnown ? undefined : 'A impressora ainda não disse como está a luz'}
+          >
+            {printer.lightOn ? (
+              <Lightbulb className="mr-2 h-4 w-4 text-burn" />
+            ) : (
+              <LightbulbOff className="mr-2 h-4 w-4" />
+            )}
+            {printer.lightOn ? 'Apagar luz' : 'Acender luz'}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={toggleOpen}>
+            {open ? <VideoOff className="mr-2 h-4 w-4" /> : <Video className="mr-2 h-4 w-4" />}
+            {open ? 'Fechar' : 'Ver ao vivo'}
+          </Button>
+        </div>
+      </div>
+
+      {lightMsg && <p className="mt-2 font-mono text-[11.5px] text-destructive">{lightMsg}</p>}
+
+      {open && (
+        <div className="relative mt-3 aspect-video overflow-hidden rounded-brutal border-2 border-border bg-void">
+          {frameUrl ? (
+            <img
+              src={frameUrl}
+              alt="Câmera da impressora"
+              className={cn('h-full w-full object-contain', !live && 'opacity-60')}
+              draggable={false}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-muted-foreground">
+              {!printer.agentOnline
+                ? 'Sem contato com a impressora — a câmera volta junto com a ponte.'
+                : (error ?? 'Esperando a primeira imagem…')}
+            </div>
+          )}
         </div>
       )}
     </div>

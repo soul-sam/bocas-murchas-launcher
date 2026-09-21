@@ -104,6 +104,8 @@ export interface PrinterInfo {
   bedDirtySince: string | null
   agentOnline: boolean
   agentLastSeenAt: string | null
+  /** Luz da câmara. `null` = sem agente ou a máquina ainda não respondeu. */
+  lightOn?: boolean | null
   autoStart: boolean
   lastErrorCode: number | null
   lastErrorMessage: string | null
@@ -239,6 +241,13 @@ export const printApi = {
       method: 'POST',
       token,
       body: JSON.stringify({ action })
+    }),
+
+  light: (token: string | null, on: boolean) =>
+    request<{ message: string }>('/print/light', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ on })
     }),
 
   // ---- admin ----
