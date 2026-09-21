@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.20.0',
+    headline: 'A impressora agora tem câmera',
+    items: [
+      'Na aba da impressora dá pra ver a peça saindo, ao vivo',
+      'Botão pra acender e apagar a luz da impressora — pra enxergar pela câmera à noite',
+      'O tempo que falta volta a aparecer: a peça nova não fica mais parecendo que já terminou'
+    ],
+    note: 'A câmera só manda imagem enquanto alguém está olhando — fechar a janela ou mandar pra bandeja desliga.'
+  },
+  {
     version: '1.19.0',
     headline: 'Vídeo no chat, tocando na conversa',
     items: [
