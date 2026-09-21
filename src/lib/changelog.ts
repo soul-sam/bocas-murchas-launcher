@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.21.0',
+    headline: 'As colunas agora se arrastam',
+    items: [
+      'Dá pra puxar a divisória da barra de canais e a da lista da direita pra mudar a largura delas. Tem limite dos dois lados pra conversa nunca virar uma tira, e dois cliques na divisória voltam ao tamanho de fábrica.',
+      'A largura fica guardada nesta máquina, e encolhe sozinha se a janela apertar — o tamanho escolhido no monitor grande não come meia tela no notebook.',
+      'A conta do mês agora diz quanto FALTA, e não só quanto custa. Quando a galera fecha a conta, o aviso vira a boa notícia e aparece pra todo mundo, inclusive pra quem já tinha pago.',
+      'O "Volto logo!" entra sozinho também quando você passa muito tempo sem falar nada — uma hora, por padrão — mesmo com você no computador. É o caso de quem fica jogando com o launcher aberto atrás e aparece online pra quem está chamando. Sai na hora em que você falar ou mexer no launcher.',
+      'O aviso de "+2 XP" saiu. Ele pulava no canto o dia inteiro pra dizer o que a barrinha do rodapé já mostra. Nível novo, conquista, murchos e presente continuam avisando.'
+    ],
+    note: 'O tempo do "Volto logo!" automático se ajusta em Configurações → Volto logo (AFK); dá pra desligar o novo relógio ali mesmo.'
+  },
+  {
     version: '1.20.0',
     headline: 'A impressora agora tem câmera',
     items: [
