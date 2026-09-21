@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Check, Copy, HandCoins, Loader2, Server, Undo2, X } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
-import { formatBRL, monthName } from '@/lib/api-costs'
+import { formatBRL, monthName, progressoDaConta, type CostSummary } from '@/lib/api-costs'
 import { useCosts } from '@/lib/costs-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { cn } from '@/lib/utils'
@@ -142,6 +142,8 @@ export function CostsModal() {
             </p>
           </div>
 
+          <ProgressoDoMes summary={summary} />
+
           <p className="mt-4 text-sm leading-relaxed text-foreground">
             Ninguém é obrigado a nada, ninguém vai ser bloqueado e ninguém vai
             ficar devendo. Mas se você entrou aqui hoje, foi porque o servidor
@@ -194,6 +196,84 @@ export function CostsModal() {
           </p>
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * QUANTO JÁ ENTROU E QUANTO FALTA.
+ *
+ * Esta tela sempre mostrou o total e a cota de cada um, e nenhum dos dois
+ * responde "falta muito?" — que é a pergunta que decide se a pessoa paga hoje
+ * ou deixa pra depois. Uma barra e um número resolvem: dá pra ver, em um
+ * segundo, se o mês está no começo ou a três cotas de fechar.
+ *
+ * A soma é de cotas CONFIRMADAS. Quem marcou e ainda não foi conferido
+ * aparece numa linha à parte, e só pra quem confere (ver lib/api-costs.ts):
+ * contar promessa como dinheiro faria a barra encher sem nada ter caído.
+ */
+function ProgressoDoMes({ summary }: { summary: CostSummary }) {
+  const progresso = progressoDaConta(summary)
+  const { bateu, faltaCents, faltamCotas, pagoCents, percent, sobraCents, aguardandoCents } =
+    progresso
+
+  return (
+    <div
+      className={cn(
+        'mt-4 rounded-brutal border p-4',
+        bateu ? 'border-acid-dark bg-acid/[0.06]' : 'border-line bg-void/60'
+      )}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-[11.5px] text-muted-foreground">
+          {bateu ? `A conta de ${monthName(summary.month)} está paga` : 'Quanto já entrou'}
+        </p>
+        <p className={cn('font-mono text-[11.5px]', bateu ? 'text-acid-text' : 'text-muted-foreground')}>
+          {percent}%
+        </p>
+      </div>
+
+      <p className="mt-0.5 font-mono text-2xl font-bold text-foreground">
+        {formatBRL(pagoCents)}{' '}
+        <span className="text-base font-normal text-muted-foreground">
+          de {formatBRL(summary.totalCents)}
+        </span>
+      </p>
+
+      {/* Trilho e preenchimento: `aria-hidden` porque o texto logo abaixo já
+          diz o mesmo em palavras — uma barra anunciada em porcentagem só
+          repetiria o que o leitor de tela acabou de ler. */}
+      <div
+        aria-hidden
+        className="mt-2 h-2 w-full overflow-hidden rounded-brutal border border-line bg-void"
+      >
+        <div
+          className={cn('h-full transition-[width] duration-500', bateu ? 'bg-acid' : 'bg-burn')}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+
+      <p className="mt-2 text-[11.5px] leading-snug text-muted-foreground">
+        {bateu ? (
+          <>
+            Fechou. {summary.contributors.length} de {summary.activeUsers}{' '}
+            {summary.activeUsers === 1 ? 'pessoa botou' : 'botaram'} a parte delas
+            {sobraCents > 0 ? ` e ainda sobraram ${formatBRL(sobraCents)}` : ''} — o mês está pago.
+          </>
+        ) : (
+          <>
+            Faltam <span className="font-mono text-burn">{formatBRL(faltaCents)}</span> pra fechar o
+            mês: {faltamCotas} {faltamCotas === 1 ? 'parte' : 'partes'} de{' '}
+            {formatBRL(summary.shareCents)}.
+          </>
+        )}
+      </p>
+
+      {aguardandoCents > 0 && (
+        <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
+          Fora {formatBRL(aguardandoCents)} que marcaram e estão esperando você conferir.
+        </p>
+      )}
     </div>
   )
 }

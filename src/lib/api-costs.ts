@@ -57,6 +57,58 @@ export interface CostSummary {
   canConfirm: boolean
 }
 
+/**
+ * QUANTO JÁ ENTROU E QUANTO FALTA — a conta do mês vista de cima.
+ *
+ * O resumo do servidor diz o total, a cota de cada um e quem já ajudou; o que
+ * ninguém via era a soma. "Somos 9, dá R$ 13,89 pra cada" não responde a única
+ * pergunta que faz alguém abrir a carteira: FALTA MUITO?
+ *
+ * A conta é cota × gente confirmada, e não um valor por pessoa, porque não
+ * existe valor por pessoa: ninguém digita quanto pagou, marca-se "paguei" e
+ * quem recebe confere no extrato (ver lib/costs.ts na API). Então a leitura
+ * honesta é "quantas cotas já caíram".
+ *
+ * Quem marcou e ainda não foi conferido NÃO entra no que já caiu — entra em
+ * `aguardandoCents`, que só tem número pra quem confirma (pro resto a fila
+ * chega vazia). Contar promessa como dinheiro na barra faria a conta "fechar"
+ * sem ninguém ter recebido nada.
+ */
+export interface ProgressoDaConta {
+  /** Cotas confirmadas, em centavos. */
+  pagoCents: number
+  /** Quanto ainda falta pra fechar o mês. Zero quando já bateu. */
+  faltaCents: number
+  /** O que passou do total — cota arredondada pra cima sobra por natureza. */
+  sobraCents: number
+  /** Marcado e esperando conferência. Zero pra quem não confirma. */
+  aguardandoCents: number
+  /** 0..100, já limitado: barra que passa de 100% vaza do desenho. */
+  percent: number
+  /** A conta do mês está paga. */
+  bateu: boolean
+  /** Quantas cotas ainda faltam. */
+  faltamCotas: number
+}
+
+export function progressoDaConta(summary: CostSummary): ProgressoDaConta {
+  // Nunca zero: é divisor logo abaixo, e um total mal configurado no servidor
+  // não pode virar Infinity na tela de todo mundo.
+  const cota = Math.max(1, summary.shareCents)
+  const pagoCents = summary.contributors.length * cota
+  const faltaCents = Math.max(0, summary.totalCents - pagoCents)
+
+  return {
+    pagoCents,
+    faltaCents,
+    sobraCents: Math.max(0, pagoCents - summary.totalCents),
+    aguardandoCents: (summary.pending?.length ?? 0) * cota,
+    percent: summary.totalCents > 0 ? Math.min(100, Math.round((pagoCents / summary.totalCents) * 100)) : 100,
+    bateu: pagoCents >= summary.totalCents,
+    faltamCotas: Math.ceil(faltaCents / cota)
+  }
+}
+
 /** 2423 -> "R$ 24,23". */
 export function formatBRL(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })

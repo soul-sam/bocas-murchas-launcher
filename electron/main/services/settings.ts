@@ -271,6 +271,10 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     // Teto de 3h: numero absurdo no arquivo (editado na mao) nao pode virar um
     // automatico que nunca dispara sem explicacao.
     afkAutoMinutes: Math.round(clamp(Number(raw.afkAutoMinutes), 0, 180, DEFAULTS.afkAutoMinutes)),
+    // Teto maior que o do ocioso: "sem falar" se mede em horas, nao em cafes.
+    afkSilenceMinutes: Math.round(
+      clamp(Number(raw.afkSilenceMinutes), 0, 720, DEFAULTS.afkSilenceMinutes)
+    ),
     closeToTray: raw.closeToTray ?? DEFAULTS.closeToTray,
     clipBuffer: raw.clipBuffer ?? DEFAULTS.clipBuffer
   }

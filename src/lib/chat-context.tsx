@@ -18,6 +18,7 @@ import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
 import { collectMentions, mentionsEveryone } from './rich-text'
 import { useCargos } from './cargos-context'
+import { marcarFala } from './presenca-de-fala'
 
 /**
  * Canais de texto, conversas diretas e mensagens.
@@ -1028,6 +1029,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const message = isDmId(activeChannelId)
         ? await dmApi.send(token, conversationIdOf(activeChannelId), body)
         : await messagesApi.send(token, activeChannelId, body)
+
+      // Falou. É por este carimbo que o "Volto logo!" automático sabe que
+      // você ainda está na conversa, mesmo sem tocar no mouse (e que NÃO
+      // está, mesmo mexendo no PC a noite toda) — ver lib/presenca-de-fala.ts.
+      marcarFala()
 
       // Aparece na hora pra quem mandou. O broadcast do servidor chega logo
       // depois com a mesma mensagem e e ignorado pelo id — nao emitimos nada

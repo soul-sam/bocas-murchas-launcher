@@ -39,9 +39,22 @@ import { XpToasts } from '@/components/social/XpToast'
  * desmonta no logout, e este provider é exatamente isso (App.tsx não é nosso).
  */
 
+/**
+ * NÃO EXISTE MAIS TOAST DE XP, e isso é de propósito.
+ *
+ * Cada mensagem, cada reação e cada minuto de call rendem XP, então o "+2 XP"
+ * aparecia no canto da tela o dia inteiro — inclusive por cima do que a pessoa
+ * estava fazendo, várias vezes por minuto. Juntar os blips num toast só (era o
+ * que o `pushXp` fazia) diminuía a quantidade e não resolvia o problema: o
+ * aviso continuava aparecendo toda hora pra dizer algo que a barra de XP do
+ * rodapé já mostra o tempo todo, sem piscar na frente de ninguém.
+ *
+ * Aviso é pra o que ACONTECE de vez em quando e muda alguma coisa: subir de
+ * nível, ganhar badge, receber murchos ou um presente. Esses continuam.
+ */
 export interface GamificationToast {
   id: number
-  kind: 'xp' | 'levelup' | 'badge' | 'coins' | 'checkin' | 'gift' | 'info' | 'error'
+  kind: 'levelup' | 'badge' | 'coins' | 'checkin' | 'gift' | 'info' | 'error'
   title: string
   body?: string
   /**
@@ -53,9 +66,6 @@ export interface GamificationToast {
   badgeId?: string
   /** Epoch ms de quando sai da tela sozinho. */
   until: number
-  /** Só nos de XP: soma e motivos, pra juntar vários blips num toast só. */
-  xpAmount?: number
-  reasons?: string[]
 }
 
 interface GamificationContextValue {
@@ -98,8 +108,6 @@ const Context = React.createContext<GamificationContextValue | null>(null)
 const TOAST_TTL_MS = 4_000
 /** Quantos toasts ao mesmo tempo — mais que isso vira parede. */
 const TOAST_MAX = 4
-/** Blips de XP dentro desta janela viram um toast só. */
-const XP_MERGE_WINDOW_MS = 3_000
 /** Um som de XP/moeda a cada 3s no máximo — spam de mensagem não vira metralhadora. */
 const SOUND_THROTTLE_MS = 3_000
 /** Espera depois do último evento antes de rebuscar o /me. */
@@ -166,45 +174,6 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
   const dismissToast = React.useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
-  }, [])
-
-  /**
-   * XP chega em blips pequenos e frequentes (mensagem, reação, minuto de
-   * call). Se o toast de XP mais recente ainda está na tela, soma nele em vez
-   * de empilhar quatro "+2 XP" iguais.
-   */
-  const pushXp = React.useCallback((amount: number, reason: string) => {
-    const label = xpReasonLabel(reason)
-    setToasts((prev) => {
-      const now = Date.now()
-      const last = prev[prev.length - 1]
-      // Ainda na tela e recente o bastante: soma. Cada soma renova o prazo,
-      // então uma rajada de blips vira um toast só que vai crescendo.
-      if (last && last.kind === 'xp' && now < last.until && now - (last.until - TOAST_TTL_MS) < XP_MERGE_WINDOW_MS) {
-        const total = (last.xpAmount ?? 0) + amount
-        const reasons = last.reasons ? [...last.reasons] : []
-        if (label && !reasons.includes(label)) reasons.push(label)
-        const merged: GamificationToast = {
-          ...last,
-          xpAmount: total,
-          reasons,
-          title: `+${total} XP`,
-          body: reasons.slice(0, 3).join(', ') + (reasons.length > 3 ? '…' : ''),
-          until: now + TOAST_TTL_MS
-        }
-        return [...prev.slice(0, -1), merged]
-      }
-      const entry: GamificationToast = {
-        id: ++toastSeq,
-        kind: 'xp',
-        title: `+${amount} XP`,
-        body: label || undefined,
-        xpAmount: amount,
-        reasons: label ? [label] : [],
-        until: now + TOAST_TTL_MS
-      }
-      return [...prev, entry].slice(-TOAST_MAX)
-    })
   }, [])
 
   // Um timer só, mirando o toast que vence primeiro. Re-arma a cada mudança.
@@ -486,10 +455,10 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
             }
           : prev
       )
-      if (data.amount > 0) {
-        pushXp(data.amount, data.reason)
-        sound('xp', true)
-      }
+      // Sem toast: o XP entra calado e a barra do rodapé mexe sozinha (ver o
+      // cabeçalho de GamificationToast). O bipe fica, engasgado a um a cada
+      // três segundos — quem não quiser desliga os sons nas configurações.
+      if (data.amount > 0) sound('xp', true)
       scheduleRefresh()
     }
 
@@ -589,7 +558,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       socket.off('gamification:coins', handleCoins)
       socket.off('gamification:gift', handleGift)
     }
-  }, [socket, pushToast, pushXp, sound, scheduleRefresh, loadShop])
+  }, [socket, pushToast, sound, scheduleRefresh, loadShop])
 
   React.useEffect(
     () => () => {

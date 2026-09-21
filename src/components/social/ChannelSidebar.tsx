@@ -47,7 +47,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useAfk } from '@/lib/afk-context'
 import { useHotkeys } from '@/lib/hotkeys-context'
 import { useOverlays } from '@/lib/overlay-context'
-import { useLayout } from '@/lib/layout-context'
+import { CANAIS_MAX, CANAIS_MIN, useLayout } from '@/lib/layout-context'
 import { useActivity } from '@/lib/activity-context'
 import { useMembers } from '@/lib/members-context'
 import { AFK_AUTO_NOTE } from '@/lib/afk-context'
@@ -57,6 +57,7 @@ import { OpenPartiesStrip } from './OpenPartiesStrip'
 import { SmokeStrip } from './SmokeStrip'
 import { SoundboardPopover } from './SoundboardPopover'
 import { ConnectionBars } from './ConnectionBars'
+import { AlcaDeLargura } from '@/components/ui/alca'
 import { toqueLongo } from '@/lib/toque-longo'
 import { podeCompartilharTela } from '@/lib/platform'
 
@@ -98,7 +99,15 @@ export function ChannelSidebar({
   const { open: openSettings, settings } = useSettings()
   const { pttActive } = useHotkeys()
   const { openUserMenu, openQuickSwitcher, openAdmin, openScreenPicker } = useOverlays()
-  const { view, sidebarIsDrawer, sidebarOpen, closeSidebar, isPhone } = useLayout()
+  const {
+    view,
+    sidebarIsDrawer,
+    sidebarOpen,
+    closeSidebar,
+    isPhone,
+    sidebarWidth,
+    setSidebarWidth
+  } = useLayout()
   const { afk, toggle: toggleAfk } = useAfk()
 
   /**
@@ -200,7 +209,8 @@ export function ChannelSidebar({
       aria-modal={sidebarIsDrawer ? true : undefined}
       aria-label={sidebarIsDrawer ? 'Canais' : undefined}
       className={cn(
-        'flex shrink-0 flex-col border-r border-line bg-depth-2',
+        // `relative` é o que ancora a divisória de largura na borda direita.
+        'relative flex shrink-0 flex-col border-r border-line bg-depth-2',
         // No celular a lista de canais é uma TELA, não uma gaveta: 240px ao
         // lado de 64px de conversa aparecendo por trás do véu não é escolher
         // canal, é espiar. Aqui ela ocupa tudo e o véu some junto.
@@ -211,6 +221,9 @@ export function ChannelSidebar({
           !isPhone &&
           'absolute inset-y-0 left-14 z-veu shadow-[10px_0_30px_rgba(0,0,0,0.6)]'
       )}
+      // A largura arrastada ganha do `w-60` — e some no celular, onde a lista
+      // é tela cheia e uma coluna de 300px no meio do nada não faria sentido.
+      style={!isPhone && sidebarWidth != null ? { width: sidebarWidth } : undefined}
     >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
         <img
@@ -769,6 +782,19 @@ export function ChannelSidebar({
           </DockButton>
         </div>
       </footer>
+
+      {/* Por último no DOM de propósito: a divisória fica por cima do que
+          desenha ao lado dela, e não atrás. */}
+      {!isPhone && (
+        <AlcaDeLargura
+          lado="direita"
+          largura={sidebarWidth}
+          aoMudar={setSidebarWidth}
+          min={CANAIS_MIN}
+          max={CANAIS_MAX}
+          rotulo="Largura da barra de canais"
+        />
+      )}
     </aside>
   )
 

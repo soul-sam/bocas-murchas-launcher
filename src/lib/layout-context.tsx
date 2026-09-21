@@ -43,6 +43,63 @@ const NARROW_AT = 900
  */
 const PHONE_AT = 640
 
+/**
+ * LARGURA DAS COLUNAS — até onde dá pra arrastar cada uma.
+ *
+ * As duas colunas tinham largura fixa (240px de canais, 224/288px de painel) e
+ * número fixo é sempre errado pra alguém: nome de canal comprido não cabia, e
+ * em monitor grande a lista de membros ficava estreita à toa. Agora a
+ * divisória entre elas se arrasta (ver components/ui/alca.tsx).
+ *
+ * O PISO E O TETO SÃO O QUE IMPEDE O ESTRAGO. Sem piso, a coluna vai a zero e
+ * não sobra nada pra agarrar de volta; sem teto, o chat — que é o conteúdo —
+ * vira uma tira espremida entre duas barras.
+ *
+ * E o teto ainda encolhe junto com a janela: 40% dela, no máximo. Uma largura
+ * escolhida no monitor grande não pode ocupar meia tela quando a mesma conta
+ * abre no notebook.
+ */
+export const CANAIS_MIN = 180
+export const CANAIS_MAX = 420
+export const PAINEL_MIN = 220
+export const PAINEL_MAX = 480
+
+/**
+ * A largura fica no localStorage, e não no servidor nem no settings.json:
+ * é uma decisão desta TELA, nesta máquina — quem tem um monitor de 34" e um
+ * notebook não quer a mesma coluna nos dois. `null` = nunca arrastou, vale a
+ * largura padrão do CSS.
+ */
+const CHAVE_CANAIS = 'bocas:largura-canais'
+const CHAVE_PAINEL = 'bocas:largura-painel'
+
+function lerLargura(chave: string): number | null {
+  try {
+    const bruto = window.localStorage.getItem(chave)
+    if (!bruto) return null
+    const valor = Number(bruto)
+    return Number.isFinite(valor) && valor > 0 ? valor : null
+  } catch {
+    // Navegador com armazenamento bloqueado: vale o padrão, e o app abre.
+    return null
+  }
+}
+
+function gravarLargura(chave: string, valor: number | null): void {
+  try {
+    if (valor == null) window.localStorage.removeItem(chave)
+    else window.localStorage.setItem(chave, String(valor))
+  } catch {
+    // Não gravou: a largura vale nesta sessão e volta ao padrão na próxima.
+  }
+}
+
+/** Prende a largura escolhida dentro do que cabe NESTA janela. */
+function caber(valor: number, min: number, max: number, janela: number): number {
+  const teto = Math.max(min, Math.min(max, Math.round(janela * 0.4)))
+  return Math.round(Math.min(teto, Math.max(min, valor)))
+}
+
 /** O que ocupa a coluna do meio: a conversa ou a call. */
 export type CenterView = 'chat' | 'voice'
 
@@ -60,6 +117,17 @@ interface LayoutContextValue {
   sidebarOpen: boolean
   toggleSidebar: () => void
   closeSidebar: () => void
+
+  /**
+   * Largura arrastada da barra de canais, em px — `null` quando ninguém
+   * arrastou e vale a do CSS. Já vem limitada ao que cabe na janela de agora.
+   */
+  sidebarWidth: number | null
+  setSidebarWidth: (largura: number | null) => void
+
+  /** Idem pra coluna da direita (membros, busca, fixadas, agenda, ranking…). */
+  panelWidth: number | null
+  setPanelWidth: (largura: number | null) => void
 
   membersOpen: boolean
   toggleMembers: () => void
@@ -139,6 +207,21 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   const [sidebarPref, setSidebarPref] = React.useState<boolean | null>(null)
   const [membersPref, setMembersPref] = React.useState<boolean | null>(null)
   const [view, setView] = React.useState<CenterView>('chat')
+
+  // Larguras arrastadas. Lidas uma vez, na montagem — depois quem manda é o
+  // estado, e o localStorage só recebe cópia.
+  const [canaisPref, setCanaisPref] = React.useState<number | null>(() => lerLargura(CHAVE_CANAIS))
+  const [painelPref, setPainelPref] = React.useState<number | null>(() => lerLargura(CHAVE_PAINEL))
+
+  const setSidebarWidth = React.useCallback((largura: number | null) => {
+    setCanaisPref(largura)
+    gravarLargura(CHAVE_CANAIS, largura)
+  }, [])
+
+  const setPanelWidth = React.useCallback((largura: number | null) => {
+    setPainelPref(largura)
+    gravarLargura(CHAVE_PAINEL, largura)
+  }, [])
 
   /**
    * Um painel por vez na coluna da direita.
@@ -232,6 +315,11 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       ? false
       : (membersPref ?? membersAuto)
 
+  // A janela encolheu: a largura escolhida continua guardada, mas o que vai
+  // pra tela é o que cabe agora.
+  const sidebarWidth = canaisPref == null ? null : caber(canaisPref, CANAIS_MIN, CANAIS_MAX, width)
+  const panelWidth = painelPref == null ? null : caber(painelPref, PAINEL_MIN, PAINEL_MAX, width)
+
   const value = React.useMemo<LayoutContextValue>(
     () => ({
       width,
@@ -241,6 +329,10 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       sidebarOpen,
       toggleSidebar: () => setSidebarPref((prev) => !(prev ?? !sidebarIsDrawer)),
       closeSidebar: () => setSidebarPref(false),
+      sidebarWidth,
+      setSidebarWidth,
+      panelWidth,
+      setPanelWidth,
       view,
       setView,
       membersOpen,
@@ -281,6 +373,10 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       isPhone,
       sidebarIsDrawer,
       sidebarOpen,
+      sidebarWidth,
+      setSidebarWidth,
+      panelWidth,
+      setPanelWidth,
       membersOpen,
       membersAuto,
       pinnedOpen,

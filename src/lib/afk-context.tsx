@@ -3,6 +3,7 @@ import { users as usersApi } from './api'
 import { useAuth } from './auth-context'
 import { useSettings } from './settings-context'
 import { useVoice } from './voice-context'
+import { marcarFala, marcarVolta, silencioMs } from './presenca-de-fala'
 
 /**
  * "VOLTO LOGO!" — o aviso de que você não está aí.
@@ -65,6 +66,26 @@ import { useVoice } from './voice-context'
  * Só o AUTOMÁTICO sai por aqui. Quem clicou "Volto logo!" disse que ia sair;
  * o mouse encostando na mesa não desmente isso — esse continua saindo pelo
  * toque na janela (ou por outro clique no botão).
+ *
+ * ## SEM FALAR TAMBÉM É SINAL DE AUSÊNCIA (novo)
+ *
+ * O ocioso do sistema responde "saiu do computador?". Só que o caso que mais
+ * deixa gente falando sozinha é o outro: a pessoa está no PC, jogando ou
+ * trabalhando, com o launcher aberto atrás — pro Windows ela nunca fica
+ * ociosa, e pro grupo ela aparece online há seis horas sem dizer nada.
+ *
+ * Então há DOIS relógios automáticos, cada um com o seu tempo nas
+ * configurações:
+ *
+ *  - `afkAutoMinutes` — sem teclado e mouse (do sistema);
+ *  - `afkSilenceMinutes` — sem MANDAR MENSAGEM nem abrir o microfone (ver
+ *    lib/presenca-de-fala.ts).
+ *
+ * A volta de cada um é diferente, e tem que ser: o de ocioso cai quando você
+ * mexe no computador; o de silêncio, não — mexer no PC é justamente o que ele
+ * não conta como presença. Esse cai quando você FALA, ou quando encosta na
+ * janela do launcher (que já significa "voltei pra cá"). Ao cair, o relógio do
+ * silêncio é zerado, senão o crachá voltaria no tique seguinte, piscando.
  */
 
 /** O que o crachá diz quando VOCÊ marcou. Curto: cabe na linha da lista. */
@@ -72,6 +93,13 @@ export const AFK_NOTE = 'Volto logo!'
 
 /** O que o crachá diz quando o launcher marcou sozinho. */
 export const AFK_AUTO_NOTE = 'Longe do teclado'
+
+/**
+ * Quando quem marcou foi o relógio do SILÊNCIO — a pessoa está no computador,
+ * só não fala há tempo demais. Dizer "longe do teclado" aqui seria mentira na
+ * cara de quem está com a mão nele.
+ */
+export const AFK_SILENCE_NOTE = 'Sumido da conversa'
 
 /**
  * Os textos que o AFK antigo gravava no `customStatus` das pessoas.
@@ -82,6 +110,9 @@ export const AFK_AUTO_NOTE = 'Longe do teclado'
  * escreveu "volto logo!" de propósito.
  */
 const LEGACY_AFK_NOTES = [AFK_NOTE, AFK_AUTO_NOTE]
+
+/** Quem marcou sozinho: o ocioso do sistema ou o silêncio na conversa. */
+type MotivoAutomatico = 'ocioso' | 'silencio' | null
 
 /**
  * De quanto em quanto tempo perguntamos o ocioso do sistema.
@@ -114,7 +145,7 @@ interface AfkContextValue {
   afk: boolean
   /** O recado que os outros estão vendo. Null quando não está AFK. */
   note: string | null
-  /** Foi o launcher que marcou (ocioso), não você. */
+  /** Foi o launcher que marcou (ocioso ou silêncio), não você. */
   automatic: boolean
   /** Liga o AFK. Sem recado, usa o padrão. */
   enable: (note?: string) => void
@@ -170,15 +201,14 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
   const armedRef = React.useRef(false)
   const afkRef = React.useRef(false)
   afkRef.current = afk
-  /** O poll de ocioso só desfaz o que ele mesmo marcou. */
-  const automaticRef = React.useRef(false)
-  automaticRef.current = automatic
+  /**
+   * O poll só desfaz o que ele mesmo marcou — e cada motivo tem a sua regra de
+   * volta, por isso guarda-se QUAL foi, e não só que foi automático.
+   */
+  const motivoRef = React.useRef<MotivoAutomatico>(null)
 
   const tokenRef = React.useRef(token)
   tokenRef.current = token
-
-  /** Última vez que ESTE microfone abriu. Ver o poll de ocioso mais abaixo. */
-  const lastSpokeRef = React.useRef(0)
 
   /**
    * FAXINA DO ESTRAGO ANTIGO: limpa o recado que o AFK antigo deixou gravado.
@@ -212,7 +242,7 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const enable = React.useCallback(
-    (nextNote?: string, auto = false) => {
+    (nextNote?: string, auto: MotivoAutomatico = null) => {
       if (afkRef.current) return
 
       previousRef.current = { status: user?.status ?? 'online' }
@@ -221,7 +251,8 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
 
       setAfk(true)
       setNote(message)
-      setAutomatic(auto)
+      setAutomatic(auto !== null)
+      motivoRef.current = auto
       applyRemote('away')
 
       // Só no clique, e só dentro de uma call. `setDeafen(true)` já muta o
@@ -241,7 +272,7 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
 
       // Marcado sozinho já nasce armado: a pessoa não estava aqui pra clicar,
       // então qualquer toque na janela é volta. Na mão, espera a carência.
-      armedRef.current = auto
+      armedRef.current = auto !== null
       if (!auto) {
         window.setTimeout(() => {
           armedRef.current = true
@@ -257,10 +288,15 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
     const before = previousRef.current
     previousRef.current = null
     armedRef.current = false
+    motivoRef.current = null
 
     setAfk(false)
     setNote(null)
     setAutomatic(false)
+
+    // Voltar zera o relógio do silêncio: senão o tique seguinte — com o mesmo
+    // silêncio estourado de antes — marcaria de novo, e o crachá piscaria.
+    marcarVolta()
 
     // Devolve o áudio ANTES do resto: é o que a pessoa nota primeiro ao voltar.
     // Sai do ensurdecido primeiro (que não mexe no mic) e só então restaura o
@@ -317,34 +353,49 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
   /** Falar na call conta como estar presente, mesmo sem tocar no teclado. */
   React.useEffect(() => {
     const me = voice.participants.find((p) => p.isLocal)
-    if (me?.isSpeaking) lastSpokeRef.current = Date.now()
+    if (me?.isSpeaking) marcarFala()
   }, [voice.participants])
 
   /**
-   * MARCAR SOZINHO depois de N minutos ocioso.
+   * MARCAR SOZINHO — os dois relógios, no mesmo tique.
    *
-   * Duas condições, e a segunda é a que evita o erro bobo: quem passa a noite
-   * na call falando sem tocar no mouse ficaria "ausente" no meio de uma frase,
-   * porque pro Windows teclado e mouse parados é ocioso. Então o mesmo tempo
-   * precisa ter passado desde a última vez que o microfone abriu.
+   * OCIOSO: N minutos sem teclado e mouse do sistema. Duas condições, e a
+   * segunda é a que evita o erro bobo: quem passa a noite na call falando sem
+   * tocar no mouse ficaria "ausente" no meio de uma frase, porque pro Windows
+   * teclado e mouse parados é ocioso. Então o mesmo tempo precisa ter passado
+   * desde a última vez que você falou.
+   *
+   * SILÊNCIO: N minutos sem mandar mensagem nem abrir o microfone, estando
+   * você no computador ou não — é o caso de quem joga a tarde inteira com o
+   * launcher aberto atrás e aparece online pra quem está chamando.
+   *
+   * Zero em um dos dois desliga AQUELE relógio; zero nos dois desliga o
+   * automático inteiro (o botão continua funcionando na mão).
    */
   React.useEffect(() => {
     const minutes = settings.afkAutoMinutes
-    if (!token || minutes <= 0) return
+    const silenceMinutes = settings.afkSilenceMinutes
+    if (!token || (minutes <= 0 && silenceMinutes <= 0)) return
 
     const limitMs = minutes * 60_000
+    const silenceLimitMs = silenceMinutes * 60_000
 
     const check = async (): Promise<void> => {
       const idleSeconds = await window.bocas.app.idleSeconds().catch(() => 0)
 
       /**
-       * JÁ ESTÁ AUSENTE: o mesmo relógio decide a volta.
+       * JÁ ESTÁ AUSENTE: a volta é do mesmo relógio que marcou.
        *
-       * Só desfaz o que ELE mesmo marcou (`automaticRef`) — ver o cabeçalho.
+       * Só desfaz o que ELE mesmo marcou (`motivoRef`) — ver o cabeçalho. E a
+       * regra muda com o motivo: o de ocioso cai quando a pessoa mexe no
+       * computador; o de silêncio, só quando ela fala (encostar na janela do
+       * launcher já o desfaz pelo listener de `pointerdown`).
        */
       if (afkRef.current) {
-        if (!automaticRef.current) return
-        if (idleSeconds > BACK_IDLE_SECONDS) return
+        const motivo = motivoRef.current
+        if (!motivo) return
+        if (motivo === 'ocioso' && idleSeconds > BACK_IDLE_SECONDS) return
+        if (motivo === 'silencio' && silencioMs() >= silenceLimitMs) return
         disable()
         return
       }
@@ -353,22 +404,26 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
       // quem pediu isso seria desfazer a escolha dela.
       if (user?.status === 'offline') return
 
-      if (idleSeconds * 1000 < limitMs) return
-      if (Date.now() - lastSpokeRef.current < limitMs) return
+      if (minutes > 0 && idleSeconds * 1000 >= limitMs && silencioMs() >= limitMs) {
+        enable(AFK_AUTO_NOTE, 'ocioso')
+        return
+      }
 
-      enable(AFK_AUTO_NOTE, true)
+      if (silenceMinutes > 0 && silencioMs() >= silenceLimitMs) {
+        enable(AFK_SILENCE_NOTE, 'silencio')
+      }
     }
 
     const timer = window.setInterval(() => void check(), IDLE_POLL_MS)
     return () => window.clearInterval(timer)
-  }, [settings.afkAutoMinutes, token, user?.status, enable, disable])
+  }, [settings.afkAutoMinutes, settings.afkSilenceMinutes, token, user?.status, enable, disable])
 
   const value = React.useMemo<AfkContextValue>(
     () => ({
       afk,
       note,
       automatic,
-      enable: (n?: string) => enable(n, false),
+      enable: (n?: string) => enable(n, null),
       disable,
       toggle
     }),

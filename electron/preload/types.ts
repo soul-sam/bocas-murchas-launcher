@@ -721,6 +721,15 @@ export interface LauncherSettings {
    * tocar no mouse era marcado como ausente no meio da conversa.
    */
   afkAutoMinutes: number
+  /**
+   * Minutos sem MANDAR MENSAGEM nem abrir o microfone pra o launcher marcar
+   * "Volto logo!" sozinho, mexendo a pessoa no computador ou não. 0 desliga.
+   *
+   * E o de cima, `afkAutoMinutes`, nao cobre isto: quem joga a tarde inteira
+   * com o launcher aberto atras nunca fica ocioso pro Windows, e aparece
+   * online pra quem esta chamando faz uma hora. Ver src/lib/afk-context.tsx.
+   */
+  afkSilenceMinutes: number
   closeToTray: boolean
   /**
    * Manter o buffer rolante da call ligado, pra poder clipar os últimos
@@ -955,6 +964,10 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   // 10 minutos: tempo de um cafe, e curto o bastante pra o aviso ainda ser
   // verdade quando alguem for chamar.
   afkAutoMinutes: 10,
+  // Uma hora: "muito tempo sem falar" tem que ser MUITO tempo, ou o cracha
+  // aparece em quem so foi buscar cafe e volta em dez minutos — e um cracha
+  // que erra e um cracha em que ninguem acredita.
+  afkSilenceMinutes: 60,
   closeToTray: true,
   clipBuffer: true
 }

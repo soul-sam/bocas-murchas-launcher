@@ -1,6 +1,8 @@
 import * as React from 'react'
-import { useLayout } from '@/lib/layout-context'
+import { PAINEL_MAX, PAINEL_MIN, useLayout } from '@/lib/layout-context'
 import { useCamadaVoltar } from '@/lib/use-camada-voltar'
+import { AlcaDeLargura } from '@/components/ui/alca'
+import { cn } from '@/lib/utils'
 
 /**
  * A COLUNA DA DIREITA, NO CELULAR, É UMA FOLHA DE BAIXO.
@@ -20,12 +22,36 @@ import { useCamadaVoltar } from '@/lib/use-camada-voltar'
  * <body>, travando o app inteiro (ver lib/interaction-guard.ts).
  */
 export function FolhaDePainel({ children }: { children: React.ReactNode }) {
-  const { isPhone, closeRightColumn } = useLayout()
+  const { isPhone, closeRightColumn, panelWidth, setPanelWidth } = useLayout()
 
   // O Voltar do aparelho fecha a folha antes de pensar em sair do app.
   useCamadaVoltar(isPhone, closeRightColumn)
 
-  if (!isPhone) return <>{children}</>
+  // NO PC A COLUNA SE ARRASTA. Este componente já é o único lugar por onde os
+  // oito painéis passam, então a divisória mora aqui — nenhum deles precisa
+  // saber que pode mudar de largura.
+  //
+  // `[&>aside]:w-full` só entra quando ALGUÉM arrastou: sem largura escolhida,
+  // cada painel mantém a sua (a lista de membros é mais estreita que a busca,
+  // e isso é de propósito).
+  if (!isPhone) {
+    return (
+      <div
+        className={cn('relative flex shrink-0', panelWidth != null && '[&>aside]:w-full')}
+        style={panelWidth != null ? { width: panelWidth } : undefined}
+      >
+        {children}
+        <AlcaDeLargura
+          lado="esquerda"
+          largura={panelWidth}
+          aoMudar={setPanelWidth}
+          min={PAINEL_MIN}
+          max={PAINEL_MAX}
+          rotulo="Largura do painel da direita"
+        />
+      </div>
+    )
+  }
 
   return (
     <>

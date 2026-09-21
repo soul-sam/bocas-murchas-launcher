@@ -281,6 +281,29 @@ function ChatTab() {
             <option value={30}>30 minutos</option>
           </select>
         </label>
+
+        <label className="mt-3 flex items-center gap-3">
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm">Ou depois de ficar sem falar</span>
+            <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
+              Sem mandar mensagem nem abrir o microfone por esse tempo, o aviso
+              entra mesmo que você esteja no computador — é o caso de quem passa
+              a tarde jogando com o launcher aberto atrás e aparece online pra
+              quem está chamando. Sai quando você falar (ou mexer no launcher).
+            </span>
+          </span>
+          <select
+            value={settings.afkSilenceMinutes}
+            onChange={(e) => void update({ afkSilenceMinutes: Number(e.target.value) })}
+            className="input-terminal h-8 shrink-0 rounded-brutal px-2 text-xs"
+          >
+            <option value={0}>Nunca</option>
+            <option value={30}>30 minutos</option>
+            <option value={60}>1 hora</option>
+            <option value={120}>2 horas</option>
+            <option value={240}>4 horas</option>
+          </select>
+        </label>
       </section>
     </div>
   )

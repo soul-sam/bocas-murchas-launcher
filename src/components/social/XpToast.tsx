@@ -1,4 +1,4 @@
-import { X, Zap, ArrowUp, Award, Coins, Flame, Gift, Info, TriangleAlert } from 'lucide-react'
+import { X, ArrowUp, Award, Coins, Flame, Gift, Info, TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NaFila } from '@/components/ui/filas'
 import { BadgeIcon } from '@/lib/cosmetic-icons'
@@ -7,6 +7,12 @@ import '@/styles/effects.css'
 
 /**
  * Pilha de avisos da gamificação no canto de baixo à direita.
+ *
+ * NÃO ENTRA XP AQUI. O "+2 XP" aparecia o dia inteiro, por cima do que a
+ * pessoa estava fazendo, pra dizer o que a barra do rodapé já mostra sem
+ * piscar — o motivo inteiro está no cabeçalho de `GamificationToast`. O que
+ * resta são os avisos que acontecem de vez em quando: subir de nível, badge,
+ * murchos, presente, check-in.
  *
  * Recebe a lista por props (e não pelo useGamification) porque é o próprio
  * provider que monta este componente — puxar o contexto de dentro dele seria
@@ -38,8 +44,7 @@ export function XpToasts({
   )
 }
 
-const ACCENT: Record<GamificationToast['kind'], { border: string; text: string; Icon: typeof Zap }> = {
-  xp: { border: 'border-acid-dark', text: 'text-acid', Icon: Zap },
+const ACCENT: Record<GamificationToast['kind'], { border: string; text: string; Icon: typeof ArrowUp }> = {
   levelup: { border: 'border-acid', text: 'text-acid', Icon: ArrowUp },
   badge: { border: 'border-burn/60', text: 'text-burn', Icon: Award },
   coins: { border: 'border-burn/60', text: 'text-burn', Icon: Coins },
