@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.21.1',
+    headline: 'Suas playlists do Spotify voltaram',
+    items: [
+      'Com o Spotify vinculado, só aparecia "Músicas curtidas". O Spotify mudou o jeito de entregar as playlists e o Bocas estava pedindo do jeito antigo — agora todas aparecem de novo, inclusive as salvas.',
+      'Quem tem mais de 50 playlists vê todas, não só as primeiras.'
+    ],
+    note: 'Playlist salva de outra pessoa aparece na lista, mas o Spotify não libera mais as músicas dela pra apps de fora. Pra tocar, salva as faixas numa playlist sua.'
+  },
+  {
     version: '1.21.0',
     headline: 'As colunas agora se arrastam',
     items: [

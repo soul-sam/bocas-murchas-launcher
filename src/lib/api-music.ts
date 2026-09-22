@@ -72,6 +72,12 @@ export interface SpotifyPlaylist {
   /** Quantas faixas tem no total (não quantas vieram). */
   total: number
   artUrl?: string
+  /**
+   * Dá pra ler as faixas? Desde fev/2026 o Spotify só entrega o conteúdo de
+   * playlists que a pessoa criou ou colabora — as salvas de outros vêm só com
+   * nome e capa. Ausente (API antiga) conta como sim.
+   */
+  readable?: boolean
 }
 
 /** Id especial: as músicas curtidas não são uma playlist de verdade no Spotify. */

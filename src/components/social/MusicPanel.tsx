@@ -841,7 +841,9 @@ function SpotifyLibrary({
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm text-foreground">{playlist.name}</span>
               <span className="block truncate text-[11.5px] text-muted-foreground">
-                {playlist.total} {playlist.total === 1 ? 'música' : 'músicas'}
+                {playlist.readable === false
+                  ? 'salva de outra pessoa — o Spotify não libera as músicas'
+                  : `${playlist.total} ${playlist.total === 1 ? 'música' : 'músicas'}`}
               </span>
             </span>
           </button>
