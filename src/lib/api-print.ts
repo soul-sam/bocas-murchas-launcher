@@ -39,6 +39,16 @@ export type BlockedReason =
   | 'autostart_off'
   | 'quiet_hours'
   | 'printer_disabled'
+  /** O ACE não tem o filamento (tipo ou cor) que a peça pede. */
+  | 'filament_mismatch'
+
+/** Um filamento que a peça usa. `tool` 0 = slot 1 do ACE. */
+export interface FilamentSlotUse {
+  tool: number
+  type: string | null
+  colorHex: string | null
+  grams: number | null
+}
 
 export interface PrintOwner {
   id: string
@@ -68,6 +78,11 @@ export interface PrintQueueItem {
   etaStartAt: string | null
   etaFinishAt: string | null
   queuedAt: string
+  /** Miniatura que o fatiador embutiu no arquivo. */
+  thumbUrl?: string | null
+  filaments?: FilamentSlotUse[]
+  /** Quem opera liberou mesmo com o filamento diferente. */
+  filamentOverride?: boolean
 }
 
 export interface PrintRunning {
@@ -84,6 +99,7 @@ export interface PrintRunning {
   startedAt: string | null
   /** Paramos de receber telemetria — a peça provavelmente continua. */
   telemetryStale: boolean
+  thumbUrl?: string | null
   /**
    * Etapa da ENTREGA do arquivo (`downloading`/`uploading`), enquanto a peça
    * ainda está indo pro Pi. Não vem de `/print/state`: chega pelo socket
@@ -135,7 +151,133 @@ export interface PrintState {
   globalBlock: BlockedReason | null
   globalBlockText: string | null
   quota: PrintQuota
+  /** Ausente em API velha. */
+  filament?: PrintFilament
 }
+
+export interface FilamentSpoolRow {
+  id: string
+  material: string
+  colorName: string
+  colorHex: string
+  brand: string | null
+  totalGrams: number
+  remainingGrams: number
+  /** 0-based; null = na prateleira. */
+  slot: number | null
+  status: 'active' | 'empty' | 'archived'
+  low: boolean
+  notes: string | null
+  lastUsedAt: string | null
+}
+
+export interface LoadedSlotRow {
+  slot: number
+  type: string | null
+  colorHex: string | null
+  empty: boolean
+  /** De onde veio: a própria máquina (ACE) ou o rolo marcado aqui. */
+  source: 'ace' | 'spool' | 'none'
+  spoolId: string | null
+}
+
+export interface PrintFilament {
+  aceReportedAt: string | null
+  aceFresh: boolean
+  aceLoadedSlot: number | null
+  slots: LoadedSlotRow[]
+  spools: FilamentSpoolRow[]
+}
+
+export interface PrintGalleryItem {
+  id: string
+  title: string
+  note: string | null
+  owner: PrintOwner
+  thumbUrl: string | null
+  photoUrl: string | null
+  timelapseUrl: string | null
+  billedSeconds: number | null
+  grams: number | null
+  layers: number | null
+  filaments: FilamentSlotUse[]
+  finishedAt: string | null
+  reprintable: boolean
+  isReprint: boolean
+  fromRequest: boolean
+}
+
+export interface MaintenanceTask {
+  id: string
+  key: string
+  label: string
+  detail: string | null
+  intervalHours: number
+  hoursSince: number
+  ratio: number
+  due: boolean
+  lastDoneAt: string
+  lastDoneById: string | null
+  lastDoneByName: string | null
+}
+
+export type PrintRequestStatus = 'open' | 'accepted' | 'printing' | 'delivered' | 'cancelled'
+
+export interface PrintRequestRow {
+  id: string
+  title: string
+  detail: string | null
+  link: string | null
+  status: PrintRequestStatus
+  offerCoins: number
+  requester: { id: string; displayName: string }
+  maker: { id: string; displayName: string } | null
+  thumbUrl: string | null
+  estimatedSeconds: number | null
+  estimatedGrams: number | null
+  hasFile: boolean
+  jobId: string | null
+  createdAt: string
+  deliveredAt: string | null
+}
+
+/** O card `print` do chat: peça pronta ou encomenda. */
+export type PrintCardMetadata =
+  | {
+      kind: 'job'
+      jobId: string
+      title: string
+      ownerId: string
+      ownerName: string
+      status: PrintJobStatus
+      thumbUrl: string | null
+      photoUrl: string | null
+      timelapseUrl: string | null
+      billedSeconds: number | null
+      grams: number | null
+      layers: number | null
+      finishedAt: string | null
+      reprintable: boolean
+      requestId: string | null
+    }
+  | {
+      kind: 'request'
+      requestId: string
+      title: string
+      detail: string | null
+      link: string | null
+      status: PrintRequestStatus
+      offerCoins: number
+      requesterId: string
+      requesterName: string
+      makerId: string | null
+      makerName: string | null
+      thumbUrl: string | null
+      estimatedSeconds: number | null
+      estimatedGrams: number | null
+      hasFile: boolean
+      jobId: string | null
+    }
 
 export interface PrintHistoryItem {
   id: string
@@ -152,6 +294,10 @@ export interface PrintHistoryItem {
   printerErrorCode: number | null
   startedAt: string | null
   finishedAt: string | null
+  thumbUrl?: string | null
+  photoUrl?: string | null
+  timelapseUrl?: string | null
+  reprintable?: boolean
 }
 
 export interface PrintUsageRow extends PrintQuota {
@@ -249,6 +395,120 @@ export const printApi = {
       token,
       body: JSON.stringify({ on })
     }),
+
+  /** "Quero uma igual": o mesmo arquivo, na SUA cota. */
+  reprint: (token: string | null, jobId: string) =>
+    request<{ message: string; jobId: string }>(`/print/jobs/${jobId}/reprint`, {
+      method: 'POST',
+      token,
+      body: '{}'
+    }),
+
+  /** "Tanto faz a cor": libera a peça travada por filamento diferente. */
+  filamentOk: (token: string | null, jobId: string) =>
+    request<{ message: string }>(`/print/jobs/${jobId}/filament-ok`, { method: 'POST', token, body: '{}' }),
+
+  gallery: (token: string | null, options: { before?: string | null; userId?: string } = {}) => {
+    const params = new URLSearchParams()
+    if (options.before) params.set('before', options.before)
+    if (options.userId) params.set('userId', options.userId)
+    const query = params.toString()
+    return request<{ items: PrintGalleryItem[]; nextBefore: string | null }>(
+      `/print/gallery${query ? `?${query}` : ''}`,
+      { token }
+    )
+  },
+
+  filament: (token: string | null) => request<PrintFilament>('/print/filament', { token }),
+
+  createSpool: (
+    token: string | null,
+    spool: {
+      material: string
+      colorName: string
+      colorHex: string
+      brand?: string
+      totalGrams?: number
+      remainingGrams?: number
+      slot?: number | null
+    }
+  ) =>
+    request<{ message: string; filament: PrintFilament }>('/print/filament/spools', {
+      method: 'POST',
+      token,
+      body: JSON.stringify(spool)
+    }),
+
+  updateSpool: (
+    token: string | null,
+    spoolId: string,
+    patch: Partial<{
+      material: string
+      colorName: string
+      colorHex: string
+      brand: string | null
+      totalGrams: number
+      remainingGrams: number
+      slot: number | null
+      status: 'active' | 'empty' | 'archived'
+      notes: string | null
+    }>
+  ) =>
+    request<{ message: string; filament: PrintFilament }>(`/print/filament/spools/${spoolId}`, {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(patch)
+    }),
+
+  maintenance: (token: string | null) =>
+    request<{ odometerHours: number; tasks: MaintenanceTask[] }>('/print/maintenance', { token }),
+
+  maintenanceDone: (token: string | null, taskId: string) =>
+    request<{ message: string }>(`/print/maintenance/${taskId}/done`, { method: 'POST', token, body: '{}' }),
+
+  setMaintenanceInterval: (token: string | null, taskId: string, intervalHours: number) =>
+    request<{ message: string }>(`/print/maintenance/${taskId}`, {
+      method: 'PUT',
+      token,
+      body: JSON.stringify({ intervalHours })
+    }),
+
+  requests: (token: string | null, scope: 'active' | 'mine' | 'done' = 'active') =>
+    request<{ requests: PrintRequestRow[] }>(`/print/requests?scope=${scope}`, { token }),
+
+  /** Encomenda nova. Arquivo, link e descrição são todos opcionais — um basta. */
+  createRequest: (
+    token: string | null,
+    input: { title: string; detail?: string; link?: string; offerCoins?: number; file?: File | null }
+  ) => {
+    const form = new FormData()
+    form.append('title', input.title)
+    if (input.detail) form.append('detail', input.detail)
+    if (input.link) form.append('link', input.link)
+    form.append('offerCoins', String(input.offerCoins ?? 0))
+    if (input.file) form.append('file', input.file)
+    return upload<{ message: string; request: PrintRequestRow }>('/print/requests', form, token)
+  },
+
+  acceptRequest: (token: string | null, requestId: string) =>
+    request<{ message: string; request: PrintRequestRow }>(`/print/requests/${requestId}/accept`, {
+      method: 'POST',
+      token,
+      body: '{}'
+    }),
+
+  /** Quem aceitou manda pra fila — com o arquivo anexado ou um novo. */
+  requestJob: (token: string | null, requestId: string, file?: File | null) => {
+    const form = new FormData()
+    if (file) form.append('file', file)
+    return upload<{ message: string; jobId: string }>(`/print/requests/${requestId}/job`, form, token)
+  },
+
+  cancelRequest: (token: string | null, requestId: string) =>
+    request<{ message: string }>(`/print/requests/${requestId}/cancel`, { method: 'POST', token, body: '{}' }),
+
+  abandonRequest: (token: string | null, requestId: string) =>
+    request<{ message: string }>(`/print/requests/${requestId}/abandon`, { method: 'POST', token, body: '{}' }),
 
   // ---- admin ----
   listAccess: (token: string | null) =>

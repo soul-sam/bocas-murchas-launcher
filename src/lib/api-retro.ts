@@ -78,6 +78,8 @@ export interface Memory {
   messages: number
   voiceMinutes: number
   games: number
+  /** Peças da impressora que ficaram prontas naquele dia. Ausente em card antigo. */
+  prints?: number
   top: MemoryMessage[]
   people: Array<{ id: string; displayName: string; avatar: string | null }>
 }
@@ -167,6 +169,12 @@ export interface UserWrapped {
   clipsIn: number
   topClip: WrappedClip | null
 
+  /** Impressora 3D. Opcional: retrospectiva gravada antes disso não tem. */
+  prints?: number
+  printSeconds?: number
+  printGrams?: number
+  biggestPrint?: { title: string; seconds: number } | null
+
   topDuo: (WrappedPerson & { minutes: number }) | null
   topMessage: WrappedMessage | null
 
@@ -184,6 +192,9 @@ export interface GroupWrapped {
   soundPlays: number
   clips: number
   tipTotal: number
+  prints?: number
+  printSeconds?: number
+  printGrams?: number
   members: Array<WrappedPerson & { xp: number; messages: number; voiceMinutes: number }>
   busiestDay: { dayKey: string; messages: number; voiceMinutes: number } | null
   topMessage: WrappedMessage | null

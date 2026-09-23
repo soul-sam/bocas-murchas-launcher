@@ -1,4 +1,4 @@
-import { Plus, BarChart3, CalendarPlus, Swords, Megaphone, Store, Lightbulb } from 'lucide-react'
+import { Plus, BarChart3, CalendarPlus, Swords, Megaphone, Store, Lightbulb, Printer } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,8 +20,14 @@ import { Hint } from '@/components/ui/tooltip'
  * (/enquete, /marcar, /bora, /drop) — ver slash-commands.ts.
  */
 export function ComposerActions({ onDrop }: { onDrop?: () => void }) {
-  const { openPollComposer, openEventComposer, openPartyComposer, openShop, openSuggestionComposer } =
-    useOverlays()
+  const {
+    openPollComposer,
+    openEventComposer,
+    openPartyComposer,
+    openShop,
+    openSuggestionComposer,
+    openPrintRequestComposer
+  } = useOverlays()
   const { user } = useAuth()
 
   return (
@@ -66,6 +72,11 @@ export function ComposerActions({ onDrop }: { onDrop?: () => void }) {
           <Lightbulb className="h-3.5 w-3.5 text-muted-foreground" />
           Sugestão
           <span className="ml-auto font-mono text-[11px] text-muted-foreground">/sugestao</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={openPrintRequestComposer}>
+          <Printer className="h-3.5 w-3.5 text-muted-foreground" />
+          Encomendar peça
+          <span className="ml-auto font-mono text-[11px] text-muted-foreground">/encomendar</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={openShop}>
           <Store className="h-3.5 w-3.5" />

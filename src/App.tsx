@@ -52,6 +52,7 @@ import { ImageLightbox } from '@/components/social/ImageLightbox'
 import { InterfaceGuardNotice } from '@/components/InterfaceGuardNotice'
 import { PollComposer } from '@/components/social/PollComposer'
 import { SuggestionComposer } from '@/components/social/SuggestionComposer'
+import { PrintRequestComposer } from '@/components/print/PrintRequestComposer'
 import { EventComposer } from '@/components/social/EventComposer'
 import { PartyComposer } from '@/components/social/PartyComposer'
 import { SmokeComposer } from '@/components/social/SmokeComposer'
@@ -208,6 +209,7 @@ function GlobalOverlays() {
           e de comandos de barra, que vivem numa tela que some. */}
       <PollComposer />
       <SuggestionComposer />
+      <PrintRequestComposer />
       <EventComposer />
       <PartyComposer />
       <SmokeComposer />

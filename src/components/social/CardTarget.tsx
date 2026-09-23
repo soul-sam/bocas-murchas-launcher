@@ -119,5 +119,6 @@ const FEED_WORD: Record<ChannelFeed, string> = {
   apostas: 'apostas',
   clipes: 'clipes',
   sistema: 'avisos',
-  sugestoes: 'sugestões'
+  sugestoes: 'sugestões',
+  impressora: 'impressora'
 }

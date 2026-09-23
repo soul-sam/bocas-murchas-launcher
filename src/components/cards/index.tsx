@@ -14,12 +14,13 @@ import { SmokeCard } from './SmokeCard'
 import { DayRecapCard } from './DayRecapCard'
 import { MemoryCard } from './MemoryCard'
 import { ClipCard } from './ClipCard'
+import { PrintCard } from './PrintCard'
 
 /**
  * REGISTRO DE CARTÕES.
  *
  * Uma mensagem com `type` de cartão (poll, event, game, recap, party, wager,
- * watch, system, chess, suggestion, smoke, dayrecap, memory, clip) é desenhada
+ * watch, system, chess, suggestion, smoke, dayrecap, memory, clip, print) é desenhada
  * por um componente em vez do texto. O texto (`content`) continua existindo
  * como fallback: aparece na busca, na notificação do sistema e em cliente
  * antigo que não conhece o tipo.
@@ -53,7 +54,8 @@ const REGISTRY: Record<string, CardComponent> = {
   smoke: SmokeCard,
   dayrecap: DayRecapCard,
   memory: MemoryCard,
-  clip: ClipCard
+  clip: ClipCard,
+  print: PrintCard
 }
 
 export function hasCard(message: ChatMessage): boolean {

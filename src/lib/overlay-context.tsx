@@ -78,6 +78,11 @@ interface OverlayContextValue {
   openSuggestionComposer: () => void
   closeSuggestionComposer: () => void
 
+  /** Encomenda pra impressora 3D ("/encomendar"). Aberta a todo mundo. */
+  printRequestComposerOpen: boolean
+  openPrintRequestComposer: () => void
+  closePrintRequestComposer: () => void
+
   eventComposerOpen: boolean
   /** Texto inicial vindo de um comando tipo "/marcar sexta 21h LoL". */
   eventComposerSeed: string | null
@@ -168,6 +173,7 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [userMenu, setUserMenu] = React.useState<UserMenuTarget | null>(null)
   const [pollComposerOpen, setPollComposerOpen] = React.useState(false)
   const [suggestionComposerOpen, setSuggestionComposerOpen] = React.useState(false)
+  const [printRequestComposerOpen, setPrintRequestComposerOpen] = React.useState(false)
   const [eventComposerOpen, setEventComposerOpen] = React.useState(false)
   const [eventComposerSeed, setEventComposerSeed] = React.useState<string | null>(null)
   const [partyComposerOpen, setPartyComposerOpen] = React.useState(false)
@@ -253,6 +259,10 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       openSuggestionComposer: () => setSuggestionComposerOpen(true),
       closeSuggestionComposer: () => setSuggestionComposerOpen(false),
 
+      printRequestComposerOpen,
+      openPrintRequestComposer: () => setPrintRequestComposerOpen(true),
+      closePrintRequestComposer: () => setPrintRequestComposerOpen(false),
+
       eventComposerOpen,
       eventComposerSeed,
       openEventComposer: (seed?: string) => {
@@ -319,6 +329,7 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       openUserMenu,
       pollComposerOpen,
       suggestionComposerOpen,
+      printRequestComposerOpen,
       eventComposerOpen,
       eventComposerSeed,
       partyComposerOpen,

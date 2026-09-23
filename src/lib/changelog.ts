@@ -42,6 +42,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.22.0',
+    headline: 'A impressora ganhou mural, encomendas e timelapse',
+    items: [
+      'Peça pronta agora vira card no chat, com a foto que a câmera tira no fim (de luz acesa) e, logo depois, o timelapse da peça crescendo camada por camada.',
+      'Gostou da peça de alguém? "Quero uma igual" no card ou no mural põe o mesmo arquivo na fila, na sua cota, sem subir nada de novo.',
+      'Aba Mural: todas as peças que o grupo já imprimiu, com foto, tempo, gramas e timelapse.',
+      'Encomendas: quem não tem a impressora pede pelo /encomendar no chat e oferece murchos. Quem tem aceita, imprime na própria cota, e os murchos só mudam de mão quando a peça fica pronta — desistiu antes, volta tudo.',
+      'Aba Filamento: o que está em cada slot do ACE e o estoque de rolos, descontado a cada peça. Avisa quando um rolo está acabando.',
+      'A fila confere o filamento antes de mandar: se a peça pede PETG vermelho no slot 2 e lá tem PLA preto, ela espera e diz o que trocar — e a próxima peça que bate com o que está carregado passa na frente. "Tanto faz a cor" libera na hora.',
+      'Aba Manutenção: lavar a mesa, limpar o bico, lubrificar, trocar o bico — tudo contado pelas horas de impressão, com aviso quando vence e registro de quem fez.',
+      'Medalhas novas da impressora, e tirar da mesa a peça de OUTRA pessoa agora rende murchos: é o que destrava a fila de todo mundo.',
+      'A retrospectiva do ano e o "naquele dia" contam as peças impressas, e as sugestões ganharam o tipo "imprimir pro grupo".'
+    ],
+    note: 'A leitura automática do ACE precisa do agente 1.2.0 na impressora. Até ele ser atualizado, marque em Filamento qual rolo está em cada slot.'
+  },
+  {
     version: '1.21.1',
     headline: 'Suas playlists do Spotify voltaram',
     items: [

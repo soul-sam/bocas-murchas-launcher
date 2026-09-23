@@ -9,7 +9,8 @@ import { request } from './api'
  * a sugestão nasceu.
  */
 
-export type SuggestionKind = 'ideia' | 'bug'
+/** 'impressao' = peça que a impressora do grupo devia fazer pra todo mundo. */
+export type SuggestionKind = 'ideia' | 'bug' | 'impressao'
 export type SuggestionStatus = 'aberta' | 'planejada' | 'feita' | 'recusada'
 
 export interface SuggestionAuthor {
@@ -47,7 +48,8 @@ export interface SuggestionCardMeta {
 
 export const KIND_LABEL: Record<SuggestionKind, string> = {
   ideia: 'Ideia',
-  bug: 'Problema'
+  bug: 'Problema',
+  impressao: 'Imprimir pro grupo'
 }
 
 export const STATUS_LABEL: Record<SuggestionStatus, string> = {

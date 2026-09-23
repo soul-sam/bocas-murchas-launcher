@@ -473,6 +473,29 @@ function useSlides(
       })
     }
 
+    if ((mine.prints ?? 0) > 0) {
+      const prints = mine.prints ?? 0
+      const hours = Math.round((mine.printSeconds ?? 0) / 3600)
+      const grams = mine.printGrams ?? 0
+      slides.push({
+        id: 'impressora',
+        render: () => (
+          <Big
+            eyebrow="Na impressora do grupo, você fez"
+            value={formatCompact(prints)}
+            unit={prints === 1 ? 'peça' : 'peças'}
+            note={[
+              hours > 0 ? `${hours} h de bico` : null,
+              grams > 0 ? (grams >= 1000 ? `${(grams / 1000).toFixed(1).replace('.', ',')} kg de plástico` : `${grams} g de plástico`) : null,
+              mine.biggestPrint ? `a mais demorada: ${mine.biggestPrint.title}` : null
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          />
+        )
+      })
+    }
+
     slides.push({
       id: 'placar',
       render: () => (
@@ -512,6 +535,7 @@ function useSlides(
               <Tile label="partidas" value={formatCompact(group.games)} />
               <Tile label="sons" value={formatCompact(group.soundPlays)} />
               {group.clips > 0 && <Tile label="clipes" value={`${group.clips}`} />}
+              {(group.prints ?? 0) > 0 && <Tile label="peças impressas" value={`${group.prints}`} />}
             </div>
             {group.topPair && (
               <p className="mt-4 text-[11.5px] text-muted-foreground">

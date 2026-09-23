@@ -110,6 +110,28 @@ export const BADGE_GLYPH: Record<string, ReactNode> = {
   ),
   // martelo de impacto
   'cutucador-da-semana': <path d="M5 4.5h14v6H5ZM10 10.5v10h4v-10M3.5 15.5l2 2M20.5 15.5l-2 2" />,
+
+  // ---- impressora 3D (modules/print-extras.ts na API) ----
+  // bico soltando a primeira camada
+  'primeira-peca': <path d="M8.5 3.5h7v4l-2 3h-3l-2-3ZM12 10.5v3M5 16.5h14M3.5 20.5h17" />,
+  // chave cruzada com o bico
+  maker: <path d="M4 20 11 13M9.5 11.5a4 4 0 1 1 3 3M14 4.5l5.5 5.5M16.5 3.5l4 4-2 2-4-4Z" />,
+  // chaminé de fábrica
+  fabrica: <path d="M3.5 20.5v-9l5 3v-3l5 3v-3l5 3V3.5h2v17ZM7 17.5h2M11 17.5h2M15 17.5h2" />,
+  // ampulheta
+  'cem-horas': <path d="M6.5 3.5h11M6.5 20.5h11M7.5 3.5c0 5 9 5 9 8.5s-9 3.5-9 8.5M16.5 3.5c0 5-9 5-9 8.5s9 3.5 9 8.5" />,
+  // carretel de filamento
+  'quilo-de-plastico': (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M12 3.5v6M19 16.5l-4.5-3" />
+    </>
+  ),
+  // espátula raspando a mesa
+  'faxina-de-mesa': <path d="M3.5 18.5h17M6 18.5l8-10 3.5 3-8 7M14 8.5l3-4 3.5 3-3 4" />,
+  // caixa com a peça
+  encomendeiro: <path d="M3.5 8 12 3.5 20.5 8v8.5L12 20.5 3.5 16.5ZM3.5 8 12 12.5 20.5 8M12 12.5v8" />,
 }
 
 // ============================================

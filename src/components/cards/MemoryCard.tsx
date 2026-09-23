@@ -55,6 +55,8 @@ export function MemoryCard({ message, metadata }: CardProps<MemoryCardMetadata>)
             {metadata.messages} mensagens
             {metadata.voiceMinutes > 0 && ` · ${formatMinutes(metadata.voiceMinutes)} de call`}
             {metadata.games > 0 && ` · ${metadata.games} partidas`}
+            {(metadata.prints ?? 0) > 0 &&
+              ` · ${metadata.prints} ${metadata.prints === 1 ? 'peça impressa' : 'peças impressas'}`}
           </span>
           {people.length > 0 && (
             <span className="ml-auto flex shrink-0 items-center gap-1">

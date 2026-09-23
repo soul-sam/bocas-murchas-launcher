@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Bug, Hash, Lightbulb, Loader2, X } from 'lucide-react'
+import { Bug, Hash, Lightbulb, Loader2, Printer, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { suggestions as suggestionsApi, type SuggestionKind } from '@/lib/api-suggestions'
@@ -44,18 +44,26 @@ const KINDS: Array<{
     label: 'Problema',
     hint: 'Uma coisa que está quebrada ou esquisita.',
     icon: <Bug className="h-4 w-4" />
+  },
+  {
+    id: 'impressao',
+    label: 'Imprimir',
+    hint: 'Uma peça que a impressora devia fazer pro grupo.',
+    icon: <Printer className="h-4 w-4" />
   }
 ]
 
 /** O que escrever no título, por tipo — placeholder que ensina o formato. */
 const TITLE_PLACEHOLDER: Record<SuggestionKind, string> = {
   ideia: 'Ex.: poder fixar uma conversa no topo da lista',
-  bug: 'Ex.: o soundboard para de tocar depois de sair da call'
+  bug: 'Ex.: o soundboard para de tocar depois de sair da call',
+  impressao: 'Ex.: suporte de headset pra cada um pendurar na mesa'
 }
 
 const DETAIL_PLACEHOLDER: Record<SuggestionKind, string> = {
   ideia: 'Pra que serviria, e quando você sentiu falta. Opcional.',
-  bug: 'O que você fez antes de acontecer, e o que esperava. Opcional.'
+  bug: 'O que você fez antes de acontecer, e o que esperava. Opcional.',
+  impressao: 'Link do modelo (MakerWorld, Printables) e por que o grupo ia usar. Opcional.'
 }
 
 export function SuggestionComposer() {
@@ -186,7 +194,7 @@ export function SuggestionComposer() {
         </header>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {KINDS.map((option) => (
               <button
                 key={option.id}

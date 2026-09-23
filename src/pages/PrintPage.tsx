@@ -4,21 +4,33 @@ import {
   CheckCircle2,
   Clock,
   Hourglass,
+  Images,
   Layers,
   Lightbulb,
   LightbulbOff,
+  ListOrdered,
+  Palette,
   Pause,
   Play,
   Printer,
+  ReceiptText,
   RefreshCw,
   Square,
   Trash2,
   Upload,
   Video,
   VideoOff,
-  WifiOff
+  WifiOff,
+  Wrench
 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FilamentTab } from '@/components/print/FilamentTab'
+import { GalleryTab } from '@/components/print/GalleryTab'
+import { MaintenanceTab } from '@/components/print/MaintenanceTab'
+import { RequestsTab } from '@/components/print/RequestsTab'
+import { FilamentChips, PrintThumb } from '@/components/print/print-bits'
 import { useAuth } from '@/lib/auth-context'
 import { usePrint } from '@/lib/print-context'
 import { useSocket } from '@/lib/socket-context'
@@ -51,9 +63,35 @@ import { cn } from '@/lib/utils'
  * no servidor de propósito: uma fila que se diz justa só é justa se todos os
  * donos podem conferir a conta.
  */
+const TABS = ['fila', 'mural', 'encomendas', 'filamento', 'manutencao'] as const
+type PrintTab = (typeof TABS)[number]
+
+function isTab(value: string | null): value is PrintTab {
+  return !!value && (TABS as readonly string[]).includes(value)
+}
+
 export function PrintPage() {
   const { user } = useAuth()
   const { state, loading, error, refresh, refreshing } = usePrint()
+  // A aba mora na URL (`?aba=encomendas`): o card da encomenda no chat manda
+  // a pessoa direto pra lá.
+  const [params, setParams] = useSearchParams()
+  const tab: PrintTab = isTab(params.get('aba')) ? (params.get('aba') as PrintTab) : 'fila'
+  const changeTab = React.useCallback(
+    (value: string) => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (value === 'fila') next.delete('aba')
+          else next.set('aba', value)
+          return next
+        },
+        { replace: true }
+      )
+    },
+    [setParams]
+  )
+  const lowSpools = state?.filament?.spools.filter((spool) => spool.low).length ?? 0
 
   if (loading && !state) {
     return (
@@ -98,29 +136,85 @@ export function PrintPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5">
-        {/* "Ocupada" não vira faixa: o card logo abaixo já mostra a peça, o
-            progresso e de quem é. Faixa pra dizer o que está na tela é ruído,
-            e ruído constante faz a galera parar de ler as faixas que importam. */}
-        {state.globalBlockText && state.globalBlock !== 'printer_busy' && (
-          <BlockBanner text={state.globalBlockText} reason={state.globalBlock} />
-        )}
+        <Tabs value={tab} onValueChange={changeTab} className="flex flex-col gap-5">
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="fila">
+              <ListOrdered className="mr-1.5 inline h-3 w-3" />
+              Fila
+            </TabsTrigger>
+            <TabsTrigger value="mural">
+              <Images className="mr-1.5 inline h-3 w-3" />
+              Mural
+            </TabsTrigger>
+            <TabsTrigger value="encomendas">
+              <ReceiptText className="mr-1.5 inline h-3 w-3" />
+              Encomendas
+            </TabsTrigger>
+            <TabsTrigger value="filamento">
+              <Palette className="mr-1.5 inline h-3 w-3" />
+              Filamento
+              {lowSpools > 0 && <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-burn" aria-label="rolo acabando" />}
+            </TabsTrigger>
+            <TabsTrigger value="manutencao">
+              <Wrench className="mr-1.5 inline h-3 w-3" />
+              Manutenção
+            </TabsTrigger>
+          </TabsList>
 
-        <PrinterCard printer={state.printer} running={state.running} canOperate={state.me.canOperate} />
+          <TabsContent value="fila" className="mt-0 flex-none overflow-visible pt-0">
+            <div className="flex flex-col gap-5">
+              {/* "Ocupada" não vira faixa: o card logo abaixo já mostra a peça, o
+                  progresso e de quem é. Faixa pra dizer o que está na tela é ruído,
+                  e ruído constante faz a galera parar de ler as faixas que importam. */}
+              {state.globalBlockText && state.globalBlock !== 'printer_busy' && (
+                <BlockBanner text={state.globalBlockText} reason={state.globalBlock} />
+              )}
 
-        {state.me.canQueue && <CameraCard printer={state.printer} />}
+              <PrinterCard printer={state.printer} running={state.running} canOperate={state.me.canOperate} />
 
-        {state.me.canQueue ? (
-          <>
-            <QuotaCard quota={state.quota} />
-            <NewJobCard />
-          </>
-        ) : (
-          <NoAccessCard />
-        )}
+              {state.me.canQueue && <CameraCard printer={state.printer} />}
 
-        <QueueCard queue={state.queue} meId={user?.id} isAdmin={state.me.isAdmin} />
+              {state.me.canQueue ? (
+                <>
+                  <QuotaCard quota={state.quota} />
+                  <NewJobCard />
+                </>
+              ) : (
+                <NoAccessCard />
+              )}
 
-        <HistoryCard />
+              <QueueCard
+                queue={state.queue}
+                meId={user?.id}
+                isAdmin={state.me.isAdmin}
+                canOperate={state.me.canOperate}
+              />
+
+              <HistoryCard />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="mural" className="mt-0 flex-none overflow-visible pt-0">
+            {tab === 'mural' && <GalleryTab canQueue={state.me.canQueue} />}
+          </TabsContent>
+
+          <TabsContent value="encomendas" className="mt-0 flex-none overflow-visible pt-0">
+            {tab === 'encomendas' && <RequestsTab canQueue={state.me.canQueue} />}
+          </TabsContent>
+
+          <TabsContent value="filamento" className="mt-0 flex-none overflow-visible pt-0">
+            <FilamentTab
+              filament={state.filament}
+              canOperate={state.me.canOperate}
+              acceptedFilaments={state.printer.acceptedFilaments}
+              onChanged={refresh}
+            />
+          </TabsContent>
+
+          <TabsContent value="manutencao" className="mt-0 flex-none overflow-visible pt-0">
+            {tab === 'manutencao' && <MaintenanceTab canOperate={state.me.canOperate} isAdmin={state.me.isAdmin} />}
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   )
@@ -779,11 +873,13 @@ function NewJobCard() {
 function QueueCard({
   queue,
   meId,
-  isAdmin
+  isAdmin,
+  canOperate
 }: {
   queue: PrintQueueItem[]
   meId?: string
   isAdmin: boolean
+  canOperate: boolean
 }) {
   const { token } = useAuth()
   const { refresh } = usePrint()
@@ -793,6 +889,17 @@ function QueueCard({
     setBusy(job.id)
     try {
       await printApi.cancel(token, job.id)
+      await refresh()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /** "Tanto faz a cor": manda com o filamento que está carregado. */
+  async function filamentOk(job: PrintQueueItem): Promise<void> {
+    setBusy(job.id)
+    try {
+      await printApi.filamentOk(token, job.id)
       await refresh()
     } finally {
       setBusy(null)
@@ -828,6 +935,8 @@ function QueueCard({
                 {job.position}
               </span>
 
+              <PrintThumb url={job.thumbUrl} alt={job.title} className="h-10 w-10" />
+
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="truncate font-display text-sm text-foreground">{job.title}</span>
@@ -837,12 +946,32 @@ function QueueCard({
                 </div>
                 {/* A explicação da posição vem PRONTA do servidor — a tela não
                     recalcula a regra de justiça. */}
-                <p className="truncate text-[11.5px] text-muted-foreground">
+                <p
+                  className={cn(
+                    'truncate text-[11.5px]',
+                    job.blockedReason === 'filament_mismatch' ? 'text-burn' : 'text-muted-foreground'
+                  )}
+                >
                   {formatSeconds(job.estimatedSeconds)}
                   {job.estimatedGrams ? ` · ${Math.round(job.estimatedGrams)}g` : ''}
                   {job.reasonText ? ` · ${job.reasonText}` : ''}
                 </p>
+                {job.filaments && job.filaments.length > 0 && (
+                  <FilamentChips filaments={job.filaments} className="mt-1" />
+                )}
               </div>
+
+              {job.blockedReason === 'filament_mismatch' && (canOperate || job.owner.id === meId) && (
+                <button
+                  type="button"
+                  title="Imprimir com o filamento que está carregado"
+                  onClick={() => void filamentOk(job)}
+                  disabled={busy === job.id}
+                  className="shrink-0 rounded-brutal border border-burn/50 px-2 py-1 text-[11px] text-burn transition-colors hover:bg-burn/10"
+                >
+                  tanto faz a cor
+                </button>
+              )}
 
               {job.etaStartAt && (
                 <span className="hidden shrink-0 text-[11.5px] text-muted-foreground sm:block">

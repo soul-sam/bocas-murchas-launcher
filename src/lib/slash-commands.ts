@@ -14,6 +14,7 @@ export type SlashCommand =
   | { kind: 'drop'; seed: string }
   | { kind: 'shop' }
   | { kind: 'suggestion' }
+  | { kind: 'printRequest' }
   | { kind: 'smoke' }
   | { kind: 'clip' }
   | { kind: 'wrapped' }
@@ -35,6 +36,9 @@ const ALIASES: Record<string, SlashCommand['kind']> = {
   sugerir: 'suggestion',
   ideia: 'suggestion',
   bug: 'suggestion',
+  encomendar: 'printRequest',
+  encomenda: 'printRequest',
+  imprimir: 'printRequest',
   loja: 'shop',
   lojinha: 'shop',
   shop: 'shop',
@@ -72,6 +76,8 @@ export function parseSlashCommand(text: string): SlashCommand | null {
       return { kind: 'shop' }
     case 'suggestion':
       return { kind: 'suggestion' }
+    case 'printRequest':
+      return { kind: 'printRequest' }
     case 'smoke':
       return { kind: 'smoke' }
     case 'clip':
@@ -96,6 +102,7 @@ export const SLASH_HELP: Array<{ command: string; hint: string }> = [
   { command: '/bora', hint: 'Chamar pra jogar agora — ex.: /bora lol' },
   { command: '/drop', hint: 'Anúncio animado (admin)' },
   { command: '/sugestao', hint: 'Pedir uma coisa nova, ou avisar que quebrou' },
+  { command: '/encomendar', hint: 'Pedir pra alguém imprimir uma peça na impressora 3D' },
   { command: '/loja', hint: 'Abrir a lojinha' },
   { command: '/fumaca', hint: 'Avisar que você entra daqui a pouco' },
   { command: '/clipe', hint: 'Salvar os últimos segundos da call' },

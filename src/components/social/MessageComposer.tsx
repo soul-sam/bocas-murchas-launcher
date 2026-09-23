@@ -120,6 +120,7 @@ export function MessageComposer({
     openShop,
     openMusicPanel,
     openSuggestionComposer,
+    openPrintRequestComposer,
     openSmokeComposer,
     openWrapped
   } = useOverlays()
@@ -485,6 +486,9 @@ export function MessageComposer({
         break
       case 'suggestion':
         openSuggestionComposer()
+        break
+      case 'printRequest':
+        openPrintRequestComposer()
         break
       case 'smoke':
         openSmokeComposer()

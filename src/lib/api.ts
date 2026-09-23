@@ -467,7 +467,8 @@ export const CHANNEL_FEEDS = [
   'apostas',
   'clipes',
   'sistema',
-  'sugestoes'
+  'sugestoes',
+  'impressora'
 ] as const
 
 export type ChannelFeed = (typeof CHANNEL_FEEDS)[number]
@@ -479,7 +480,8 @@ export const FEED_LABEL: Record<ChannelFeed, string> = {
   apostas: 'Apostas e lojinha',
   clipes: 'Clipes da call',
   sistema: 'Recap, fechamento do dia e avisos',
-  sugestoes: 'Sugestoes'
+  sugestoes: 'Sugestoes',
+  impressora: 'Pecas prontas e encomendas da impressora 3D'
 }
 
 /** "agenda,jogos" -> ['agenda','jogos']. Feed desconhecido cai fora. */
@@ -634,6 +636,8 @@ export type CardMessageType =
   | 'memory'
   /** Os últimos segundos da call, salvos por alguém. */
   | 'clip'
+  /** Peça pronta ou encomenda da impressora 3D. */
+  | 'print'
 
 export type MessageType = 'text' | 'gif' | 'sticker' | 'image' | 'file' | 'video' | CardMessageType
 
@@ -651,7 +655,8 @@ export const CARD_MESSAGE_TYPES: ReadonlySet<string> = new Set<CardMessageType>(
   'smoke',
   'dayrecap',
   'memory',
-  'clip'
+  'clip',
+  'print'
 ])
 
 export function isCardMessage(message: { type: string }): boolean {
