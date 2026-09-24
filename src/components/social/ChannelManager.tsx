@@ -1,5 +1,4 @@
 import * as React from 'react'
-import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react'
 import {
   Hash,
   Swords,
@@ -16,7 +15,6 @@ import {
   Wand2,
   type LucideIcon
 } from 'lucide-react'
-import { THEME_LABEL } from '../../../electron/preload/types'
 import {
   Dialog,
   DialogContent,
@@ -41,8 +39,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { groupByCategory, useChat } from '@/lib/chat-context'
 import { useLayout } from '@/lib/layout-context'
-import { useSettings } from '@/lib/settings-context'
-import { toPickerEmojis, useEmojis } from '@/lib/emoji-context'
+import { CHANNEL_ICON_GROUPS, ChannelIconArt, channelIconDef } from '@/lib/channel-icons'
 import { ChannelGlyph } from './ChannelGlyph'
 
 /**
@@ -100,16 +97,10 @@ const TYPE_NOTE: Partial<Record<ChannelType, string>> = {
 
 const DEFAULT_CATEGORIES = ['Conversa', 'Jogos', 'Grupo', 'Servidor', 'Voz']
 
-type PickerTheme = (typeof Theme)[keyof typeof Theme]
-type PickerCustomEmojis = ReturnType<typeof toPickerEmojis>
-
 export function ChannelManager({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { token, user } = useAuth()
   const { channels, refreshChannels } = useChat()
   const { isPhone } = useLayout()
-  const { emojis } = useEmojis()
-  const pickerTheme = THEME_LABEL[useSettings().settings.theme].light ? Theme.LIGHT : Theme.DARK
-  const pickerCustomEmojis = React.useMemo(() => toPickerEmojis(emojis), [emojis])
 
   /**
    * A ordem em rascunho é só a lista de ids.
@@ -459,8 +450,6 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
                   onBack={cancelCreate}
                   onCancel={cancelCreate}
                   onCreate={create}
-                  pickerTheme={pickerTheme}
-                  customEmojis={pickerCustomEmojis}
                 />
               ) : selected ? (
                 <ChannelEditor
@@ -476,8 +465,6 @@ export function ChannelManager({ open, onClose }: { open: boolean; onClose: () =
                   onCategory={(value) => setCategory(selected, value)}
                   onToggleFeed={(feed) => toggleFeed(selected, feed)}
                   onDelete={() => void remove(selected)}
-                  pickerTheme={pickerTheme}
-                  customEmojis={pickerCustomEmojis}
                 />
               ) : (
                 <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
@@ -549,9 +536,7 @@ function ChannelEditor({
   onIcon,
   onCategory,
   onToggleFeed,
-  onDelete,
-  pickerTheme,
-  customEmojis
+  onDelete
 }: {
   channel: Channel
   knownCategories: string[]
@@ -564,8 +549,6 @@ function ChannelEditor({
   onCategory: (value: string) => void
   onToggleFeed: (feed: ChannelFeed) => void
   onDelete: () => void
-  pickerTheme: PickerTheme
-  customEmojis: PickerCustomEmojis
 }) {
   const [editingName, setEditingName] = React.useState(false)
   const [name, setName] = React.useState(channel.name)
@@ -597,8 +580,6 @@ function ChannelEditor({
           glyph={channel}
           busy={busy}
           onChange={onIcon}
-          pickerTheme={pickerTheme}
-          customEmojis={customEmojis}
         />
 
         <div className="min-w-0 flex-1 pt-0.5">
@@ -745,9 +726,7 @@ function CreateForm({
   showBack,
   onBack,
   onCancel,
-  onCreate,
-  pickerTheme,
-  customEmojis
+  onCreate
 }: {
   knownCategories: string[]
   busy: boolean
@@ -760,8 +739,6 @@ function CreateForm({
     icon: string | null
     category: string | null
   }) => Promise<void>
-  pickerTheme: PickerTheme
-  customEmojis: PickerCustomEmojis
 }) {
   const [name, setName] = React.useState('')
   const [type, setType] = React.useState<ChannelType>('text')
@@ -796,8 +773,6 @@ function CreateForm({
           glyph={{ type, icon }}
           busy={busy}
           onChange={setIcon}
-          pickerTheme={pickerTheme}
-          customEmojis={customEmojis}
         />
         <input
           autoFocus
@@ -863,27 +838,24 @@ function CreateForm({
 // ---------------------------------------------------------------------------
 
 /**
- * O ícone grande do canal, que abre o seletor de emoji.
+ * O ícone grande do canal, que abre a grade de ícones.
  *
- * Mesmo seletor do chat, com os emojis do servidor junto — emoji customizado
- * vira `:nome:`, o formato que o ChannelGlyph lê. Sem ícone escolhido o
- * botão mostra o glifo do tipo, que é o que a barra mostra também.
+ * Grade fechada e não seletor de emoji: o catálogo (lib/channel-icons) é
+ * traço no desenho do app, agrupado pelo que o canal é. Sem ícone escolhido
+ * o botão mostra o símbolo do tipo, que é o que a barra mostra também.
  */
 function IconPicker({
   glyph,
   busy,
-  onChange,
-  pickerTheme,
-  customEmojis
+  onChange
 }: {
   glyph: Pick<Channel, 'type' | 'icon'>
   busy: boolean
   onChange: (icon: string | null) => void
-  pickerTheme: PickerTheme
-  customEmojis: PickerCustomEmojis
 }) {
   const [open, setOpen] = React.useState(false)
-  const hasIcon = Boolean(glyph.icon?.trim())
+  const current = channelIconDef(glyph.icon)
+  const hasIcon = current !== null
 
   /**
    * Escape fecha SÓ o seletor, não a modal inteira junto.
@@ -919,14 +891,14 @@ function IconPicker({
           className={cn(
             'flex h-12 w-12 shrink-0 items-center justify-center rounded-brutal border-2 transition-colors disabled:opacity-50',
             hasIcon
-              ? 'border-acid-dark bg-void hover:border-acid'
+              ? 'border-acid-dark bg-acid/5 text-acid hover:border-acid'
               : 'border-dashed border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
           )}
         >
           <ChannelGlyph channel={glyph} size="lg" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto border-0 p-0">
+      <PopoverContent align="start" className="w-[308px] p-0">
         {hasIcon && (
           <button
             type="button"
@@ -934,24 +906,46 @@ function IconPicker({
               onChange(null)
               setOpen(false)
             }}
-            className="w-full border-b border-line bg-void px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:text-destructive"
+            className="w-full border-b border-line px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:text-destructive"
           >
             Tirar o ícone — volta pro símbolo do tipo
           </button>
         )}
-        <EmojiPicker
-          theme={pickerTheme}
-          emojiStyle={EmojiStyle.NATIVE}
-          lazyLoadEmojis
-          width={300}
-          height={340}
-          searchPlaceholder="Procurar emoji"
-          customEmojis={customEmojis}
-          onEmojiClick={(emoji) => {
-            onChange(emoji.isCustom ? ':' + emoji.names[0] + ':' : emoji.emoji)
-            setOpen(false)
-          }}
-        />
+        <div className="max-h-[340px] overflow-y-auto p-2">
+          {CHANNEL_ICON_GROUPS.map((group) => (
+            <section key={group.label} className="mb-2 last:mb-0">
+              <h4 className="px-1 pb-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                {group.label}
+              </h4>
+              <div className="grid grid-cols-7 gap-1">
+                {group.icons.map((def) => {
+                  const active = current?.key === def.key
+                  return (
+                    <Hint key={def.key} label={def.label} side="top">
+                      <button
+                        type="button"
+                        aria-label={def.label}
+                        aria-pressed={active}
+                        onClick={() => {
+                          onChange(def.key)
+                          setOpen(false)
+                        }}
+                        className={cn(
+                          'flex h-9 w-9 items-center justify-center rounded-brutal border transition-colors',
+                          active
+                            ? 'border-acid bg-acid/10 text-acid'
+                            : 'border-transparent text-muted-foreground hover:border-line hover:bg-void-light hover:text-foreground'
+                        )}
+                      >
+                        <ChannelIconArt def={def} className="h-[18px] w-[18px]" />
+                      </button>
+                    </Hint>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
       </PopoverContent>
     </Popover>
   )
