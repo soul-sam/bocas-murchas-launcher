@@ -169,11 +169,13 @@ function useTileGrid(count: number): {
 // ============================================
 
 /**
- * Envolve o conteúdo na moldura comprada na lojinha.
+ * Envolve o conteúdo na moldura comprada na lojinha — SÓ ENQUANTO A PESSOA
+ * FALA. Parada, a caixa fica com a borda comum.
  *
- * Quando não tem moldura, cai numa borda comum que fica verde-ácido enquanto
- * a pessoa fala — o realce de "quem está falando" não pode depender de ter
- * comprado cosmético.
+ * A moldura é o realce de "quem está falando" de quem comprou cosmético; quem
+ * não tem cai na borda verde-ácido. Antes a moldura ficava fixa no card e aí
+ * não dava pra ver quando essa pessoa falava (só uma sombra discreta). O avatar
+ * dentro do card continua exibindo a moldura o tempo todo.
  */
 function Framed({
   frame,
@@ -200,14 +202,14 @@ function Framed({
   wrapperClassName?: string
   children: React.ReactNode
 }) {
-  const style = frameClass(frame)
+  const style = speaking ? frameClass(frame) : undefined
 
   return (
     <div className={cn('relative min-w-0', wrapperClassName)}>
-      {frameNeedsRing(frame) && <span aria-hidden className="frame-fire-ring" />}
+      {speaking && frameNeedsRing(frame) && <span aria-hidden className="frame-fire-ring" />}
       <div
         className={cn(
-          'relative overflow-hidden rounded-brutal border-2 bg-black',
+          'relative overflow-hidden rounded-brutal border-2 bg-black transition-colors',
           style ?? (speaking ? 'border-acid' : 'border-line'),
           className
         )}
