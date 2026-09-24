@@ -1,10 +1,6 @@
 import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Hash,
-  Megaphone,
-  Lightbulb,
-  Volume2,
   Settings,
   UserCog,
   MonitorUp,
@@ -21,6 +17,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { useAuth } from '@/lib/auth-context'
+import { ChannelGlyph } from './ChannelGlyph'
 
 /**
  * Troca-canal do Ctrl+K.
@@ -107,14 +104,12 @@ export function QuickSwitcher() {
         id: `text:${channel.id}`,
         label: channel.name,
         hint: 'canal de texto',
-        icon:
-          channel.type === 'announcements' ? (
-            <Megaphone className="h-3.5 w-3.5 text-burn" />
-          ) : channel.type === 'suggestions' ? (
-            <Lightbulb className="h-3.5 w-3.5 text-burn" />
-          ) : (
-            <Hash className="h-3.5 w-3.5" />
-          ),
+        icon: (
+          <ChannelGlyph
+            channel={channel}
+            className={channel.type === 'text' ? undefined : 'text-burn'}
+          />
+        ),
         keywords: channel.name + ' ' + (channel.description ?? ''),
         run: () => {
           navigate('/')
@@ -130,7 +125,7 @@ export function QuickSwitcher() {
         id: `voice:${channel.id}`,
         label: channel.name,
         hint: here ? 'você já está aqui' : 'entrar na call',
-        icon: <Volume2 className="h-3.5 w-3.5" />,
+        icon: <ChannelGlyph channel={channel} />,
         keywords: channel.name + ' voz call',
         run: () => {
           navigate('/')

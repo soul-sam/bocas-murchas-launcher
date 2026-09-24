@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { Hash, Megaphone, Lightbulb, Swords } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/lib/chat-context'
 import { type Channel, type ChannelFeed } from '@/lib/api'
+import { ChannelGlyph } from './ChannelGlyph'
 
 /**
  * "CAI EM #agenda" — o destino do card, à vista e trocável.
@@ -52,13 +52,6 @@ export function useCardTarget(feed: ChannelFeed): {
   return { targetId, setTargetId: setChosen, options: textChannels, suggested, reset }
 }
 
-function ChannelIcon({ channel, className }: { channel: Channel; className?: string }) {
-  if (channel.type === 'announcements') return <Megaphone className={className} />
-  if (channel.type === 'suggestions') return <Lightbulb className={className} />
-  if (channel.type === 'lol') return <Swords className={className} />
-  return <Hash className={className} />
-}
-
 export function CardTargetPicker({
   feed,
   targetId,
@@ -85,7 +78,7 @@ export function CardTargetPicker({
       <span className="mb-1 block text-[11.5px] text-muted-foreground">Cai em</span>
 
       <div className="flex items-center gap-2">
-        {current && <ChannelIcon channel={current} className="h-3.5 w-3.5 shrink-0 text-acid" />}
+        {current && <ChannelGlyph channel={current} className="text-acid" />}
 
         <select
           value={targetId ?? ''}

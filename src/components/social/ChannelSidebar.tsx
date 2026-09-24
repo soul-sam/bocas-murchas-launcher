@@ -1,9 +1,5 @@
 import * as React from 'react'
 import {
-  Swords,
-  Hash,
-  Megaphone,
-  Volume2,
   Mic,
   MicOff,
   Headphones,
@@ -17,7 +13,6 @@ import {
   BellOff,
   VolumeX,
   Coffee,
-  Lightbulb,
   Search,
   X,
   Eye,
@@ -52,6 +47,7 @@ import { useActivity } from '@/lib/activity-context'
 import { useMembers } from '@/lib/members-context'
 import { AFK_AUTO_NOTE } from '@/lib/afk-context'
 import { NameEmoji } from './NameEmoji'
+import { ChannelGlyph } from './ChannelGlyph'
 import { ActivityLine } from './ActivityLine'
 import { OpenPartiesStrip } from './OpenPartiesStrip'
 import { SmokeStrip } from './SmokeStrip'
@@ -329,15 +325,7 @@ export function ChannelSidebar({
                   muted && !active && 'opacity-45 hover:opacity-100'
                 )}
               >
-                {channel.type === 'announcements' ? (
-                  <Megaphone className="h-3.5 w-3.5 shrink-0" />
-                ) : channel.type === 'suggestions' ? (
-                  <Lightbulb className="h-3.5 w-3.5 shrink-0" />
-                ) : channel.type === 'lol' ? (
-                  <Swords className="h-3.5 w-3.5 shrink-0" />
-                ) : (
-                  <Hash className="h-3.5 w-3.5 shrink-0" />
-                )}
+                <ChannelGlyph channel={channel} />
 
                 <span className={cn('truncate text-sm', count > 0 && !active && 'font-semibold')}>
                   {channel.name}
@@ -404,7 +392,7 @@ export function ChannelSidebar({
                       : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
                   )}
                 >
-                  <Volume2 className="h-3.5 w-3.5 shrink-0" />
+                  <ChannelGlyph channel={channel} />
                   <span className="truncate text-sm">{channel.name}</span>
 
                   {sharing.length > 0 && (

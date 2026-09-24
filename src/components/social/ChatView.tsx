@@ -1,7 +1,5 @@
 import * as React from 'react'
 import {
-  Hash,
-  Megaphone,
   Pin,
   Bell,
   BellOff,
@@ -12,10 +10,8 @@ import {
   Link2,
   Clapperboard,
   CalendarDays,
-  Lightbulb,
   ListOrdered,
   Plus,
-  Swords,
   BarChart3,
   ScrollText
 } from 'lucide-react'
@@ -30,6 +26,7 @@ import { useOverlays } from '@/lib/overlay-context'
 import { Button } from '@/components/ui/button'
 import type { ChatMessage } from '@/lib/api'
 import { MessageItem } from './MessageItem'
+import { ChannelGlyph } from './ChannelGlyph'
 import { MessageComposer } from './MessageComposer'
 import { DropComposer } from './DropComposer'
 import { LolPanel } from './lol/LolPanel'
@@ -273,14 +270,14 @@ export function ChatView() {
             ringColor={peer?.profileColor}
             className="h-6 w-6"
           />
-        ) : isAnnouncement ? (
-          <Megaphone className="h-4 w-4 shrink-0 text-burn" />
-        ) : isSuggestions ? (
-          <Lightbulb className="h-4 w-4 shrink-0 text-burn" />
-        ) : isLol ? (
-          <Swords className="h-4 w-4 shrink-0 text-burn" />
         ) : (
-          <Hash className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <ChannelGlyph
+            channel={activeChannel}
+            size="md"
+            className={
+              isAnnouncement || isSuggestions || isLol ? 'text-burn' : 'text-muted-foreground'
+            }
+          />
         )}
 
         <h2 className="shrink-0 font-display text-sm uppercase tracking-wide text-dirty-white">

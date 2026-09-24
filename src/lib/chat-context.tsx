@@ -84,7 +84,7 @@ const LEGACY_TYPE_BY_FEED: Partial<Record<ChannelFeed, ChannelType>> = {
 }
 const UNCATEGORIZED = 'Outros'
 
-function groupByCategory(list: Channel[]): ChannelGroup[] {
+export function groupByCategory(list: Channel[]): ChannelGroup[] {
   const buckets = new Map<string, Channel[]>()
   for (const channel of list) {
     const key = channel.category?.trim() || UNCATEGORIZED
