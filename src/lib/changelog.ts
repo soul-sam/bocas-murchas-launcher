@@ -42,6 +42,32 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.23.2',
+    headline: 'A moldura acende quando você fala',
+    items: [
+      'Na call, a moldura comprada na Lojinha agora aparece em volta do seu card só enquanto você está falando — é o seu "estou falando", no lugar da borda verde de quem não tem moldura. Antes ela ficava fixa e ninguém via quando você abria a boca.',
+      'O launcher não baixa mais atualização no meio de call, partida de LoL ou com o Minecraft aberto. Ele confere a versão do mesmo jeito e baixa sozinho assim que liberar. A tela de fim de partida já libera.'
+    ],
+    note: 'Quem fica em call o dia inteiro não escapa: depois de 4 horas segurando, o download acontece mesmo assim, em segundo plano. Foi assim que uma versão inteira não chegou em ninguém.'
+  },
+  {
+    version: '1.23.1',
+    headline: 'Ícones de canal de traço, não emoji',
+    items: [
+      'Emoji na barra deixava tudo colorido e com cara de modelo pronto. O ícone do canal agora sai de um catálogo com 46 desenhos de traço — Conversa, Jogos, Grupo, Servidor e Voz — incluindo os da casa: a caveira do pentakill, o dado das apostas, o vinil do DJ.',
+      'Os ícones acendem junto com a linha do canal aberto. Canal que tinha emoji virou o desenho equivalente sozinho.'
+    ]
+  },
+  {
+    version: '1.23.0',
+    headline: 'Gerenciador de canais novo',
+    items: [
+      'A tela de canais deixou de ser uma lista chapada com cinco botões por linha: agora é a lista agrupada igual à barra, com o canal aberto ao lado — ícone, nome, grupo e onde ele nasce, tudo no mesmo lugar. Apagar pede confirmação ali mesmo.',
+      'O ícone de cada canal aparece em todo lugar: barra lateral, cabeçalho do chat, Ctrl+K e nos cards que apontam pra um canal.',
+      'Reordenar canais não se perde mais quando alguém salva outra coisa no meio.'
+    ]
+  },
+  {
     version: '1.22.0',
     headline: 'A impressora ganhou mural, encomendas e timelapse',
     items: [
