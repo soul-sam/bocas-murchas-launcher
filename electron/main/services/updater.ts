@@ -56,6 +56,12 @@ export interface UpdaterStatus {
   installAt?: number
   /** Ate quando a instalacao automatica foi adiada (epoch ms). */
   postponedUntil?: number
+  /**
+   * Achou versao nova mas segurou o DOWNLOAD porque baixar agora atrapalharia
+   * (call, Minecraft, partida de LoL). Presente so no estagio 'available'; o
+   * download comeca sozinho assim que liberar.
+   */
+  downloadDeferred?: boolean
 }
 
 /** De quanto em quanto tempo procuramos versao nova com o app aberto. */
@@ -78,11 +84,27 @@ const AUTO_INSTALL_POLL_MS = 30_000
 const AUTO_INSTALL_COUNTDOWN_MS = 30_000
 const POSTPONE_MS = 30 * 60_000
 
+/** De quanto em quanto tempo olhamos se ja da pra soltar o download segurado. */
+const DEFERRED_DOWNLOAD_POLL_MS = 60_000
+
+/**
+ * Teto do adiamento do download.
+ *
+ * Quem deixa a call aberta o dia inteiro fica "ocupado" pra sempre e nunca
+ * baixa nada — foi exatamente assim que a 1.18.0 nao chegou em ninguem. Passado
+ * esse tempo o download acontece mesmo em call: sao ~90 MB em segundo plano,
+ * incomodo bem menor do que ficar semanas numa versao que o servidor ja recusa.
+ */
+const DOWNLOAD_DEFER_CAP_MS = 4 * 60 * 60_000
+
 let state: UpdaterStatus = { stage: 'idle' }
 let ready = false
 let checkTimer: NodeJS.Timeout | null = null
 let autoInstallPoll: NodeJS.Timeout | null = null
 let countdownTimer: NodeJS.Timeout | null = null
+let deferredDownloadPoll: NodeJS.Timeout | null = null
+/** Desde quando estamos segurando o download (epoch ms), ou null. */
+let deferredSince: number | null = null
 
 export function getUpdaterStatus(): UpdaterStatus {
   return state
@@ -116,6 +138,8 @@ export function initUpdater(): void {
   // que sobra pro usuario e o "reiniciar". Reiniciar no meio de uma call e ruim,
   // mas baixar nao incomoda ninguem — e quando a pessoa decidir reiniciar, o
   // arquivo ja esta la e a atualizacao e instantanea.
+  // Ligado por padrao, mas cada checagem redecide: se baixar agora atrapalha
+  // (call, jogo), a checagem acontece do mesmo jeito e so o download espera.
   autoUpdater.autoDownload = true
   // Quem nunca clica em reiniciar atualiza no proximo fechamento do launcher.
   autoUpdater.autoInstallOnAppQuit = true
@@ -137,18 +161,24 @@ export function initUpdater(): void {
   })
 
   autoUpdater.on('update-available', (info) => {
-    log('update-available', { version: info.version })
+    // autoDownload desligado = a checagem decidiu segurar o download.
+    const deferred = !autoUpdater.autoDownload
+    log('update-available', { version: info.version, deferred })
     setState({
       stage: 'available',
       currentVersion: app.getVersion(),
       newVersion: info.version,
       percent: 0,
-      error: undefined
+      error: undefined,
+      downloadDeferred: deferred || undefined
     })
+    if (deferred) startDeferredDownloadPoll()
   })
 
   autoUpdater.on('update-not-available', (info) => {
     log('update-not-available', { version: info?.version })
+    deferredSince = null
+    stopDeferredDownloadPoll()
     setState({
       stage: 'not-available',
       currentVersion: app.getVersion(),
@@ -159,6 +189,7 @@ export function initUpdater(): void {
 
   autoUpdater.on('download-progress', (p) => {
     setState({
+      downloadDeferred: undefined,
       stage: 'downloading',
       percent: p.percent,
       bytesPerSecond: p.bytesPerSecond,
@@ -169,7 +200,14 @@ export function initUpdater(): void {
 
   autoUpdater.on('update-downloaded', (info) => {
     log('update-downloaded', { version: info.version })
-    setState({ stage: 'downloaded', newVersion: info.version, percent: 100 })
+    deferredSince = null
+    stopDeferredDownloadPoll()
+    setState({
+      stage: 'downloaded',
+      newVersion: info.version,
+      percent: 100,
+      downloadDeferred: undefined
+    })
     startAutoInstallPoll()
   })
 
@@ -178,7 +216,8 @@ export function initUpdater(): void {
     // Volta pro zero em vez de 'available': com autoDownload, 'available'
     // desenharia uma barra de progresso parada em 0% pra sempre. A checagem
     // periodica tenta de novo em seguida.
-    setState({ stage: 'idle', newVersion: undefined, percent: 0 })
+    stopDeferredDownloadPoll()
+    setState({ stage: 'idle', newVersion: undefined, percent: 0, downloadDeferred: undefined })
   })
 
   autoUpdater.on('error', (err) => {
@@ -201,6 +240,7 @@ export function stopUpdater(): void {
     checkTimer = null
   }
   stopAutoInstallPoll()
+  stopDeferredDownloadPoll()
   cancelCountdown()
 }
 
@@ -221,6 +261,71 @@ function isBusy(): string | null {
   }
 
   return null
+}
+
+/**
+ * Algo que BAIXAR agora atrapalharia?
+ *
+ * Quase igual a `isBusy()`, com uma diferenca: a tela de pos-jogo do LoL nao
+ * conta. Ali a partida acabou e a banda esta livre — e e a janela mais comum de
+ * quem joga a noite inteira. Pra REINICIAR ela continua contando como ocupado,
+ * porque e nela que o resultado da partida esta sendo resolvido.
+ */
+function downloadBlocker(): string | null {
+  if (isInVoice()) return 'voice'
+
+  const launch = getLaunchStatus().stage
+  if (launch === 'preparing' || launch === 'running') return 'minecraft'
+
+  const lol = getLolStatus()
+  if (
+    lol.clientRunning &&
+    lol.phase !== 'none' &&
+    lol.phase !== 'lobby' &&
+    lol.phase !== 'end-of-game'
+  ) {
+    return `lol:${lol.phase}`
+  }
+
+  return null
+}
+
+/** Ja seguramos o download tempo demais? */
+function deferralExpired(): boolean {
+  return deferredSince !== null && Date.now() - deferredSince >= DOWNLOAD_DEFER_CAP_MS
+}
+
+function stopDeferredDownloadPoll(): void {
+  if (deferredDownloadPoll) {
+    clearInterval(deferredDownloadPoll)
+    deferredDownloadPoll = null
+  }
+}
+
+function startDeferredDownloadPoll(): void {
+  if (deferredDownloadPoll) return
+  deferredDownloadPoll = setInterval(evaluateDeferredDownload, DEFERRED_DOWNLOAD_POLL_MS)
+}
+
+/** A call acabou (ou o teto estourou)? Entao baixa o que ficou segurado. */
+function evaluateDeferredDownload(): void {
+  if (state.stage !== 'available' || !state.downloadDeferred) {
+    stopDeferredDownloadPoll()
+    return
+  }
+
+  const blocker = downloadBlocker()
+  const capped = deferralExpired()
+  if (blocker && !capped) return
+
+  log('download liberado', { blocker, capped, version: state.newVersion })
+  stopDeferredDownloadPoll()
+  deferredSince = null
+  setState({ downloadDeferred: undefined })
+  void autoUpdater.downloadUpdate().catch((err: Error) => {
+    log('downloadUpdate() rejected', { message: err.message })
+    setState({ stage: 'error', error: err.message })
+  })
 }
 
 function windowVisible(): boolean {
@@ -332,15 +437,21 @@ export async function checkForUpdates(manual = true): Promise<UpdaterStatus> {
   // Ja baixou ou esta baixando: checar de novo so atrapalharia.
   if (state.stage === 'downloading' || state.stage === 'downloaded') return state
 
-  // Com autoDownload, "checar" e "baixar dezenas de MB a toda velocidade".
-  // No meio de uma partida (ou de uma call) isso e ping subindo e disco
-  // ocupado pro jogo. A checagem automatica espera o proximo ciclo; a
-  // manual (botao) continua valendo — a pessoa pediu.
-  const busy = manual ? null : isBusy()
-  if (busy) {
-    log('checkForUpdates() adiado: ocupado', { busy })
-    return state
-  }
+  // Ja achou versao nova e so esta esperando a call acabar pra baixar: quem
+  // cuida disso e o poll, checar de novo so reescreveria o mesmo estado.
+  if (state.stage === 'available' && state.downloadDeferred) return state
+
+  // Checar e um GET de algumas centenas de bytes no latest.yml — isso nunca
+  // atrapalhou call nenhuma, e e o que faz o aviso de versao nova aparecer. O
+  // que pesa e o DOWNLOAD (~90 MB a toda velocidade), entao e SO ELE que
+  // espera. Antes a checagem inteira era pulada quando havia call aberta, e
+  // quem fica na call o dia todo nunca via versao nova nenhuma.
+  const blocker = manual ? null : downloadBlocker()
+  if (blocker && deferredSince === null) deferredSince = Date.now()
+  const defer = Boolean(blocker) && !deferralExpired()
+  if (!blocker) deferredSince = null
+  autoUpdater.autoDownload = !defer
+  if (defer) log('download sera segurado se houver versao nova', { blocker })
 
   setState({ manualCheck: manual })
 

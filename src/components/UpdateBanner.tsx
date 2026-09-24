@@ -24,6 +24,26 @@ export function UpdateBanner() {
     return null
   }
 
+  // Download segurado: avisa que existe versao nova sem desenhar uma barra de
+  // progresso parada em 0%.
+  if (status.stage === 'available' && status.downloadDeferred) {
+    return (
+      <div className="mb-4 rounded-brutal border-2 border-line px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <div className="flex-1">
+            <p className="font-display text-sm uppercase tracking-wider">
+              v{status.newVersion} esperando
+            </p>
+            <p className="text-[11.5px] text-muted-foreground">
+              baixa sozinha quando a call ou a partida acabar
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // 'available' e 'downloading' viram o mesmo aviso: o download ja comecou
   // sozinho, e ninguem precisa saber que existem dois estagios.
   if (status.stage === 'available' || status.stage === 'downloading') {

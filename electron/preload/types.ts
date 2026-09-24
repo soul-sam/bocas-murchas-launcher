@@ -100,6 +100,12 @@ export interface UpdaterStatus {
   installAt?: number
   /** Ate quando a instalacao automatica foi adiada (epoch ms). */
   postponedUntil?: number
+  /**
+   * Achou versao nova mas segurou o DOWNLOAD porque baixar agora atrapalharia
+   * (call, Minecraft, partida de LoL). Presente so no estagio 'available'; o
+   * download comeca sozinho assim que liberar.
+   */
+  downloadDeferred?: boolean
 }
 
 /** Atalhos globais. Valor vazio = nao vinculado. */

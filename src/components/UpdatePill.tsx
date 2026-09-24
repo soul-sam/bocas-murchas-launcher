@@ -59,6 +59,20 @@ export function UpdatePill() {
     )
   }
 
+  // Achou versao nova mas o download esta segurado (call, jogo): sem barra de
+  // progresso, que ficaria parada em 0% e pareceria travada.
+  if (status.stage === 'available' && status.downloadDeferred) {
+    return (
+      <Pill
+        tone="muted"
+        title={`A v${status.newVersion ?? 'nova'} baixa sozinha quando a call ou a partida acabar`}
+      >
+        <Clock className="h-3 w-3" />
+        v{status.newVersion} na fila
+      </Pill>
+    )
+  }
+
   // 'available' e 'downloading' sao a mesma coisa pra quem olha: o download ja
   // comecou. Separar so faria o aviso piscar de um texto pro outro.
   if (status.stage === 'available' || status.stage === 'downloading') {
