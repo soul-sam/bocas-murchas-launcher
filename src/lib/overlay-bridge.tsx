@@ -76,20 +76,30 @@ export function OverlayBridge(): null {
   const active = settings.overlay.enabled
 
   /**
+   * O board da MINHA sessão: o único que traz `self` (odd e janela de apostar
+   * em mim), porque a aposta em mim é registrada nela, não na do colega.
+   */
+  const ownBoard = React.useMemo(
+    () => (user ? liveGames.find((game) => game.session.userId === user.id) : undefined),
+    [liveGames, user]
+  )
+
+  /**
    * O board da MINHA partida. O servidor junta as sessões de quem caiu no
    * mesmo jogo, então "minha" é qualquer board cujo `players` me inclua — não
-   * só o da minha própria sessão.
+   * só o da minha própria sessão. Pool e apostas são do grupo, iguais em
+   * todos; o `self` NÃO é, e por isso sai do `ownBoard`. Antes um `find` só
+   * pegava o primeiro board que me incluísse — num 5-stack, quem não tinha a
+   * sessão mais recente caía no board do colega, sem `self`, e o card
+   * "apostar em mim" sumia.
    */
   const myBoard = React.useMemo(
     () =>
-      user
-        ? liveGames.find(
-            (game) =>
-              game.session.userId === user.id ||
-              (game.players ?? []).some((p) => p.userId === user.id)
-          )
-        : undefined,
-    [liveGames, user]
+      ownBoard ??
+      (user
+        ? liveGames.find((game) => (game.players ?? []).some((p) => p.userId === user.id))
+        : undefined),
+    [liveGames, user, ownBoard]
   )
 
   /**
@@ -161,13 +171,13 @@ export function OverlayBridge(): null {
       closesAt: myBoard ? Date.parse(myBoard.closesAt) : 0,
       // O board de quem está na MINHA partida mas não é a minha sessão vem
       // sem `self` — a aposta em mim é registrada na minha sessão, não na do
-      // colega. Por isso o `self` sai daqui e não do `myBoard` genérico.
-      self: myBoard?.self
+      // colega. Por isso o `self` sai do `ownBoard`, nunca do `myBoard`.
+      self: ownBoard?.self
         ? {
-            sessionId: myBoard.session.id,
-            multiplier: myBoard.self.odds.multiplier,
-            closesAt: Date.parse(myBoard.self.closesAt),
-            maxAmount: myBoard.self.maxAmount
+            sessionId: ownBoard.session.id,
+            multiplier: ownBoard.self.odds.multiplier,
+            closesAt: Date.parse(ownBoard.self.closesAt),
+            maxAmount: ownBoard.self.maxAmount
           }
         : undefined,
       myWager:
@@ -175,7 +185,7 @@ export function OverlayBridge(): null {
           ? { amount: myBoard.myWager.amount, potential: myBoard.myWager.potential }
           : null
     }
-  }, [lol, myBoard])
+  }, [lol, myBoard, ownBoard])
 
   /**
    * O catálogo pra roda de sons.

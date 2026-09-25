@@ -71,6 +71,19 @@ export function BetPopover({
     [liveGames, sessionId, userId]
   )
 
+  // Estou na mesma partida desse board? Então a aposta possível é em MIM, e
+  // ela vive no board da MINHA sessão — o único do grupo que traz `self`.
+  // Sem isso o popover mandava "aposte na sua vitória" sem dar onde.
+  const ownBoard = React.useMemo(
+    () =>
+      game?.mine && !game.self
+        ? liveGames.find(
+            (g) => g.self && (g.matchId ?? g.session.id) === (game.matchId ?? game.session.id)
+          )
+        : undefined,
+    [liveGames, game]
+  )
+
   // Abrir rebusca: a pool pode ter mudado desde o último poll de 30s.
   React.useEffect(() => {
     if (open) void refreshLiveGames()
@@ -126,10 +139,27 @@ export function BetPopover({
             {others.length > 0 ? ' nessa partida — vale pro grupo todo.' : '.'}
           </p>
         ) : game.mine && !game.self ? (
-          <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
-            Vocês estão na mesma partida. Aposte na SUA vitória — é uma aposta
-            só e ela cobre o jogo inteiro.
-          </p>
+          ownBoard?.self?.open ? (
+            <>
+              <p className="mb-2 rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
+                Vocês estão na mesma partida: aqui a aposta é na SUA vitória, e
+                ela cobre o jogo inteiro.
+              </p>
+              <BetForm
+                sessionId={ownBoard.session.id}
+                coins={profile?.coins ?? 0}
+                max={ownBoard.self.maxAmount}
+                closesAt={ownBoard.self.closesAt}
+                self={ownBoard.self}
+                onPlaced={() => setOpen(false)}
+              />
+            </>
+          ) : (
+            <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
+              Vocês estão na mesma partida. Aposta em si mesmo fechada: ela vale
+              só nos 3 primeiros minutos.
+            </p>
+          )
         ) : game.self ? (
           game.self.open ? (
             <BetForm

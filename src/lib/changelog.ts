@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.23.3',
+    headline: 'Apostar em você no 5-stack voltou',
+    items: [
+      'Entrando em partida junto com o grupo, o card "apostar em mim" do overlay sumia pra quem não tinha a sessão mais recente — o launcher pegava a pool do colega, que não traz a sua odd. Agora a odd vem sempre da SUA sessão.',
+      'No launcher, o botão de aposta do colega que está na sua partida abria só um aviso mandando apostar em você, sem lugar pra isso. Agora o formulário de apostar em você aparece ali mesmo.'
+    ]
+  },
+  {
     version: '1.23.2',
     headline: 'A moldura acende quando você fala',
     items: [
