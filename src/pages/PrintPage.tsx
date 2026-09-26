@@ -1,6 +1,7 @@
 import * as React from 'react'
 import {
   AlertTriangle,
+  CalendarClock,
   CheckCircle2,
   Clock,
   Hourglass,
@@ -9,6 +10,7 @@ import {
   Lightbulb,
   LightbulbOff,
   ListOrdered,
+  Moon,
   Palette,
   Pause,
   Play,
@@ -31,6 +33,7 @@ import { GalleryTab } from '@/components/print/GalleryTab'
 import { MaintenanceTab } from '@/components/print/MaintenanceTab'
 import { RequestsTab } from '@/components/print/RequestsTab'
 import { FilamentChips, PrintThumb } from '@/components/print/print-bits'
+import { SchedulePicker, crossesNight, describeSchedule } from '@/components/print/SchedulePicker'
 import { useAuth } from '@/lib/auth-context'
 import { usePrint } from '@/lib/print-context'
 import { useSocket } from '@/lib/socket-context'
@@ -741,9 +744,10 @@ function NoAccessCard() {
 
 function NewJobCard() {
   const { token } = useAuth()
-  const { refresh } = usePrint()
+  const { state, refresh } = usePrint()
   const [file, setFile] = React.useState<File | null>(null)
   const [title, setTitle] = React.useState('')
+  const [scheduledFor, setScheduledFor] = React.useState<Date | null>(null)
   const [dragging, setDragging] = React.useState(false)
   const [sending, setSending] = React.useState(false)
   const [result, setResult] = React.useState<{ ok: boolean; text: string } | null>(null)
@@ -762,10 +766,14 @@ function NewJobCard() {
     setSending(true)
     setResult(null)
     try {
-      const res = await printApi.enqueue(token, file, { title: title.trim() || undefined })
+      const res = await printApi.enqueue(token, file, {
+        title: title.trim() || undefined,
+        scheduledFor: scheduledFor?.toISOString() ?? null
+      })
       setResult({ ok: true, text: res.message })
       setFile(null)
       setTitle('')
+      setScheduledFor(null)
       if (inputRef.current) inputRef.current.value = ''
       await refresh()
     } catch (err) {
@@ -836,9 +844,15 @@ function NewJobCard() {
             maxLength={80}
             onChange={(e) => setTitle(e.target.value)}
           />
+          <SchedulePicker
+            value={scheduledFor}
+            onChange={setScheduledFor}
+            quiet={state?.printer ?? {}}
+            disabled={sending}
+          />
           <div className="flex items-center gap-2">
             <Button size="sm" className="btn-acid" onClick={() => void send()} disabled={sending}>
-              {sending ? 'Mandando…' : 'Botar na fila'}
+              {sending ? 'Mandando…' : scheduledFor ? 'Agendar' : 'Botar na fila'}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => pick(null)} disabled={sending}>
               cancelar
@@ -882,8 +896,27 @@ function QueueCard({
   canOperate: boolean
 }) {
   const { token } = useAuth()
-  const { refresh } = usePrint()
+  const { state, refresh } = usePrint()
+  const quiet = state?.printer ?? {}
   const [busy, setBusy] = React.useState<string | null>(null)
+  /** Linha com o editor de horário aberto, e o horário sendo escolhido. */
+  const [editing, setEditing] = React.useState<{ id: string; value: Date | null } | null>(null)
+  const [scheduleError, setScheduleError] = React.useState<string | null>(null)
+
+  async function saveSchedule(): Promise<void> {
+    if (!editing) return
+    setBusy(editing.id)
+    setScheduleError(null)
+    try {
+      await printApi.schedule(token, editing.id, editing.value?.toISOString() ?? null)
+      setEditing(null)
+      await refresh()
+    } catch (err) {
+      setScheduleError(err instanceof Error ? err.message : 'Não deu pra mudar o horário')
+    } finally {
+      setBusy(null)
+    }
+  }
 
   async function cancel(job: PrintQueueItem): Promise<void> {
     setBusy(job.id)
@@ -921,78 +954,145 @@ function QueueCard({
         </p>
       ) : (
         <ul className="space-y-2">
-          {queue.map((job) => (
-            <li
-              key={job.id}
-              className="flex items-center gap-3 rounded-brutal border border-line bg-void/40 px-3 py-2"
-            >
-              <span
-                className={cn(
-                  'w-6 shrink-0 text-center font-mono text-sm font-bold',
-                  job.position === 1 ? 'text-acid' : 'text-muted-foreground'
-                )}
-              >
-                {job.position}
-              </span>
-
-              <PrintThumb url={job.thumbUrl} alt={job.title} className="h-10 w-10" />
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="truncate font-display text-sm text-foreground">{job.title}</span>
-                  <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">
-                    {job.owner.displayName}
+          {queue.map((job) => {
+            const mine = job.owner.id === meId
+            const scheduled = job.blockedReason === 'scheduled'
+            const nightRun =
+              !!job.etaStartAt && crossesNight(new Date(job.etaStartAt), job.estimatedSeconds, quiet)
+            const editingThis = editing?.id === job.id
+            return (
+              <li key={job.id} className="rounded-brutal border border-line bg-void/40 px-3 py-2">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={cn(
+                      'w-6 shrink-0 text-center font-mono text-sm font-bold',
+                      job.position === 1 ? 'text-acid' : 'text-muted-foreground'
+                    )}
+                  >
+                    {job.position}
                   </span>
-                </div>
-                {/* A explicação da posição vem PRONTA do servidor — a tela não
-                    recalcula a regra de justiça. */}
-                <p
-                  className={cn(
-                    'truncate text-[11.5px]',
-                    job.blockedReason === 'filament_mismatch' ? 'text-burn' : 'text-muted-foreground'
+
+                  <PrintThumb url={job.thumbUrl} alt={job.title} className="h-10 w-10" />
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="truncate font-display text-sm text-foreground">{job.title}</span>
+                      <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">
+                        {job.owner.displayName}
+                      </span>
+                    </div>
+                    {/* A explicação da posição vem PRONTA do servidor — a tela não
+                        recalcula a regra de justiça. */}
+                    <p
+                      className={cn(
+                        'truncate text-[11.5px]',
+                        job.blockedReason === 'filament_mismatch' || job.blockedReason === 'quiet_overrun'
+                          ? 'text-burn'
+                          : scheduled
+                            ? 'text-acid-text'
+                            : 'text-muted-foreground'
+                      )}
+                    >
+                      {formatSeconds(job.estimatedSeconds)}
+                      {job.estimatedGrams ? ` · ${Math.round(job.estimatedGrams)}g` : ''}
+                      {job.reasonText ? ` · ${job.reasonText}` : ''}
+                    </p>
+                    {job.filaments && job.filaments.length > 0 && (
+                      <FilamentChips filaments={job.filaments} className="mt-1" />
+                    )}
+                  </div>
+
+                  {job.blockedReason === 'filament_mismatch' && (canOperate || job.owner.id === meId) && (
+                    <button
+                      type="button"
+                      title="Imprimir com o filamento que está carregado"
+                      onClick={() => void filamentOk(job)}
+                      disabled={busy === job.id}
+                      className="shrink-0 rounded-brutal border border-burn/50 px-2 py-1 text-[11px] text-burn transition-colors hover:bg-burn/10"
+                    >
+                      tanto faz a cor
+                    </button>
                   )}
-                >
-                  {formatSeconds(job.estimatedSeconds)}
-                  {job.estimatedGrams ? ` · ${Math.round(job.estimatedGrams)}g` : ''}
-                  {job.reasonText ? ` · ${job.reasonText}` : ''}
-                </p>
-                {job.filaments && job.filaments.length > 0 && (
-                  <FilamentChips filaments={job.filaments} className="mt-1" />
+
+                  {nightRun && (
+                    <span title="Pela previsão, essa peça roda de noite" className="hidden shrink-0 text-burn sm:block">
+                      <Moon className="h-3.5 w-3.5" aria-label="roda de noite" />
+                    </span>
+                  )}
+
+                  {/* Agendada: o que quem agendou quer conferir é quando TERMINA
+                      (e a hora de início já está na linha de baixo). */}
+                  {scheduled && job.etaFinishAt ? (
+                    <span className="hidden shrink-0 text-[11.5px] text-muted-foreground sm:block">
+                      termina ~{describeSchedule(new Date(job.etaFinishAt))}
+                    </span>
+                  ) : job.etaStartAt ? (
+                    <span className="hidden shrink-0 text-[11.5px] text-muted-foreground sm:block">
+                      ~{new Date(job.etaStartAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  ) : null}
+
+                  {(mine || isAdmin) && (
+                    <button
+                      type="button"
+                      title={scheduled ? 'Mudar o horário' : 'Agendar'}
+                      aria-label={scheduled ? 'Mudar o horário' : 'Agendar'}
+                      aria-expanded={editingThis}
+                      onClick={() => {
+                        setScheduleError(null)
+                        setEditing(
+                          editingThis
+                            ? null
+                            : { id: job.id, value: job.scheduledFor ? new Date(job.scheduledFor) : null }
+                        )
+                      }}
+                      disabled={busy === job.id}
+                      className={cn(
+                        'shrink-0 rounded-brutal p-1.5 transition-colors hover:bg-acid/10 hover:text-acid-text',
+                        scheduled || editingThis ? 'text-acid-text' : 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarClock className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+
+                  {(mine || isAdmin) && (
+                    <button
+                      type="button"
+                      title="Tirar da fila"
+                      aria-label="Tirar da fila"
+                      onClick={() => void cancel(job)}
+                      disabled={busy === job.id}
+                      className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {editingThis && editing && (
+                  <div className="mt-2 space-y-2 border-t border-line pt-2">
+                    <SchedulePicker
+                      value={editing.value}
+                      onChange={(value) => setEditing({ id: job.id, value })}
+                      quiet={quiet}
+                      estimatedSeconds={job.estimatedSeconds}
+                      disabled={busy === job.id}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" className="btn-acid" onClick={() => void saveSchedule()} disabled={busy === job.id}>
+                        {busy === job.id ? 'Salvando…' : 'Salvar horário'}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setEditing(null)} disabled={busy === job.id}>
+                        cancelar
+                      </Button>
+                    </div>
+                    {scheduleError && <p className="text-[11.5px] text-destructive">{scheduleError}</p>}
+                  </div>
                 )}
-              </div>
-
-              {job.blockedReason === 'filament_mismatch' && (canOperate || job.owner.id === meId) && (
-                <button
-                  type="button"
-                  title="Imprimir com o filamento que está carregado"
-                  onClick={() => void filamentOk(job)}
-                  disabled={busy === job.id}
-                  className="shrink-0 rounded-brutal border border-burn/50 px-2 py-1 text-[11px] text-burn transition-colors hover:bg-burn/10"
-                >
-                  tanto faz a cor
-                </button>
-              )}
-
-              {job.etaStartAt && (
-                <span className="hidden shrink-0 text-[11.5px] text-muted-foreground sm:block">
-                  ~{new Date(job.etaStartAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )}
-
-              {(job.owner.id === meId || isAdmin) && (
-                <button
-                  type="button"
-                  title="Tirar da fila"
-                  aria-label="Tirar da fila"
-                  onClick={() => void cancel(job)}
-                  disabled={busy === job.id}
-                  className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

@@ -34,11 +34,13 @@ export type UpdaterStage =
   | 'downloading'
   | 'downloaded'
   | 'error'
+  | 'publishing'
 
 export interface UpdaterStatus {
   stage: UpdaterStage
   currentVersion?: string
   newVersion?: string
+  publishingVersion?: string
   percent?: number
   bytesPerSecond?: number
   transferred?: number
@@ -157,6 +159,8 @@ export function initUpdater(): void {
 
   autoUpdater.on('checking-for-update', () => {
     log('checking-for-update')
+    // Esperando a release sair: cada nova tentativa nao pisca "procurando".
+    if (publishRetry) return
     setState({ stage: 'checking', currentVersion: app.getVersion() })
   })
 
@@ -164,6 +168,7 @@ export function initUpdater(): void {
     // autoDownload desligado = a checagem decidiu segurar o download.
     const deferred = !autoUpdater.autoDownload
     log('update-available', { version: info.version, deferred })
+    stopPublishRetry()
     setState({
       stage: 'available',
       currentVersion: app.getVersion(),
@@ -179,11 +184,22 @@ export function initUpdater(): void {
     log('update-not-available', { version: info?.version })
     deferredSince = null
     stopDeferredDownloadPoll()
+    // Ja estamos esperando a release: o "nao ha" e so o GitHub atrasado.
+    if (publishRetry) return
+    if (state.manualCheck) {
+      // Antes de dizer "atualizado" pra quem PEDIU, confere se tem tag nova
+      // no forno — senao quem clica logo depois de lancar ouve que esta tudo
+      // em dia, e isso parece bug. `checkForUpdates` espera esse veredito pra
+      // devolver o estado final (o painel de admin le a resposta).
+      verdict = checkPublishing()
+      return
+    }
     setState({
       stage: 'not-available',
       currentVersion: app.getVersion(),
       newVersion: undefined,
-      error: undefined
+      error: undefined,
+      checkedAt: new Date().toISOString()
     })
   })
 
@@ -222,6 +238,9 @@ export function initUpdater(): void {
 
   autoUpdater.on('error', (err) => {
     log('error', { message: err.message, stack: err.stack })
+    // Na janela em que a tag existe e o latest.yml ainda nao subiu, o
+    // electron-updater da 404 — e e so esperar.
+    if (publishRetry) return
     setState({ stage: 'error', error: err.message })
   })
 
@@ -239,6 +258,7 @@ export function stopUpdater(): void {
     clearInterval(checkTimer)
     checkTimer = null
   }
+  stopPublishRetry()
   stopAutoInstallPoll()
   stopDeferredDownloadPoll()
   cancelCountdown()
@@ -318,7 +338,11 @@ function evaluateDeferredDownload(): void {
   const capped = deferralExpired()
   if (blocker && !capped) return
 
-  log('download liberado', { blocker, capped, version: state.newVersion })
+  releaseDeferredDownload(capped ? 'teto' : 'livre')
+}
+
+function releaseDeferredDownload(why: string): void {
+  log('download liberado', { why, version: state.newVersion })
   stopDeferredDownloadPoll()
   deferredSince = null
   setState({ downloadDeferred: undefined })
@@ -436,10 +460,24 @@ export async function checkForUpdates(manual = true): Promise<UpdaterStatus> {
 
   // Ja baixou ou esta baixando: checar de novo so atrapalharia.
   if (state.stage === 'downloading' || state.stage === 'downloaded') return state
+  // Ja esperando a release nova sair: o laco de tentativas cuida.
+  if (publishRetry) return state
 
   // Ja achou versao nova e so esta esperando a call acabar pra baixar: quem
   // cuida disso e o poll, checar de novo so reescreveria o mesmo estado.
-  if (state.stage === 'available' && state.downloadDeferred) return state
+  // Mas o CLIQUE solta o download na hora — quem clicou quer a versao agora,
+  // e "na fila" sem reacao nenhuma parece botao quebrado.
+  if (state.stage === 'available' && state.downloadDeferred) {
+    if (manual) releaseDeferredDownload('clique')
+    return state
+  }
+
+  // Uma checagem so por vez (o electron-updater devolve a mesma promise a
+  // quem pedir no meio). A automatica que chega durante um clique NAO pode
+  // rebaixar o manualCheck: a resposta do clique seria tratada como de
+  // timer e a tela ficaria muda. Vem ANTES do autoDownload abaixo pelo
+  // mesmo motivo: a automatica desligaria o download do clique em voo.
+  if (checking && !manual) return state
 
   // Checar e um GET de algumas centenas de bytes no latest.yml — isso nunca
   // atrapalhou call nenhuma, e e o que faz o aviso de versao nova aparecer. O
@@ -452,19 +490,140 @@ export async function checkForUpdates(manual = true): Promise<UpdaterStatus> {
   if (!blocker) deferredSince = null
   autoUpdater.autoDownload = !defer
   if (defer) log('download sera segurado se houver versao nova', { blocker })
+  checking = true
 
-  setState({ manualCheck: manual })
+  // 'checking' JUNTO com o manualCheck, num set so. Separados, a tela recebia
+  // "manual + not-available" (a resposta VELHA da checagem automatica) e
+  // mostrava "atualizado" antes da checagem nem comecar — e se achasse
+  // versao, o aviso cobria o download inteiro.
+  if (manual) setState({ stage: 'checking', manualCheck: true, error: undefined })
+  else setState({ manualCheck: false })
 
   try {
     log('checkForUpdates() dispatched', { manual })
     await autoUpdater.checkForUpdates()
   } catch (err) {
     log('checkForUpdates() rejected', { message: (err as Error).message })
-    setState({ stage: 'error', error: (err as Error).message })
+    if (!publishRetry) {
+      setState({ stage: 'error', error: (err as Error).message, checkedAt: new Date().toISOString() })
+    }
   }
 
-  setState({ checkedAt: new Date().toISOString() })
+  if (verdict) {
+    const pending = verdict
+    verdict = null
+    await pending
+  }
+  checking = false
   return state
+}
+
+// ============================================
+// RELEASE NO FORNO
+// ============================================
+
+/**
+ * Entre o `git push --tags` e a release aparecer no GitHub passam uns 3
+ * minutos (o CI compila e sobe o instalador), e o feed do GitHub ainda tem
+ * cache em cima. Nesse meio-tempo o electron-updater diz, com razao, que
+ * nao ha nada — e quem clicou porque viu o anuncio acha que o botao quebrou.
+ *
+ * Entao, quando uma checagem MANUAL volta vazia, perguntamos as tags do repo
+ * (publicas, sem token): se tem uma maior que a versao atual, a release esta
+ * saindo do forno, e tentamos de novo a cada 30 s por ate 10 min.
+ */
+const RELEASE_REPO = 'soul-sam/bocas-murchas-launcher' // mesmo do publish do electron-builder.yml
+const PUBLISH_RETRY_MS = 30_000
+const PUBLISH_GIVE_UP_MS = 10 * 60_000
+
+let publishRetry: { timer: NodeJS.Timeout | null; until: number; version: string } | null = null
+/** Consulta de tags em andamento, disparada por um "nao ha" de checagem manual. */
+let verdict: Promise<void> | null = null
+/** Tem checagem nossa em andamento (ver `checkForUpdates`). */
+let checking = false
+
+function stopPublishRetry(): void {
+  if (publishRetry?.timer) clearTimeout(publishRetry.timer)
+  publishRetry = null
+}
+
+function isNewer(a: string, b: string): boolean {
+  const pa = a.split('.').map((n) => Number.parseInt(n, 10) || 0)
+  const pb = b.split('.').map((n) => Number.parseInt(n, 10) || 0)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) > (pb[i] ?? 0)
+  }
+  return false
+}
+
+/** A maior tag vX.Y.Z do repo, ou null se nao deu pra perguntar. */
+async function newestTag(): Promise<string | null> {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${RELEASE_REPO}/tags?per_page=20`, {
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'bocas-murchas-launcher' },
+      signal: AbortSignal.timeout(6_000)
+    })
+    if (!res.ok) {
+      log('tags: resposta', { status: res.status })
+      return null
+    }
+    const tags = (await res.json()) as Array<{ name: string }>
+    let best: string | null = null
+    for (const tag of tags) {
+      const match = /^v?(\d+\.\d+\.\d+)$/.exec(tag.name)
+      if (match && (!best || isNewer(match[1], best))) best = match[1]
+    }
+    return best
+  } catch (err) {
+    log('tags: falhou', { message: (err as Error).message })
+    return null
+  }
+}
+
+async function checkPublishing(): Promise<void> {
+  const current = app.getVersion()
+  const tag = await newestTag()
+  if (!tag || !isNewer(tag, current)) {
+    setState({
+      stage: 'not-available',
+      currentVersion: current,
+      newVersion: undefined,
+      error: undefined,
+      checkedAt: new Date().toISOString()
+    })
+    return
+  }
+  log('release no forno', { tag, current })
+  publishRetry = { timer: null, until: Date.now() + PUBLISH_GIVE_UP_MS, version: tag }
+  setState({ stage: 'publishing', publishingVersion: tag, error: undefined })
+  schedulePublishRetry()
+}
+
+function schedulePublishRetry(): void {
+  if (!publishRetry) return
+  publishRetry.timer = setTimeout(() => {
+    if (!publishRetry) return
+    if (Date.now() > publishRetry.until) {
+      const version = publishRetry.version
+      stopPublishRetry()
+      log('release no forno: desisti', { version })
+      setState({
+        stage: 'error',
+        error: `A v${version} não terminou de ser publicada no GitHub (o build pode ter falhado).`,
+        checkedAt: new Date().toISOString()
+      })
+      return
+    }
+    log('release no forno: tentando de novo', { version: publishRetry.version })
+    // `update-available` para o laco; qualquer outra resposta agenda a
+    // proxima tentativa.
+    autoUpdater
+      .checkForUpdates()
+      .catch((err) => log('release no forno: checagem falhou', { message: (err as Error).message }))
+      .finally(() => {
+        if (publishRetry) schedulePublishRetry()
+      })
+  }, PUBLISH_RETRY_MS)
 }
 
 export function quitAndInstall(): void {

@@ -41,6 +41,10 @@ export type BlockedReason =
   | 'printer_disabled'
   /** O ACE não tem o filamento (tipo ou cor) que a peça pede. */
   | 'filament_mismatch'
+  /** Quem mandou agendou pra mais tarde. */
+  | 'scheduled'
+  /** Pela estimativa, a peça entraria no horário de silêncio. */
+  | 'quiet_overrun'
 
 /** Um filamento que a peça usa. `tool` 0 = slot 1 do ACE. */
 export interface FilamentSlotUse {
@@ -77,6 +81,8 @@ export interface PrintQueueItem {
   blockedText: string | null
   etaStartAt: string | null
   etaFinishAt: string | null
+  /** Não sai antes disto. Ausente em API velha; null = assim que der. */
+  scheduledFor?: string | null
   queuedAt: string
   /** Miniatura que o fatiador embutiu no arquivo. */
   thumbUrl?: string | null
@@ -129,6 +135,9 @@ export interface PrinterInfo {
   maxJobSeconds: number
   maxQueuedJobs: number
   defaultWindowSeconds: number
+  /** Janela de silêncio (hora de SP, 0–23). null = sem janela. */
+  quietStartHour?: number | null
+  quietEndHour?: number | null
 }
 
 export interface PrintQuota {
@@ -364,13 +373,26 @@ export const printApi = {
    * Sobe um arquivo já fatiado. O `title` é só o nome que aparece na fila; o
    * tempo e as gramas o servidor tira do próprio arquivo.
    */
-  enqueue: (token: string | null, file: File, options: { title?: string; note?: string } = {}) => {
+  enqueue: (
+    token: string | null,
+    file: File,
+    options: { title?: string; note?: string; scheduledFor?: string | null } = {}
+  ) => {
     const form = new FormData()
     form.append('file', file)
     if (options.title) form.append('title', options.title)
     if (options.note) form.append('note', options.note)
+    if (options.scheduledFor) form.append('scheduledFor', options.scheduledFor)
     return upload<EnqueueResult>('/print/jobs', form, token)
   },
+
+  /** Muda o "começar a partir de" de uma peça na fila. `null` tira. */
+  schedule: (token: string | null, jobId: string, scheduledFor: string | null) =>
+    request<{ message: string }>(`/print/jobs/${jobId}/schedule`, {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify({ scheduledFor })
+    }),
 
   cancel: (token: string | null, jobId: string, reason?: string) =>
     request<{ message: string; quota: PrintQuota }>(`/print/jobs/${jobId}`, {

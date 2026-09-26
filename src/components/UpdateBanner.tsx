@@ -19,7 +19,9 @@ export function UpdateBanner() {
     status.stage === 'idle' ||
     status.stage === 'checking' ||
     status.stage === 'not-available' ||
-    status.stage === 'error'
+    status.stage === 'error' ||
+    // Release ainda no forno: o aviso no cabecalho basta.
+    status.stage === 'publishing'
   ) {
     return null
   }

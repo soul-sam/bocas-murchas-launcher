@@ -78,11 +78,15 @@ export type UpdaterStage =
   | 'downloading'
   | 'downloaded'
   | 'error'
+  /** A tag nova existe, mas o GitHub ainda esta montando a release. */
+  | 'publishing'
 
 export interface UpdaterStatus {
   stage: UpdaterStage
   currentVersion?: string
   newVersion?: string
+  /** Versao da tag que ainda esta sendo publicada (estagio 'publishing'). */
+  publishingVersion?: string
   percent?: number
   bytesPerSecond?: number
   transferred?: number

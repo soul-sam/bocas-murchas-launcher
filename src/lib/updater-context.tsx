@@ -25,7 +25,10 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const check = React.useCallback(async () => {
-    setStatus(await window.bocas.updater.check())
+    // O estado chega pelos eventos. A resposta do invoke e um retrato tirado
+    // quando a checagem termina — e pode chegar DEPOIS de um evento mais novo
+    // (o download ja andou), voltando a tela pra tras.
+    await window.bocas.updater.check()
   }, [])
 
   const applyUpdate = React.useCallback(async () => {

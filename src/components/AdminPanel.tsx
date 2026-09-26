@@ -896,6 +896,8 @@ function ToolsTab() {
                   return `Versão ${status.newVersion ?? 'nova'} baixada — reinicie pra aplicar.`
                 case 'not-available':
                   return 'Já está na última versão.'
+                case 'publishing':
+                  return `A v${status.publishingVersion ?? '?'} ainda está sendo publicada — procuro de novo sozinho.`
                 case 'error':
                   throw new ApiError(0, status.error ?? 'Falha ao checar atualização')
                 default:

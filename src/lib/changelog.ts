@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.23.4',
+    headline: 'Agendar impressão pra não acordar ninguém',
+    items: [
+      'Na aba Impressora, ao mandar uma peça, dá pra escolher quando ela começa: assim que der, na manhã seguinte ou num horário seu. A peça já na fila ganha um botão de calendário pra mudar ou tirar o horário.',
+      'A impressora não começa mais uma peça que, pela estimativa, invadiria o horário de silêncio. Ela espera a manhã, e uma peça mais curta atrás dela pode passar na frente se couber antes da noite.',
+      'Clicar na versão aqui em cima não diz mais "atualizado" quando tem versão nova. E se a versão acabou de ser lançada e o GitHub ainda está publicando, aparece "saindo" e o launcher tenta de novo sozinho.',
+      'Com o download segurado por causa da call, clicar na versão baixa na hora.'
+    ],
+    note: 'O horário de silêncio é configurado pelo admin. Sem ele, só vale o agendamento.'
+  },
+  {
     version: '1.23.3',
     headline: 'Apostar em você no 5-stack voltou',
     items: [

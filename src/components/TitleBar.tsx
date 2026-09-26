@@ -67,6 +67,7 @@ export function TitleBar() {
         <button
           type="button"
           onClick={() => void check()}
+          disabled={status.stage === 'checking' || status.stage === 'publishing'}
           title="Procurar atualizações"
           className="app-no-drag rounded-brutal px-1 font-mono text-[11px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
         >

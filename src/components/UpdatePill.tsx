@@ -24,8 +24,10 @@ export function UpdatePill() {
    */
   const [showUpToDate, setShowUpToDate] = React.useState(false)
 
+  // Presa ao `checkedAt`: so uma checagem que TERMINOU agora dispara o aviso,
+  // nunca a resposta velha da checagem automatica de meia hora atras.
   React.useEffect(() => {
-    if (status.stage !== 'not-available' || !status.manualCheck) return
+    if (status.stage !== 'not-available' || !status.manualCheck || !status.checkedAt) return
     setShowUpToDate(true)
     const timer = setTimeout(() => setShowUpToDate(false), 4_000)
     return () => clearTimeout(timer)
@@ -50,7 +52,21 @@ export function UpdatePill() {
     )
   }
 
-  if (showUpToDate) {
+  if (status.stage === 'publishing') {
+    return (
+      <Pill
+        tone="burn"
+        title={`A v${status.publishingVersion ?? '?'} ainda está sendo publicada no GitHub (leva uns 3 min). Procuro de novo sozinho a cada 30s.`}
+      >
+        <Loader2 className="h-3 w-3 animate-spin" />
+        v{status.publishingVersion ?? '?'} saindo
+      </Pill>
+    )
+  }
+
+  // So enquanto o estado AINDA e "nada novo": se a checagem seguinte achou
+  // versao, o download aparece na hora em vez de ficar escondido 4s.
+  if (showUpToDate && status.stage === 'not-available') {
     return (
       <Pill tone="muted" title={`Você está na v${status.currentVersion ?? '?'}`}>
         <Check className="h-3 w-3" />
@@ -65,7 +81,7 @@ export function UpdatePill() {
     return (
       <Pill
         tone="muted"
-        title={`A v${status.newVersion ?? 'nova'} baixa sozinha quando a call ou a partida acabar`}
+        title={`A v${status.newVersion ?? 'nova'} baixa sozinha quando a call ou a partida acabar — ou clique na versão pra baixar agora`}
       >
         <Clock className="h-3 w-3" />
         v{status.newVersion} na fila
