@@ -181,7 +181,8 @@ export interface AuthUser {
   username: string
   email?: string
   displayName: string
-  role: 'member' | 'admin'
+  /** 'bot' = a conta do Bocas Bot: não loga, e ninguém "é" ela. */
+  role: 'member' | 'admin' | 'bot'
   avatar?: string | null
   banner?: string | null
   bio?: string | null

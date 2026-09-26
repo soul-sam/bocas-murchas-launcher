@@ -41,7 +41,8 @@ import { useMembers, type Member } from '@/lib/members-context'
 import { useCargos, type Cargo } from '@/lib/cargos-context'
 import { CargoIcon } from '@/lib/cargo-icons'
 import { useOverlays } from '@/lib/overlay-context'
-import { parseSlashCommand, SLASH_HELP } from '@/lib/slash-commands'
+import { parseSlashCommand, rewriteBotCommand, SLASH_HELP } from '@/lib/slash-commands'
+import { bot } from '@/lib/api-bot'
 import { useEmojis, toPickerEmojis, type CustomEmoji, type Sticker } from '@/lib/emoji-context'
 import { useClips } from '@/lib/clip-context'
 import { ComposerActions } from './ComposerActions'
@@ -507,6 +508,14 @@ export function MessageComposer({
         if (user?.role !== 'admin' || !onDrop) return false
         onDrop(command.seed)
         break
+      // "/anunciar" publica pelo bot no canal de avisos. Não é admin (ou não
+      // escreveu nada)? Cai no envio normal — ninguém perde a mensagem.
+      case 'announce':
+        if (user?.role !== 'admin' || !token || !command.seed) return false
+        void bot.announce(token, { content: command.seed }).catch((err) => {
+          setError(err instanceof Error ? err.message : 'Erro ao anunciar')
+        })
+        break
     }
 
     setContent('')
@@ -524,15 +533,19 @@ export function MessageComposer({
   const slashSuggestions = React.useMemo(() => {
     if (slashQuery === null || image || file) return []
     return SLASH_HELP.filter((item) => item.command.slice(1).startsWith(slashQuery)).filter(
-      (item) => item.command !== '/drop' || user?.role === 'admin'
+      (item) => (item.command !== '/drop' && item.command !== '/anunciar') || user?.role === 'admin'
     )
   }, [slashQuery, image, file, user?.role])
 
   const submit = async (): Promise<void> => {
-    const text = content.trim()
-    if ((!text && !image && !file) || sending) return
+    const typed = content.trim()
+    if ((!typed && !image && !file) || sending) return
 
-    if (text && !image && !file && runSlashCommand(text)) return
+    if (typed && !image && !file && runSlashCommand(typed)) return
+
+    // "/perguntar", "/resumo", "/sortear"… viram "@bocasbot …" e seguem como
+    // mensagem comum (ver slash-commands.ts).
+    const text = (typed && rewriteBotCommand(typed)) || typed
 
     setSending(true)
     setError(null)

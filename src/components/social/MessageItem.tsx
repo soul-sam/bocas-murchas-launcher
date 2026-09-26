@@ -28,6 +28,7 @@ import { RichText, useMentionsMe } from './RichText'
 import { LinkEmbeds } from './LinkEmbed'
 import { MessageCard, hasCard } from '@/components/cards'
 import { AuthorName } from './AuthorName'
+import { BotBadge } from './BotBadge'
 import { useEmojis, toPickerEmojis } from '@/lib/emoji-context'
 import { CustomEmojiImg } from './CustomEmojiImg'
 import { TipButton, TipChip, canTip } from './TipPopover'
@@ -286,6 +287,7 @@ export function MessageItem({
               {...toqueLongo((event) => openUserMenu(event, message.author.id))}
               className="shrink-0 cursor-default font-display text-xs uppercase tracking-wide hover:underline"
             />
+            {message.author.role === 'bot' && <BotBadge />}
             <div className="min-w-0 flex-1">
               <MessageBody
                 message={message}
@@ -312,6 +314,7 @@ export function MessageItem({
                   {...toqueLongo((event) => openUserMenu(event, message.author.id))}
                   className="cursor-default font-display text-sm leading-tight hover:underline"
                 />
+                {message.author.role === 'bot' && <BotBadge className="self-center" />}
                 <span
                   title={formatFullDate(message.createdAt)}
                   className="font-mono text-[11.5px] text-muted-foreground"

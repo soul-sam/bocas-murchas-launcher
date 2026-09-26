@@ -107,7 +107,8 @@ export function MembersProvider({ children }: { children: React.ReactNode }) {
         return {
           ...merged,
           // O proprio usuario esta sempre online — ele esta olhando a tela.
-          isOnline: onlineIds.has(member.id) || member.id === user?.id
+          // O bot tambem: ele nao tem socket, mas responde a qualquer hora.
+          isOnline: onlineIds.has(member.id) || member.id === user?.id || member.role === 'bot'
         }
       })
       .sort((a, b) => {

@@ -18,6 +18,7 @@ import { NameEmoji } from './NameEmoji'
 import { BetPopover } from './BetPopover'
 import { AwayBadge, StatusText } from './AwayBadge'
 import { toqueLongo } from '@/lib/toque-longo'
+import { BotBadge } from './BotBadge'
 
 /**
  * Lista de membros.
@@ -216,6 +217,7 @@ function Group({
                       {member.role === 'admin' && (
                         <Shield className="h-3 w-3 shrink-0 text-burn" aria-label="admin" />
                       )}
+                      {member.role === 'bot' && <BotBadge />}
                       {/* Só o cargo de MAIOR prioridade, e só o ícone: a linha
                           tem 200px e o nome não pode encolher pra caber
                           crachá. O resto dos cargos está no cartão de perfil,

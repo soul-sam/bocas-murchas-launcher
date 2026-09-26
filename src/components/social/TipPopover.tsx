@@ -42,6 +42,8 @@ const UNTIPPABLE = new Set(['recap', 'dayrecap', 'memory', 'system'])
 export function canTip(message: ChatMessage, myId: string | undefined): boolean {
   if (!myId) return false
   if (message.author.id === myId) return false
+  // O bot não tem o que fazer com murcho (e o servidor recusa).
+  if (message.author.role === 'bot') return false
   return !UNTIPPABLE.has(message.type)
 }
 

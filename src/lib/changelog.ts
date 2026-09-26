@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.24.0',
+    headline: 'Chegou o Bocas Bot',
+    items: [
+      'O servidor agora tem um bot de verdade, com selo BOT no nome. Recap da semana, fechamento do dia, leilão, apostas e avisos saem dele — não mais no nome do Samu.',
+      'Chame com @bocasbot em qualquer canal, responda uma mensagem dele ou mande DM (botão direito no Bocas Bot na lista de membros). Ele sabe quem está online, o ranking, as partidas, a agenda, a fila da impressora e procura no arquivo de mensagens.',
+      '/perguntar faz uma pergunta pro bot, e /resumo pede o que você perdeu no canal (ex.: /resumo 3 = últimas 3 horas).',
+      '/sortear, /times e /dado: sorteio, times com quem está na sua call e dados — o aleatório é do servidor, então ninguém pode acusar o bot de marmelada.',
+      'No mural do LoL, partida marcante (pentakill, massacre, carregada ou uma noite de muitas mortes) ganha comentário de narrador.'
+    ],
+    note: 'O bot não lê DM de ninguém: só os canais públicos e a conversa dele com você.'
+  },
+  {
     version: '1.23.4',
     headline: 'Agendar impressão pra não acordar ninguém',
     items: [
