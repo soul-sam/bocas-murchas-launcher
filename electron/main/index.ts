@@ -52,6 +52,25 @@ if (process.platform === 'win32') {
 }
 
 /**
+ * WEBCAM PELO DIRECTSHOW.
+ *
+ * O Chromium abre a webcam no Windows pelo Media Foundation. Em notebooks
+ * cuja camera passa por um filtro do fabricante (Acer com "GAI Camera" /
+ * SecureUSBVideo, medido no Electron 33) o Media Foundation abre o
+ * dispositivo e nunca entrega o primeiro quadro: o getUserMedia espera 10 s
+ * e falha com NotReadableError "Could not start video source" — que o app
+ * mostrava como "camera em uso por outro programa".
+ *
+ * Com a feature desligada o Chromium usa o DirectShow, que abre a mesma
+ * camera normalmente. O deviceId muda junto com o backend; uma camera ja
+ * escolhida nas configuracoes deixa de casar e o LiveKit cai sozinho na
+ * camera padrao (tenta `exact`, depois repete sem o deviceId).
+ */
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('disable-features', 'MediaFoundationVideoCapture')
+}
+
+/**
  * Aberto pelo autostart do Windows E com "abrir na bandeja" ligado: a janela
  * nasce escondida. Decidido uma vez, antes da janela existir. Abrir pelo
  * atalho normal sempre mostra a janela.

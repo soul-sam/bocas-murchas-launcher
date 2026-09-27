@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.26.2',
+    headline: 'Câmera que não abria no notebook',
+    items: [
+      'Em alguns notebooks (Acer, principalmente) a câmera não ligava na call: o botão ficava uns dez segundos pensando e avisava que ela estava em uso por outro programa, sem ninguém usando. Agora abre normalmente.'
+    ],
+    note: 'Quem tinha escolhido uma câmera específica nas configurações pode precisar escolher de novo. Até lá, a call usa a câmera padrão do computador.'
+  },
+  {
     version: '1.26.1',
     headline: 'Fantasma na call',
     items: [
