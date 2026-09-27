@@ -15,6 +15,7 @@ import {
   PanelLeftOpen,
   Video,
   VideoOff,
+  SwitchCamera,
   Tv,
   Radio,
   Disc3
@@ -32,9 +33,11 @@ import { ScreenStage } from './ScreenStage'
 import { WatchStage } from './WatchStage'
 import { toqueLongo } from '@/lib/toque-longo'
 import { podeCompartilharTela } from '@/lib/platform'
+import { usePonteiroGrosso } from '@/lib/use-ponteiro-grosso'
 
 export function VoiceStage() {
   const voice = useVoice()
+  const ponteiroGrosso = usePonteiroGrosso()
   const { nudgeChannel } = useNudge()
   const { byId } = useMembers()
   // O seletor de tela é renderizado na casca autenticada, não aqui: este
@@ -362,6 +365,14 @@ export function VoiceStage() {
           />
         )}
 
+        {/* Erro DENTRO da call (câmera bloqueada, tela que não abriu): antes
+            só aparecia na tela de "Nenhuma call", e o botão parecia morto. */}
+        {voice.error && (
+          <p role="alert" className="shrink-0 text-center text-xs text-destructive">
+            {voice.error}
+          </p>
+        )}
+
         {/* Controles */}
         <div className="flex shrink-0 flex-wrap items-center justify-center gap-1.5 rounded-brutal border-2 border-line bg-void/60 p-2 sm:gap-2">
           <ControlButton
@@ -423,6 +434,21 @@ export function VoiceStage() {
               <VideoOff className="h-4 w-4" />
             )}
           </ControlButton>
+
+          {/* Só no dedo e só com a câmera no ar: no desktop quem escolhe a
+              webcam é a tela de configurações. */}
+          {ponteiroGrosso && voice.cameraEnabled && voice.canFlipCamera && (
+            <ControlButton
+              label={
+                voice.cameraFacing === 'user'
+                  ? 'Usar a câmera traseira'
+                  : 'Usar a câmera frontal'
+              }
+              onClick={() => void voice.flipCamera()}
+            >
+              <SwitchCamera className="h-4 w-4" />
+            </ControlButton>
+          )}
 
           <SoundboardPopover align="center">
             <ControlButton label="Soundboard">

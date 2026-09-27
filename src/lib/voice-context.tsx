@@ -87,6 +87,43 @@ export interface VoiceParticipant {
   micEnabled: boolean
   isScreenSharing: boolean
   cameraEnabled: boolean
+  /**
+   * A imagem da câmera deve ser espelhada. Só na PRÓPRIA câmera e só na
+   * frontal: a traseira espelhada deixa texto e placa ao contrário.
+   */
+  cameraMirrored: boolean
+}
+
+/** Pra que lado a câmera do celular aponta: 'user' = frontal. */
+export type CameraFacing = 'user' | 'environment'
+
+const CAMERA_RESOLUTION = { width: 640, height: 480, frameRate: 24 } as const
+
+/**
+ * O `err.message` do getUserMedia é inglês técnico ("Could not start video
+ * source"); o NOME do erro é que diz o que aconteceu de verdade.
+ */
+function cameraErrorMessage(err: unknown): string {
+  const name = err instanceof Error ? err.name : ''
+  switch (name) {
+    case 'NotAllowedError':
+    case 'PermissionDeniedError':
+    case 'SecurityError':
+      return 'Câmera bloqueada: libere a permissão de câmera pro app nas configurações do aparelho'
+    case 'NotFoundError':
+    case 'DevicesNotFoundError':
+      return 'Nenhuma câmera encontrada neste aparelho'
+    case 'NotReadableError':
+    case 'TrackStartError':
+    case 'AbortError':
+      return 'A câmera está em uso por outro programa'
+    case 'OverconstrainedError':
+      return 'A câmera escolhida nas configurações não está disponível'
+    default:
+      return err instanceof Error && err.message
+        ? `Não consegui abrir a câmera: ${err.message}`
+        : 'Não consegui abrir a câmera'
+  }
 }
 
 /** Uma webcam no ar. Mesmo formato do compartilhamento de tela. */
@@ -187,6 +224,11 @@ interface VoiceContextValue {
   /** Ensurdecer com valor explícito (o AFK usa). */
   setDeafen: (value: boolean) => void
   toggleCamera: () => Promise<void>
+  /** Este aparelho tem mais de uma câmera (só se sabe depois de ligar uma). */
+  canFlipCamera: boolean
+  cameraFacing: CameraFacing
+  /** Troca entre a câmera frontal e a traseira, sem sair do ar. */
+  flipCamera: () => Promise<void>
   startScreenShare: (sourceId: string, options?: {
     withAudio?: boolean
     quality?: ScreenQuality
@@ -250,7 +292,8 @@ function sameParticipants(a: VoiceParticipant[], b: VoiceParticipant[]): boolean
       x.isSpeaking !== y.isSpeaking ||
       x.micEnabled !== y.micEnabled ||
       x.isScreenSharing !== y.isScreenSharing ||
-      x.cameraEnabled !== y.cameraEnabled
+      x.cameraEnabled !== y.cameraEnabled ||
+      x.cameraMirrored !== y.cameraMirrored
     ) {
       return false
     }
@@ -293,6 +336,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const [screenShares, setScreenShares] = React.useState<ScreenShareFeed[]>([])
   const [cameras, setCameras] = React.useState<CameraFeed[]>([])
   const [cameraEnabled, setCameraEnabled] = React.useState(false)
+  const [canFlipCamera, setCanFlipCamera] = React.useState(false)
+  const [cameraFacing, setCameraFacing] = React.useState<CameraFacing>('user')
+  // Ref além do estado: o syncParticipants é registrado uma vez só nos
+  // handlers da sala e precisa do lado ATUAL pra decidir o espelho.
+  const cameraFacingRef = React.useRef<CameraFacing>('user')
   const [pingMs, setPingMs] = React.useState<number | null>(null)
   const [connectionQuality, setConnectionQuality] =
     React.useState<VoiceContextValue['connectionQuality']>('unknown')
@@ -685,11 +733,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     const next: VoiceParticipant[] = all.map((p) => {
       const meta = readMetadata(p)
+      const isLocal = p.identity === current.localParticipant.identity
       return {
+        cameraMirrored: isLocal && cameraFacingRef.current === 'user',
         identity: p.identity,
         name: meta.displayName || p.name || p.identity,
         avatar: meta.avatar,
-        isLocal: p.identity === current.localParticipant.identity,
+        isLocal,
         // Medição local quando existe (rápida e sem lista de dominantes);
         // pra quem ainda não tem faixa medida, o sinal do servidor — que é
         // o comportamento antigo, e é melhor que anel nenhum.
@@ -777,6 +827,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     setMicEnabled(false)
     setScreenSharing(false)
     setCameraEnabled(false)
+    setCanFlipCamera(false)
+    setCameraFacing('user')
+    cameraFacingRef.current = 'user'
     setPingMs(null)
     setConnectionQuality('unknown')
     setShareInfo(null)
@@ -1386,19 +1439,63 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await current.localParticipant.setCameraEnabled(next, {
-        resolution: { width: 640, height: 480, frameRate: 24 },
+        resolution: CAMERA_RESOLUTION,
         // `deviceId` só quando a pessoa escolheu uma: 'default' significa
         // "o que o sistema entregar", e mandar isso como deviceId faria o
         // Chromium procurar um dispositivo chamado literalmente "default".
-        ...(chosen && chosen !== 'default' ? { deviceId: chosen } : {})
+        // Sem escolha, vai o LADO: no celular é o que separa frontal de
+        // traseira; no desktop a webcam não tem lado e o pedido é ignorado.
+        ...(chosen && chosen !== 'default'
+          ? { deviceId: chosen }
+          : { facingMode: cameraFacingRef.current })
       })
+      setError(null)
       setCameraEnabled(next)
-      if (!next) setCameras((prev) => prev.filter((c) => !c.isLocal))
+      if (!next) {
+        setCameras((prev) => prev.filter((c) => !c.isLocal))
+        return
+      }
+
+      // Só agora dá pra contar: antes da permissão o enumerateDevices pode
+      // esconder câmeras. Falhar aqui só esconde o botão de virar.
+      const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
+      setCanFlipCamera(devices.filter((d) => d.kind === 'videoinput').length > 1)
     } catch (err) {
       // Webcam ocupada por outro programa (ou sem permissao) e o caso comum.
-      setError(err instanceof Error ? err.message : 'Não consegui abrir a câmera')
+      console.warn('[voice] não consegui abrir a câmera', err)
+      setError(cameraErrorMessage(err))
+      syncParticipants(current)
     }
-  }, [])
+  }, [syncParticipants])
+
+  const flipCamera = React.useCallback(async () => {
+    const current = roomRef.current
+    if (!current) return
+
+    const track = current.localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack
+    if (!track || track.isMuted) return
+
+    const wanted: CameraFacing = cameraFacingRef.current === 'user' ? 'environment' : 'user'
+
+    try {
+      // O restartTrack para a faixa atual ANTES de pedir a nova — no Android
+      // as duas câmeras não abrem ao mesmo tempo. Sem deviceId de propósito:
+      // o da câmera anterior ganharia do lado pedido.
+      await track.restartTrack({ resolution: CAMERA_RESOLUTION, facingMode: wanted })
+
+      // O lado é um pedido, não uma ordem: confere o que veio de fato.
+      const got = track.mediaStreamTrack.getSettings().facingMode
+      const facing: CameraFacing =
+        got === 'user' || got === 'environment' ? got : wanted
+      cameraFacingRef.current = facing
+      setCameraFacing(facing)
+      setError(null)
+    } catch (err) {
+      console.warn('[voice] não consegui virar a câmera', err)
+      setError(cameraErrorMessage(err))
+    }
+    syncParticipants(current)
+  }, [syncParticipants])
 
   /** O gate encerra a transmissao se a fonte sumir; a funcao nasce abaixo. */
   const stopScreenShareRef = React.useRef<() => Promise<void>>(async () => {})
@@ -1771,6 +1868,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       toggleDeafen,
       setDeafen,
       toggleCamera,
+      canFlipCamera,
+      cameraFacing,
+      flipCamera,
       startScreenShare,
       stopScreenShare,
       watchScreen,
@@ -1804,6 +1904,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       toggleDeafen,
       setDeafen,
       toggleCamera,
+      canFlipCamera,
+      cameraFacing,
+      flipCamera,
       startScreenShare,
       stopScreenShare,
       watchScreen,

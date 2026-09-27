@@ -384,7 +384,7 @@ function CameraTile({
             e vídeo de webcam invertido incomoda quem se olha. */}
         <VideoSurface
           track={camera}
-          className={cn('object-cover', participant.isLocal && 'scale-x-[-1]')}
+          className={cn('object-cover', participant.cameraMirrored && 'scale-x-[-1]')}
         />
 
         <TileOverlay
@@ -598,7 +598,7 @@ export function ParticipantChip({
           >
             <VideoSurface
               track={camera}
-              className={cn('object-cover', participant.isLocal && 'scale-x-[-1]')}
+              className={cn('object-cover', participant.cameraMirrored && 'scale-x-[-1]')}
             />
           </Framed>
         </button>

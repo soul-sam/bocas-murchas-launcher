@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.24.1',
+    headline: 'Virar a câmera no celular',
+    items: [
+      'No celular, com a câmera ligada na call, aparece um botão pra trocar entre a frontal e a traseira sem sair do ar.',
+      'A câmera traseira não sai mais espelhada: texto e placa aparecem do lado certo.',
+      'Quando a câmera não abre, a call agora diz o motivo (permissão bloqueada, câmera em uso por outro programa) em vez de o botão simplesmente não fazer nada.'
+    ]
+  },
+  {
     version: '1.24.0',
     headline: 'Chegou o Bocas Bot',
     items: [
