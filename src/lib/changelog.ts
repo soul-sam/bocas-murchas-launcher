@@ -42,6 +42,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.26.1',
+    headline: 'Fantasma na call',
+    items: [
+      'A lista da call na barra lateral não mostra mais quem já saiu da sala. Acontecia quando o launcher de alguém voltava sem estar na call (depois de travar e recarregar, por exemplo): a pessoa continuava aparecendo lá dentro pra todo mundo.'
+    ]
+  },
+  {
     version: '1.26.0',
     headline: 'Instalador novo, com a nossa cara',
     items: [

@@ -1661,7 +1661,17 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     const handleConnect = (): void => {
       const target = channelRef.current
-      if (!roomRef.current || !target) return
+      if (!roomRef.current || !target) {
+        // FORA da call, e o servidor pode achar que nao: o launcher que volta
+        // depois de o renderer recarregar (travou, caiu) perdeu a call, mas o
+        // servidor ainda tem a pessoa na sala e recoloca o socket novo nela —
+        // era o "fantasma" que aparecia na barra lateral de todo mundo. O
+        // `roomRef` e preenchido na mesma volta do `joinVoice`, entao quem
+        // esta entrando nunca cai aqui depois de ter avisado a entrada. Sem
+        // call no servidor, o `leaveVoice` nao faz nada.
+        socket.emit('leaveVoice')
+        return
+      }
 
       socket.emit('joinVoice', target.id)
       if (screenSharingRef.current) socket.emit('screenshare:state', { active: true })
