@@ -46,3 +46,6 @@ ds-bundle/
 # Perder a chave = ninguem mais consegue ATUALIZAR o app instalado.
 *.keystore
 *.jks
+
+# previa do gerador da janela do instalador (scripts/gen-installer-splash.mjs)
+build/*.preview.png

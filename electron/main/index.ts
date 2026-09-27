@@ -20,6 +20,7 @@ import { loadSettings } from './services/settings.js'
 import { startLolWatcher, stopLolWatcher } from './services/lol.js'
 import { applyOverlaySettings, destroyOverlay } from './services/overlay.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
+import { closeSplash, showSplash } from './services/splash.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -92,7 +93,8 @@ function createWindow(): BrowserWindow {
   win.once('ready-to-show', () => {
     // Na bandeja o app continua conectando: presenca, call e notificacoes
     // funcionam igual — so a janela fica guardada ate alguem clicar no icone.
-    if (!startHidden) win.show()
+    // A janela de abertura sai primeiro, pra uma nao piscar por cima da outra.
+    if (!startHidden) closeSplash(() => win.show())
   })
 
   win.on('maximize', () => win.webContents.send('window:state', { maximized: true }))
@@ -186,7 +188,11 @@ if (!gotTheLock) {
     setCloseToTray(settings.closeToTray)
     startHidden = launchedAtLogin() && settings.startMinimized
 
+    // A principal nasce PRIMEIRO: bandeja, ipc e nudge acham "a janela" por
+    // `getAllWindows()[0]`, e a de abertura nao pode roubar esse lugar. Como o
+    // `ready-to-show` e assincrono, a abertura sempre existe antes dele.
     createWindow()
+    if (!startHidden) showSplash()
     initTray()
     initUpdater()
     startServerStatusPolling()

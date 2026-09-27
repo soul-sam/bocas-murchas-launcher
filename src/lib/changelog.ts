@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.26.0',
+    headline: 'Instalador novo, com a nossa cara',
+    items: [
+      'O instalador não tem mais assistente de "Avançar": dois cliques no Setup, ele instala e o launcher abre sozinho.',
+      'No lugar da janela cinza do Windows, a instalação mostra a logo do Bocas Murchas numa janela da marca.',
+      'Abrir o launcher agora mostra uma tela de abertura com a logo animada enquanto tudo carrega, em vez de alguns segundos sem nada na tela.'
+    ],
+    note: 'Quem já tem o launcher não precisa reinstalar: a atualização chega sozinha, como sempre.'
+  },
+  {
     version: '1.25.0',
     headline: 'Apostar em grupo paga mais',
     items: [

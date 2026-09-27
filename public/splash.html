@@ -1,0 +1,231 @@
+<!doctype html>
+<!--
+  JANELA DE ABERTURA — o que aparece enquanto o launcher carrega.
+
+  Aberta pelo processo main (electron/main/services/splash.ts) ANTES da janela
+  principal, e fechada quando ela fica pronta. HTML e CSS puros de propósito:
+  sem React, sem bundle, abre em milissegundos, que é o ponto de existir.
+
+  Parâmetros da URL (vêm do main):
+    v=1.26.0   versão no rodapé
+    updated=1  acabou de atualizar: o título vira "Atualizado pra v…"
+
+  O main chama `document.body.classList.add('bye')` pra sumir com fade antes
+  de fechar a janela.
+-->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
+    />
+    <title>Bocas Murchas</title>
+    <style>
+      :root {
+        --bg: #0e0f10;
+        --edge: #24282c;
+        --text: #e9ebee;
+        --muted: #8b939b;
+        --acid: #6aff00;
+        --track: #1b1e21;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: default;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        color: var(--text);
+        opacity: 0;
+        animation: enter 260ms ease-out forwards;
+        /* Arrastar pela janela inteira, como numa janela com moldura. */
+        -webkit-app-region: drag;
+      }
+      body.bye {
+        animation: leave 180ms ease-in forwards;
+      }
+      .card {
+        position: relative;
+        width: 320px;
+        height: 360px;
+        border-radius: 16px;
+        background: var(--bg);
+        border: 1px solid var(--edge);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .glow {
+        position: absolute;
+        top: 44px;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(106, 255, 0, 0.22), rgba(106, 255, 0, 0) 68%);
+        animation: pulse 2.4s ease-in-out infinite;
+      }
+      .logo {
+        position: relative;
+        width: 152px;
+        height: 152px;
+        margin-top: -12px;
+        animation: bob 2.4s ease-in-out infinite;
+      }
+      h1 {
+        position: relative;
+        margin: 22px 0 0;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .status {
+        position: relative;
+        margin: 6px 0 0;
+        height: 18px;
+        font-size: 12.5px;
+        color: var(--muted);
+        transition: opacity 200ms ease;
+      }
+      .status.swap {
+        opacity: 0;
+      }
+      .bar {
+        position: relative;
+        width: 168px;
+        height: 4px;
+        margin-top: 20px;
+        border-radius: 2px;
+        background: var(--track);
+        overflow: hidden;
+      }
+      .bar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 40%;
+        border-radius: 2px;
+        background: var(--acid);
+        box-shadow: 0 0 8px rgba(106, 255, 0, 0.6);
+        animation: slide 1.3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+      }
+      .version {
+        position: absolute;
+        bottom: 14px;
+        font-size: 11px;
+        color: var(--muted);
+        opacity: 0.7;
+      }
+      @keyframes enter {
+        from {
+          opacity: 0;
+          transform: scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      @keyframes leave {
+        from {
+          opacity: 1;
+          transform: scale(1);
+        }
+        to {
+          opacity: 0;
+          transform: scale(0.98);
+        }
+      }
+      @keyframes bob {
+        0%,
+        100% {
+          transform: translateY(0) rotate(-1.5deg);
+        }
+        50% {
+          transform: translateY(-6px) rotate(1.5deg);
+        }
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 0.7;
+          transform: scale(0.94);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.04);
+        }
+      }
+      @keyframes slide {
+        from {
+          left: -40%;
+        }
+        to {
+          left: 100%;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .logo,
+        .glow,
+        .bar::after {
+          animation: none;
+        }
+        .bar::after {
+          left: 30%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="glow" aria-hidden="true"></div>
+      <img class="logo" src="logo-login.png" alt="Bocas Murchas" draggable="false" />
+      <h1 id="title">Abrindo o Bocas Murchas</h1>
+      <p class="status" id="status">preparando tudo…</p>
+      <div class="bar" aria-hidden="true"></div>
+      <span class="version" id="version"></span>
+    </main>
+    <script>
+      const params = new URLSearchParams(location.search)
+      const version = params.get('v')
+      if (version) document.getElementById('version').textContent = 'v' + version
+      if (params.get('updated') === '1' && version) {
+        document.getElementById('title').textContent = 'Atualizado pra v' + version
+      }
+
+      // Frases de espera. Trocam devagar: a janela vive 1 a 3 segundos, então
+      // quase sempre só a primeira ou a segunda aparece.
+      const lines = [
+        'preparando tudo…',
+        'chamando a galera…',
+        'aquecendo o microfone…',
+        'murchando as bocas…',
+        'conferindo quem tá online…'
+      ]
+      const status = document.getElementById('status')
+      let index = 0
+      setInterval(() => {
+        status.classList.add('swap')
+        setTimeout(() => {
+          index = (index + 1) % lines.length
+          status.textContent = lines[index]
+          status.classList.remove('swap')
+        }, 200)
+      }, 1600)
+    </script>
+  </body>
+</html>

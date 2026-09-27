@@ -43,11 +43,19 @@ win:
   # (com o nome EXATO do titular do certificado) que a verificacao passa a
   # valer de verdade.
 
+# Instalador de UM CLIQUE, igual ao do Discord: sem assistente, instala na
+# pasta do usuario (%LOCALAPPDATA%\Programs) e abre o launcher sozinho. A
+# janela e a da marca, nao a cinza do NSIS — ver build/installer.nsh.
+#
+# Quem instalou pelo assistente antigo numa pasta escolhida continua nela: o
+# instalador de um clique le a InstallLocation que ficou no registro (HKCU).
+# E a atualizacao automatica nao muda nada: ela sempre rodou o instalador em
+# modo silencioso.
 nsis:
-  oneClick: false
+  oneClick: true
   perMachine: false
-  allowToChangeInstallationDirectory: true
-  allowElevation: true
+  runAfterFinish: true
+  include: build/installer.nsh
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Bocas Murchas
