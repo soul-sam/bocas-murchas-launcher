@@ -231,6 +231,39 @@ export interface WagerPool {
   loss: number
 }
 
+/**
+ * Bônus de grupo: cada apostador distinto além do primeiro na mesma partida
+ * soma 15% do valor no prêmio de quem acertar, até +60% (5 pessoas).
+ */
+export interface WagerGroupBonus {
+  bettors: number
+  percent: number
+}
+
+/**
+ * Cofre da casa. As perdas de aposta enchem os dois: `bonusFund` paga o bônus
+ * de grupo, e `jackpot` é o pote que sai numa partida com 4+ apostadores em
+ * que todo mundo acertou.
+ */
+export interface WagerHouse {
+  jackpot: number
+  bonusFund: number
+}
+
+/** Quantos apostadores distintos a partida precisa pra disputar o pote. */
+export const JACKPOT_MIN_BETTORS = 4
+
+/**
+ * Espelho de `groupBonusFor` do servidor (WAGER_GROUP_BONUS): +15% do valor
+ * por apostador além do primeiro, até 5 pessoas, teto de 200 por aposta.
+ * Só pra PRÉVIA — o servidor conta de novo na liquidação, e o bônus sai do
+ * cofre da casa, então pode vir menor se o fundo estiver baixo.
+ */
+export function groupBonusPreview(amount: number, bettors: number): number {
+  const extra = Math.max(0, Math.min(5, Math.floor(bettors)) - 1)
+  return Math.min(200, Math.max(0, Math.round((amount * extra * 15) / 100)))
+}
+
 export interface WagerBet {
   userId: string
   prediction: WagerPrediction
@@ -268,6 +301,10 @@ export interface LiveWagerGame {
     }
   }
   pool: WagerPool
+  /** Ausente em servidor antigo. */
+  groupBonus?: WagerGroupBonus
+  /** Cofre da casa: pote em jogo e fundo do bônus. Ausente em servidor antigo. */
+  house?: WagerHouse
   bets: WagerBet[]
   myWager: {
     prediction: WagerPrediction
@@ -384,10 +421,15 @@ export interface WagerCardMeta {
   /** Grupo na mesma partida — a aposta vale por todos. */
   players?: MatchPlayer[]
   pool: WagerPool
+  /** Ausente em cartão antigo. */
+  groupBonus?: WagerGroupBonus
   bets: WagerBet[]
   settled: boolean
   result?: 'win' | 'loss' | 'remake' | 'unknown'
-  payouts?: { userId: string; payout: number }[]
+  /** `bonus` = parte do payout que veio do bônus de grupo. */
+  payouts?: { userId: string; payout: number; bonus?: number }[]
+  /** Pote pago nessa partida (dividido igualmente entre `winners`). */
+  jackpot?: { amount: number; winners: number } | null
 }
 
 export interface SystemCardMeta {

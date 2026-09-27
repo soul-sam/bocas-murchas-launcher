@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTicker } from '@/lib/use-now'
-import { Coins, Swords, Pickaxe, Radio } from 'lucide-react'
+import { Coins, Swords, Pickaxe, Radio, Trophy } from 'lucide-react'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -135,7 +135,9 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
           <ul className="flex flex-wrap gap-x-3 gap-y-0.5 normal-case">
             {bets.slice(0, 8).map((bet, index) => {
               const who = byId[bet.userId]
-              const payout = payouts.find((p) => p.userId === bet.userId)?.payout
+              const paid = payouts.find((p) => p.userId === bet.userId)
+              const payout = paid?.payout
+              const bonus = paid?.bonus ?? 0
               return (
                 <li key={`${bet.userId}-${index}`} className="flex items-center gap-1">
                   <span style={who?.profileColor ? { color: who.profileColor } : undefined}>
@@ -149,8 +151,12 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
                     {bet.amount} {bet.self ? 'EM SI' : bet.prediction === 'win' ? 'W' : 'L'}
                   </span>
                   {settled && payout !== undefined && (
-                    <span className={cn('font-bold', payout > 0 ? 'text-acid' : 'text-destructive')}>
+                    <span
+                      className={cn('font-bold', payout > 0 ? 'text-acid' : 'text-destructive')}
+                      title={bonus > 0 ? `inclui +${bonus} de bônus de grupo` : undefined}
+                    >
                       {payout > 0 ? `+${payout}` : `−${bet.amount}`}
+                      {bonus > 0 && <span className="font-normal text-burn"> (+{bonus} grupo)</span>}
                     </span>
                   )}
                 </li>
@@ -184,7 +190,25 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
         </div>
       </div>
 
-      <PoolBars pool={pool} className="mt-2" />
+      <PoolBars
+        pool={pool}
+        bonus={settled ? undefined : (live?.groupBonus ?? metadata.groupBonus)}
+        house={settled ? undefined : live?.house}
+        className="mt-2"
+      />
+
+      {settled && metadata.jackpot && (
+        <p className="mt-2 flex items-center gap-1.5 rounded-brutal border border-acid/40 bg-acid/[0.06] px-2 py-1 text-xs text-foreground">
+          <Trophy className="h-3 w-3 shrink-0 text-acid-text" />
+          Todo mundo acertou: o pote de{' '}
+          <span className="font-mono text-acid-text">{metadata.jackpot.amount}</span> foi dividido
+          entre {metadata.jackpot.winners} (
+          <span className="font-mono text-acid-text">
+            +{Math.floor(metadata.jackpot.amount / Math.max(1, metadata.jackpot.winners))}
+          </span>{' '}
+          cada).
+        </p>
+      )}
 
       {others.length > 0 && (
         <p className="mt-2 text-[11px] text-muted-foreground">
@@ -199,6 +223,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
             sessionId={live?.session.id ?? metadata.sessionId}
             coins={profile?.coins ?? 0}
             max={live?.maxAmount}
+            groupBonus={live?.groupBonus ?? metadata.groupBonus}
             closesAt={Number.isFinite(closesAtMs) ? new Date(closesAtMs).toISOString() : undefined}
           />
         </div>

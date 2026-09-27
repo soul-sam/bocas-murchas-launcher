@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.25.0',
+    headline: 'Apostar em grupo paga mais',
+    items: [
+      'Quanto mais gente aposta na mesma partida, mais paga o acerto de todo mundo: cada pessoa além da primeira soma +15% do valor apostado no prêmio, até +60% com cinco apostando.',
+      'Aposta perdida não some mais inteira: a maior parte vai pro cofre da casa, que banca o bônus de grupo e enche um pote.',
+      'O pote sai quando quatro ou mais pessoas apostam na partida e todas acertam. Ele é dividido igualmente entre elas, e o valor atual aparece no cartão da aposta.',
+      'O formulário de aposta já mostra quanto do prêmio vem do grupo, e o cartão da partida encerrada mostra o bônus de cada um.'
+    ],
+    note: 'O bônus sai do cofre: se ele estiver baixo, o bônus paga menos, nunca nada a mais.'
+  },
+  {
     version: '1.24.1',
     headline: 'Virar a câmera no celular',
     items: [

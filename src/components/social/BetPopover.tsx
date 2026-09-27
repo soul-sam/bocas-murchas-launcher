@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTicker } from '@/lib/use-now'
-import { Coins, Loader2, TrendingDown, TrendingUp, Swords, Pickaxe } from 'lucide-react'
+import { Coins, Loader2, TrendingDown, TrendingUp, Swords, Pickaxe, Trophy, Users } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { ApiError } from '@/lib/api'
 import {
@@ -9,6 +9,10 @@ import {
   formatCompact,
   type MatchPlayer,
   type SelfWagerBoard,
+  JACKPOT_MIN_BETTORS,
+  groupBonusPreview,
+  type WagerGroupBonus,
+  type WagerHouse,
   type WagerPool,
   type WagerPrediction
 } from '@/lib/api-gamification'
@@ -123,7 +127,7 @@ export function BetPopover({
 
         <SquadNote players={others} className="mb-2" />
 
-        <PoolBars pool={game.pool} className="mb-3" />
+        <PoolBars pool={game.pool} bonus={game.groupBonus} house={game.house} className="mb-3" />
 
         {game.myWager ? (
           <p className="rounded-brutal border border-burn/40 bg-burn/[0.06] px-2 py-1.5 text-xs text-foreground">
@@ -168,6 +172,7 @@ export function BetPopover({
               max={game.self.maxAmount}
               closesAt={game.self.closesAt}
               self={game.self}
+              groupBonus={game.groupBonus}
               onPlaced={() => setOpen(false)}
             />
           ) : (
@@ -186,6 +191,7 @@ export function BetPopover({
             coins={profile?.coins ?? 0}
             max={game.maxAmount}
             closesAt={game.closesAt}
+            groupBonus={game.groupBonus}
             onPlaced={() => setOpen(false)}
           />
         )}
@@ -231,8 +237,22 @@ function useCountdown(iso?: string): string | null {
 /**
  * Barras de vitória × derrota da pool. Proporcionais ao total apostado de
  * cada lado; pool vazia mostra os dois lados iguais e apagados.
+ *
+ * `bonus` é o bônus de grupo de agora. Com uma pessoa só ainda é zero, e a
+ * linha vira convite — é o que faz alguém chamar o resto do grupo pra apostar.
  */
-export function PoolBars({ pool, className }: { pool: WagerPool; className?: string }) {
+export function PoolBars({
+  pool,
+  bonus,
+  house,
+  className
+}: {
+  pool: WagerPool
+  bonus?: WagerGroupBonus
+  /** Cofre da casa: mostra o pote acumulado que a partida pode levar. */
+  house?: WagerHouse
+  className?: string
+}) {
   const win = Math.max(0, pool?.win ?? 0)
   const loss = Math.max(0, pool?.loss ?? 0)
   const total = win + loss
@@ -263,6 +283,27 @@ export function PoolBars({ pool, className }: { pool: WagerPool; className?: str
       <p className="mt-1 text-center font-mono text-[11px] text-muted-foreground">
         {total > 0 ? `pool ${formatCompact(total)} murchos` : 'ninguém apostou ainda'}
       </p>
+      {bonus && bonus.bettors > 0 && (
+        <p className="mt-0.5 flex items-center justify-center gap-1 font-mono text-[11px] text-burn">
+          <Users className="h-2.5 w-2.5" />
+          {bonus.percent > 0
+            ? `bônus de grupo +${bonus.percent}% · ${bonus.bettors} apostando`
+            : 'mais alguém apostando = +15% pra quem acertar'}
+        </p>
+      )}
+      {house && house.jackpot > 0 && (
+        <p
+          className="mt-0.5 flex items-center justify-center gap-1 font-mono text-[11px] text-acid-text"
+          title={`O pote sai quando ${JACKPOT_MIN_BETTORS} ou mais pessoas apostam na partida e todo mundo acerta. Ele cresce com o que é perdido em aposta.`}
+        >
+          <Trophy className="h-2.5 w-2.5" />
+          pote {formatCompact(house.jackpot)}
+          {' · '}
+          {(bonus?.bettors ?? 0) >= JACKPOT_MIN_BETTORS
+            ? 'em jogo, se todo mundo acertar'
+            : `sai com ${JACKPOT_MIN_BETTORS}+ apostando`}
+        </p>
+      )}
     </div>
   )
 }
@@ -283,6 +324,7 @@ export function BetForm({
   max = WAGER_MAX,
   closesAt,
   self,
+  groupBonus,
   onPlaced,
   className
 }: {
@@ -297,6 +339,8 @@ export function BetForm({
    * retorno passa a sair da odd em vez do 2x.
    */
   self?: SelfWagerBoard
+  /** Bônus de grupo de agora, pra prévia contar com a própria aposta. */
+  groupBonus?: WagerGroupBonus
   onPlaced?: () => void
   className?: string
 }) {
@@ -337,6 +381,8 @@ export function BetForm({
   }
 
   const payout = self ? Math.round(value * self.odds.multiplier) : value * 2
+  // Quem abre o formulário ainda não apostou: a aposta dele é mais uma pessoa.
+  const bonus = groupBonusPreview(value, (groupBonus?.bettors ?? 0) + 1)
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -423,6 +469,14 @@ export function BetForm({
       {valid && (
         <p className="text-center font-mono text-[11px] text-muted-foreground">
           se ganhar volta <span className="text-acid-text">{payout}</span>
+          {bonus > 0 && (
+            <span
+              className="text-burn"
+              title="Bônus de grupo com quem já apostou mais você. Cresce se mais gente entrar, e sai do cofre da casa."
+            >
+              {' '}+ {bonus} do grupo
+            </span>
+          )}
           {self && <span className="text-muted-foreground"> · perde tudo se não ganhar</span>}
         </p>
       )}
