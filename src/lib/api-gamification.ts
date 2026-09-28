@@ -503,6 +503,8 @@ export function xpReasonLabel(reason: string | undefined | null): string {
   // Murchos de nível vêm como `levelup:<nível>` (e `levelup:backfill` no
   // ajuste retroativo), então não dá pra ter uma chave fixa no mapa.
   if (reason.startsWith('gift:')) return 'presente'
+  // Easter-egg achado (API: modules/easter-eggs.ts) — o nome do ovo já saiu no toast da badge.
+  if (reason.startsWith('egg:')) return 'achou um ovo'
   if (reason.startsWith('levelup:')) {
     const level = reason.slice('levelup:'.length)
     return level === 'backfill' ? 'níveis que você já tinha' : `nível ${level}`

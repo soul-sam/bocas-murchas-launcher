@@ -3,10 +3,75 @@ import { Minus, Square, Copy, X } from 'lucide-react'
 import { UpdatePill } from '@/components/UpdatePill'
 import { useUpdater } from '@/lib/updater-context'
 import { isWeb } from '@/lib/platform'
+import { cn } from '@/lib/utils'
+import { emitEgg, onEgg, useTitleDecor } from '@/lib/easter-eggs/bus'
+import { DecorButton } from '@/components/easter-eggs/DecorButton'
+
+/**
+ * Cliques na boca da barra que viram piada. O contador zera depois de 5 s
+ * parado — cem cliques pedem paciência, não um cronômetro.
+ */
+const LOGO_JOKES: Record<number, { title: string; body?: string }> = {
+  7: { title: '7 cliques', body: 'Número da sorte. Aposta nele.' },
+  13: { title: '13 cliques', body: 'Corajoso.' },
+  42: { title: '42', body: 'A resposta pra vida, o universo e tudo mais.' },
+  69: { title: 'Nice.' }
+}
+const LOGO_IDLE_MS = 5_000
+const LOGO_TARGET = 100
+/** Cliques rápidos em "Murchas" que abrem o caderninho de ovos. */
+const NOTEBOOK_CLICKS = 5
 
 export function TitleBar() {
   const [maximized, setMaximized] = React.useState(false)
   const { status, check } = useUpdater()
+  const decor = useTitleDecor()
+  const [logoFx, setLogoFx] = React.useState<'gira' | 'murcha' | null>(null)
+  const [straightened, setStraightened] = React.useState(false)
+  const logoClicks = React.useRef({ count: 0, last: 0 })
+  const wordClicks = React.useRef({ count: 0, last: 0 })
+
+  // "murcho" digitado em qualquer tela murcha a boca aqui em cima.
+  React.useEffect(
+    () =>
+      onEgg((event) => {
+        if (event.type === 'run' && event.effect === 'murcho') setLogoFx('murcha')
+      }),
+    []
+  )
+
+  const clickLogo = (): void => {
+    // Sexta-feira 13: a boca está torta, e endireitar é o ovo.
+    if (decor === 'sexta-13' && !straightened) {
+      setStraightened(true)
+      emitEgg({ type: 'toast', title: 'Desentortou', body: 'Pelo menos a boca não ficou torta hoje.' })
+      emitEgg({ type: 'found', id: 'sexta-13' })
+      return
+    }
+    const now = Date.now()
+    const clicks = logoClicks.current
+    clicks.count = now - clicks.last > LOGO_IDLE_MS ? 1 : clicks.count + 1
+    clicks.last = now
+    const joke = LOGO_JOKES[clicks.count]
+    if (joke) emitEgg({ type: 'toast', ...joke })
+    if (clicks.count % 10 === 0) setLogoFx('gira')
+    if (clicks.count === LOGO_TARGET) {
+      emitEgg({ type: 'toast', title: '100 cliques', body: 'Você é persistente demais.' })
+      emitEgg({ type: 'found', id: 'pica-pau' })
+      clicks.count = 0
+    }
+  }
+
+  const clickWord = (): void => {
+    const now = Date.now()
+    const clicks = wordClicks.current
+    clicks.count = now - clicks.last > 1_500 ? 1 : clicks.count + 1
+    clicks.last = now
+    if (clicks.count === NOTEBOOK_CLICKS) {
+      clicks.count = 0
+      emitEgg({ type: 'notebook' })
+    }
+  }
 
   /**
    * A altura DESTA barra, publicada pra quem se ancora abaixo dela.
@@ -53,15 +118,43 @@ export function TitleBar() {
       />
 
       <div className="flex items-center gap-2">
-        <img
-          src="bocas-murchas-transp.png"
-          alt=""
+        {/* A boca é clicável (e fora da área de arrastar, senão o Windows
+            engole o clique): é onde moram os ovos da barra. */}
+        <button
+          type="button"
+          tabIndex={-1}
           aria-hidden
-          className="h-5 w-5 drop-shadow-[0_0_6px_rgb(var(--neon-rgb)/0.3)]"
-        />
+          onClick={clickLogo}
+          onAnimationEnd={() => setLogoFx(null)}
+          className="app-no-drag flex h-5 w-5 items-center justify-center"
+        >
+          <img
+            src="bocas-murchas-transp.png"
+            alt=""
+            className={cn(
+              'h-5 w-5 drop-shadow-[0_0_6px_rgb(var(--neon-rgb)/0.3)]',
+              logoFx === 'gira' && 'egg-logo-gira',
+              logoFx === 'murcha' && 'egg-logo-murcha',
+              decor === 'sexta-13' && !straightened && 'egg-logo-torta'
+            )}
+          />
+        </button>
         <span className="font-display text-[11px] uppercase tracking-[0.2em] text-foreground">
-          Bocas <span className="text-acid-text">Murchas</span>
+          {decor === 'leet' ? (
+            // 13:37 — por um minuto a barra fala h4ck3r.
+            <>
+              B0C45 <span className="text-acid-text">MURCH45</span>
+            </>
+          ) : (
+            <>
+              Bocas{' '}
+              <span className="app-no-drag cursor-default text-acid-text" onClick={clickWord}>
+                Murchas
+              </span>
+            </>
+          )}
         </span>
+        {decor && decor !== 'leet' && decor !== 'sexta-13' && <DecorButton decor={decor} />}
         {/* A versao vira o botao de "procurar atualizacoes": e o lugar onde as
             pessoas ja olham quando querem saber se estao desatualizadas. */}
         <button

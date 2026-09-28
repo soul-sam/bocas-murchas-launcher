@@ -41,6 +41,7 @@ import { DeepLink } from '@/components/DeepLink'
 import { DesktopSiteNotice } from '@/components/DesktopSiteNotice'
 import { AppRail } from '@/components/social/AppRail'
 import { NudgeOverlay } from '@/components/social/NudgeOverlay'
+import { EggLayer } from '@/components/easter-eggs/EggLayer'
 import { SettingsModal } from '@/components/SettingsModal'
 import { ProfileEditor } from '@/components/social/ProfileEditor'
 import { ScreenSharePicker } from '@/components/social/ScreenSharePicker'
@@ -238,6 +239,9 @@ function GlobalOverlays() {
           continuar quando a pessoa vai pra tela de jogar — que é quando ela
           serve pra alguma coisa. Ver components/social/MusicHost.tsx. */}
       <MusicHost />
+      {/* Os ovos escondidos: teclado, relógio e os efeitos que eles tocam.
+          Ver components/easter-eggs/EggLayer.tsx. */}
+      <EggLayer />
       <MusicPanel />
     </>
   )

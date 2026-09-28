@@ -1,0 +1,148 @@
+/* ============================================
+   EASTER-EGGS (components/easter-eggs/EggLayer.tsx)
+   ============================================
+   Tudo aqui é passageiro: entra, faz a graça e sai em poucos segundos. Os
+   efeitos que mexem no app inteiro (murchar, girar) vão no <html> por
+   classe, e a camada tira a classe no fim — nada fica grudado. */
+
+/* /murchar — a tela perde o viço e cai pra frente, presa no topo. */
+.egg-murchar body {
+  transform-origin: 50% 0;
+  animation: egg-murchar 4s ease-in-out both;
+}
+@keyframes egg-murchar {
+  0% { transform: none; filter: none; }
+  30% { transform: scaleY(0.9) skewX(-2deg); filter: saturate(0.4); }
+  55% { transform: scaleY(0.82) skewX(2deg) translateY(4%); filter: saturate(0.2) brightness(0.8); }
+  80% { transform: scaleY(0.86) skewX(-1deg); filter: saturate(0.3); }
+  100% { transform: none; filter: none; }
+}
+
+/* /girar — uma volta inteira. */
+.egg-girar body {
+  animation: egg-girar 1.2s cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+@keyframes egg-girar {
+  from { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(0.8); }
+  to { transform: rotate(360deg) scale(1); }
+}
+
+/* Konami — linhas de CRT e a tela piscando de fliperama. */
+.egg-crt {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(var(--neon-rgb) / 0.08) 0,
+    rgb(var(--neon-rgb) / 0.08) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  animation: egg-crt 3.5s steps(1, end) both;
+}
+@keyframes egg-crt {
+  0%, 20%, 40% { opacity: 1; }
+  10%, 30% { opacity: 0.4; }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.egg-crt-title {
+  animation: egg-pop 3.5s ease-out both;
+}
+@keyframes egg-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  12% { transform: scale(1.15); opacity: 1; }
+  20% { transform: scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* IDDQD — moldura dourada em volta da janela, pulsando. */
+.egg-god {
+  box-shadow: inset 0 0 0 3px hsl(var(--burn)), inset 0 0 60px hsl(var(--burn) / 0.35);
+  animation: egg-god 8s ease-in-out both;
+}
+@keyframes egg-god {
+  0% { opacity: 0; }
+  8%, 85% { opacity: 1; }
+  45% { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
+/* /f — letras caindo. Cada uma recebe left/duração/atraso pelo style. */
+.egg-f {
+  position: absolute;
+  top: -2rem;
+  animation-name: egg-cair;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+@keyframes egg-cair {
+  from { transform: translateY(0) rotate(0deg); opacity: 1; }
+  90% { opacity: 1; }
+  to { transform: translateY(105vh) rotate(25deg); opacity: 0; }
+}
+
+/* 11:11 — a estrela atravessa a tela de um canto ao outro. */
+.egg-estrela {
+  animation: egg-estrela 7s linear both;
+}
+@keyframes egg-estrela {
+  from { transform: translate(-10vw, 8vh); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  to { transform: translate(105vw, 45vh); opacity: 0; }
+}
+
+/* 3:33 — a tela escurece e tremeluz, como lâmpada ruim. */
+.egg-hora-morta {
+  background: radial-gradient(ellipse at center, transparent 30%, rgb(0 0 0 / 0.75) 100%);
+  animation: egg-tremeluz 6s steps(1, end) both;
+}
+@keyframes egg-tremeluz {
+  0%, 12%, 30%, 60% { opacity: 1; }
+  10%, 28%, 58% { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+
+/* Logo da barra: 7 cliques gira, sexta 13 fica torta. */
+.egg-logo-gira {
+  animation: egg-girar 0.8s ease-in-out;
+}
+.egg-logo-torta {
+  transform: rotate(-23deg);
+  transition: transform 0.4s ease;
+}
+.egg-logo-murcha {
+  transform-origin: 50% 100%;
+  animation: egg-logo-murcha 2.4s ease-in-out;
+}
+@keyframes egg-logo-murcha {
+  0%, 100% { transform: none; }
+  40%, 70% { transform: scaleY(0.45) scaleX(1.3); }
+}
+
+/* Enfeite do dia na barra: balança pra chamar o clique. */
+.egg-balanca {
+  animation: egg-balanca 2.5s ease-in-out infinite;
+}
+@keyframes egg-balanca {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .egg-murchar body,
+  .egg-girar body,
+  .egg-logo-gira,
+  .egg-logo-murcha,
+  .egg-balanca,
+  .egg-f,
+  .egg-crt,
+  .egg-crt-title,
+  .egg-hora-morta {
+    animation: none !important;
+  }
+  .egg-estrela {
+    animation-duration: 12s;
+  }
+}

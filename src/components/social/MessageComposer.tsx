@@ -41,7 +41,8 @@ import { useMembers, type Member } from '@/lib/members-context'
 import { useCargos, type Cargo } from '@/lib/cargos-context'
 import { CargoIcon } from '@/lib/cargo-icons'
 import { useOverlays } from '@/lib/overlay-context'
-import { parseSlashCommand, rewriteBotCommand, SLASH_HELP } from '@/lib/slash-commands'
+import { parseSlashCommand, rewriteBotCommand, rewriteEggCommand, SLASH_HELP } from '@/lib/slash-commands'
+import { emitEgg } from '@/lib/easter-eggs/bus'
 import { bot } from '@/lib/api-bot'
 import { useEmojis, toPickerEmojis, type CustomEmoji, type Sticker } from '@/lib/emoji-context'
 import { useClips } from '@/lib/clip-context'
@@ -504,6 +505,9 @@ export function MessageComposer({
       case 'music':
         openMusicPanel(command.seed)
         break
+      case 'egg':
+        emitEgg({ type: 'run', effect: command.effect, seed: command.seed })
+        break
       case 'drop':
         if (user?.role !== 'admin' || !onDrop) return false
         onDrop(command.seed)
@@ -545,7 +549,9 @@ export function MessageComposer({
 
     // "/perguntar", "/resumo", "/sortear"… viram "@bocasbot …" e seguem como
     // mensagem comum (ver slash-commands.ts).
-    const text = (typed && rewriteBotCommand(typed)) || typed
+    const eggText = typed && !image && !file ? rewriteEggCommand(typed) : null
+    if (eggText) emitEgg({ type: 'run', effect: 'f' })
+    const text = (typed && (rewriteBotCommand(typed) ?? eggText)) || typed
 
     setSending(true)
     setError(null)

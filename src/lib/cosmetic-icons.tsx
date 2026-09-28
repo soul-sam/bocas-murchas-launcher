@@ -6,6 +6,7 @@ import {
   BADGE_GLYPH,
   GENERIC_AWARD,
   GENERIC_BADGE,
+  EGG_GLYPH,
   Glyph
 } from '@/lib/cosmetic-glyphs'
 import { titleRarity } from '@/lib/api-gamification'
@@ -57,7 +58,8 @@ export function BadgeIcon({
   badgeId: string | null | undefined
   className?: string
 }) {
-  const art = (badgeId ? BADGE_GLYPH[badgeId] : null) ?? GENERIC_BADGE
+  const art =
+    (badgeId ? BADGE_GLYPH[badgeId] : null) ?? (badgeId?.startsWith('ovo-') ? EGG_GLYPH : null) ?? GENERIC_BADGE
   return <Glyph art={art} className={className ?? 'h-3.5 w-3.5'} />
 }
 

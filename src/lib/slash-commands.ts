@@ -7,6 +7,8 @@
  * perde mensagem por causa de uma barra no começo.
  */
 
+import type { EggEffect } from './easter-eggs/bus'
+
 export type SlashCommand =
   | { kind: 'poll' }
   | { kind: 'event'; seed: string }
@@ -21,8 +23,26 @@ export type SlashCommand =
   | { kind: 'music'; seed: string }
   /** Anúncio oficial pela boca do bot (admin). */
   | { kind: 'announce'; seed: string }
+  /** Easter-egg: efeito só na tela de quem mandou. Fora do SLASH_HELP de propósito. */
+  | { kind: 'egg'; effect: EggEffect; seed: string }
 
-const ALIASES: Record<string, SlashCommand['kind']> = {
+/**
+ * Comandos escondidos (components/easter-eggs). NÃO entram no SLASH_HELP: o
+ * autocompletar entregaria o ovo. O texto não vira mensagem — a graça é só
+ * de quem digitou. O "/f" é o único que fala no chat, e mora em
+ * `rewriteEggCommand` por isso.
+ */
+const EGG_COMMANDS: Record<string, EggEffect> = {
+  murchar: 'murchar',
+  murcha: 'murchar',
+  sudo: 'sudo',
+  matrix: 'matrix',
+  xyzzy: 'xyzzy',
+  girar: 'girar',
+  barrelroll: 'girar'
+}
+
+const ALIASES: Record<string, Exclude<SlashCommand['kind'], 'egg'>> = {
   enquete: 'poll',
   poll: 'poll',
   votacao: 'poll',
@@ -70,10 +90,13 @@ export function parseSlashCommand(text: string): SlashCommand | null {
   const match = /^\/([\p{L}]+)(?:\s+([\s\S]*))?$/u.exec(text.trim())
   if (!match) return null
 
+  const seed = (match[2] ?? '').trim()
+
+  const egg = EGG_COMMANDS[match[1].toLowerCase()]
+  if (egg) return { kind: 'egg', effect: egg, seed }
+
   const kind = ALIASES[match[1].toLowerCase()]
   if (!kind) return null
-
-  const seed = (match[2] ?? '').trim()
 
   switch (kind) {
     case 'poll':
@@ -134,6 +157,14 @@ export function rewriteBotCommand(text: string): string | null {
   if (name === 'dado' || name === 'rolar') return `${BOT_HANDLE} ${seed || 'dado'}`
   if (name === 'times') return `${BOT_HANDLE} times${seed ? ` ${seed}` : ''}`
   return null
+}
+
+/**
+ * "/f" vira um "F" no chat (e a chuva de F na tela de quem mandou, disparada
+ * pelo compositor). Qualquer outra coisa: null, segue o caminho normal.
+ */
+export function rewriteEggCommand(text: string): string | null {
+  return /^\/f$/i.test(text.trim()) ? 'F' : null
 }
 
 /** Lista pro autocompletar quando a pessoa digita "/" */

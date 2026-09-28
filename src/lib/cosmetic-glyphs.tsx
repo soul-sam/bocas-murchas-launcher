@@ -189,6 +189,13 @@ export const AWARD_GLYPH: Record<string, ReactNode> = {
 /** Selo recortado */
 export const GENERIC_BADGE: ReactNode = <path d="M8 3.5h8l4.5 4.5v8l-4.5 4.5-4-3-4 3L3.5 16V8Z" />
 
+/**
+ * Ovo rachado — toda badge `ovo-*` (os easter-eggs, ver
+ * components/easter-eggs). Um glifo só pra todos: o ovo é o segredo, e o
+ * nome dele já conta o que foi achado.
+ */
+export const EGG_GLYPH: ReactNode = <path d="M12 3.5c-3.8 0-7 6.3-7 10.3a7 7 0 0 0 14 0c0-4-3.2-10.3-7-10.3ZM7.5 12.5l2.2 1.8 2.3-2.3 2.3 2.3 2.2-1.8" />
+
 /** Taça */
 export const GENERIC_AWARD: ReactNode = <path d="M7 3.5h10v8a5 5 0 0 1-10 0ZM7 6.5H3.5v5L7 13M17 6.5h3.5v5L17 13M12 16.5v4M8 20.5h8" />
 
