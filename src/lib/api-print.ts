@@ -41,6 +41,8 @@ export type BlockedReason =
   | 'printer_disabled'
   /** O ACE não tem o filamento (tipo ou cor) que a peça pede. */
   | 'filament_mismatch'
+  /** O rolo do slot é de um grupo do qual o dono da peça não faz parte. */
+  | 'filament_private'
   /** Quem mandou agendou pra mais tarde. */
   | 'scheduled'
   /** Pela estimativa, a peça entraria no horário de silêncio. */
@@ -52,6 +54,30 @@ export interface FilamentSlotUse {
   type: string | null
   colorHex: string | null
   grams: number | null
+}
+
+/**
+ * O veredito de UMA ferramenta da peça contra o slot dela. Vem pronto do
+ * servidor — a tela não compara cor nem material.
+ *
+ *   ok        bate (ou o arquivo não diz o que quer)
+ *   unknown   ninguém sabe o que tem no slot: avisa, não trava
+ *   empty     o ACE diz que o slot está vazio
+ *   mismatch  material ou cor diferente
+ *   elsewhere diferente aqui, mas o que a peça pede está em outro slot
+ *   private   o rolo é de um grupo do qual o dono da peça não faz parte
+ */
+export type ToolStatus = 'ok' | 'mismatch' | 'empty' | 'unknown' | 'elsewhere' | 'private'
+
+export interface ToolCheck {
+  tool: number
+  status: ToolStatus
+  want: { type: string | null; colorHex: string | null }
+  have: { type: string | null; colorHex: string | null; source: 'ace' | 'spool' | 'none' }
+  /** `elsewhere`: slot (0-based) onde o filamento pedido está. */
+  suggestedSlot: number | null
+  /** `private`: de quem é o rolo. */
+  group: { id: string; name: string } | null
 }
 
 export interface PrintOwner {
@@ -89,6 +115,10 @@ export interface PrintQueueItem {
   filaments?: FilamentSlotUse[]
   /** Quem opera liberou mesmo com o filamento diferente. */
   filamentOverride?: boolean
+  /** A peça contra a máquina, por ferramenta. Ausente em API velha. */
+  filamentChecks?: ToolCheck[]
+  /** Alguém do grupo liberou a peça a usar o rolo deles. */
+  groupOverride?: boolean
 }
 
 export interface PrintRunning {
@@ -178,6 +208,33 @@ export interface FilamentSpoolRow {
   low: boolean
   notes: string | null
   lastUsedAt: string | null
+  /** Grupo dono do rolo. null/ausente = estoque geral. */
+  groupId?: string | null
+  /** Quem está olhando pode imprimir com este rolo. Ausente em API velha. */
+  usable?: boolean
+}
+
+export interface FilamentGroupRow {
+  id: string
+  name: string
+  notes: string | null
+  /** Quem está olhando faz parte. */
+  mine: boolean
+  members: Array<{ id: string; displayName: string; avatar: string | null }>
+}
+
+/** Pedido de troca em aberto: "põe este rolo neste slot". */
+export interface SwapRequestRow {
+  id: string
+  /** 0-based. */
+  slot: number
+  status: 'open' | 'done' | 'declined' | 'cancelled'
+  note: string | null
+  jobId: string | null
+  requester: { id: string; displayName: string; avatar: string | null }
+  mine: boolean
+  spool: { id: string; material: string; colorName: string; colorHex: string; groupId: string | null } | null
+  createdAt: string
 }
 
 export interface LoadedSlotRow {
@@ -188,6 +245,9 @@ export interface LoadedSlotRow {
   /** De onde veio: a própria máquina (ACE) ou o rolo marcado aqui. */
   source: 'ace' | 'spool' | 'none'
   spoolId: string | null
+  /** O ACE e o rolo marcado discordam: alguém trocou e não marcou. */
+  stale?: boolean
+  group?: { id: string; name: string } | null
 }
 
 export interface PrintFilament {
@@ -196,6 +256,9 @@ export interface PrintFilament {
   aceLoadedSlot: number | null
   slots: LoadedSlotRow[]
   spools: FilamentSpoolRow[]
+  /** Ausentes em API velha. */
+  groups?: FilamentGroupRow[]
+  swaps?: SwapRequestRow[]
 }
 
 export interface PrintGalleryItem {
@@ -351,6 +414,8 @@ export interface EnqueueResult {
   deduped: boolean
   warnings: string[]
   quota: PrintQuota
+  /** O filamento da peça contra a máquina, na hora do envio. */
+  filament?: ToolCheck[]
 }
 
 export const printApi = {
@@ -453,6 +518,7 @@ export const printApi = {
       totalGrams?: number
       remainingGrams?: number
       slot?: number | null
+      groupId?: string | null
     }
   ) =>
     request<{ message: string; filament: PrintFilament }>('/print/filament/spools', {
@@ -474,6 +540,7 @@ export const printApi = {
       slot: number | null
       status: 'active' | 'empty' | 'archived'
       notes: string | null
+      groupId: string | null
     }>
   ) =>
     request<{ message: string; filament: PrintFilament }>(`/print/filament/spools/${spoolId}`, {
@@ -481,6 +548,75 @@ export const printApi = {
       token,
       body: JSON.stringify(patch)
     }),
+
+  // ---- grupos de filamento (quem opera) ----
+  createGroup: (token: string | null, input: { name: string; notes?: string; memberIds?: string[] }) =>
+    request<{ message: string; groupId: string; filament: PrintFilament }>('/print/filament/groups', {
+      method: 'POST',
+      token,
+      body: JSON.stringify(input)
+    }),
+
+  updateGroup: (
+    token: string | null,
+    groupId: string,
+    patch: Partial<{ name: string; notes: string | null; archived: true }>
+  ) =>
+    request<{ message: string; filament: PrintFilament }>(`/print/filament/groups/${groupId}`, {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(patch)
+    }),
+
+  addGroupMember: (token: string | null, groupId: string, userId: string) =>
+    request<{ message: string; filament: PrintFilament }>(`/print/filament/groups/${groupId}/members`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ userId })
+    }),
+
+  removeGroupMember: (token: string | null, groupId: string, userId: string) =>
+    request<{ message: string; filament: PrintFilament }>(
+      `/print/filament/groups/${groupId}/members/${userId}`,
+      { method: 'DELETE', token }
+    ),
+
+  // ---- pedido de troca ----
+  createSwap: (
+    token: string | null,
+    input: { spoolId: string; slot: number; jobId?: string | null; note?: string }
+  ) =>
+    request<{ message: string; filament: PrintFilament }>('/print/filament/swaps', {
+      method: 'POST',
+      token,
+      body: JSON.stringify(input)
+    }),
+
+  /** "Troquei": o rolo fica marcado no slot. Só quem opera. */
+  swapDone: (token: string | null, swapId: string) =>
+    request<{ message: string; filament: PrintFilament }>(`/print/filament/swaps/${swapId}/done`, {
+      method: 'POST',
+      token,
+      body: '{}'
+    }),
+
+  swapDecline: (token: string | null, swapId: string, reason: string) =>
+    request<{ message: string; filament: PrintFilament }>(`/print/filament/swaps/${swapId}/decline`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ reason })
+    }),
+
+  swapCancel: (token: string | null, swapId: string) =>
+    request<{ message: string; filament: PrintFilament }>(`/print/filament/swaps/${swapId}/cancel`, {
+      method: 'POST',
+      token,
+      body: '{}'
+    }),
+
+  /** Libera a peça a usar o rolo de um grupo. Membro do grupo ou quem opera. */
+  groupOk: (token: string | null, jobId: string) =>
+    request<{ message: string }>(`/print/jobs/${jobId}/group-ok`, { method: 'POST', token, body: '{}' }),
 
   maintenance: (token: string | null) =>
     request<{ odometerHours: number; tasks: MaintenanceTask[] }>('/print/maintenance', { token }),

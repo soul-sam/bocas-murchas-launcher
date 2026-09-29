@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.28.0',
+    headline: 'Filamento: rolo de grupo, pedido de troca e aviso na hora',
+    items: [
+      'Rolo que só parte da galera comprou agora tem dono: quem opera a impressora cria um grupo de filamento e diz quem faz parte. Peça de quem não é do grupo espera no slot desse rolo até alguém do grupo liberar.',
+      'Precisa de outra cor na máquina? Na aba Filamento (ou direto na peça travada) dá pra pedir a troca: escolhe o rolo e o slot, e quem opera é avisado. Quando ele confirma, o rolo já fica marcado no lugar.',
+      'Mandou uma peça e o filamento da máquina não é o que o arquivo pede? O aviso aparece na hora do envio, com a cor pedida e a cor carregada lado a lado, e os botões pra pedir troca, imprimir assim mesmo ou tirar da fila.',
+      'Se a cor que a peça pede está em outro slot, a fila diz em qual.',
+      'Notificação quando a sua peça trava por filamento e quando destrava. Quem é de um grupo também fica sabendo quando o rolo está acabando.',
+      'A comparação de cor ficou mais parecida com o olho: azul escuro não passa mais por preto.'
+    ],
+    note: '"Tanto faz a cor" continua valendo pra cor e material, mas não abre rolo de grupo: esse só sai com a liberação de quem pagou por ele.'
+  },
+  {
     version: '1.26.2',
     headline: 'Câmera que não abria no notebook',
     items: [

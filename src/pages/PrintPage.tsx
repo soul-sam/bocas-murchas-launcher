@@ -10,6 +10,7 @@ import {
   Lightbulb,
   LightbulbOff,
   ListOrdered,
+  Lock,
   Moon,
   Palette,
   Pause,
@@ -17,6 +18,7 @@ import {
   Printer,
   ReceiptText,
   RefreshCw,
+  Repeat,
   Square,
   Trash2,
   Upload,
@@ -28,12 +30,19 @@ import {
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  FilamentCheckCard,
+  blocksByColor,
+  blocksByGroup,
+  hasFilamentNews
+} from '@/components/print/FilamentCheckCard'
 import { FilamentTab } from '@/components/print/FilamentTab'
 import { GalleryTab } from '@/components/print/GalleryTab'
 import { MaintenanceTab } from '@/components/print/MaintenanceTab'
 import { RequestsTab } from '@/components/print/RequestsTab'
 import { FilamentChips, PrintThumb } from '@/components/print/print-bits'
 import { SchedulePicker, crossesNight, describeSchedule } from '@/components/print/SchedulePicker'
+import { SwapRequestForm } from '@/components/print/SwapRequests'
 import { useAuth } from '@/lib/auth-context'
 import { usePrint } from '@/lib/print-context'
 import { useSocket } from '@/lib/socket-context'
@@ -44,7 +53,8 @@ import {
   type PrintQueueItem,
   type PrintRunning,
   type PrinterInfo,
-  type PrintQuota
+  type PrintQuota,
+  type ToolCheck
 } from '@/lib/api-print'
 import { cn } from '@/lib/utils'
 
@@ -209,6 +219,7 @@ export function PrintPage() {
             <FilamentTab
               filament={state.filament}
               canOperate={state.me.canOperate}
+              canQueue={state.me.canQueue}
               acceptedFilaments={state.printer.acceptedFilaments}
               onChanged={refresh}
             />
@@ -751,11 +762,14 @@ function NewJobCard() {
   const [dragging, setDragging] = React.useState(false)
   const [sending, setSending] = React.useState(false)
   const [result, setResult] = React.useState<{ ok: boolean; text: string } | null>(null)
+  /** A peça que acabou de subir e o filamento dela contra a máquina. */
+  const [sent, setSent] = React.useState<{ jobId: string; title: string; checks: ToolCheck[] } | null>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   function pick(chosen: File | null): void {
     setFile(chosen)
     setResult(null)
+    if (chosen) setSent(null)
     if (chosen && !title) {
       setTitle(chosen.name.replace(/\.(gcode|gcode\.3mf|3mf)$/i, '').replace(/[-_]+/g, ' '))
     }
@@ -771,6 +785,13 @@ function NewJobCard() {
         scheduledFor: scheduledFor?.toISOString() ?? null
       })
       setResult({ ok: true, text: res.message })
+      // Filamento diferente do que está na máquina: a pessoa fica sabendo
+      // AGORA, com o que fazer, e não quando abrir a fila amanhã.
+      setSent(
+        res.job && hasFilamentNews(res.filament)
+          ? { jobId: res.job.id, title: res.job.title, checks: res.filament ?? [] }
+          : null
+      )
       setFile(null)
       setTitle('')
       setScheduledFor(null)
@@ -872,10 +893,129 @@ function NewJobCard() {
         </p>
       )}
 
+      {sent && (
+        <SentFilamentCard
+          sent={sent}
+          onClose={() => setSent(null)}
+          onMessage={(text, ok) => setResult({ ok, text })}
+        />
+      )}
+
       <p className="mt-3 font-mono text-[11.5px] leading-relaxed text-muted-foreground">
         O tempo e as gramas saem do próprio arquivo — fatia no OrcaSlicer com o
         perfil da Kobra S1. Fatiar STL aqui dentro vem na próxima.
       </p>
+    </div>
+  )
+}
+
+/**
+ * O filamento da peça que acabou de subir, contra o que está na máquina.
+ *
+ * Aparece só quando tem o que dizer. O que cada botão faz já existia na fila;
+ * aqui eles chegam na hora em que a pessoa ainda está olhando pra peça.
+ */
+function SentFilamentCard({
+  sent,
+  onClose,
+  onMessage
+}: {
+  sent: { jobId: string; title: string; checks: ToolCheck[] }
+  onClose: () => void
+  onMessage: (text: string, ok: boolean) => void
+}) {
+  const { token } = useAuth()
+  const { state, refresh } = usePrint()
+  const [busy, setBusy] = React.useState(false)
+  const [asking, setAsking] = React.useState(false)
+
+  const byGroup = blocksByGroup(sent.checks)
+  const byColor = blocksByColor(sent.checks)
+  const stops = byGroup || byColor
+  const firstBad = sent.checks.find((check) => check.status !== 'ok' && check.status !== 'unknown')
+
+  async function run(action: () => Promise<{ message: string }>): Promise<void> {
+    setBusy(true)
+    try {
+      const res = await action()
+      onMessage(res.message, true)
+      onClose()
+      await refresh()
+    } catch (err) {
+      onMessage(err instanceof Error ? err.message : 'Não deu', false)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-2 rounded-brutal border border-line bg-void/40 p-3">
+      <p className="text-xs text-foreground">
+        {stops ? (
+          <>
+            <span className="text-burn">"{sent.title}" vai esperar:</span> o filamento da máquina não é o que o
+            arquivo pede.
+          </>
+        ) : (
+          <>Não sei o que tem em algum slot que "{sent.title}" usa. A peça sai mesmo assim — confere a cor.</>
+        )}
+      </p>
+
+      <FilamentCheckCard checks={sent.checks} />
+
+      {byGroup && (
+        <p className="text-[11.5px] text-muted-foreground">
+          Rolo de grupo só sai com a liberação de alguém do grupo, ou de quem opera a impressora. Eles veem a peça
+          na fila.
+        </p>
+      )}
+
+      {asking && state?.filament ? (
+        <SwapRequestForm
+          filament={state.filament}
+          defaultSlot={firstBad?.tool}
+          jobId={sent.jobId}
+          onDone={async (message) => {
+            onMessage(message, true)
+            onClose()
+            await refresh()
+          }}
+          onCancel={() => setAsking(false)}
+        />
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          {stops && state?.filament && (
+            <Button size="sm" className="btn-acid" disabled={busy} onClick={() => setAsking(true)}>
+              <Repeat className="mr-2 h-3.5 w-3.5" />
+              Pedir troca
+            </Button>
+          )}
+          {byColor && !byGroup && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => void run(() => printApi.filamentOk(token, sent.jobId))}
+            >
+              Tanto faz a cor
+            </Button>
+          )}
+          {stops && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:bg-destructive/15"
+              disabled={busy}
+              onClick={() => void run(() => printApi.cancel(token, sent.jobId))}
+            >
+              Tirar da fila
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" className="text-muted-foreground" disabled={busy} onClick={onClose}>
+            {stops ? 'Deixa esperando' : 'Entendi'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -902,6 +1042,31 @@ function QueueCard({
   /** Linha com o editor de horário aberto, e o horário sendo escolhido. */
   const [editing, setEditing] = React.useState<{ id: string; value: Date | null } | null>(null)
   const [scheduleError, setScheduleError] = React.useState<string | null>(null)
+  /** Linha com o formulário de pedido de troca aberto. */
+  const [swapFor, setSwapFor] = React.useState<string | null>(null)
+  const [rowNote, setRowNote] = React.useState<{ id: string; ok: boolean; text: string } | null>(null)
+  const myGroups = new Set((state?.filament?.groups ?? []).filter((group) => group.mine).map((group) => group.id))
+
+  /** Quem está olhando pode liberar TODOS os rolos de grupo que travam a peça? */
+  function canRelease(job: PrintQueueItem): boolean {
+    if (canOperate) return true
+    const locked = (job.filamentChecks ?? []).filter((check) => check.status === 'private')
+    return locked.length > 0 && locked.every((check) => !!check.group && myGroups.has(check.group.id))
+  }
+
+  async function groupOk(job: PrintQueueItem): Promise<void> {
+    setBusy(job.id)
+    setRowNote(null)
+    try {
+      const res = await printApi.groupOk(token, job.id)
+      setRowNote({ id: job.id, ok: true, text: res.message })
+      await refresh()
+    } catch (err) {
+      setRowNote({ id: job.id, ok: false, text: err instanceof Error ? err.message : 'Não deu pra liberar' })
+    } finally {
+      setBusy(null)
+    }
+  }
 
   async function saveSchedule(): Promise<void> {
     if (!editing) return
@@ -986,7 +1151,9 @@ function QueueCard({
                     <p
                       className={cn(
                         'truncate text-[11.5px]',
-                        job.blockedReason === 'filament_mismatch' || job.blockedReason === 'quiet_overrun'
+                        job.blockedReason === 'filament_mismatch' ||
+                          job.blockedReason === 'filament_private' ||
+                          job.blockedReason === 'quiet_overrun'
                           ? 'text-burn'
                           : scheduled
                             ? 'text-acid-text'
@@ -995,7 +1162,9 @@ function QueueCard({
                     >
                       {formatSeconds(job.estimatedSeconds)}
                       {job.estimatedGrams ? ` · ${Math.round(job.estimatedGrams)}g` : ''}
-                      {job.reasonText ? ` · ${job.reasonText}` : ''}
+                      {/* `blockedText` cobre o motivo que este launcher ainda não
+                          conhece: a frase vem pronta do servidor. */}
+                      {job.reasonText ? ` · ${job.reasonText}` : job.blockedText ? ` · ${job.blockedText}` : ''}
                     </p>
                     {job.filaments && job.filaments.length > 0 && (
                       <FilamentChips filaments={job.filaments} className="mt-1" />
@@ -1013,6 +1182,36 @@ function QueueCard({
                       tanto faz a cor
                     </button>
                   )}
+
+                  {job.blockedReason === 'filament_private' && canRelease(job) && (
+                    <button
+                      type="button"
+                      title="Deixar essa peça usar o rolo do grupo"
+                      onClick={() => void groupOk(job)}
+                      disabled={busy === job.id}
+                      className="flex shrink-0 items-center gap-1 rounded-brutal border border-burn/50 px-2 py-1 text-[11px] text-burn transition-colors hover:bg-burn/10"
+                    >
+                      <Lock className="h-3 w-3" />
+                      liberar rolo
+                    </button>
+                  )}
+
+                  {(job.blockedReason === 'filament_mismatch' || job.blockedReason === 'filament_private') &&
+                    mine &&
+                    state?.me.canQueue &&
+                    state.filament && (
+                      <button
+                        type="button"
+                        title="Pedir pra trocarem o filamento do slot"
+                        aria-expanded={swapFor === job.id}
+                        onClick={() => setSwapFor(swapFor === job.id ? null : job.id)}
+                        disabled={busy === job.id}
+                        className="flex shrink-0 items-center gap-1 rounded-brutal border border-line px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-acid/10 hover:text-acid-text"
+                      >
+                        <Repeat className="h-3 w-3" />
+                        pedir troca
+                      </button>
+                    )}
 
                   {nightRun && (
                     <span title="Pela previsão, essa peça roda de noite" className="hidden shrink-0 text-burn sm:block">
@@ -1089,6 +1288,32 @@ function QueueCard({
                     </div>
                     {scheduleError && <p className="text-[11.5px] text-destructive">{scheduleError}</p>}
                   </div>
+                )}
+
+                {swapFor === job.id && state?.filament && (
+                  <div className="mt-2 border-t border-line pt-2">
+                    <SwapRequestForm
+                      filament={state.filament}
+                      defaultSlot={
+                        (job.filamentChecks ?? []).find(
+                          (check) => check.status !== 'ok' && check.status !== 'unknown'
+                        )?.tool
+                      }
+                      jobId={job.id}
+                      onDone={async (message) => {
+                        setSwapFor(null)
+                        setRowNote({ id: job.id, ok: true, text: message })
+                        await refresh()
+                      }}
+                      onCancel={() => setSwapFor(null)}
+                    />
+                  </div>
+                )}
+
+                {rowNote?.id === job.id && (
+                  <p className={cn('mt-1 text-[11.5px]', rowNote.ok ? 'text-acid-text' : 'text-destructive')}>
+                    {rowNote.text}
+                  </p>
                 )}
               </li>
             )
