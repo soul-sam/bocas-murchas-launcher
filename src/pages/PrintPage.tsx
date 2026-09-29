@@ -984,7 +984,7 @@ function SentFilamentCard({
         />
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          {stops && state?.filament && (
+          {stops && state?.filament?.swaps && (
             <Button size="sm" className="btn-acid" disabled={busy} onClick={() => setAsking(true)}>
               <Repeat className="mr-2 h-3.5 w-3.5" />
               Pedir troca
@@ -1047,11 +1047,16 @@ function QueueCard({
   const [rowNote, setRowNote] = React.useState<{ id: string; ok: boolean; text: string } | null>(null)
   const myGroups = new Set((state?.filament?.groups ?? []).filter((group) => group.mine).map((group) => group.id))
 
-  /** Quem está olhando pode liberar TODOS os rolos de grupo que travam a peça? */
+  /**
+   * Quem está olhando pode liberar ALGUM rolo de grupo que trava a peça?
+   * Cada grupo libera a sua parte — o servidor diz o que ainda falta.
+   */
   function canRelease(job: PrintQueueItem): boolean {
+    // Ninguém libera a própria peça, nem quem opera.
+    if (job.owner.id === meId) return false
     if (canOperate) return true
     const locked = (job.filamentChecks ?? []).filter((check) => check.status === 'private')
-    return locked.length > 0 && locked.every((check) => !!check.group && myGroups.has(check.group.id))
+    return locked.some((check) => !!check.group && myGroups.has(check.group.id))
   }
 
   async function groupOk(job: PrintQueueItem): Promise<void> {
@@ -1199,7 +1204,8 @@ function QueueCard({
                   {(job.blockedReason === 'filament_mismatch' || job.blockedReason === 'filament_private') &&
                     mine &&
                     state?.me.canQueue &&
-                    state.filament && (
+                    // `swaps` ausente = servidor antigo, sem pedido de troca.
+                    state.filament?.swaps && (
                       <button
                         type="button"
                         title="Pedir pra trocarem o filamento do slot"

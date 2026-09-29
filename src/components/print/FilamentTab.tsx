@@ -50,6 +50,9 @@ export function FilamentTab({
     return <p className="text-xs text-muted-foreground">O servidor ainda não conhece o estoque de filamento.</p>
   }
 
+  // Servidor antigo não manda grupo nem pedido de troca: a aba volta a ser o
+  // que era, sem botão que daria 404.
+  const modern = filament.groups !== undefined && filament.swaps !== undefined
   const groups = filament.groups ?? []
   const swaps = filament.swaps ?? []
   const slots = filament.slots.slice(0, Math.max(SLOT_COUNT, filament.slots.length))
@@ -84,7 +87,7 @@ export function FilamentTab({
                 groups={groups}
                 slotCount={slotCount}
                 canOperate={canOperate}
-                canAsk={canQueue}
+                canAsk={modern && canQueue}
                 onAsk={() => ask(spool.id)}
                 onChanged={onChanged}
               />
@@ -184,7 +187,7 @@ export function FilamentTab({
         </ul>
       </section>
 
-      {(swaps.length > 0 || canQueue) && (
+      {modern && (swaps.length > 0 || canQueue) && (
         <section className="card-gradient rounded-brutal p-4">
           <div className="mb-3 flex items-baseline justify-between gap-2">
             <span className="font-display text-sm uppercase tracking-wider text-foreground">Pedidos de troca</span>
@@ -276,7 +279,7 @@ export function FilamentTab({
         </section>
       ))}
 
-      {canOperate && (
+      {modern && canOperate && (
         <section className="rounded-brutal border border-dashed border-line-strong p-4">
           {newGroup ? (
             <NewGroupForm

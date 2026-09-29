@@ -117,8 +117,8 @@ export interface PrintQueueItem {
   filamentOverride?: boolean
   /** A peça contra a máquina, por ferramenta. Ausente em API velha. */
   filamentChecks?: ToolCheck[]
-  /** Alguém do grupo liberou a peça a usar o rolo deles. */
-  groupOverride?: boolean
+  /** Grupos que já liberaram a peça a usar os rolos deles. */
+  releasedGroupIds?: string[]
 }
 
 export interface PrintRunning {
@@ -614,9 +614,12 @@ export const printApi = {
       body: '{}'
     }),
 
-  /** Libera a peça a usar o rolo de um grupo. Membro do grupo ou quem opera. */
+  /**
+   * Libera a peça a usar o rolo de um grupo. Cada grupo libera a sua parte;
+   * quem opera libera tudo. `waiting` são os grupos que ainda faltam.
+   */
   groupOk: (token: string | null, jobId: string) =>
-    request<{ message: string }>(`/print/jobs/${jobId}/group-ok`, { method: 'POST', token, body: '{}' }),
+    request<{ message: string; released?: string[]; waiting?: string[] }>(`/print/jobs/${jobId}/group-ok`, { method: 'POST', token, body: '{}' }),
 
   maintenance: (token: string | null) =>
     request<{ odometerHours: number; tasks: MaintenanceTask[] }>('/print/maintenance', { token }),
