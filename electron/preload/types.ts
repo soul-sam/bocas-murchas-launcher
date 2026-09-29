@@ -524,7 +524,7 @@ export interface OverlayBetTarget {
   myWager: { prediction: 'win' | 'loss'; amount: number } | null
   /** Epoch ms do fim da janela de aposta (5 min do inicio da partida). */
   closesAt: number
-  /** Teto pessoal de quem esta apostando — sobe de 50 a 500 conforme aposta. */
+  /** Teto pessoal de quem esta apostando — sobe de 50 a 5000 conforme aposta. */
   maxAmount: number
 }
 

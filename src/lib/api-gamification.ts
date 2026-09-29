@@ -328,7 +328,7 @@ export interface LiveWagerGame {
   open: boolean
   /** ISO de quando a janela de aposta fecha. */
   closesAt: string
-  /** Teto de aposta atual de quem pediu (rampa de 50 até 500). */
+  /** Teto de aposta atual de quem pediu (rampa de 50 até 5000). */
   maxAmount: number
 }
 
@@ -450,9 +450,9 @@ export interface SystemCardMeta {
  * `WAGER_RAMP_BETS`. Use `WAGER_MAX` só como limite absoluto de input.
  */
 export const WAGER_MIN = 10
-export const WAGER_MAX = 500
+export const WAGER_MAX = 5000
 export const WAGER_START_MAX = 50
-export const WAGER_RAMP_BETS = 20
+export const WAGER_RAMP_BETS = 100
 /** Só dá pra apostar nos 5 primeiros minutos da partida. */
 export const WAGER_WINDOW_MS = 5 * 60 * 1000
 

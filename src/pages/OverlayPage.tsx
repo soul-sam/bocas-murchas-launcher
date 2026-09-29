@@ -120,7 +120,7 @@ const NOTICE_TTL_MS = 6_000
 const OFFLINE_AFTER_MS = 5_000
 /**
  * Valores de aposta oferecidos. Sem campo de digitar: ver o cabeçalho. Os que
- * passam do teto pessoal daquela partida (`maxAmount`, que sobe de 50 até 500
+ * passam do teto pessoal daquela partida (`maxAmount`, que sobe de 50 até 5000
  * conforme a pessoa aposta) são retirados em vez de aparecerem pra dar erro.
  */
 const PRESETS = [10, 50, 100] as const

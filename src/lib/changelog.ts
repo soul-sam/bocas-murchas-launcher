@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.28.2',
+    headline: 'Apostas: teto sobe até 5000',
+    items: [
+      'O teto de aposta agora vai até 5000 murchos, e não mais 500.',
+      'Ele continua começando em 50 e sobe cerca de 50 a cada aposta que você faz, chegando em 5000 na 100ª.'
+    ]
+  },
+  {
     version: '1.28.1',
     headline: 'Filamento: troca direto no slot',
     items: [

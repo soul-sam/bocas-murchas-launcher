@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils'
  * vai falhar.
  *
  * Duas travas vêm do servidor e são só espelhadas aqui: a janela de 5 min
- * (`game.open`) e o teto pessoal (`game.maxAmount`, que sobe de 50 até 500
+ * (`game.open`) e o teto pessoal (`game.maxAmount`, que sobe de 50 até 5000
  * conforme a pessoa aposta). Quando várias pessoas do grupo estão na MESMA
  * partida, o board já traz a aposta do grupo em `myWager` — uma aposta só
  * vale por todos, e o formulário nem aparece pros outros.
@@ -314,7 +314,7 @@ const PRESETS = [10, 50, 100]
  * Formulário da aposta: lado + valor. Compartilhado com o cartão de aposta
  * no chat, por isso não sabe nada de popover.
  *
- * `max` é o teto PESSOAL vindo do servidor (rampa de 50 até 500). Sem ele
+ * `max` é o teto PESSOAL vindo do servidor (rampa de 50 até 5000). Sem ele
  * cai no teto do sistema — o servidor recusa de qualquer jeito, mas aí a
  * pessoa só descobre depois de clicar.
  */
@@ -460,7 +460,7 @@ export function BetForm({
           <Coins className="h-2.5 w-2.5 text-burn" />
           você tem {formatCompact(coins)}
         </span>
-        <span title={limit < WAGER_MAX ? 'Seu teto sobe a cada aposta, até 500' : undefined}>
+        <span title={limit < WAGER_MAX ? `Seu teto sobe a cada aposta, até ${WAGER_MAX}` : undefined}>
           {WAGER_MIN}–{limit}
           {limit < WAGER_MAX && <span className="text-burn"> ↑</span>}
         </span>
