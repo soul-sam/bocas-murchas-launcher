@@ -40,8 +40,15 @@ export function SwapRequestForm({
   const spools = filament.spools.filter((spool) => spool.status === 'active' && spool.usable !== false)
   const taken = new Set((filament.swaps ?? []).map((swap) => swap.slot))
 
+  // O slot que a peça precisa pode já ter pedido de outra pessoa. Abrir o
+  // formulário nele, com o botão apagado, não explica nada: começa no
+  // primeiro slot livre e diz por quê.
+  const wanted = defaultSlot ?? 0
+  const blocking = (filament.swaps ?? []).find((swap) => swap.slot === wanted)
+  const firstFree = Array.from({ length: slotCount }, (_, index) => index).find((index) => !taken.has(index))
+
   const [spoolId, setSpoolId] = React.useState(defaultSpoolId ?? spools[0]?.id ?? '')
-  const [slot, setSlot] = React.useState<number>(defaultSlot ?? 0)
+  const [slot, setSlot] = React.useState<number>(blocking ? firstFree ?? wanted : wanted)
   const [note, setNote] = React.useState('')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -77,6 +84,14 @@ export function SwapRequestForm({
 
   return (
     <div className="space-y-2 rounded-brutal border border-acid-dark/60 bg-acid/5 p-3">
+      {blocking && (
+        <p className="text-[11.5px] text-burn">
+          O slot {wanted + 1} já tem um pedido aberto
+          {blocking.mine ? ' seu' : ` de ${blocking.requester.displayName}`}
+          {blocking.spool ? ` (${blocking.spool.material} ${blocking.spool.colorName})` : ''}.{' '}
+          {firstFree === undefined ? 'Todos os slots têm pedido: espera um ser atendido.' : 'Dá pra pedir em outro slot.'}
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
         <select
           value={spoolId}

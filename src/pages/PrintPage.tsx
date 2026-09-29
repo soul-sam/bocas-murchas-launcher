@@ -1155,7 +1155,13 @@ function QueueCard({
                         recalcula a regra de justiça. */}
                     <p
                       className={cn(
-                        'truncate text-[11.5px]',
+                        'text-[11.5px]',
+                        // A trava de filamento diz O QUE fazer ("slot 3 está
+                        // com rolo do grupo…"): cortada no meio ela não serve
+                        // pra nada. O resto cabe numa linha e segue cortando.
+                        job.blockedReason === 'filament_mismatch' || job.blockedReason === 'filament_private'
+                          ? 'whitespace-normal break-words'
+                          : 'truncate',
                         job.blockedReason === 'filament_mismatch' ||
                           job.blockedReason === 'filament_private' ||
                           job.blockedReason === 'quiet_overrun'
