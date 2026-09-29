@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.28.1',
+    headline: 'Filamento: troca direto no slot',
+    items: [
+      'Cada slot do ACE tem um botão "Trocar filamento": abre a lista de rolos separada por estoque geral e grupo, e um clique já marca o rolo no slot. O que estava lá volta pra prateleira sozinho.',
+      'Quem não opera a impressora vê "Pedir troca" no slot, com ele já escolhido no pedido.',
+      'O estoque agora fecha: fica numa barra com o total de rolos e gramas, e abre só quando precisa.',
+      'Cadastrar rolo num grupo abre o formulário dentro do próprio grupo, e não mais lá no topo, fora da tela.'
+    ]
+  },
+  {
     version: '1.28.0',
     headline: 'Filamento: rolo de grupo, pedido de troca e aviso na hora',
     items: [

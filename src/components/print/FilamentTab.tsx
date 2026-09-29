@@ -1,12 +1,7 @@
 import * as React from 'react'
-import { AlertTriangle, Loader2, Lock, Plus, Repeat, Scale, Users } from 'lucide-react'
+import { AlertTriangle, ChevronDown, Loader2, Lock, Plus, Repeat, Scale, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  printApi,
-  type FilamentGroupRow,
-  type FilamentSpoolRow,
-  type PrintFilament
-} from '@/lib/api-print'
+import { printApi, type FilamentGroupRow, type FilamentSpoolRow, type PrintFilament } from '@/lib/api-print'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import { GroupHeader, NewGroupForm } from './FilamentGroups'
@@ -27,6 +22,15 @@ import { ColorDot, gramsLabel } from './print-bits'
  */
 
 const SLOT_COUNT = 4
+const STOCK_OPEN_KEY = 'print.filament.stockOpen'
+
+function readStockOpen(): boolean {
+  try {
+    return localStorage.getItem(STOCK_OPEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 export function FilamentTab({
   filament,
@@ -43,8 +47,26 @@ export function FilamentTab({
 }) {
   const [adding, setAdding] = React.useState<string | null | false>(false)
   const [newGroup, setNewGroup] = React.useState(false)
-  const [asking, setAsking] = React.useState<{ spoolId?: string } | null>(null)
+  const [asking, setAsking] = React.useState<{
+    spoolId?: string
+    slot?: number
+  } | null>(null)
   const [asked, setAsked] = React.useState<string | null>(null)
+  // Slot com a lista de rolos aberta (só quem opera troca direto).
+  const [picking, setPicking] = React.useState<number | null>(null)
+  // Estoque começa fechado: o dia a dia é trocar slot, não rolar a lista.
+  const [stockOpen, setStockOpen] = React.useState(readStockOpen)
+
+  function toggleStock(): void {
+    setStockOpen((open) => {
+      try {
+        localStorage.setItem(STOCK_OPEN_KEY, open ? '0' : '1')
+      } catch {
+        // sem storage: só não lembra
+      }
+      return !open
+    })
+  }
 
   if (!filament) {
     return <p className="text-xs text-muted-foreground">O servidor ainda não conhece o estoque de filamento.</p>
@@ -66,10 +88,28 @@ export function FilamentTab({
 
   const general = filament.spools.filter((spool) => groupOf(spool) === null)
 
-  function ask(spoolId?: string): void {
+  function ask(spoolId?: string, slot?: number): void {
     setAsked(null)
-    setAsking({ spoolId })
+    setAsking({ spoolId, slot })
   }
+
+  const activeSpools = filament.spools.filter((spool) => spool.status === 'active')
+  const stockGrams = activeSpools.reduce((sum, spool) => sum + spool.remainingGrams, 0)
+
+  const newSpoolForm = (groupId: string | null) => (
+    <NewSpoolForm
+      key={groupId ?? 'geral'}
+      acceptedFilaments={acceptedFilaments}
+      groups={groups}
+      defaultGroupId={groupId}
+      slotCount={slotCount}
+      onDone={async () => {
+        setAdding(false)
+        await onChanged()
+      }}
+      onCancel={() => setAdding(false)}
+    />
+  )
 
   const spoolList = (spools: FilamentSpoolRow[], emptyText: string) => {
     const active = spools.filter((spool) => spool.status === 'active')
@@ -97,7 +137,8 @@ export function FilamentTab({
         {empty.length > 0 && (
           <details className="mt-3">
             <summary className="cursor-pointer text-[11.5px] text-muted-foreground">
-              {empty.length} rolo{empty.length > 1 ? 's' : ''} acabado{empty.length > 1 ? 's' : ''}
+              {empty.length} rolo{empty.length > 1 ? 's' : ''} acabado
+              {empty.length > 1 ? 's' : ''}
             </summary>
             <ul className="mt-2 space-y-2">
               {empty.map((spool) => (
@@ -147,15 +188,13 @@ export function FilamentTab({
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs text-muted-foreground">slot {slot.slot + 1}</span>
-                  {filament.aceLoadedSlot === slot.slot && (
-                    <span className="text-[11px] text-acid-text">no bico</span>
-                  )}
+                  {filament.aceLoadedSlot === slot.slot && <span className="text-[11px] text-acid-text">no bico</span>}
                 </div>
                 <div className="mt-1 flex items-center gap-2">
                   <ColorDot hex={slot.empty ? null : slot.colorHex} className="h-5 w-5" />
                   <div className="min-w-0">
                     <p className="truncate text-sm text-foreground">
-                      {slot.empty ? 'vazio' : slot.type ?? (slot.source === 'none' ? '?' : '—')}
+                      {slot.empty ? 'vazio' : (slot.type ?? (slot.source === 'none' ? '?' : '—'))}
                     </p>
                     <p className="truncate text-[11px] text-muted-foreground">
                       {spool
@@ -170,8 +209,7 @@ export function FilamentTab({
                   // O ACE e o rolo marcado discordam: alguém trocou na máquina
                   // e não marcou aqui. O dono do que está lá virou palpite.
                   <p className="mt-1 flex items-center gap-1 text-[11px] text-burn">
-                    <AlertTriangle className="h-3 w-3 shrink-0" />
-                    a máquina diz outra coisa
+                    <AlertTriangle className="h-3 w-3 shrink-0" />a máquina diz outra coisa
                   </p>
                 ) : (
                   slot.group && (
@@ -181,10 +219,49 @@ export function FilamentTab({
                     </p>
                   )
                 )}
+                {canOperate ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={cn('mt-2 h-7 w-full px-2 text-xs', picking === slot.slot && 'bg-acid/10 text-acid-text')}
+                    onClick={() => setPicking(picking === slot.slot ? null : slot.slot)}
+                  >
+                    <Repeat className="mr-1.5 h-3.5 w-3.5" />
+                    Trocar filamento
+                  </Button>
+                ) : (
+                  modern &&
+                  canQueue && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="mt-2 h-7 w-full px-2 text-xs"
+                      onClick={() => ask(undefined, slot.slot)}
+                    >
+                      <Repeat className="mr-1.5 h-3.5 w-3.5" />
+                      Pedir troca
+                    </Button>
+                  )
+                )}
               </li>
             )
           })}
         </ul>
+
+        {canOperate && picking !== null && (
+          <SlotPicker
+            key={picking}
+            slot={picking}
+            spools={activeSpools}
+            groups={groups}
+            groupOf={groupOf}
+            onDone={async () => {
+              setPicking(null)
+              await onChanged()
+            }}
+            onCancel={() => setPicking(null)}
+          />
+        )}
       </section>
 
       {modern && (swaps.length > 0 || canQueue) && (
@@ -204,9 +281,10 @@ export function FilamentTab({
               <SwapRequestForm
                 // Trocar de rolo pelo botão da linha remonta o formulário já
                 // com ele escolhido.
-                key={asking.spoolId ?? 'livre'}
+                key={`${asking.spoolId ?? 'livre'}:${asking.slot ?? ''}`}
                 filament={filament}
                 defaultSpoolId={asking.spoolId}
+                defaultSlot={asking.slot}
                 onDone={async (message) => {
                   setAsking(null)
                   setAsked(message)
@@ -231,77 +309,217 @@ export function FilamentTab({
         </section>
       )}
 
-      <section className="card-gradient rounded-brutal p-4">
-        <div className="mb-3 flex items-baseline justify-between gap-2">
-          <span className="font-display text-sm uppercase tracking-wider text-foreground">Estoque geral</span>
-          {canOperate && adding === false && (
-            <Button variant="ghost" size="sm" onClick={() => setAdding(null)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Cadastrar rolo
-            </Button>
-          )}
-        </div>
+      <button
+        type="button"
+        onClick={toggleStock}
+        aria-expanded={stockOpen}
+        className="card-gradient flex w-full items-center justify-between gap-2 rounded-brutal p-4 text-left"
+      >
+        <span className="font-display text-sm uppercase tracking-wider text-foreground">Estoque</span>
+        <span className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
+          {activeSpools.length} rolo{activeSpools.length === 1 ? '' : 's'}
+          {groups.length > 0 && ` · ${groups.length} grupo${groups.length === 1 ? '' : 's'}`}
+          {' · '}
+          {gramsLabel(stockGrams) ?? '0 g'}
+          <ChevronDown className={cn('h-4 w-4 transition-transform', stockOpen && 'rotate-180')} />
+        </span>
+      </button>
 
-        {adding !== false && (
-          <NewSpoolForm
-            key={adding ?? 'geral'}
-            acceptedFilaments={acceptedFilaments}
-            groups={groups}
-            defaultGroupId={adding}
-            slotCount={slotCount}
-            onDone={async () => {
-              setAdding(false)
-              await onChanged()
-            }}
-            onCancel={() => setAdding(false)}
-          />
-        )}
-
-        {spoolList(
-          general,
-          'Nenhum rolo no estoque geral. Cadastrar e marcar o slot é o que faz a fila descontar o que cada peça gasta.'
-        )}
-      </section>
-
-      {groups.map((group) => (
-        <section key={group.id} className="card-gradient rounded-brutal p-4">
-          <GroupHeader group={group} canOperate={canOperate} onChanged={onChanged} />
-          {spoolList(
-            filament.spools.filter((spool) => groupOf(spool) === group.id),
-            'Nenhum rolo nesse grupo ainda.'
-          )}
-          {canOperate && adding === false && (
-            <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAdding(group.id)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Cadastrar rolo nesse grupo
-            </Button>
-          )}
-        </section>
-      ))}
-
-      {modern && canOperate && (
-        <section className="rounded-brutal border border-dashed border-line-strong p-4">
-          {newGroup ? (
-            <NewGroupForm
-              onDone={async () => {
-                setNewGroup(false)
-                await onChanged()
-              }}
-              onCancel={() => setNewGroup(false)}
-            />
-          ) : (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">
-                Alguém comprou rolo por fora do rateio? Cria um grupo: só quem faz parte imprime com ele.
-              </p>
-              <Button variant="ghost" size="sm" onClick={() => setNewGroup(true)}>
-                <Users className="mr-2 h-4 w-4" />
-                Novo grupo
-              </Button>
+      {stockOpen && (
+        <>
+          <section className="card-gradient rounded-brutal p-4">
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <span className="font-display text-sm uppercase tracking-wider text-foreground">Estoque geral</span>
+              {canOperate && adding === false && (
+                <Button variant="ghost" size="sm" onClick={() => setAdding(null)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Cadastrar rolo
+                </Button>
+              )}
             </div>
+
+            {adding === null && newSpoolForm(null)}
+
+            {spoolList(
+              general,
+              'Nenhum rolo no estoque geral. Cadastrar e marcar o slot é o que faz a fila descontar o que cada peça gasta.'
+            )}
+          </section>
+
+          {groups.map((group) => (
+            <section key={group.id} className="card-gradient rounded-brutal p-4">
+              <GroupHeader group={group} canOperate={canOperate} onChanged={onChanged} />
+              {/* O form abre no grupo onde foi clicado — no Geral ele ficava fora da tela. */}
+              {adding === group.id && newSpoolForm(group.id)}
+              {spoolList(
+                filament.spools.filter((spool) => groupOf(spool) === group.id),
+                'Nenhum rolo nesse grupo ainda.'
+              )}
+              {canOperate && adding === false && (
+                <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAdding(group.id)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Cadastrar rolo nesse grupo
+                </Button>
+              )}
+            </section>
+          ))}
+
+          {modern && canOperate && (
+            <section className="rounded-brutal border border-dashed border-line-strong p-4">
+              {newGroup ? (
+                <NewGroupForm
+                  onDone={async () => {
+                    setNewGroup(false)
+                    await onChanged()
+                  }}
+                  onCancel={() => setNewGroup(false)}
+                />
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Alguém comprou rolo por fora do rateio? Cria um grupo: só quem faz parte imprime com ele.
+                  </p>
+                  <Button variant="ghost" size="sm" onClick={() => setNewGroup(true)}>
+                    <Users className="mr-2 h-4 w-4" />
+                    Novo grupo
+                  </Button>
+                </div>
+              )}
+            </section>
           )}
-        </section>
+        </>
       )}
+    </div>
+  )
+}
+
+/**
+ * Lista de rolos pra um slot, separada por dono (Geral e cada grupo). Escolher
+ * marca o rolo no slot; o servidor tira de lá o que estava (volta pra
+ * prateleira). O rolo que já está no slot aparece marcado e dá pra esvaziar.
+ */
+function SlotPicker({
+  slot,
+  spools,
+  groups,
+  groupOf,
+  onDone,
+  onCancel
+}: {
+  slot: number
+  spools: FilamentSpoolRow[]
+  groups: FilamentGroupRow[]
+  groupOf: (spool: FilamentSpoolRow) => string | null
+  onDone: () => Promise<void>
+  onCancel: () => void
+}) {
+  const { token } = useAuth()
+  const [busy, setBusy] = React.useState<string | null>(null)
+  const [error, setError] = React.useState<string | null>(null)
+  const current = spools.find((spool) => spool.slot === slot) ?? null
+
+  async function place(spoolId: string, target: number | null): Promise<void> {
+    setBusy(spoolId)
+    setError(null)
+    try {
+      await printApi.updateSpool(token, spoolId, { slot: target })
+      await onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não deu')
+      setBusy(null)
+    }
+  }
+
+  const sections = [
+    { id: null as string | null, name: 'Estoque geral' },
+    ...groups.map((group) => ({
+      id: group.id as string | null,
+      name: group.name
+    }))
+  ]
+    .map((section) => ({
+      ...section,
+      spools: spools.filter((spool) => groupOf(spool) === section.id)
+    }))
+    .filter((section) => section.spools.length > 0)
+
+  return (
+    <div className="mt-3 rounded-brutal border border-acid-dark/60 bg-acid/5 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-xs text-foreground">
+          O que vai no <span className="font-mono">slot {slot + 1}</span>?
+        </span>
+        <div className="flex items-center gap-1">
+          {current && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs text-muted-foreground"
+              disabled={busy !== null}
+              onClick={() => void place(current.id, null)}
+            >
+              Esvaziar slot
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onCancel} aria-label="Fechar">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {sections.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nenhum rolo ativo no estoque. Cadastra um primeiro.</p>
+      ) : (
+        <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+          {sections.map((section) => (
+            <div key={section.id ?? 'geral'}>
+              <p className="mb-1 flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                {section.id ? <Lock className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                {section.name}
+              </p>
+              <ul className="grid gap-1 sm:grid-cols-2">
+                {section.spools.map((spool) => {
+                  const here = spool.slot === slot
+                  return (
+                    <li key={spool.id}>
+                      <button
+                        type="button"
+                        disabled={here || busy !== null}
+                        onClick={() => void place(spool.id, slot)}
+                        className={cn(
+                          'flex w-full items-center gap-2 rounded-brutal border px-2 py-1.5 text-left transition-colors',
+                          here
+                            ? 'cursor-default border-acid-dark bg-acid/10'
+                            : 'border-line bg-void/40 hover:border-acid-dark/60 disabled:opacity-60'
+                        )}
+                      >
+                        <ColorDot hex={spool.colorHex} className="h-4 w-4" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs text-foreground">
+                            {spool.material} {spool.colorName}
+                            {spool.brand && <span className="text-muted-foreground"> · {spool.brand}</span>}
+                          </span>
+                          <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                            {gramsLabel(spool.remainingGrams) ?? '0 g'}
+                            {here
+                              ? ' · já está aqui'
+                              : spool.slot !== null
+                                ? ` · sai do slot ${spool.slot + 1}`
+                                : ' · prateleira'}
+                          </span>
+                        </span>
+                        {busy === spool.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                        {spool.low && !busy && <AlertTriangle className="h-3.5 w-3.5 text-burn" />}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+      {error && <p className="mt-2 text-[11.5px] text-destructive">{error}</p>}
     </div>
   )
 }
@@ -372,10 +590,7 @@ function SpoolRow({
           </div>
           <div className="mt-1 flex items-center gap-2">
             <div className="h-1.5 flex-1 overflow-hidden rounded-brutal bg-void">
-              <div
-                className={cn('h-full', spool.low ? 'bg-burn' : 'bg-acid')}
-                style={{ width: `${pct}%` }}
-              />
+              <div className={cn('h-full', spool.low ? 'bg-burn' : 'bg-acid')} style={{ width: `${pct}%` }} />
             </div>
             <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
               {gramsLabel(spool.remainingGrams) ?? '0 g'} / {gramsLabel(spool.totalGrams)}
@@ -388,7 +603,11 @@ function SpoolRow({
             aria-label="Slot do ACE"
             value={spool.slot ?? ''}
             disabled={busy}
-            onChange={(event) => void update({ slot: event.target.value === '' ? null : Number(event.target.value) })}
+            onChange={(event) =>
+              void update({
+                slot: event.target.value === '' ? null : Number(event.target.value)
+              })
+            }
             className="input-terminal shrink-0 rounded-brutal px-2 py-1 text-xs"
           >
             <option value="">prateleira</option>
@@ -613,7 +832,12 @@ function NewSpoolForm({
         )}
       </div>
       <div className="flex items-center gap-2">
-        <Button size="sm" className="btn-acid" onClick={() => void save()} disabled={busy || colorName.trim().length === 0}>
+        <Button
+          size="sm"
+          className="btn-acid"
+          onClick={() => void save()}
+          disabled={busy || colorName.trim().length === 0}
+        >
           {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Cadastrar
         </Button>
