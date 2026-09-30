@@ -38,6 +38,7 @@ import {
 } from '@/components/print/FilamentCheckCard'
 import { FilamentTab } from '@/components/print/FilamentTab'
 import { GalleryTab } from '@/components/print/GalleryTab'
+import { HourMarket } from '@/components/print/HourMarket'
 import { MaintenanceTab } from '@/components/print/MaintenanceTab'
 import { RequestsTab } from '@/components/print/RequestsTab'
 import { FilamentChips, PrintThumb } from '@/components/print/print-bits'
@@ -190,6 +191,7 @@ export function PrintPage() {
               {state.me.canQueue ? (
                 <>
                   <QuotaCard quota={state.quota} />
+                  <HourMarket quota={state.quota} />
                   <NewJobCard />
                 </>
               ) : (
