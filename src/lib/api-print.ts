@@ -177,6 +177,9 @@ export interface PrintQuota {
   availableSeconds: number
   overSeconds: number
   liveJobs: number
+  /** Horas recebidas / cedidas nesta semana (compra e doação). Ausente em API velha. */
+  receivedSeconds?: number
+  givenSeconds?: number
   /** Quando a semana zera (ISO). Ausente em API velha. */
   resetAt?: string
   /** Legado: API nova manda 7 / null / 0. */
@@ -421,6 +424,32 @@ export interface EnqueueResult {
   filament?: ToolCheck[]
 }
 
+// ---- mercado de horas ----
+
+export interface MarketPerson {
+  id: string
+  displayName: string
+  username: string
+  avatar: string | null
+  profileColor: string | null
+}
+
+export interface HourListing {
+  id: string
+  seller: MarketPerson
+  /** Teto que o vendedor pôs. */
+  secondsLeft: number
+  /** Quanto dá pra comprar agora. */
+  forSaleSeconds: number
+  pricePerHour: number
+  createdAt: string
+}
+
+export interface HourMarketView {
+  listings: HourListing[]
+  mine: HourListing | null
+}
+
 export const printApi = {
   state: (token: string | null) => request<PrintState>('/print/state', { token }),
 
@@ -431,6 +460,29 @@ export const printApi = {
     ),
 
   quota: (token: string | null) => request<PrintQuota>('/print/quota', { token }),
+
+  market: (token: string | null) => request<HourMarketView>('/print/market', { token }),
+  marketPeople: (token: string | null) =>
+    request<{ people: MarketPerson[] }>('/print/market/people', { token }),
+  upsertListing: (token: string | null, body: { seconds: number; pricePerHour: number }) =>
+    request<{ message: string; listing: HourListing }>('/print/market/listing', {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(body)
+    }),
+  cancelListing: (token: string | null) =>
+    request<{ message: string }>('/print/market/listing', { method: 'DELETE', token }),
+  buyHours: (token: string | null, listingId: string, seconds: number) =>
+    request<{ message: string; seconds: number; price: number; listing: HourListing | null }>(
+      `/print/market/listings/${listingId}/buy`,
+      { method: 'POST', token, body: JSON.stringify({ seconds }) }
+    ),
+  donateHours: (token: string | null, body: { toUserId: string; seconds: number }) =>
+    request<{ message: string; seconds: number }>('/print/market/donate', {
+      method: 'POST',
+      token,
+      body: JSON.stringify(body)
+    }),
 
   usage: (token: string | null) => request<{ usage: PrintUsageRow[] }>('/print/usage', { token }),
 

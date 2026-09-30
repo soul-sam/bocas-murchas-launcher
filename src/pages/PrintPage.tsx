@@ -695,6 +695,8 @@ function QuotaCard({ quota }: { quota: PrintQuota }) {
 
       <p className="mt-3 text-[11.5px] text-muted-foreground">
         cota de {formatSeconds(quota.quotaSeconds)}
+        {(quota.receivedSeconds ?? 0) > 0 && <> · recebeu {formatSeconds(quota.receivedSeconds!)}</>}
+        {(quota.givenSeconds ?? 0) > 0 && <> · cedeu {formatSeconds(quota.givenSeconds!)}</>}
         {quota.nextReleaseAt && (
           <>
             {' · '}

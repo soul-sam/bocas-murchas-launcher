@@ -127,12 +127,14 @@ export function PrintProvider({ children }: { children: React.ReactNode }) {
     }
 
     socket.on('print:queue', onChange)
+    socket.on('print:market', onChange)
     socket.on('print:printer', onChange)
     socket.on('print:job', onChange)
     socket.on('print:telemetry', onTelemetry)
     socket.on('print:light', onLight)
     return () => {
       socket.off('print:queue', onChange)
+      socket.off('print:market', onChange)
       socket.off('print:printer', onChange)
       socket.off('print:job', onChange)
       socket.off('print:telemetry', onTelemetry)
