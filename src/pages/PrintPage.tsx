@@ -1,9 +1,11 @@
 import * as React from 'react'
 import {
   AlertTriangle,
+  ArrowUpToLine,
   CalendarClock,
   CheckCircle2,
   Clock,
+  GripVertical,
   Hourglass,
   Images,
   Layers,
@@ -14,6 +16,8 @@ import {
   Moon,
   Palette,
   Pause,
+  Pin,
+  PinOff,
   Play,
   Printer,
   ReceiptText,
@@ -1125,14 +1129,91 @@ function QueueCard({
     }
   }
 
+  // ---------- Ordem manual (topo fixado) ----------
+  /** Peça sendo arrastada e a linha sob o cursor (alvo do drop). */
+  const [dragId, setDragId] = React.useState<string | null>(null)
+  const [overId, setOverId] = React.useState<string | null>(null)
+  /** Erro da ordem manual (ex.: 403 "não sobe a própria peça"), mostrado no card. */
+  const [orderError, setOrderError] = React.useState<string | null>(null)
+  const pinnedIds = queue.filter((job) => !!job.pinned).map((job) => job.id)
+  // Qualquer ação em andamento trava o arrastar.
+  const canDrag = canOperate && busy === null
+
+  /**
+   * Roda uma ação de ordem e sempre recarrega a fila: em caso de erro, a tela
+   * fica com a ordem que o servidor tem (a gente nunca reordena localmente).
+   */
+  async function runOrder(key: string, action: () => Promise<unknown>, fallback: string): Promise<void> {
+    setBusy(key)
+    setOrderError(null)
+    try {
+      await action()
+    } catch (err) {
+      setOrderError(err instanceof Error ? err.message : fallback)
+    } finally {
+      try {
+        await refresh()
+      } finally {
+        setBusy(null)
+      }
+    }
+  }
+
+  /** "Passar na frente": vira a 1ª do topo fixado, as outras fixadas seguem atrás. */
+  function pinToTop(job: PrintQueueItem): Promise<void> {
+    const ids = [job.id, ...pinnedIds.filter((id) => id !== job.id)]
+    return runOrder(job.id, () => printApi.setQueueOrder(token, ids), 'Não deu pra passar na frente')
+  }
+
+  function unpin(job: PrintQueueItem): Promise<void> {
+    return runOrder(job.id, () => printApi.unpinJob(token, job.id), 'Não deu pra soltar')
+  }
+
+  function unpinEverything(): Promise<void> {
+    return runOrder('__order__', () => printApi.unpinAll(token), 'Não deu pra soltar tudo')
+  }
+
+  /**
+   * Soltou `draggedId` em cima de `targetId`: a arrastada ocupa a posição do
+   * alvo e TUDO do topo até ela vira o topo fixado (o servidor substitui o
+   * topo por essa lista; o resto segue a ordem automática).
+   */
+  function dropOn(targetId: string): void {
+    const draggedId = dragId
+    setDragId(null)
+    setOverId(null)
+    if (!draggedId || draggedId === targetId || !canDrag) return
+    const ids = queue.map((job) => job.id)
+    const from = ids.indexOf(draggedId)
+    const to = ids.indexOf(targetId)
+    if (from < 0 || to < 0) return
+    ids.splice(from, 1)
+    ids.splice(to, 0, draggedId)
+    const top = ids.slice(0, to + 1)
+    void runOrder(draggedId, () => printApi.setQueueOrder(token, top), 'Não deu pra mudar a ordem')
+  }
+
   return (
     <div className="card-gradient rounded-brutal p-4">
       <div className="mb-3 flex items-baseline justify-between">
         <span className="font-display text-sm uppercase tracking-wider text-foreground">Fila</span>
-        <span className="text-[11.5px] text-muted-foreground">
+        <span className="flex items-baseline gap-3 text-[11.5px] text-muted-foreground">
+          {canOperate && pinnedIds.length > 0 && (
+            <button
+              type="button"
+              title="Soltar todas as peças fixadas (volta pra ordem automática)"
+              onClick={() => void unpinEverything()}
+              disabled={busy !== null}
+              className="text-[11.5px] text-acid-text underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              soltar tudo
+            </button>
+          )}
           {queue.length === 0 ? 'vazia' : `${queue.length} na espera`}
         </span>
       </div>
+
+      {orderError && <p className="mb-2 text-[11.5px] text-destructive">{orderError}</p>}
 
       {queue.length === 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -1146,9 +1227,52 @@ function QueueCard({
             const nightRun =
               !!job.etaStartAt && crossesNight(new Date(job.etaStartAt), job.estimatedSeconds, quiet)
             const editingThis = editing?.id === job.id
+            const dropTarget = overId === job.id && dragId !== null && dragId !== job.id
             return (
-              <li key={job.id} className="rounded-brutal border border-line bg-void/40 px-3 py-2">
+              <li
+                key={job.id}
+                draggable={canDrag}
+                onDragStart={(event) => {
+                  if (!canDrag) return
+                  event.dataTransfer.effectAllowed = 'move'
+                  event.dataTransfer.setData('text/plain', job.id)
+                  setDragId(job.id)
+                }}
+                onDragOver={(event) => {
+                  if (!dragId) return
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = 'move'
+                  if (overId !== job.id) setOverId(job.id)
+                }}
+                onDragLeave={() => {
+                  if (overId === job.id) setOverId(null)
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  dropOn(job.id)
+                }}
+                onDragEnd={() => {
+                  setDragId(null)
+                  setOverId(null)
+                }}
+                className={cn(
+                  'rounded-brutal border bg-void/40 px-3 py-2 transition-colors',
+                  dropTarget ? 'border-acid ring-1 ring-acid' : 'border-line',
+                  dragId === job.id && 'opacity-50'
+                )}
+              >
                 <div className="flex items-center gap-3">
+                  {canOperate && (
+                    <span
+                      title={canDrag ? 'Arrastar pra mudar a ordem' : undefined}
+                      className={cn(
+                        '-ml-1 shrink-0 text-muted-foreground',
+                        canDrag ? 'cursor-grab active:cursor-grabbing' : 'opacity-40'
+                      )}
+                    >
+                      <GripVertical className="h-4 w-4" aria-label="arrastar" />
+                    </span>
+                  )}
                   <span
                     className={cn(
                       'w-6 shrink-0 text-center font-mono text-sm font-bold',
@@ -1193,6 +1317,28 @@ function QueueCard({
                           conhece: a frase vem pronta do servidor. */}
                       {job.reasonText ? ` · ${job.reasonText}` : job.blockedText ? ` · ${job.blockedText}` : ''}
                     </p>
+                    {/* Fixada por quem opera: visível pra todo mundo. Pode seguir
+                        travada (o motivo acima continua valendo). */}
+                    {job.pinned && (
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-brutal border border-acid/40 bg-acid/10 px-1.5 py-0.5 text-[11px] text-acid-text">
+                          <Pin className="h-3 w-3" aria-hidden />
+                          fixada por {job.pinned.by}
+                        </span>
+                        {canOperate && (
+                          <button
+                            type="button"
+                            title="Soltar (volta pra ordem automática)"
+                            onClick={() => void unpin(job)}
+                            disabled={busy !== null}
+                            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-acid-text disabled:opacity-50"
+                          >
+                            <PinOff className="h-3 w-3" aria-hidden />
+                            soltar
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {/* Peça longa ou noturna: parada até alguém que opera decidir. */}
                     {job.approval?.status === 'pending' && (
                       <p className="text-[11.5px] text-burn">aguardando autorização do operador</p>
@@ -1262,6 +1408,20 @@ function QueueCard({
                       ~{new Date(job.etaStartAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   ) : null}
+
+                  {/* Quem opera não sobe a própria peça (o servidor também barra). */}
+                  {canOperate && !job.pinned && !mine && (
+                    <button
+                      type="button"
+                      title="Passar na frente"
+                      aria-label="Passar na frente"
+                      onClick={() => void pinToTop(job)}
+                      disabled={busy !== null}
+                      className="shrink-0 rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-acid/10 hover:text-acid-text disabled:opacity-50"
+                    >
+                      <ArrowUpToLine className="h-3.5 w-3.5" />
+                    </button>
+                  )}
 
                   {(mine || isAdmin) && (
                     <button
