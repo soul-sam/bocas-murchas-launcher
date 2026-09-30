@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.30.0',
+    headline: 'Horas de impressão: semana fixa, mercado e murchos por peça',
+    items: [
+      'A cota da impressora agora zera toda sexta às 18h, pra todo mundo junto.',
+      'Cada hora de impressão concluída rende 50 murchos — inclusive as peças que você já imprimiu.',
+      'Mercado de horas: quem não vai imprimir na semana anuncia as horas a preço livre em murchos, ou doa direto pra alguém.',
+      'Comprou hora? Vale até sexta 18h. Quem vende continua podendo imprimir; o que ele usar sai do anúncio.',
+      'O cartão "Minhas horas" mostra quando zera e quanto você recebeu ou cedeu na semana.'
+    ],
+    note: 'Hora comprada não volta em murchos se você não usar até o reset.'
+  },
+  {
     version: '1.29.0',
     headline: 'Conquistas: todas as badges e quem tem cada uma',
     items: [
