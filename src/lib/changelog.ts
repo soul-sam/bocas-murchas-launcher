@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.31.0',
+    headline: 'Peça longa e peça de madrugada: o operador decide',
+    items: [
+      'Peça acima de 10h não é mais recusada: entra na fila e espera um operador autorizar.',
+      'Peça que passaria mais de 30 min das 22h também pede autorização; até 30 min sai normal, com aviso.',
+      'Operador vê o pedido num aviso no meio da tela ao abrir o launcher: aceitar, programar pras 7h, recusar ou ver depois.',
+      'Operador pode fixar peças no topo da fila: "passar na frente" ou arrastar pela alça.',
+      'Peça programada pelo operador não pode ser adiantada pelo dono.'
+    ],
+    note: 'Ninguém autoriza nem sobe a própria peça — nem operador.'
+  },
+  {
     version: '1.30.0',
     headline: 'Horas de impressão: semana fixa, mercado e murchos por peça',
     items: [
