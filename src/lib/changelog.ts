@@ -42,6 +42,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.29.0',
+    headline: 'Conquistas: todas as badges e quem tem cada uma',
+    items: [
+      'Painel novo de conquistas, no botão "Conquistas" do Ranking (ou com /conquistas no chat): o catálogo inteiro de badges, com quantas pessoas do grupo têm cada uma.',
+      'A raridade agora é medida no grupo: cada badge vale pontos pelo peso dela (comum 10, raro 20, épico 40, lendário 80) vezes o quanto ela é difícil de achar. Ninguém tem, vale o dobro. Badge que quase todo mundo já tem cai um degrau.',
+      'Placar de colecionador: a soma dos pontos das suas badges, com o ranking do grupo inteiro.',
+      'Barra de progresso nas badges de contagem: quantas mensagens faltam pro Tagarela, quantas peças pro Maker, e por aí vai. O filtro "Quase lá" mostra as que já passaram da metade.',
+      'Cada badge mostra quem tem, na ordem em que ganhou, e marca quem foi o primeiro do grupo.',
+      'Vitrine: escolha até 3 badges pra aparecer na frente do seu perfil.',
+      'Clicar numa badge em qualquer perfil abre o painel direto nela.'
+    ],
+    note: 'Os ovos escondidos aparecem como "???" com a dica até você achar. Dá pra ver quantas pessoas já acharam cada um.'
+  },
+  {
     version: '1.28.2',
     headline: 'Apostas: teto sobe até 5000',
     items: [

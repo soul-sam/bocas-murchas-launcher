@@ -7,6 +7,7 @@ import { formatCompact, type GamificationProfile,
   DEFAULT_NAME_COLOR
 } from '@/lib/api-gamification'
 import { BadgeChip, TitleTag } from '@/lib/cosmetic-icons'
+import { useOverlaysOptional } from '@/lib/overlay-context'
 import { CargoChip } from '@/lib/cargo-icons'
 import { useCargos } from '@/lib/cargos-context'
 import {
@@ -413,8 +414,16 @@ function GamificationBlock({ profile }: { profile: GamificationProfile }) {
     profile.nextLevelXp > 0
       ? Math.max(0, Math.min(100, Math.round((profile.levelXp / profile.nextLevelXp) * 100)))
       : 0
-  const shown = profile.badges.slice(0, BADGES_SHOWN)
+  const overlays = useOverlaysOptional()
+  // Vitrine na frente (na ordem que a pessoa escolheu), o resto por data.
+  const showcase = profile.showcase ?? []
+  const pinned = showcase
+    .map((id) => profile.badges.find((b) => b.id === id))
+    .filter((b): b is (typeof profile.badges)[number] => !!b)
+  const others = profile.badges.filter((b) => !showcase.includes(b.id))
+  const shown = [...pinned, ...others].slice(0, BADGES_SHOWN)
   const rest = profile.badges.length - shown.length
+  const openBadge = overlays ? (id?: string) => overlays.openAchievements(id) : undefined
 
   return (
     <div className="mt-2 space-y-1.5 rounded-brutal border border-line bg-void/60 px-2 py-1.5">
@@ -451,18 +460,31 @@ function GamificationBlock({ profile }: { profile: GamificationProfile }) {
 
       {profile.badges.length > 0 && (
         <div className="flex flex-wrap items-center gap-1">
-          {shown.map((badge) => (
+          {shown.map((badge, index) => (
             <BadgeChip
               key={badge.id}
               badgeId={badge.id}
               name={badge.name}
-              description={badge.description}
+              description={index < pinned.length ? `${badge.description} · na vitrine` : badge.description}
               rarity={badge.rarity}
+              // Vitrine um tico maior: é o que a pessoa escolheu mostrar.
+              className={index < pinned.length ? 'h-7 w-7 border-2' : undefined}
+              onClick={openBadge && (() => openBadge(badge.id))}
             />
           ))}
-          {rest > 0 && (
-            <span className="font-mono text-[11px] text-muted-foreground">+{rest}</span>
-          )}
+          {rest > 0 &&
+            (openBadge ? (
+              <button
+                type="button"
+                onClick={() => openBadge()}
+                className="font-mono text-[11px] text-muted-foreground hover:text-acid"
+                title="Ver todas as conquistas"
+              >
+                +{rest}
+              </button>
+            ) : (
+              <span className="font-mono text-[11px] text-muted-foreground">+{rest}</span>
+            ))}
         </div>
       )}
     </div>

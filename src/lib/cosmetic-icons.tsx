@@ -86,28 +86,41 @@ export function BadgeChip({
   name,
   description,
   rarity,
-  className
+  className,
+  onClick
 }: {
   badgeId: string
   name: string
   description?: string
   rarity?: Rarity | string
   className?: string
+  /** Com clique vira botão (abre o painel de conquistas nessa badge). */
+  onClick?: () => void
 }) {
   const color = RARITY_COLOR[rarity as Rarity] ?? RARITY_COLOR.common
+  const classes = cn(
+    'flex h-6 w-6 shrink-0 items-center justify-center rounded-brutal border bg-void',
+    onClick && 'transition-transform hover:-translate-y-px',
+    className
+  )
 
   return (
     <Hint label={name} description={description}>
-      <span
-        aria-label={name}
-        className={cn(
-          'flex h-6 w-6 shrink-0 items-center justify-center rounded-brutal border bg-void',
-          className
-        )}
-        style={{ borderColor: `${color}66`, color }}
-      >
-        <BadgeIcon badgeId={badgeId} className="h-3.5 w-3.5" />
-      </span>
+      {onClick ? (
+        <button
+          type="button"
+          aria-label={name}
+          onClick={onClick}
+          className={classes}
+          style={{ borderColor: `${color}66`, color }}
+        >
+          <BadgeIcon badgeId={badgeId} className="h-3.5 w-3.5" />
+        </button>
+      ) : (
+        <span aria-label={name} className={classes} style={{ borderColor: `${color}66`, color }}>
+          <BadgeIcon badgeId={badgeId} className="h-3.5 w-3.5" />
+        </span>
+      )}
     </Hint>
   )
 }

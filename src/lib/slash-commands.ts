@@ -15,6 +15,7 @@ export type SlashCommand =
   | { kind: 'party'; seed: string }
   | { kind: 'drop'; seed: string }
   | { kind: 'shop' }
+  | { kind: 'achievements' }
   | { kind: 'suggestion' }
   | { kind: 'printRequest' }
   | { kind: 'smoke' }
@@ -64,6 +65,10 @@ const ALIASES: Record<string, Exclude<SlashCommand['kind'], 'egg'>> = {
   loja: 'shop',
   lojinha: 'shop',
   shop: 'shop',
+  conquistas: 'achievements',
+  conquista: 'achievements',
+  badges: 'achievements',
+  medalhas: 'achievements',
   fumaca: 'smoke',
   fumaça: 'smoke',
   sinal: 'smoke',
@@ -103,6 +108,8 @@ export function parseSlashCommand(text: string): SlashCommand | null {
       return { kind: 'poll' }
     case 'shop':
       return { kind: 'shop' }
+    case 'achievements':
+      return { kind: 'achievements' }
     case 'suggestion':
       return { kind: 'suggestion' }
     case 'printRequest':
@@ -176,6 +183,7 @@ export const SLASH_HELP: Array<{ command: string; hint: string }> = [
   { command: '/sugestao', hint: 'Pedir uma coisa nova, ou avisar que quebrou' },
   { command: '/encomendar', hint: 'Pedir pra alguém imprimir uma peça na impressora 3D' },
   { command: '/loja', hint: 'Abrir a lojinha' },
+  { command: '/conquistas', hint: 'Todas as badges, quem tem cada uma e o placar de colecionador' },
   { command: '/fumaca', hint: 'Avisar que você entra daqui a pouco' },
   { command: '/clipe', hint: 'Salvar os últimos segundos da call' },
   { command: '/tocar', hint: 'Pedir uma música pra call — ex.: /tocar seu link' },

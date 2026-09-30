@@ -120,6 +120,7 @@ export function MessageComposer({
     openEventComposer,
     openPartyComposer,
     openShop,
+    openAchievements,
     openMusicPanel,
     openSuggestionComposer,
     openPrintRequestComposer,
@@ -485,6 +486,9 @@ export function MessageComposer({
         break
       case 'shop':
         openShop()
+        break
+      case 'achievements':
+        openAchievements()
         break
       case 'suggestion':
         openSuggestionComposer()

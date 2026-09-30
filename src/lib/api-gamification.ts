@@ -104,7 +104,56 @@ export interface GamificationProfile {
   nudgesSent: number
   weeklyXp: number
   badges: Badge[]
+  /**
+   * Ids da vitrine, na ordem escolhida (até 3). Opcional porque API antiga
+   * não manda — aí o perfil cai nas mais recentes, como sempre foi.
+   */
+  showcase?: string[]
   equipped: EquippedCosmetics
+}
+
+/**
+ * Painel de conquistas (GET /gamification/achievements). A conta da
+ * raridade mora na API (lib/gamification/achievements.ts):
+ * pontos = peso do catálogo × (2 − fatia do grupo que tem).
+ */
+export interface AchievementBadge {
+  id: string
+  name: string
+  description: string
+  icon: string
+  /** Raridade de catálogo — a que a badge nasceu tendo. */
+  rarity: Rarity
+  /** Ovo que eu ainda não achei: vem como "???". */
+  secret?: true
+  hint?: string
+  holders: number
+  /** Fração do grupo que tem, 0..1. */
+  share: number
+  points: number
+  /** Raridade real: sai dos pontos, cai um tier se todo mundo tem. */
+  tier: Rarity
+  /** Do primeiro ao último a ganhar. */
+  owners: { userId: string; earnedAt: string }[]
+  earnedAt: string | null
+  progress: { current: number; target: number; unit: string } | null
+}
+
+export interface CollectorEntry {
+  rank: number
+  userId: string
+  points: number
+  count: number
+}
+
+export interface AchievementsBoard {
+  members: number
+  weights: Record<Rarity, number>
+  badges: AchievementBadge[]
+  collectors: CollectorEntry[]
+  me: { points: number; count: number; rank: number | null }
+  showcase: string[]
+  showcaseSize: number
 }
 
 export type LeaderboardPeriod = 'week' | 'all'
@@ -666,6 +715,18 @@ export const gamification = {
 
   async badges(token: string): Promise<{ all: Omit<Badge, 'earnedAt'>[]; mine: Badge[] }> {
     return request('/gamification/badges', { token })
+  },
+
+  async achievements(token: string): Promise<AchievementsBoard> {
+    return request<AchievementsBoard>('/gamification/achievements', { token })
+  },
+
+  async setShowcase(token: string, badgeIds: string[]): Promise<{ showcase: string[] }> {
+    return request('/gamification/showcase', {
+      method: 'PUT',
+      token,
+      body: JSON.stringify({ badgeIds })
+    })
   },
 
   async shop(token: string): Promise<ShopResponse> {

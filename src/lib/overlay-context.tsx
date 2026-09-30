@@ -114,6 +114,16 @@ interface OverlayContextValue {
   closeShop: () => void
 
   /**
+   * Painel de conquistas: o catálogo inteiro de badges, quem tem cada uma e
+   * o placar de colecionador. `achievementsFocus` é a badge que abre
+   * selecionada — clicar num chip de badge em qualquer lugar cai direto nela.
+   */
+  achievementsOpen: boolean
+  achievementsFocus: string | null
+  openAchievements: (badgeId?: string) => void
+  closeAchievements: () => void
+
+  /**
    * Pedir música: a busca da jukebox. Camada global porque é aberta do
    * compositor de mensagens (/tocar), da call e da tela de jogar — e porque a
    * música toca fora da tela social, então o painel também precisa existir lá.
@@ -182,6 +192,8 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [wrappedOpen, setWrappedOpen] = React.useState(false)
   const [wrappedYear, setWrappedYear] = React.useState(() => new Date().getFullYear())
   const [shopOpen, setShopOpen] = React.useState(false)
+  const [achievementsOpen, setAchievementsOpen] = React.useState(false)
+  const [achievementsFocus, setAchievementsFocus] = React.useState<string | null>(null)
   const [profileUserId, setProfileUserId] = React.useState<string | null>(null)
   const [musicPanelOpen, setMusicPanelOpen] = React.useState(false)
   const [musicPanelSeed, setMusicPanelSeed] = React.useState<string | null>(null)
@@ -295,6 +307,14 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       openShop: () => setShopOpen(true),
       closeShop: () => setShopOpen(false),
 
+      achievementsOpen,
+      achievementsFocus,
+      openAchievements: (badgeId?: string) => {
+        setAchievementsFocus(badgeId ?? null)
+        setAchievementsOpen(true)
+      },
+      closeAchievements: () => setAchievementsOpen(false),
+
       profileUserId,
       openProfile: (userId: string) => setProfileUserId(userId),
       closeProfile: () => setProfileUserId(null),
@@ -338,6 +358,8 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       wrappedOpen,
       wrappedYear,
       shopOpen,
+      achievementsOpen,
+      achievementsFocus,
       profileUserId,
       musicPanelOpen,
       musicPanelSeed,

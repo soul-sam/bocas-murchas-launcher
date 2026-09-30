@@ -12,7 +12,8 @@ import {
   Swords,
   Pickaxe,
   Radio,
-  Medal
+  Medal,
+  Trophy
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { parseMetadata, resolveAssetUrl } from '@/lib/api'
@@ -64,7 +65,7 @@ const MEDAL_COLOR = ['#FFC53D', '#C9C9C9', '#B87333']
 export function LeaderboardPanel() {
   const { closeLeaderboard: close } = useLayout()
   const currentYear = new Date().getFullYear()
-  const { openShop, openWrapped } = useOverlays()
+  const { openShop, openWrapped, openAchievements } = useOverlays()
   const [recapOpen, setRecapOpen] = React.useState(false)
 
   return (
@@ -102,6 +103,15 @@ export function LeaderboardPanel() {
           </button>
           <button
             type="button"
+            onClick={() => openAchievements()}
+            title="Todas as badges, quem tem cada uma e o placar de colecionador"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-brutal border-2 border-acid/60 px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/15"
+          >
+            <Trophy className="h-3 w-3" />
+            conquistas
+          </button>
+          <button
+            type="button"
             onClick={() => setRecapOpen((v) => !v)}
             className={cn(
               'flex flex-1 items-center justify-center gap-1.5 rounded-brutal border-2 px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
@@ -131,6 +141,7 @@ function MyCard() {
   const { user } = useAuth()
   const { byId } = useMembers()
   const { profile, ready, cosmeticName } = useGamification()
+  const { openAchievements } = useOverlays()
 
   if (!user) return null
   const me = byId[user.id] ?? user
@@ -213,10 +224,18 @@ function MyCard() {
               name={badge.name}
               description={badge.description}
               rarity={badge.rarity}
+              onClick={() => openAchievements(badge.id)}
             />
           ))}
           {profile.badges.length > 10 && (
-            <span className="font-mono text-[11px] text-muted-foreground">+{profile.badges.length - 10}</span>
+            <button
+              type="button"
+              onClick={() => openAchievements()}
+              className="font-mono text-[11px] text-muted-foreground hover:text-acid"
+              title="Ver todas as conquistas"
+            >
+              +{profile.badges.length - 10}
+            </button>
           )}
         </div>
       )}

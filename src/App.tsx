@@ -60,6 +60,7 @@ import { SmokeComposer } from '@/components/social/SmokeComposer'
 import { ClipComposer } from '@/components/social/ClipComposer'
 import { WrappedModal } from '@/components/social/WrappedModal'
 import { ShopModal } from '@/components/social/ShopModal'
+import { AchievementsModal } from '@/components/social/AchievementsModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
 import { OverlayBridge } from '@/lib/overlay-bridge'
@@ -215,6 +216,7 @@ function GlobalOverlays() {
       <PartyComposer />
       <SmokeComposer />
       <ShopModal />
+      <AchievementsModal />
       <AdminModal />
       {/* Novidades da versão: camada própria (sem Radix) porque pode abrir
           sozinha no primeiro quadro, antes de qualquer clique. */}
