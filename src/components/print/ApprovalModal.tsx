@@ -227,6 +227,12 @@ export function ApprovalButtons({
           disabled={busy}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !busy) onDecide('deny', reason)
+            // Esc no motivo só fecha o campo; não deve virar "Ver depois".
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              event.stopPropagation()
+              setDeclining(false)
+            }
           }}
         />
         <Button
@@ -302,7 +308,12 @@ export function ApprovalModal() {
   React.useEffect(() => {
     if (!current) return
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !busy) later()
+      // Outro overlay (Radix, WhatsNewModal, campo do motivo) já tratou o Esc.
+      if (event.defaultPrevented) return
+      if (event.key === 'Escape' && !busy) {
+        event.preventDefault() // camadas abaixo não reagem ao mesmo Esc
+        later()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
