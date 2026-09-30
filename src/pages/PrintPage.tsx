@@ -660,8 +660,14 @@ function CameraCard({ printer }: { printer: PrinterInfo }) {
 // ============================================
 
 function QuotaCard({ quota }: { quota: PrintQuota }) {
-  const usedPct = Math.min(100, (quota.usedSeconds / quota.quotaSeconds) * 100)
-  const reservedPct = Math.min(100 - usedPct, (quota.reservedSeconds / quota.quotaSeconds) * 100)
+  const received = quota.receivedSeconds ?? 0
+  const given = quota.givenSeconds ?? 0
+  // Cota efetiva da semana: base + o que entrou − o que saiu. "Usado" é só
+  // impressão de verdade — vender hora não é imprimir.
+  const effectiveQuota = Math.max(1, quota.quotaSeconds + received - given)
+  const printed = Math.max(0, quota.printedSeconds ?? quota.usedSeconds)
+  const usedPct = Math.min(100, (printed / effectiveQuota) * 100)
+  const reservedPct = Math.min(100 - usedPct, (quota.reservedSeconds / effectiveQuota) * 100)
 
   return (
     <div className="card-gradient rounded-brutal p-4">
@@ -682,7 +688,7 @@ function QuotaCard({ quota }: { quota: PrintQuota }) {
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-3 font-mono text-xs">
-        <Metric label="usado" value={formatSeconds(quota.usedSeconds)} tone="acid" />
+        <Metric label="usado" value={formatSeconds(printed)} tone="acid" />
         <Metric label="na fila" value={formatSeconds(quota.reservedSeconds)} tone="burn" />
         <Metric
           label={quota.overSeconds > 0 ? 'passou' : 'sobra'}
@@ -696,9 +702,10 @@ function QuotaCard({ quota }: { quota: PrintQuota }) {
       </div>
 
       <p className="mt-3 text-[11.5px] text-muted-foreground">
-        cota de {formatSeconds(quota.quotaSeconds)}
-        {(quota.receivedSeconds ?? 0) > 0 && <> · recebeu {formatSeconds(quota.receivedSeconds!)}</>}
-        {(quota.givenSeconds ?? 0) > 0 && <> · cedeu {formatSeconds(quota.givenSeconds!)}</>}
+        cota de {formatSeconds(effectiveQuota)}
+        {(received > 0 || given > 0) && <> (base {formatSeconds(quota.quotaSeconds)})</>}
+        {received > 0 && <> · recebeu {formatSeconds(received)}</>}
+        {given > 0 && <> · cedeu {formatSeconds(given)}</>}
         {quota.nextReleaseAt && (
           <>
             {' · '}

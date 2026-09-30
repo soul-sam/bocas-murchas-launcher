@@ -173,6 +173,8 @@ export interface PrinterInfo {
 export interface PrintQuota {
   quotaSeconds: number
   usedSeconds: number
+  /** Só impressão real (sem transferências). Ausente em API velha. */
+  printedSeconds?: number
   reservedSeconds: number
   availableSeconds: number
   overSeconds: number
