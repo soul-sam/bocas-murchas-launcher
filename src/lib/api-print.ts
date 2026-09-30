@@ -199,7 +199,7 @@ export interface PrintQuota {
 }
 
 export interface PrintState {
-  me: { canQueue: boolean; canOperate: boolean; isAdmin: boolean }
+  me: { canQueue: boolean; canOperate: boolean; isAdmin: boolean; canLocal?: boolean }
   printer: PrinterInfo
   running: PrintRunning | null
   queue: PrintQueueItem[]

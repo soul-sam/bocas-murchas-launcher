@@ -1057,6 +1057,7 @@ function QueueCard({
 }) {
   const { token } = useAuth()
   const { state, refresh } = usePrint()
+  const canLocal = state?.me?.canLocal === true
   const quiet = state?.printer ?? {}
   const [busy, setBusy] = React.useState<string | null>(null)
   /** Linha com o editor de horário aberto, e o horário sendo escolhido. */
@@ -1173,7 +1174,8 @@ function QueueCard({
    * atual — e vê se alguma peça de quem está operando subiu de posição.
    */
   function raisesOwn(top: string[]): boolean {
-    if (!meId) return false
+    // Operador local (print.local) pode subir a própria peça.
+    if (!meId || canLocal) return false
     const before = queue.map((job) => job.id)
     const after = [...top, ...before.filter((id) => !top.includes(id))]
     return queue.some(
@@ -1474,8 +1476,8 @@ function QueueCard({
                     </span>
                   ) : null}
 
-                  {/* Quem opera não sobe a própria peça (o servidor também barra). */}
-                  {canOperate && !job.pinned && !mine && (
+                  {/* Quem opera não sobe a própria peça (o servidor também barra), salvo o operador local. */}
+                  {canOperate && !job.pinned && (!mine || canLocal) && (
                     <button
                       type="button"
                       title="Passar na frente"
