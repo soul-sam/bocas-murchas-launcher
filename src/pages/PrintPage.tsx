@@ -668,7 +668,7 @@ function QuotaCard({ quota }: { quota: PrintQuota }) {
           Minhas horas
         </span>
         <span className="text-[11.5px] text-muted-foreground">
-          janela de {quota.windowDays} dias
+          {quota.resetAt ? `zera ${describeWhen(quota.resetAt)}` : `janela de ${quota.windowDays} dias`}
         </span>
       </div>
 

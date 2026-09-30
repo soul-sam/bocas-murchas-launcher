@@ -177,6 +177,9 @@ export interface PrintQuota {
   availableSeconds: number
   overSeconds: number
   liveJobs: number
+  /** Quando a semana zera (ISO). Ausente em API velha. */
+  resetAt?: string
+  /** Legado: API nova manda 7 / null / 0. */
   windowDays: number
   nextReleaseAt: string | null
   nextReleaseSeconds: number
