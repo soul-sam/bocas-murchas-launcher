@@ -829,8 +829,8 @@ function MyGameBlock({
 /**
  * APOSTAR EM MIM — o "aposto que eu ganho", direto de dentro do jogo.
  *
- * So aparece nos 3 primeiros minutos (janela mais curta que a dos outros:
- * quem esta jogando le o placar na hora). Nao ha escolha de lado — apostar na
+ * So aparece nos 5 primeiros minutos (mesma janela dos outros: quem joga le o
+ * placar antes, mas as outras travas bastam). Nao ha escolha de lado — apostar na
  * propria derrota seria pago pra intar, e o servidor recusa — e o retorno vem
  * da odd da propria winrate, ja calculada la.
  *

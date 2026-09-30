@@ -253,7 +253,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
       {!settled && isMine && !myBet && (
         <p className="mt-2 text-[11px] text-muted-foreground">
           é a sua partida — a galera está apostando em você, e você pode apostar
-          em si nos 3 primeiros minutos
+          em si nos 5 primeiros minutos
         </p>
       )}
     </CardFrame>

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock,
   GripVertical,
+  History,
   Hourglass,
   Images,
   Layers,
@@ -23,6 +24,7 @@ import {
   ReceiptText,
   RefreshCw,
   Repeat,
+  ShoppingCart,
   Square,
   Trash2,
   Upload,
@@ -43,8 +45,9 @@ import {
 import { ApprovalList } from '@/components/print/ApprovalList'
 import { FilamentTab } from '@/components/print/FilamentTab'
 import { GalleryTab } from '@/components/print/GalleryTab'
-import { HourMarket } from '@/components/print/HourMarket'
+import { HistoryTab } from '@/components/print/HistoryTab'
 import { MaintenanceTab } from '@/components/print/MaintenanceTab'
+import { MarketTab } from '@/components/print/MarketTab'
 import { RequestsTab } from '@/components/print/RequestsTab'
 import { FilamentChips, PrintThumb } from '@/components/print/print-bits'
 import { SchedulePicker, crossesNight, describeSchedule } from '@/components/print/SchedulePicker'
@@ -55,7 +58,6 @@ import { useSocket } from '@/lib/socket-context'
 import {
   formatSeconds,
   printApi,
-  type PrintHistoryItem,
   type PrintQueueItem,
   type PrintRunning,
   type PrinterInfo,
@@ -82,7 +84,7 @@ import { cn } from '@/lib/utils'
  * no servidor de propósito: uma fila que se diz justa só é justa se todos os
  * donos podem conferir a conta.
  */
-const TABS = ['fila', 'mural', 'encomendas', 'filamento', 'manutencao'] as const
+const TABS = ['fila', 'filamento', 'mercado', 'encomendas', 'mural', 'manutencao', 'historico'] as const
 type PrintTab = (typeof TABS)[number]
 
 function isTab(value: string | null): value is PrintTab {
@@ -161,22 +163,30 @@ export function PrintPage() {
               <ListOrdered className="mr-1.5 inline h-3 w-3" />
               Fila
             </TabsTrigger>
-            <TabsTrigger value="mural">
-              <Images className="mr-1.5 inline h-3 w-3" />
-              Mural
-            </TabsTrigger>
-            <TabsTrigger value="encomendas">
-              <ReceiptText className="mr-1.5 inline h-3 w-3" />
-              Encomendas
-            </TabsTrigger>
             <TabsTrigger value="filamento">
               <Palette className="mr-1.5 inline h-3 w-3" />
               Filamento
               {lowSpools > 0 && <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-burn" aria-label="rolo acabando" />}
             </TabsTrigger>
+            <TabsTrigger value="mercado">
+              <ShoppingCart className="mr-1.5 inline h-3 w-3" />
+              Mercado de horas
+            </TabsTrigger>
+            <TabsTrigger value="encomendas">
+              <ReceiptText className="mr-1.5 inline h-3 w-3" />
+              Encomendas
+            </TabsTrigger>
+            <TabsTrigger value="mural">
+              <Images className="mr-1.5 inline h-3 w-3" />
+              Mural
+            </TabsTrigger>
             <TabsTrigger value="manutencao">
               <Wrench className="mr-1.5 inline h-3 w-3" />
               Manutenção
+            </TabsTrigger>
+            <TabsTrigger value="historico">
+              <History className="mr-1.5 inline h-3 w-3" />
+              Histórico
             </TabsTrigger>
           </TabsList>
 
@@ -196,7 +206,6 @@ export function PrintPage() {
               {state.me.canQueue ? (
                 <>
                   <QuotaCard quota={state.quota} />
-                  <HourMarket quota={state.quota} />
                   <NewJobCard />
                 </>
               ) : (
@@ -213,17 +222,7 @@ export function PrintPage() {
                 isAdmin={state.me.isAdmin}
                 canOperate={state.me.canOperate}
               />
-
-              <HistoryCard />
             </div>
-          </TabsContent>
-
-          <TabsContent value="mural" className="mt-0 flex-none overflow-visible pt-0">
-            {tab === 'mural' && <GalleryTab canQueue={state.me.canQueue} />}
-          </TabsContent>
-
-          <TabsContent value="encomendas" className="mt-0 flex-none overflow-visible pt-0">
-            {tab === 'encomendas' && <RequestsTab canQueue={state.me.canQueue} />}
           </TabsContent>
 
           <TabsContent value="filamento" className="mt-0 flex-none overflow-visible pt-0">
@@ -236,8 +235,24 @@ export function PrintPage() {
             />
           </TabsContent>
 
+          <TabsContent value="mercado" className="mt-0 flex-none overflow-visible pt-0">
+            {tab === 'mercado' && <MarketTab quota={state.quota} canQueue={state.me.canQueue} />}
+          </TabsContent>
+
+          <TabsContent value="encomendas" className="mt-0 flex-none overflow-visible pt-0">
+            {tab === 'encomendas' && <RequestsTab canQueue={state.me.canQueue} />}
+          </TabsContent>
+
+          <TabsContent value="mural" className="mt-0 flex-none overflow-visible pt-0">
+            {tab === 'mural' && <GalleryTab canQueue={state.me.canQueue} />}
+          </TabsContent>
+
           <TabsContent value="manutencao" className="mt-0 flex-none overflow-visible pt-0">
             {tab === 'manutencao' && <MaintenanceTab canOperate={state.me.canOperate} isAdmin={state.me.isAdmin} />}
+          </TabsContent>
+
+          <TabsContent value="historico" className="mt-0 flex-none overflow-visible pt-0">
+            {tab === 'historico' && <HistoryTab />}
           </TabsContent>
         </Tabs>
       </main>
@@ -1581,109 +1596,6 @@ function QueueCard({
       )}
     </div>
   )
-}
-
-// ============================================
-// HISTÓRICO
-// ============================================
-
-function HistoryCard() {
-  const { token } = useAuth()
-  const [jobs, setJobs] = React.useState<PrintHistoryItem[] | null>(null)
-
-  React.useEffect(() => {
-    let alive = true
-    void printApi
-      .history(token)
-      .then((res) => {
-        if (alive) setJobs(res.jobs)
-      })
-      .catch(() => {
-        if (alive) setJobs([])
-      })
-    return () => {
-      alive = false
-    }
-  }, [token])
-
-  if (!jobs) return null
-
-  return (
-    <div className="card-gradient rounded-brutal p-4">
-      <div className="mb-3 flex items-baseline justify-between">
-        <span className="font-display text-sm uppercase tracking-wider text-foreground">
-          Já impresso
-        </span>
-        <span className="text-[11.5px] text-muted-foreground">
-          estimado vs. real
-        </span>
-      </div>
-
-      {jobs.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          Nada impresso ainda.
-        </p>
-      ) : (
-        <table className="w-full font-mono text-[11px]">
-          <thead>
-            <tr className="bg-void/60 text-[11px] uppercase tracking-widest text-muted-foreground">
-              <th className="px-2 py-1 text-left">peça</th>
-              <th className="px-2 py-1 text-left">quem</th>
-              <th className="px-2 py-1 text-right">estimado</th>
-              <th className="px-2 py-1 text-right">real</th>
-              <th className="px-2 py-1 text-right">fim</th>
-            </tr>
-          </thead>
-          <tbody>
-            {jobs.slice(0, 12).map((job) => {
-              const over =
-                job.billedSeconds !== null && job.billedSeconds > job.estimatedSeconds * 1.2
-              return (
-                <tr key={job.id} className="border-t border-line">
-                  <td className="max-w-[160px] truncate px-2 py-1">
-                    <span className={statusTone(job.status)}>{job.title}</span>
-                  </td>
-                  <td className="px-2 py-1 text-muted-foreground">{job.owner.displayName}</td>
-                  <td className="px-2 py-1 text-right text-muted-foreground">
-                    {formatSeconds(job.estimatedSeconds)}
-                  </td>
-                  {/* Estourar a estimativa fica visível pro grupo: é a
-                      auditoria que resolve o problema sozinha. */}
-                  {/* "0 min" para peça que nunca subiu na máquina é enganoso:
-                      parece que imprimiu de graça. Sem cobrança é sem
-                      cobrança. */}
-                  <td className={cn('px-2 py-1 text-right', over ? 'text-burn' : 'text-foreground')}>
-                    {job.billedSeconds === null || job.billedSeconds === 0 ? (
-                      <span className="text-muted-foreground">
-                        {job.status === 'cancelled' ? 'não começou' : '—'}
-                      </span>
-                    ) : (
-                      formatSeconds(job.billedSeconds)
-                    )}
-                    {job.refundedSeconds > 0 && <span className="text-acid-text"> (devolvido)</span>}
-                  </td>
-                  <td className="px-2 py-1 text-right text-muted-foreground">
-                    {job.finishedAt
-                      ? new Date(job.finishedAt).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit'
-                        })
-                      : '—'}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      )}
-    </div>
-  )
-}
-
-function statusTone(status: string): string {
-  if (status === 'finished') return 'text-foreground'
-  if (status === 'failed') return 'text-destructive'
-  return 'text-muted-foreground line-through'
 }
 
 /** "hoje 21:40", "quinta 21:40", "12/09 21:40". */

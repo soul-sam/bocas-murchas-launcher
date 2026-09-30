@@ -334,7 +334,7 @@ export interface SelfWagerOdds {
 /** O lado "apostar em mim" de uma partida minha. */
 export interface SelfWagerBoard {
   odds: SelfWagerOdds
-  /** Janela de 3 min ainda aberta? */
+  /** Janela de 5 min ainda aberta? */
   open: boolean
   closesAt: string
   maxAmount: number

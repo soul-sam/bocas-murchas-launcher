@@ -41,7 +41,7 @@ import { cn } from '@/lib/utils'
  *
  * NA PRÓPRIA PARTIDA o formulário muda de forma, porque as regras são outras
  * (ver SELF_WAGER no servidor): não há escolha de lado — é sempre vitória —,
- * a janela é de 3 min e não 5, e o retorno não é 2x fixo, é a odd da própria
+ * a janela é a mesma de 5 min, e o retorno não é 2x fixo, é a odd da própria
  * winrate, que vem pronta em `game.self.odds`. O board de quem está na minha
  * partida mas não é minha sessão vem com `mine` e sem `self`: ali a aposta
  * não cabe, e o texto manda a pessoa apostar na própria.
@@ -161,7 +161,7 @@ export function BetPopover({
           ) : (
             <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
               Vocês estão na mesma partida. Aposta em si mesmo fechada: ela vale
-              só nos 3 primeiros minutos.
+              só nos 5 primeiros minutos.
             </p>
           )
         ) : game.self ? (
@@ -177,7 +177,7 @@ export function BetPopover({
             />
           ) : (
             <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-xs text-muted-foreground">
-              Aposta em si mesmo fechada. Ela vale só nos 3 primeiros minutos —
+              Aposta em si mesmo fechada. Ela vale só nos 5 primeiros minutos —
               depois disso você já sabe demais.
             </p>
           )
