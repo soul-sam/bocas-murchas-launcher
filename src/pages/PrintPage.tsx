@@ -1135,9 +1135,60 @@ function QueueCard({
   const [overId, setOverId] = React.useState<string | null>(null)
   /** Erro da ordem manual (ex.: 403 "não sobe a própria peça"), mostrado no card. */
   const [orderError, setOrderError] = React.useState<string | null>(null)
+  /**
+   * Linha "armada" pela alça: só ela fica `draggable`. Assim o arrastar começa
+   * só pela alça e não rouba seleção/cursor dos campos dentro da linha.
+   */
+  const [armedId, setArmedId] = React.useState<string | null>(null)
   const pinnedIds = queue.filter((job) => !!job.pinned).map((job) => job.id)
   // Qualquer ação em andamento trava o arrastar.
   const canDrag = canOperate && busy === null
+
+  // Soltou o botão sem arrastar: desarma.
+  React.useEffect(() => {
+    if (!armedId) return
+    const disarm = (): void => setArmedId(null)
+    window.addEventListener('mouseup', disarm)
+    window.addEventListener('touchend', disarm)
+    return () => {
+      window.removeEventListener('mouseup', disarm)
+      window.removeEventListener('touchend', disarm)
+    }
+  }, [armedId])
+
+  // A fila mudou (polling/socket): a linha arrastada pode ter sumido sem
+  // `dragend`, então zera o estado do arrastar. Chaveado pelos ids (e ordem),
+  // não pela referência: todo push de estado da impressora (progresso etc.)
+  // troca o array e cancelaria um arrasto no meio sem necessidade.
+  const queueKey = queue.map((job) => job.id).join(',')
+  React.useEffect(() => {
+    setDragId(null)
+    setOverId(null)
+    setArmedId(null)
+  }, [queueKey])
+
+  /**
+   * Pré-checagem de "não sobe a própria peça" (o servidor também barra):
+   * monta a ordem completa resultante — `top` fixado e depois o resto na ordem
+   * atual — e vê se alguma peça de quem está operando subiu de posição.
+   */
+  function raisesOwn(top: string[]): boolean {
+    if (!meId) return false
+    const before = queue.map((job) => job.id)
+    const after = [...top, ...before.filter((id) => !top.includes(id))]
+    return queue.some(
+      (job) => job.owner.id === meId && after.indexOf(job.id) < before.indexOf(job.id)
+    )
+  }
+
+  /** Manda o novo topo fixado, se não subir a própria peça. */
+  function sendOrder(key: string, top: string[], fallback: string): Promise<void> {
+    if (raisesOwn(top)) {
+      setOrderError('Você não pode subir a sua própria peça.')
+      return Promise.resolve()
+    }
+    return runOrder(key, () => printApi.setQueueOrder(token, top), fallback)
+  }
 
   /**
    * Roda uma ação de ordem e sempre recarrega a fila: em caso de erro, a tela
@@ -1162,7 +1213,7 @@ function QueueCard({
   /** "Passar na frente": vira a 1ª do topo fixado, as outras fixadas seguem atrás. */
   function pinToTop(job: PrintQueueItem): Promise<void> {
     const ids = [job.id, ...pinnedIds.filter((id) => id !== job.id)]
-    return runOrder(job.id, () => printApi.setQueueOrder(token, ids), 'Não deu pra passar na frente')
+    return sendOrder(job.id, ids, 'Não deu pra passar na frente')
   }
 
   function unpin(job: PrintQueueItem): Promise<void> {
@@ -1182,6 +1233,7 @@ function QueueCard({
     const draggedId = dragId
     setDragId(null)
     setOverId(null)
+    setArmedId(null)
     if (!draggedId || draggedId === targetId || !canDrag) return
     const ids = queue.map((job) => job.id)
     const from = ids.indexOf(draggedId)
@@ -1190,7 +1242,7 @@ function QueueCard({
     ids.splice(from, 1)
     ids.splice(to, 0, draggedId)
     const top = ids.slice(0, to + 1)
-    void runOrder(draggedId, () => printApi.setQueueOrder(token, top), 'Não deu pra mudar a ordem')
+    void sendOrder(draggedId, top, 'Não deu pra mudar a ordem')
   }
 
   return (
@@ -1231,9 +1283,13 @@ function QueueCard({
             return (
               <li
                 key={job.id}
-                draggable={canDrag}
+                draggable={canDrag && armedId === job.id}
                 onDragStart={(event) => {
-                  if (!canDrag) return
+                  // Só arrasta quem pegou pela alça (e nada de arrastar no meio de uma ação).
+                  if (!canDrag || armedId !== job.id) {
+                    event.preventDefault()
+                    return
+                  }
                   event.dataTransfer.effectAllowed = 'move'
                   event.dataTransfer.setData('text/plain', job.id)
                   setDragId(job.id)
@@ -1244,7 +1300,9 @@ function QueueCard({
                   event.dataTransfer.dropEffect = 'move'
                   if (overId !== job.id) setOverId(job.id)
                 }}
-                onDragLeave={() => {
+                onDragLeave={(event) => {
+                  // Passar por cima de um filho da própria linha não é "sair".
+                  if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
                   if (overId === job.id) setOverId(null)
                 }}
                 onDrop={(event) => {
@@ -1254,6 +1312,7 @@ function QueueCard({
                 onDragEnd={() => {
                   setDragId(null)
                   setOverId(null)
+                  setArmedId(null)
                 }}
                 className={cn(
                   'rounded-brutal border bg-void/40 px-3 py-2 transition-colors',
@@ -1265,6 +1324,12 @@ function QueueCard({
                   {canOperate && (
                     <span
                       title={canDrag ? 'Arrastar pra mudar a ordem' : undefined}
+                      onMouseDown={() => {
+                        if (canDrag) setArmedId(job.id)
+                      }}
+                      onTouchStart={() => {
+                        if (canDrag) setArmedId(job.id)
+                      }}
                       className={cn(
                         '-ml-1 shrink-0 text-muted-foreground',
                         canDrag ? 'cursor-grab active:cursor-grabbing' : 'opacity-40'
