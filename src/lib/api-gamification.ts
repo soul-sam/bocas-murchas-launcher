@@ -554,6 +554,8 @@ export function xpReasonLabel(reason: string | undefined | null): string {
   if (reason.startsWith('gift:')) return 'presente'
   // Easter-egg achado (API: modules/easter-eggs.ts) — o nome do ovo já saiu no toast da badge.
   if (reason.startsWith('egg:')) return 'achou um ovo'
+  // Recompensa por hora impressa (API: lib/print-queue/quota-math.ts) — `print_reward:<jobId>`.
+  if (reason.startsWith('print_reward:')) return 'impressão concluída'
   if (reason.startsWith('levelup:')) {
     const level = reason.slice('levelup:'.length)
     return level === 'backfill' ? 'níveis que você já tinha' : `nível ${level}`
