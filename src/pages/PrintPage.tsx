@@ -36,6 +36,7 @@ import {
   blocksByGroup,
   hasFilamentNews
 } from '@/components/print/FilamentCheckCard'
+import { ApprovalList } from '@/components/print/ApprovalList'
 import { FilamentTab } from '@/components/print/FilamentTab'
 import { GalleryTab } from '@/components/print/GalleryTab'
 import { HourMarket } from '@/components/print/HourMarket'
@@ -197,6 +198,10 @@ export function PrintPage() {
               ) : (
                 <NoAccessCard />
               )}
+
+              {/* Pedidos de autorização (todos, inclusive os "ver depois" da
+                  camada global) — só quem opera decide. */}
+              {state.me.canOperate && <ApprovalList />}
 
               <QueueCard
                 queue={state.queue}
@@ -1188,6 +1193,10 @@ function QueueCard({
                           conhece: a frase vem pronta do servidor. */}
                       {job.reasonText ? ` · ${job.reasonText}` : job.blockedText ? ` · ${job.blockedText}` : ''}
                     </p>
+                    {/* Peça longa ou noturna: parada até alguém que opera decidir. */}
+                    {job.approval?.status === 'pending' && (
+                      <p className="text-[11.5px] text-burn">aguardando autorização do operador</p>
+                    )}
                     {job.filaments && job.filaments.length > 0 && (
                       <FilamentChips filaments={job.filaments} className="mt-1" />
                     )}

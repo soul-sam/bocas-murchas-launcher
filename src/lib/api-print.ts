@@ -119,6 +119,14 @@ export interface PrintQueueItem {
   filamentChecks?: ToolCheck[]
   /** Grupos que já liberaram a peça a usar os rolos deles. */
   releasedGroupIds?: string[]
+  /**
+   * Autorização do operador (peça longa ou que entraria no silêncio).
+   * `status === 'pending'` = a peça espera alguém que opera decidir.
+   * Ausente em API velha.
+   */
+  approval?: { status: string; longJob: boolean; night: boolean } | null
+  /** Fixada no topo da fila por quem opera. Ausente em API velha. */
+  pinned?: { by: string; at: string } | null
 }
 
 export interface PrintRunning {
@@ -452,6 +460,39 @@ export interface HourMarketView {
   mine: HourListing | null
 }
 
+// ---- autorização do operador ----
+
+export type ApprovalAction = 'approve' | 'schedule' | 'deny'
+
+/** Previsão de começo e fim de uma peça, em ISO. */
+export interface ApprovalEta {
+  startAt: string
+  finishAt: string
+}
+
+/**
+ * Pedido de autorização pendente, como quem opera vê. As previsões vêm prontas
+ * do servidor (mesma simulação da fila) — a tela não calcula horário.
+ */
+export interface PrintApproval {
+  id: string
+  job: { id: string; title: string; estimatedSeconds: number; thumbUrl: string | null }
+  owner: MarketPerson
+  ownerQuota: {
+    quotaSeconds: number
+    usedSeconds: number
+    availableSeconds: number
+    receivedSeconds: number
+  }
+  /** `longJob`: passa do limite de horas; `night`: terminaria no silêncio. */
+  reasons: { longJob: boolean; night: boolean }
+  /** Se aprovar agora. */
+  etaNow: ApprovalEta | null
+  /** Se programar pro fim do silêncio (`scheduleAt`). */
+  etaScheduled: ApprovalEta | null
+  createdAt: string
+}
+
 export const printApi = {
   state: (token: string | null) => request<PrintState>('/print/state', { token }),
 
@@ -485,6 +526,28 @@ export const printApi = {
       token,
       body: JSON.stringify(body)
     }),
+
+  /** Pendentes pra quem opera (403 pra quem não opera). `scheduleAt` = fim do silêncio. */
+  approvals: (token: string | null) =>
+    request<{ approvals: PrintApproval[]; scheduleAt: string | null }>('/print/approvals', { token }),
+  /** 409 = já decidida por outra pessoa; 403 = peça sua. */
+  decideApproval: (token: string | null, id: string, body: { action: ApprovalAction; note?: string }) =>
+    request<{ message: string; status: string; scheduledFor: string | null }>(
+      `/print/approvals/${id}/decide`,
+      { method: 'POST', token, body: JSON.stringify(body) }
+    ),
+
+  /** Ordem manual: estas peças ficam fixadas no topo, nesta ordem. */
+  setQueueOrder: (token: string | null, jobIds: string[]) =>
+    request<{ message: string }>('/print/queue/order', {
+      method: 'PUT',
+      token,
+      body: JSON.stringify({ jobIds })
+    }),
+  unpinJob: (token: string | null, jobId: string) =>
+    request<{ message: string }>(`/print/queue/order/${jobId}`, { method: 'DELETE', token }),
+  unpinAll: (token: string | null) =>
+    request<{ message: string }>('/print/queue/order', { method: 'DELETE', token }),
 
   usage: (token: string | null) => request<{ usage: PrintUsageRow[] }>('/print/usage', { token }),
 

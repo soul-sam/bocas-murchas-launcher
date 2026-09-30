@@ -71,6 +71,7 @@ import { AdminModal } from '@/components/AdminModal'
 import { CostsModal } from '@/components/CostsModal'
 import { CostShareBanner } from '@/components/social/CostShareBanner'
 import { WhatsNewModal } from '@/components/WhatsNewModal'
+import { ApprovalModal } from '@/components/print/ApprovalModal'
 import { LolFullscreenNotice } from '@/components/LolFullscreenNotice'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -221,6 +222,9 @@ function GlobalOverlays() {
       {/* Novidades da versão: camada própria (sem Radix) porque pode abrir
           sozinha no primeiro quadro, antes de qualquer clique. */}
       <WhatsNewModal />
+      {/* Pedido de autorização de peça (longa ou noturna) pra quem opera a
+          impressora: aparece em qualquer tela, como as novidades. */}
+      <ApprovalModal />
       {/* Confirmar o clipe: também abre sozinha, disparada por um atalho
           global que funciona com a janela em segundo plano. */}
       <ClipComposer />

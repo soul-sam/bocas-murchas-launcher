@@ -22,6 +22,12 @@ interface PrintContextValue {
   error: string | null
   refresh: () => Promise<void>
   refreshing: boolean
+  /**
+   * Sobe a cada `print:approval`. O modal de autorização do operador observa
+   * este número pra recarregar a lista dele — o `/print/state` não traz os
+   * pendentes, e um evento só não justifica um segundo contexto.
+   */
+  approvalTick: number
 }
 
 const PrintContext = React.createContext<PrintContextValue | null>(null)
@@ -35,6 +41,7 @@ export function PrintProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [approvalTick, setApprovalTick] = React.useState(0)
 
   const load = React.useCallback(
     async (silent = false) => {
@@ -126,8 +133,16 @@ export function PrintProvider({ children }: { children: React.ReactNode }) {
       )
     }
 
+    // Autorização mudou (pedido novo ou decidido): a fila muda de cara ("aguardando
+    // autorização") e o modal do operador precisa reler os pendentes.
+    const onApproval = (): void => {
+      setApprovalTick((tick) => tick + 1)
+      onChange()
+    }
+
     socket.on('print:queue', onChange)
     socket.on('print:market', onChange)
+    socket.on('print:approval', onApproval)
     socket.on('print:printer', onChange)
     socket.on('print:job', onChange)
     socket.on('print:telemetry', onTelemetry)
@@ -135,6 +150,7 @@ export function PrintProvider({ children }: { children: React.ReactNode }) {
     return () => {
       socket.off('print:queue', onChange)
       socket.off('print:market', onChange)
+      socket.off('print:approval', onApproval)
       socket.off('print:printer', onChange)
       socket.off('print:job', onChange)
       socket.off('print:telemetry', onTelemetry)
@@ -143,8 +159,8 @@ export function PrintProvider({ children }: { children: React.ReactNode }) {
   }, [socket, load])
 
   const value = React.useMemo(
-    () => ({ state, loading, error, refresh: () => load(), refreshing }),
-    [state, loading, error, load, refreshing]
+    () => ({ state, loading, error, refresh: () => load(), refreshing, approvalTick }),
+    [state, loading, error, load, refreshing, approvalTick]
   )
 
   return <PrintContext.Provider value={value}>{children}</PrintContext.Provider>
