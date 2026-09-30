@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.32.0',
+    headline: 'Mercado de horas virou loja, e o histórico ganhou aba própria',
+    items: [
+      'O mercado de horas saiu da Fila e virou a aba "Mercado de horas", com cara de lojinha: carteira, estoque e um card por vendedor.',
+      '"Já impresso" virou a aba "Histórico", agora com a lista inteira em vez das últimas 12 peças.',
+      'Abas da impressora na nova ordem: Fila, Filamento, Mercado de horas, Encomendas, Mural, Manutenção, Histórico.'
+    ]
+  },
+  {
     version: '1.31.0',
     headline: 'Peça longa e peça de madrugada: o operador decide',
     items: [
