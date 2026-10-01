@@ -16,6 +16,10 @@ export type SlashCommand =
   | { kind: 'drop'; seed: string }
   | { kind: 'shop' }
   | { kind: 'achievements' }
+  /** Painéis da Arena (coluna da direita): ranking, apostas, recap. */
+  | { kind: 'ranking' }
+  | { kind: 'wagers' }
+  | { kind: 'recap' }
   | { kind: 'suggestion' }
   | { kind: 'printRequest' }
   | { kind: 'smoke' }
@@ -69,6 +73,16 @@ const ALIASES: Record<string, Exclude<SlashCommand['kind'], 'egg'>> = {
   conquista: 'achievements',
   badges: 'achievements',
   medalhas: 'achievements',
+  ranking: 'ranking',
+  rank: 'ranking',
+  placar: 'ranking',
+  top: 'ranking',
+  apostas: 'wagers',
+  aposta: 'wagers',
+  apostar: 'wagers',
+  bet: 'wagers',
+  recap: 'recap',
+  semana: 'recap',
   fumaca: 'smoke',
   fumaça: 'smoke',
   sinal: 'smoke',
@@ -110,6 +124,12 @@ export function parseSlashCommand(text: string): SlashCommand | null {
       return { kind: 'shop' }
     case 'achievements':
       return { kind: 'achievements' }
+    case 'ranking':
+      return { kind: 'ranking' }
+    case 'wagers':
+      return { kind: 'wagers' }
+    case 'recap':
+      return { kind: 'recap' }
     case 'suggestion':
       return { kind: 'suggestion' }
     case 'printRequest':
@@ -182,8 +202,11 @@ export const SLASH_HELP: Array<{ command: string; hint: string }> = [
   { command: '/drop', hint: 'Anúncio animado (admin)' },
   { command: '/sugestao', hint: 'Pedir uma coisa nova, ou avisar que quebrou' },
   { command: '/encomendar', hint: 'Pedir pra alguém imprimir uma peça na impressora 3D' },
+  { command: '/ranking', hint: 'Quem lidera a semana (e desde sempre)' },
+  { command: '/apostas', hint: 'Partidas ao vivo pra apostar murchos' },
   { command: '/loja', hint: 'Abrir a lojinha' },
   { command: '/conquistas', hint: 'Todas as badges, quem tem cada uma e o placar de colecionador' },
+  { command: '/recap', hint: 'O recap da semana e as anteriores' },
   { command: '/fumaca', hint: 'Avisar que você entra daqui a pouco' },
   { command: '/clipe', hint: 'Salvar os últimos segundos da call' },
   { command: '/tocar', hint: 'Pedir uma música pra call — ex.: /tocar seu link' },

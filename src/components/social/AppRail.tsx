@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { MessagesSquare, Gamepad2, LogOut, Keyboard, Trophy, Flame, Printer, Server } from 'lucide-react'
+import { MessagesSquare, Gamepad2, LogOut, Keyboard, Printer, Server } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
@@ -8,11 +8,11 @@ import { useAuth } from '@/lib/auth-context'
 import { useChat } from '@/lib/chat-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
-import { useGamification } from '@/lib/gamification-context'
 import { useCargos } from '@/lib/cargos-context'
 import { useCosts } from '@/lib/costs-context'
 import { toqueLongo } from '@/lib/toque-longo'
 import { isWeb } from '@/lib/platform'
+import { ArenaRail } from './ArenaRail'
 
 /**
  * Barra estreita da esquerda: alterna entre o social e o launcher do Minecraft.
@@ -29,8 +29,7 @@ export function AppRail() {
     useChat()
   const { toggleShortcuts, openUserMenu, openCosts } = useOverlays()
   const { summary: costs } = useCosts()
-  const { view, setView, leaderboardOpen, toggleLeaderboard, isPhone } = useLayout()
-  const { profile } = useGamification()
+  const { view, setView, isPhone } = useLayout()
   const { can } = useCargos()
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -72,7 +71,6 @@ export function AppRail() {
   const totalMentions = Object.values(mentions).reduce((sum, count) => sum + count, 0)
 
   const onSocial = pathname === '/'
-  const streak = profile?.streak ?? 0
   const dmActive = activeChannelId?.startsWith('dm:') === true
 
   // Voltar pro servidor tem que cair no canal em que a pessoa estava, não num
@@ -98,20 +96,6 @@ export function AppRail() {
     const target =
       textChannels.find((c) => c.id === lastServerChannelRef.current) ?? textChannels[0]
     if (target) openChannel(target.id)
-  }
-
-  /**
-   * O painel de ranking mora na coluna direita da tela social. Clicar nele
-   * da aba do Minecraft precisa levar pra lá — abrir um painel que a pessoa
-   * não vê é a mesma coisa que não fazer nada.
-   */
-  const openRanking = (): void => {
-    if (!onSocial) {
-      navigate('/')
-      if (!leaderboardOpen) toggleLeaderboard()
-      return
-    }
-    toggleLeaderboard()
   }
 
   return (
@@ -160,36 +144,10 @@ export function AppRail() {
         </RailLink>
       )}
 
-      <button
-        type="button"
-        title={profile ? `Ranking · nível ${profile.level}` : 'Ranking'}
-        aria-label="Ranking"
-        onClick={openRanking}
-        className={cn(
-          'alvo-dedo relative rounded-brutal p-2.5 transition-colors',
-          leaderboardOpen && onSocial
-            ? 'bg-acid/10 text-acid shadow-[inset_2px_0_0_hsl(var(--acid))]'
-            : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
-        )}
-      >
-        <Trophy className="h-5 w-5" />
-        {profile && (
-          <span className="absolute -bottom-0.5 -right-0.5 min-w-4 rounded-full border border-acid-dark bg-void px-1 text-center font-mono text-[11px] font-bold leading-4 text-foreground">
-            {profile.level}
-          </span>
-        )}
-      </button>
-
-      {/* Streak só a partir de 2: "1" é qualquer um que abriu o app hoje. */}
-      {streak >= 2 && (
-        <span
-          title={`Streak de check-in: ${streak} dias seguidos`}
-          className="flex items-center gap-0.5 rounded-brutal px-1 font-mono text-[11.5px] font-bold text-burn"
-        >
-          <Flame className="h-3 w-3" />
-          {streak}
-        </span>
-      )}
+      {/* A ARENA: o troféu (ranking, com o nível) e, embaixo dele, apostas,
+          conquistas, lojinha e recap — cada um com o seu ícone. Era um troféu
+          só abrindo um painel com tudo dentro. Ver components/social/ArenaRail. */}
+      <ArenaRail />
 
       {/* Conversas abertas: os ícones acima e os botões abaixo ficam fixos;
           só esta lista rola. `min-h-0` é o que permite ela encolher em vez de

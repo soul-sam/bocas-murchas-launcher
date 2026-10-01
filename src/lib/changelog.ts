@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.35.0',
+    headline: 'O Ranking virou a Arena: cada coisa no seu lugar',
+    items: [
+      'Embaixo do troféu, na barra da esquerda, agora tem um ícone pra cada coisa: Ranking, Apostas, Conquistas, Lojinha e Recap. Antes era tudo atrás do troféu, num painel só.',
+      'O troféu mostra seu nível, a sacola mostra seus murchos e o dado acende em vermelho com a contagem de partidas abertas pra apostar.',
+      'Ranking de cara nova: pódio com os três primeiros, sua posição em destaque com a distância pra quem está na frente, e cada métrica com ícone e uma linha dizendo o que ela conta.',
+      'Apostas em painel próprio: um card por partida (o 5-stack inteiro junto, não cinco cards), contagem regressiva da janela, seus murchos e o teto, o pote e o fundo de bônus da casa, e a regra explicada pra quem chegou agora.',
+      'Recap da semana em painel próprio, com todas as premiações, a semana em números, as badges que saíram e as semanas anteriores. A retrospectiva do ano está logo embaixo.',
+      'Ctrl+K e os comandos /ranking, /apostas e /recap levam direto pra cada um.'
+    ],
+    note: 'O troféu continua abrindo o Ranking. Lojinha, conquistas, recap e apostas saíram de dentro dele e ganharam ícone próprio logo abaixo. No celular, o troféu abre um menu com os cinco.'
+  },
+  {
     version: '1.33.1',
     headline: 'Apostar pela sobreposição voltou a funcionar',
     items: [

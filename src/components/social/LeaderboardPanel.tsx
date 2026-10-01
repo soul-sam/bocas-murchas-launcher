@@ -1,353 +1,100 @@
 import * as React from 'react'
-import { useTicker } from '@/lib/use-now'
 import {
-  X,
   Coins,
   Flame,
-  ShoppingBag,
-  ScrollText,
   Loader2,
-  ChevronDown,
-  ChevronUp,
-  Swords,
-  Pickaxe,
-  Radio,
   Medal,
-  Trophy
+  MessageSquare,
+  Mic,
+  Music,
+  Swords,
+  Zap,
+  type LucideIcon
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
-import { parseMetadata, resolveAssetUrl } from '@/lib/api'
+import { resolveAssetUrl } from '@/lib/api'
 import {
   gamification as api,
-  formatCompact,
   formatMetricValue,
   METRIC_LABEL,
+  type GamificationProfile,
   type LeaderboardEntry,
   type LeaderboardMetric,
-  type LeaderboardPeriod,
-  type RecapCardMeta,
-  type WeeklyRecap,
-  DEFAULT_NAME_COLOR
+  type LeaderboardPeriod
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useLayout } from '@/lib/layout-context'
-import { useOverlays } from '@/lib/overlay-context'
-import { useMembers } from '@/lib/members-context'
+import { useMembers, type Member } from '@/lib/members-context'
 import { useGamification } from '@/lib/gamification-context'
-import { queueLabel } from '@/lib/activity-context'
-import { AwardIcon, BadgeChip, TitleTag } from '@/lib/cosmetic-icons'
 import { cn } from '@/lib/utils'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
-import { LevelRing } from './LevelRing'
-import { BetPopover, PoolBars } from './BetPopover'
-import { formatElapsed } from './ActivityLine'
+import { ArenaHeader, ArenaTabs } from './ArenaChrome'
 
 /**
- * RANKING — painel da coluna direita.
+ * RANKING — painel da coluna direita, só o ranking.
  *
- * Meu card em cima (nível, XP, murchos, streak, badges), depois o ranking
- * por período e métrica, depois as partidas ao vivo pra apostar. Uma chamada
- * ao servidor por troca de aba/métrica, nada de baixar tudo de uma vez: são
- * 14 combinações e a pessoa olha duas.
+ * Meu card, lojinha, conquistas, recap e apostas moravam aqui e saíram pra
+ * Arena (ver ArenaChrome.tsx). O que sobrou é a pergunta "quem lidera?", e
+ * ela ganhou três coisas que não cabiam antes: o pódio dos três primeiros,
+ * a MINHA posição em destaque (com a distância pra quem está na frente — é o
+ * número que faz alguém mandar mais uma mensagem) e uma linha dizendo o que
+ * cada métrica conta.
+ *
+ * Uma chamada por troca de período/métrica, guardada por combinação: voltar
+ * pra "XP · semana" mostra a lista de antes na hora e atualiza por baixo, em
+ * vez de piscar um spinner numa tabela que a pessoa acabou de ver.
  */
 
 const METRICS: LeaderboardMetric[] = ['xp', 'coins', 'streak', 'wins', 'voice', 'sounds', 'messages']
 
+const METRIC_ICON: Record<LeaderboardMetric, LucideIcon> = {
+  xp: Zap,
+  coins: Coins,
+  streak: Flame,
+  wins: Swords,
+  voice: Mic,
+  sounds: Music,
+  messages: MessageSquare
+}
+
+/**
+ * O que cada métrica conta. Espelha `leaderboardValues` da API
+ * (routes/gamification.routes.ts): murchos são os GANHOS no período, não o
+ * saldo; streak é o de agora em qualquer período; mensagem de card não conta.
+ */
+const METRIC_HINT: Record<LeaderboardMetric, string> = {
+  xp: 'Tudo que rende XP: mensagem, reação, call, partida, check-in, missão.',
+  coins: 'Murchos ganhos no período. Compra, aposta perdida e presente não entram.',
+  streak: 'Dias seguidos abrindo o launcher. É o streak de agora, em qualquer período.',
+  wins: 'Partidas ganhas de LoL e Minecraft que o launcher registrou.',
+  voice: 'Tempo em call.',
+  sounds: 'Sons do soundboard tocados.',
+  messages: 'Mensagens enviadas. Cards do sistema não contam.'
+}
+
+/** Quantos o servidor devolve (LEADERBOARD_SIZE na API). */
+const TOP = 50
+
 /**
  * Pódio. Cor em vez de emoji de medalha: 🥇🥈🥉 saem com desenho diferente em
  * cada versão do Windows e desalinham a coluna, porque cada um tem largura
- * própria. Aqui os três ocupam o mesmo espaço.
+ * própria. Ouro/prata/bronze são cores de medalha, não da marca: iguais em
+ * todo tema.
  */
-// Ouro/prata/bronze sao cores de medalha, nao da marca: iguais em todo tema.
 const MEDAL_COLOR = ['#FFC53D', '#C9C9C9', '#B87333']
 
 export function LeaderboardPanel() {
   const { closeLeaderboard: close } = useLayout()
-  const currentYear = new Date().getFullYear()
-  const { openShop, openWrapped, openAchievements } = useOverlays()
-  const [recapOpen, setRecapOpen] = React.useState(false)
-
-  return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-line bg-void xl:w-80">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
-        <h3 className="flex-1 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">Ranking</h3>
-        {/* A retrospectiva mora AQUI e não numa aba própria: quem abre o
-            ranking já está perguntando "como eu fui?", e é a mesma pergunta
-            numa escala maior. */}
-        <button
-          type="button"
-          onClick={() => openWrapped()}
-          title={`Retrospectiva Murcha ${currentYear}`}
-          aria-label="Retrospectiva Murcha"
-          className="shrink-0 rounded-brutal border border-line px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:border-acid/60 hover:text-acid"
-        >
-          {currentYear}
-        </button>
-        <button type="button" onClick={close} aria-label="Fechar" className="rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </header>
-
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-        <MyCard />
-
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={openShop}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-brutal border-2 border-burn/60 px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-burn transition-colors hover:bg-burn/15"
-          >
-            <ShoppingBag className="h-3 w-3" />
-            lojinha
-          </button>
-          <button
-            type="button"
-            onClick={() => openAchievements()}
-            title="Todas as badges, quem tem cada uma e o placar de colecionador"
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-brutal border-2 border-acid/60 px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/15"
-          >
-            <Trophy className="h-3 w-3" />
-            conquistas
-          </button>
-          <button
-            type="button"
-            onClick={() => setRecapOpen((v) => !v)}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded-brutal border-2 px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
-              recapOpen
-                ? 'border-acid bg-acid/10 text-acid'
-                : 'border-line-strong text-muted-foreground hover:border-acid/50 hover:text-foreground'
-            )}
-          >
-            <ScrollText className="h-3 w-3" />
-            recap
-            {recapOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-        </div>
-
-        {recapOpen && <RecapBox />}
-
-        <Ranking />
-        <LiveGames />
-      </div>
-    </aside>
-  )
-}
-
-// ---------------------------------------------------------------------------
-
-function MyCard() {
-  const { user } = useAuth()
-  const { byId } = useMembers()
-  const { profile, ready, cosmeticName } = useGamification()
-  const { openAchievements } = useOverlays()
-
-  if (!user) return null
-  const me = byId[user.id] ?? user
-  const color = me.profileColor ?? DEFAULT_NAME_COLOR
-  const title = cosmeticName(me.title)
-
-  if (!profile) {
-    return (
-      <div className="flex items-center gap-2 rounded-brutal border border-line bg-void/60 px-3 py-2 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
-        {ready ? 'sem perfil de gamificação ainda' : <><Loader2 className="h-3 w-3 animate-spin" /> carregando</>}
-      </div>
-    )
-  }
-
-  const pct =
-    profile.nextLevelXp > 0
-      ? Math.max(0, Math.min(100, Math.round((profile.levelXp / profile.nextLevelXp) * 100)))
-      : 0
-
-  return (
-    <div className="card-acid rounded-brutal p-3">
-      <div className="flex items-center gap-3">
-        <LevelRing level={profile.level} progress={profile.nextLevelXp > 0 ? profile.levelXp / profile.nextLevelXp : 0} size={56}>
-          <UserAvatar
-            src={resolveAssetUrl(me.avatar)}
-            name={me.displayName}
-            ringColor={color}
-            frame={me.avatarFrame}
-            className="h-11 w-11 border-2"
-          />
-        </LevelRing>
-
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 font-display text-base leading-tight" style={{ color }}>
-            <NameEffect effect={me.nameEffect} className="truncate">
-              {me.displayName}
-            </NameEffect>
-            <NameEmoji id={me.emoji} size="md" />
-          </p>
-          {title && <TitleTag titleId={me.title} name={title} className="mt-0.5 inline-flex max-w-full" />}
-          <p className="mt-0.5 flex items-center gap-2 font-mono text-[11.5px]">
-            <span className="flex items-center gap-1 text-burn" title="Murchos">
-              <Coins className="h-3 w-3" />
-              {formatCompact(profile.coins)}
-            </span>
-            <span
-              className={cn('flex items-center gap-1', profile.streak >= 2 ? 'text-burn' : 'text-muted-foreground')}
-              title={`Streak de check-in · melhor: ${profile.bestStreak}`}
-            >
-              <Flame className="h-3 w-3" />
-              {profile.streak}
-            </span>
-            <span className="ml-auto text-muted-foreground" title="XP da semana">
-              +{formatCompact(profile.weeklyXp)} sem.
-            </span>
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-2">
-        <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-          <span>
-            nível {profile.level} → {profile.level + 1}
-          </span>
-          <span>
-            {formatCompact(profile.levelXp)} / {formatCompact(profile.nextLevelXp)} XP
-          </span>
-        </div>
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-brutal bg-surface-raised">
-          <div className="xp-fill h-full bg-acid" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
-
-      {profile.badges.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-1">
-          {profile.badges.slice(0, 10).map((badge) => (
-            <BadgeChip
-              key={badge.id}
-              badgeId={badge.id}
-              name={badge.name}
-              description={badge.description}
-              rarity={badge.rarity}
-              onClick={() => openAchievements(badge.id)}
-            />
-          ))}
-          {profile.badges.length > 10 && (
-            <button
-              type="button"
-              onClick={() => openAchievements()}
-              className="font-mono text-[11px] text-muted-foreground hover:text-acid"
-              title="Ver todas as conquistas"
-            >
-              +{profile.badges.length - 10}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-
-/**
- * Resumo do último recap, expandido embaixo dos botões. Busca uma vez ao
- * abrir e guarda: o recap muda uma vez por semana, não a cada clique.
- */
-function RecapBox() {
   const { token } = useAuth()
-  const [recap, setRecap] = React.useState<WeeklyRecap | null | undefined>(undefined)
-
-  React.useEffect(() => {
-    if (!token || recap !== undefined) return
-    let cancelled = false
-    void api
-      .latestRecap(token)
-      .then((res) => {
-        if (!cancelled) setRecap(res)
-      })
-      .catch(() => {
-        if (!cancelled) setRecap(null)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [token, recap])
-
-  return (
-    <div className="rounded-brutal border border-acid-dark bg-void/60 p-2">
-      {recap === undefined ? (
-        <p className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> buscando
-        </p>
-      ) : recap ? (
-        <RecapSummary recap={recap} />
-      ) : (
-        <p className="text-[11.5px] text-muted-foreground">
-          Nenhum recap ainda — sai no domingo.
-        </p>
-      )}
-    </div>
-  )
-}
-
-function RecapSummary({ recap }: { recap: WeeklyRecap }) {
-  const { byId } = useMembers()
-  const meta = parseMetadata<RecapCardMeta>(recap.payload)
-  const range = `${shortDate(recap.weekStart)} – ${shortDate(recap.weekEnd)}`
-
-  if (!meta) {
-    return <p className="font-mono text-[11.5px] text-muted-foreground">Recap de {range} (sem detalhes).</p>
-  }
-
-  return (
-    <div className="space-y-1.5">
-      <p className="text-[11px] text-muted-foreground">Semana {range}</p>
-      <ul className="space-y-1">
-        {(meta.awards ?? []).slice(0, 5).map((award) => {
-          const person = byId[award.userId]
-          return (
-            <li key={award.key} className="flex items-center gap-1.5 text-xs">
-              <span className="flex w-5 shrink-0 items-center justify-center text-burn">
-                <AwardIcon awardKey={award.key} className="h-3.5 w-3.5" />
-              </span>
-              <span className="min-w-0 flex-1 truncate">
-                <span className="text-muted-foreground">{award.title}: </span>
-                <span
-                  className="font-display"
-                  style={person?.profileColor ? { color: person.profileColor } : undefined}
-                >
-                  {person?.displayName ?? award.displayName}
-                </span>
-              </span>
-              <span className="shrink-0 font-mono text-[11px] text-burn">
-                {formatCompact(award.value)} {award.label}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-      {meta.totals && (
-        <p className="border-t border-line pt-1 text-[11px] text-muted-foreground">
-          {formatCompact(meta.totals.messages)} msgs · {formatCompact(meta.totals.voiceMinutes)} min call ·{' '}
-          {meta.totals.games} partidas · {formatCompact(meta.totals.xp)} XP
-        </p>
-      )}
-    </div>
-  )
-}
-
-function shortDate(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return iso
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-}
-
-// ---------------------------------------------------------------------------
-
-function Ranking() {
-  const { token, user } = useAuth()
-  const { byId } = useMembers()
   const [period, setPeriod] = React.useState<LeaderboardPeriod>('week')
   const [metric, setMetric] = React.useState<LeaderboardMetric>('xp')
-  const [entries, setEntries] = React.useState<LeaderboardEntry[] | null>(null)
+  const [boards, setBoards] = React.useState<Record<string, LeaderboardEntry[]>>({})
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+
+  const key = `${period}:${metric}`
+  const entries = boards[key]
 
   React.useEffect(() => {
     if (!token) return
@@ -357,11 +104,12 @@ function Ranking() {
     void api
       .leaderboard(token, period, metric)
       .then((res) => {
-        if (!cancelled) setEntries(Array.isArray(res?.entries) ? res.entries : [])
+        if (cancelled) return
+        const list = Array.isArray(res?.entries) ? res.entries : []
+        setBoards((prev) => ({ ...prev, [key]: list }))
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        setEntries([])
         setError(err instanceof Error ? err.message : 'Não deu pra carregar o ranking.')
       })
       .finally(() => {
@@ -370,188 +118,331 @@ function Ranking() {
     return () => {
       cancelled = true
     }
-  }, [token, period, metric])
+  }, [token, period, metric, key])
+
+  const MetricIcon = METRIC_ICON[metric]
 
   return (
-    <section>
-      <div className="mb-2 grid grid-cols-2 gap-1">
-        {(['week', 'all'] as LeaderboardPeriod[]).map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => setPeriod(p)}
-            className={cn(
-              'rounded-brutal border px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
-              period === p
-                ? 'border-acid bg-acid/10 text-acid'
-                : 'border-line text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {p === 'week' ? 'Semana' : 'Sempre'}
-          </button>
-        ))}
-      </div>
-
-      <div className="mb-2 flex flex-wrap gap-1">
-        {METRICS.map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => setMetric(m)}
-            className={cn(
-              'rounded-brutal border px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-widest transition-colors',
-              metric === m
-                ? 'border-burn bg-burn/15 text-burn'
-                : 'border-line text-muted-foreground hover:border-burn/50 hover:text-foreground'
-            )}
-          >
-            {METRIC_LABEL[m]}
-          </button>
-        ))}
-      </div>
-
-      <div className="relative min-h-[80px] rounded-brutal border border-line bg-void/60">
-        {loading && (
-          <div className="absolute inset-0 z-conteudo flex items-center justify-center bg-void/60">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          </div>
+    <aside className="flex w-72 shrink-0 flex-col border-l border-line bg-void xl:w-80">
+      <ArenaHeader title="Ranking" onClose={close}>
+        {loading && entries && (
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="atualizando" />
         )}
+      </ArenaHeader>
+      <ArenaTabs current="ranking" />
 
-        {error ? (
-          <p className="px-3 py-4 text-center text-xs text-destructive">{error}</p>
-        ) : entries && entries.length === 0 && !loading ? (
-          <p className="px-3 py-4 text-center text-xs text-muted-foreground">
-            Ninguém pontuou ainda. Vai lá.
-          </p>
-        ) : (
-          <ol className="divide-y divide-line">
-            {(entries ?? []).map((entry) => {
-              const person = byId[entry.userId]
-              const isMe = entry.userId === user?.id
-              const color = person?.profileColor ?? entry.profileColor ?? undefined
+      <div className="scroll-stable min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+        {/* Período: dois estados, um controle segmentado. */}
+        <div role="tablist" aria-label="Período" className="grid grid-cols-2 gap-0.5 rounded-brutal border border-line bg-depth-2 p-0.5">
+          {(['week', 'all'] as LeaderboardPeriod[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              role="tab"
+              aria-selected={period === p}
+              onClick={() => setPeriod(p)}
+              className={cn(
+                'rounded-[4px] py-1 text-xs font-medium transition-colors',
+                period === p
+                  ? 'bg-acid/15 text-acid'
+                  : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
+              )}
+            >
+              {p === 'week' ? 'Esta semana' : 'Desde sempre'}
+            </button>
+          ))}
+        </div>
+
+        {/* Métrica: chips com ícone. Sete cabem em duas linhas a 288px. */}
+        <div>
+          <div role="tablist" aria-label="Métrica" className="flex flex-wrap gap-1">
+            {METRICS.map((m) => {
+              const Icon = METRIC_ICON[m]
+              const active = metric === m
               return (
-                <li
-                  key={entry.userId}
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setMetric(m)}
                   className={cn(
-                    'flex items-center gap-2 px-2 py-1.5',
-                    isMe && 'bg-acid/[0.06] shadow-[inset_2px_0_0_hsl(var(--acid))]'
+                    'inline-flex items-center gap-1 rounded-brutal border px-2 py-1 text-[11.5px] transition-colors',
+                    active
+                      ? 'border-burn bg-burn/15 text-burn'
+                      : 'border-line text-muted-foreground hover:border-line-strong hover:text-foreground'
                   )}
                 >
-                  {entry.rank <= 3 ? (
-                    <span
-                      className="flex w-6 shrink-0 items-center justify-center"
-                      style={{ color: MEDAL_COLOR[entry.rank - 1] }}
-                      title={`${entry.rank}º lugar`}
-                    >
-                      <Medal className="h-4 w-4" aria-hidden />
-                    </span>
-                  ) : (
-                    <span className="w-6 shrink-0 text-center font-mono text-[11.5px] text-muted-foreground">
-                      #{entry.rank}
-                    </span>
-                  )}
-                  <UserAvatar
-                    userId={entry.userId}
-                    src={resolveAssetUrl(person?.avatar ?? entry.avatar)}
-                    name={person?.displayName ?? entry.displayName}
-                    ringColor={color}
-                    frame={person?.avatarFrame}
-                    className="h-6 w-6"
-                  />
-                  <span
-                    className="flex min-w-0 flex-1 items-center gap-1 text-sm"
-                    style={color ? { color } : undefined}
-                  >
-                    <NameEffect effect={person?.nameEffect} className="truncate">
-                      {person?.displayName ?? entry.displayName}
-                    </NameEffect>
-                    <NameEmoji id={person?.emoji} />
-                  </span>
-                  <span className="shrink-0 font-mono text-[11.5px] text-burn">
-                    {formatMetricValue(metric, entry.value)}
-                  </span>
-                </li>
+                  <Icon className="h-3 w-3 shrink-0" aria-hidden />
+                  {METRIC_LABEL[m]}
+                </button>
               )
             })}
-          </ol>
+          </div>
+          <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
+            <MetricIcon className="mt-0.5 h-3 w-3 shrink-0 text-burn" aria-hidden />
+            <span>{METRIC_HINT[metric]}</span>
+          </p>
+        </div>
+
+        {error && !entries ? (
+          <p className="rounded-brutal border border-destructive/40 bg-destructive/10 px-3 py-3 text-center text-xs text-destructive">
+            {error}
+          </p>
+        ) : !entries ? (
+          <Skeleton />
+        ) : entries.length === 0 ? (
+          <p className="rounded-brutal border border-line bg-void/60 px-3 py-6 text-center text-xs text-muted-foreground">
+            Ninguém pontuou em {METRIC_LABEL[metric].toLowerCase()} {period === 'week' ? 'esta semana' : 'ainda'}.
+            <br />
+            Vai lá.
+          </p>
+        ) : (
+          <div className={cn('space-y-3 transition-opacity', loading && 'opacity-70')}>
+            <MyStanding entries={entries} metric={metric} period={period} />
+            <Podium entries={entries.slice(0, 3)} metric={metric} />
+            {entries.length > 3 && <Rows entries={entries.slice(3)} metric={metric} />}
+            <p className="text-center text-[11px] text-muted-foreground">
+              {entries.length === TOP ? `top ${TOP}` : `${entries.length} ${entries.length === 1 ? 'pessoa' : 'pessoas'}`}
+              {' · '}
+              {period === 'week' ? 'a semana vira na segunda' : 'desde o começo'}
+            </p>
+          </div>
         )}
       </div>
-    </section>
+    </aside>
   )
 }
 
 // ---------------------------------------------------------------------------
 
-// Relogio compartilhado (para com a janela escondida): ver lib/use-now.
-
-function LiveGames() {
-  const { user } = useAuth()
+/** Quem é a pessoa da linha: o membro (fresco) ganha do retrato que veio na lista. */
+function usePerson() {
   const { byId } = useMembers()
-  const { liveGames } = useGamification()
-  const now = useTicker(10_000)
+  return React.useCallback(
+    (entry: LeaderboardEntry): { member: Member | undefined; name: string; color: string | undefined; avatar: string | undefined } => {
+      const member = byId[entry.userId]
+      return {
+        member,
+        name: member?.displayName ?? entry.displayName,
+        color: member?.profileColor ?? entry.profileColor ?? undefined,
+        avatar: resolveAssetUrl(member?.avatar ?? entry.avatar)
+      }
+    },
+    [byId]
+  )
+}
+
+/**
+ * Meu valor quando eu não estou na lista. Só o que o perfil sabe de verdade:
+ * na semana só XP (`weeklyXp`); "murchos ganhos" não é o saldo, então fica
+ * de fora nos dois períodos.
+ */
+function myValueFor(profile: GamificationProfile, period: LeaderboardPeriod, metric: LeaderboardMetric): number | null {
+  if (metric === 'streak') return profile.streak
+  if (period === 'week') return metric === 'xp' ? profile.weeklyXp : null
+  switch (metric) {
+    case 'xp':
+      return profile.xp
+    case 'wins':
+      return profile.gamesWon
+    case 'voice':
+      return profile.voiceMinutes
+    case 'sounds':
+      return profile.soundPlays
+    case 'messages':
+      return profile.messageCount
+    default:
+      return null
+  }
+}
+
+function MyStanding({
+  entries,
+  metric,
+  period
+}: {
+  entries: LeaderboardEntry[]
+  metric: LeaderboardMetric
+  period: LeaderboardPeriod
+}) {
+  const { user } = useAuth()
+  const { profile } = useGamification()
+  const person = usePerson()
+  if (!user) return null
+
+  const mine = entries.find((e) => e.userId === user.id)
+
+  if (!mine) {
+    const value = profile ? myValueFor(profile, period, metric) : null
+    return (
+      <div className="rounded-brutal border border-line bg-void/60 px-3 py-2">
+        <p className="text-xs text-foreground">Você ainda não está no top {TOP}.</p>
+        <p className="text-[11px] text-muted-foreground">
+          {value != null && value > 0
+            ? `Seu total: ${formatMetricValue(metric, value)}. ${entries.length > 0 ? `Falta ${formatMetricValue(metric, Math.max(0, entries[entries.length - 1].value - value))} pra entrar.` : ''}`
+            : METRIC_HINT[metric]}
+        </p>
+      </div>
+    )
+  }
+
+  const above = mine.rank > 1 ? entries[mine.rank - 2] : undefined
+  const below = entries[mine.rank]
+  const detail = above
+    ? `${formatMetricValue(metric, Math.max(0, above.value - mine.value))} atrás de ${person(above).name}`
+    : below
+      ? `${formatMetricValue(metric, Math.max(0, mine.value - below.value))} à frente de ${person(below).name}`
+      : 'sozinho no ranking'
 
   return (
-    <section>
-      <h4 className="mb-1.5 flex items-center gap-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
-        <Radio className={cn('h-3 w-3', liveGames.length > 0 ? 'text-destructive' : '')} />
-        Ao vivo — {liveGames.length}
-      </h4>
-
-      {liveGames.length === 0 ? (
-        <p className="rounded-brutal border border-line bg-void/60 px-3 py-3 text-center text-xs text-muted-foreground">
-          Ninguém em partida agora.
+    <div className="flex items-center gap-3 rounded-brutal border border-line bg-void/60 px-3 py-2 shadow-[inset_2px_0_0_hsl(var(--acid))]">
+      <span className="font-display text-2xl leading-none text-acid" aria-label={`${mine.rank}º lugar`}>
+        #{mine.rank}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="flex items-baseline gap-1.5 text-xs text-foreground">
+          <span>você</span>
+          <span className="font-mono text-burn">{formatMetricValue(metric, mine.value)}</span>
         </p>
-      ) : (
-        <ul className="space-y-1.5">
-          {liveGames.map((game) => {
-            const person = byId[game.session.userId]
-            const name = person?.displayName ?? game.session.user?.displayName ?? '?'
-            const color = person?.profileColor ?? game.session.user?.profileColor ?? undefined
-            const Icon = game.session.game === 'minecraft' ? Pickaxe : Swords
-            const detail = [game.session.champion, queueLabel(game.session.queue ?? undefined)]
-              .filter(Boolean)
-              .join(' · ')
-            const since = new Date(game.session.startedAt).getTime()
-            const isMine = game.session.userId === user?.id
+        <p className="truncate text-[11px] text-muted-foreground">{detail}</p>
+      </div>
+    </div>
+  )
+}
 
-            return (
-              <li key={game.session.id} className="rounded-brutal border border-burn/40 bg-burn/[0.04] p-2">
-                <div className="flex items-center gap-2">
-                  <UserAvatar
-                    userId={game.session.userId}
-                    src={resolveAssetUrl(person?.avatar ?? game.session.user?.avatar)}
-                    name={name}
-                    ringColor={color}
-                    frame={person?.avatarFrame}
-                    className="h-7 w-7"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm" style={color ? { color } : undefined}>
-                      {name}
-                    </p>
-                    <p className="flex items-center gap-1 truncate text-[11px] text-burn">
-                      <Icon className="h-2.5 w-2.5 shrink-0" />
-                      {detail || game.session.game}
-                      {Number.isFinite(since) && <span className="text-muted-foreground">· {formatElapsed(since, now)}</span>}
-                    </p>
-                  </div>
-                  {!isMine && (
-                    <BetPopover userId={game.session.userId} sessionId={game.session.id} targetName={name} side="left">
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-brutal border border-acid-dark px-2 py-1 font-mono text-[11px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/15 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {game.myWager ? 'apostado' : game.open ? 'apostar' : 'fechado'}
-                      </button>
-                    </BetPopover>
-                  )}
-                </div>
-                <PoolBars pool={game.pool} className="mt-2" />
-              </li>
-            )
-          })}
-        </ul>
+// ---------------------------------------------------------------------------
+
+function Podium({ entries, metric }: { entries: LeaderboardEntry[]; metric: LeaderboardMetric }) {
+  const [first, second, third] = entries
+  // Visualmente 2º · 1º · 3º, o do meio mais alto — a forma de pódio que todo
+  // mundo lê sem legenda.
+  const slots = [second, first, third]
+
+  return (
+    <ol className="grid grid-cols-3 items-end gap-1" aria-label="Pódio">
+      {slots.map((entry, position) =>
+        entry ? (
+          <PodiumSlot key={entry.userId} entry={entry} metric={metric} tall={position === 1} />
+        ) : (
+          <li key={`vazio-${position}`} aria-hidden />
+        )
       )}
-    </section>
+    </ol>
+  )
+}
+
+function PodiumSlot({ entry, metric, tall }: { entry: LeaderboardEntry; metric: LeaderboardMetric; tall: boolean }) {
+  const { user } = useAuth()
+  const person = usePerson()
+  const { member, name, color, avatar } = person(entry)
+  const medal = MEDAL_COLOR[entry.rank - 1]
+  const isMe = entry.userId === user?.id
+
+  return (
+    <li
+      className={cn(
+        'flex min-w-0 flex-col items-center rounded-brutal border border-line bg-void/60 px-1 pt-2 text-center',
+        isMe && 'border-acid/40 bg-acid/[0.06]'
+      )}
+      title={`${entry.rank}º · ${name} · ${formatMetricValue(metric, entry.value)}`}
+    >
+      <UserAvatar
+        userId={entry.userId}
+        src={avatar}
+        name={name}
+        ringColor={medal}
+        frame={member?.avatarFrame}
+        className={cn('border-2', tall ? 'h-12 w-12' : 'h-10 w-10')}
+      />
+      <span
+        className="mt-1.5 flex w-full min-w-0 items-center justify-center gap-0.5 text-xs leading-tight"
+        style={color ? { color } : undefined}
+      >
+        <NameEffect effect={member?.nameEffect} className="truncate">
+          {name}
+        </NameEffect>
+        <NameEmoji id={member?.emoji} />
+      </span>
+      <span className="font-mono text-[11.5px] text-burn">{formatMetricValue(metric, entry.value)}</span>
+      {/* O degrau: altura é posição. */}
+      <span
+        className={cn(
+          'mt-1.5 flex w-full items-center justify-center gap-1 rounded-t-[4px] bg-surface-raised font-mono text-[11.5px] font-bold',
+          tall ? 'h-7' : 'h-5'
+        )}
+        style={{ color: medal }}
+      >
+        <Medal className="h-3 w-3" aria-hidden />
+        {entry.rank}
+      </span>
+    </li>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+function Rows({ entries, metric }: { entries: LeaderboardEntry[]; metric: LeaderboardMetric }) {
+  const { user } = useAuth()
+  const person = usePerson()
+
+  return (
+    <ol className="divide-y divide-line rounded-brutal border border-line bg-void/60" start={entries[0]?.rank ?? 4}>
+      {entries.map((entry) => {
+        const { member, name, color, avatar } = person(entry)
+        const isMe = entry.userId === user?.id
+        return (
+          <li
+            key={entry.userId}
+            className={cn(
+              'flex items-center gap-2 px-2 py-1.5',
+              isMe && 'bg-acid/[0.06] shadow-[inset_2px_0_0_hsl(var(--acid))]'
+            )}
+          >
+            <span className="w-6 shrink-0 text-center font-mono text-[11.5px] text-muted-foreground">
+              {entry.rank}
+            </span>
+            <UserAvatar
+              userId={entry.userId}
+              src={avatar}
+              name={name}
+              ringColor={color}
+              frame={member?.avatarFrame}
+              className="h-6 w-6"
+            />
+            <span className="flex min-w-0 flex-1 items-center gap-1 text-sm" style={color ? { color } : undefined}>
+              <NameEffect effect={member?.nameEffect} className="truncate">
+                {name}
+              </NameEffect>
+              <NameEmoji id={member?.emoji} />
+            </span>
+            <span className="shrink-0 font-mono text-[11.5px] text-burn">
+              {formatMetricValue(metric, entry.value)}
+            </span>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+/** Primeira carga: a forma da tela, sem spinner no meio do nada. */
+function Skeleton() {
+  return (
+    <div className="animate-pulse space-y-3" aria-hidden>
+      <div className="h-12 rounded-brutal bg-surface-raised" />
+      <div className="grid grid-cols-3 items-end gap-1">
+        <div className="h-24 rounded-brutal bg-surface-raised" />
+        <div className="h-28 rounded-brutal bg-surface-raised" />
+        <div className="h-24 rounded-brutal bg-surface-raised" />
+      </div>
+      <div className="space-y-px overflow-hidden rounded-brutal">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-8 bg-surface-raised" />
+        ))}
+      </div>
+    </div>
   )
 }

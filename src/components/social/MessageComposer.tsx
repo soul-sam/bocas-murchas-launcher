@@ -41,6 +41,7 @@ import { useMembers, type Member } from '@/lib/members-context'
 import { useCargos, type Cargo } from '@/lib/cargos-context'
 import { CargoIcon } from '@/lib/cargo-icons'
 import { useOverlays } from '@/lib/overlay-context'
+import { useLayout } from '@/lib/layout-context'
 import { parseSlashCommand, rewriteBotCommand, rewriteEggCommand, SLASH_HELP } from '@/lib/slash-commands'
 import { emitEgg } from '@/lib/easter-eggs/bus'
 import { bot } from '@/lib/api-bot'
@@ -127,6 +128,8 @@ export function MessageComposer({
     openSmokeComposer,
     openWrapped
   } = useOverlays()
+  // Os painéis da Arena ficam na coluna da direita desta mesma tela.
+  const { openLeaderboard, openWagers, openRecap } = useLayout()
   const { emojis } = useEmojis()
   const { capture: captureClip } = useClips()
 
@@ -489,6 +492,15 @@ export function MessageComposer({
         break
       case 'achievements':
         openAchievements()
+        break
+      case 'ranking':
+        openLeaderboard()
+        break
+      case 'wagers':
+        openWagers()
+        break
+      case 'recap':
+        openRecap()
         break
       case 'suggestion':
         openSuggestionComposer()

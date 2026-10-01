@@ -15,6 +15,8 @@ import { ClipsPanel } from '@/components/social/ClipsPanel'
 import { AgendaPanel } from '@/components/social/AgendaPanel'
 import { SuggestionsPanel } from '@/components/social/SuggestionsPanel'
 import { LeaderboardPanel } from '@/components/social/LeaderboardPanel'
+import { WagersPanel } from '@/components/social/WagersPanel'
+import { RecapPanel } from '@/components/social/RecapPanel'
 import { useOverlays } from '@/lib/overlay-context'
 import { FolhaDePainel } from '@/components/ui/folha'
 
@@ -47,6 +49,8 @@ export function SocialPage() {
     clipsOpen,
     agendaOpen,
     leaderboardOpen,
+    wagersOpen,
+    recapOpen,
     suggestionsOpen
   } = useLayout()
 
@@ -105,6 +109,10 @@ export function SocialPage() {
       <SuggestionsPanel />
     ) : leaderboardOpen ? (
       <LeaderboardPanel />
+    ) : wagersOpen ? (
+      <WagersPanel />
+    ) : recapOpen ? (
+      <RecapPanel />
     ) : membersOpen && !dmActive ? (
       <MemberList />
     ) : null
@@ -128,7 +136,7 @@ export function SocialPage() {
         )}
       </main>
 
-      {/* Uma coluna à direita só, disputada por seis painéis. Empilhar todos
+      {/* Uma coluna à direita só, disputada por nove painéis. Empilhar todos
           numa janela de 1000px não sobraria chat nenhum.
 
           O SOUNDBOARD SAIU DESTA DISPUTA: virou um drop-up ancorado no próprio

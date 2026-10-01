@@ -185,10 +185,30 @@ interface LayoutContextValue {
   toggleAgenda: () => void
   closeAgenda: () => void
 
-  /** Ranking / XP / badges. */
+  /**
+   * A ARENA — ranking, apostas e recap, cada um no seu painel.
+   *
+   * Eram um painel só ("Ranking") com meu card, três botões, a tabela e as
+   * partidas ao vivo empilhados em 288px. Agora cada assunto tem a sua
+   * entrada na barra de canais (ver components/social/ArenaSection) e o seu
+   * painel; lojinha e conquistas continuam modais (overlay-context).
+   */
   leaderboardOpen: boolean
   toggleLeaderboard: () => void
+  openLeaderboard: () => void
   closeLeaderboard: () => void
+
+  /** Partidas ao vivo pra apostar, pool e cofre da casa. */
+  wagersOpen: boolean
+  toggleWagers: () => void
+  openWagers: () => void
+  closeWagers: () => void
+
+  /** Recap da semana (e a porta pra retrospectiva do ano). */
+  recapOpen: boolean
+  toggleRecap: () => void
+  openRecap: () => void
+  closeRecap: () => void
 }
 
 const LayoutContext = React.createContext<LayoutContextValue | null>(null)
@@ -236,6 +256,8 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
     | 'links'
     | 'agenda'
     | 'leaderboard'
+    | 'wagers'
+    | 'recap'
     | 'suggestions'
     | 'clips'
     | null
@@ -254,6 +276,8 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   const linksOpen = panel === 'links'
   const agendaOpen = panel === 'agenda'
   const leaderboardOpen = panel === 'leaderboard'
+  const wagersOpen = panel === 'wagers'
+  const recapOpen = panel === 'recap'
   const suggestionsOpen = panel === 'suggestions'
   const clipsOpen = panel === 'clips'
 
@@ -365,7 +389,16 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       closeAgenda: () => closePanel('agenda'),
       leaderboardOpen,
       toggleLeaderboard: () => togglePanel('leaderboard'),
-      closeLeaderboard: () => closePanel('leaderboard')
+      openLeaderboard: () => setPanel('leaderboard'),
+      closeLeaderboard: () => closePanel('leaderboard'),
+      wagersOpen,
+      toggleWagers: () => togglePanel('wagers'),
+      openWagers: () => setPanel('wagers'),
+      closeWagers: () => closePanel('wagers'),
+      recapOpen,
+      toggleRecap: () => togglePanel('recap'),
+      openRecap: () => setPanel('recap'),
+      closeRecap: () => closePanel('recap')
     }),
     [
       width,
@@ -386,6 +419,8 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       agendaOpen,
       suggestionsOpen,
       leaderboardOpen,
+      wagersOpen,
+      recapOpen,
       togglePanel,
       closePanel,
       view

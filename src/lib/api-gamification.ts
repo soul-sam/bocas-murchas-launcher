@@ -810,6 +810,15 @@ export const gamification = {
     return res?.recap ?? null
   },
 
+  /** Recaps anteriores, do mais novo pro mais velho (máx. 52 no servidor). */
+  async recaps(token: string, limit = 12): Promise<WeeklyRecap[]> {
+    const res = await request<{ recaps: WeeklyRecap[] }>(
+      `/gamification/recaps?limit=${limit}`,
+      { token }
+    )
+    return Array.isArray(res?.recaps) ? res.recaps : []
+  },
+
   async recentGames(token: string, limit = 10): Promise<GameSessionSummary[]> {
     const res = await request<{ sessions: GameSessionSummary[] }>(
       `/games/recent?limit=${limit}`,

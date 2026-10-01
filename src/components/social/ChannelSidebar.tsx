@@ -84,6 +84,7 @@ export function ChannelSidebar({
   const {
     textGroups,
     voiceGroups,
+    dmChannels,
     activeChannelId,
     unread,
     mentions,
@@ -265,10 +266,14 @@ export function ChannelSidebar({
         </kbd>
       </button>
 
-      <p className="mx-2 mb-1 mt-1.5 flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground/70">
-        <MessageSquare className="h-2.5 w-2.5" />
-        botão direito em alguém = conversa (aparece na barra)
-      </p>
+      {/* A dica some quando a pessoa já tem uma conversa aberta: a essa
+          altura ela descobriu o caminho, e a linha virava ruído permanente. */}
+      {dmChannels.length === 0 && (
+        <p className="mx-2 mb-1 mt-1.5 flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground/70">
+          <MessageSquare className="h-2.5 w-2.5" />
+          botão direito em alguém = conversa (aparece na barra)
+        </p>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto py-2">
         {/* Um bloco por categoria. A engrenagem de gerenciar canais fica no

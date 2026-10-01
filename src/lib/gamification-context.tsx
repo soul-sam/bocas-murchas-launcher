@@ -130,7 +130,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const { token, user, applyUser } = useAuth()
   const { socket } = useSocket()
   const { settings } = useSettings()
-  const { leaderboardOpen } = useLayout()
+  const { wagersOpen } = useLayout()
   const { inGame } = useActivity()
 
   const [profile, setProfile] = React.useState<GamificationProfile | null>(null)
@@ -357,11 +357,11 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   }, [token])
 
   /**
-   * Só vale gastar requisição enquanto alguém pode apostar: painel de ranking
-   * aberto (tem a seção "ao vivo") ou alguém do grupo em partida (o botão de
-   * apostar aparece na lista de membros).
+   * Só vale gastar requisição enquanto alguém pode apostar: painel de apostas
+   * aberto ou alguém do grupo em partida (o botão de apostar aparece na lista
+   * de membros, e o contador "ao vivo" na barra de canais).
    */
-  const shouldPoll = leaderboardOpen || inGame.length > 0
+  const shouldPoll = wagersOpen || inGame.length > 0
   /**
    * Janela escondida (minimizada atras do jogo) so pode pular o poll se a
    * sobreposicao estiver desligada. Ligada, ela fica na tela o tempo todo e

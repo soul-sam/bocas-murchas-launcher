@@ -18,6 +18,7 @@ import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { useAuth } from '@/lib/auth-context'
 import { ChannelGlyph } from './ChannelGlyph'
+import { ARENA_ICON, ARENA_LABEL, LiveCount, useLiveMatchCount } from './ArenaChrome'
 
 /**
  * Troca-canal do Ctrl+K.
@@ -75,13 +76,15 @@ export function QuickSwitcher() {
     openProfileEditor,
     openScreenPicker,
     openShop,
+    openAchievements,
     openAdmin
   } = useOverlays()
   const { user } = useAuth()
   const { textChannels, voiceChannels, setActiveChannel } = useChat()
   const voice = useVoice()
   const { open: openSettings } = useSettings()
-  const { setView } = useLayout()
+  const { setView, openLeaderboard, openWagers, openRecap } = useLayout()
+  const liveCount = useLiveMatchCount()
   const navigate = useNavigate()
 
   const [term, setTerm] = React.useState('')
@@ -185,13 +188,71 @@ export function QuickSwitcher() {
       run: openSettings
     })
 
+    // A ARENA: os mesmos cinco da barra de canais, com o mesmo ícone. Os
+    // painéis moram na tela social, então quem está no Minecraft volta pra
+    // lá antes de abrir — abrir painel que ninguém vê é não fazer nada.
+    const RankingIcon = ARENA_ICON.ranking
+    const WagersIcon = ARENA_ICON.wagers
+    const AchievementsIcon = ARENA_ICON.achievements
+    const RecapIcon = ARENA_ICON.recap
+
+    list.push({
+      id: 'cmd:ranking',
+      label: ARENA_LABEL.ranking,
+      hint: 'quem lidera a semana',
+      icon: <RankingIcon className="h-3.5 w-3.5" />,
+      keywords: 'ranking placar lideres top xp semana arena',
+      run: () => {
+        navigate('/')
+        openLeaderboard()
+      }
+    })
+
+    list.push({
+      id: 'cmd:wagers',
+      label: ARENA_LABEL.wagers,
+      hint: liveCount > 0 ? `${liveCount} ao vivo` : 'partidas ao vivo',
+      icon:
+        liveCount > 0 ? (
+          <LiveCount count={liveCount} className="px-1" />
+        ) : (
+          <WagersIcon className="h-3.5 w-3.5" />
+        ),
+      keywords: 'apostas apostar aposta bet partida ao vivo pool murchos arena',
+      run: () => {
+        navigate('/')
+        openWagers()
+      }
+    })
+
+    list.push({
+      id: 'cmd:achievements',
+      label: ARENA_LABEL.achievements,
+      hint: 'badges e raridade',
+      icon: <AchievementsIcon className="h-3.5 w-3.5" />,
+      keywords: 'conquistas badges medalhas colecionador raridade arena',
+      run: () => openAchievements()
+    })
+
     list.push({
       id: 'cmd:shop',
-      label: 'Lojinha',
-      hint: 'gastar moedas',
+      label: ARENA_LABEL.shop,
+      hint: 'gastar murchos',
       icon: <ShoppingBag className="h-3.5 w-3.5" />,
-      keywords: 'loja lojinha moedas cosmeticos titulo moldura comprar',
+      keywords: 'loja lojinha moedas murchos cosmeticos titulo moldura comprar arena',
       run: openShop
+    })
+
+    list.push({
+      id: 'cmd:recap',
+      label: 'Recap da semana',
+      hint: 'e a retrospectiva do ano',
+      icon: <RecapIcon className="h-3.5 w-3.5" />,
+      keywords: 'recap semana resumo retrospectiva wrapped ano arena',
+      run: () => {
+        navigate('/')
+        openRecap()
+      }
     })
 
     // So aparece pra quem pode usar: o servidor recusaria, mas listar um
@@ -219,6 +280,11 @@ export function QuickSwitcher() {
     openScreenPicker,
     openSettings,
     openShop,
+    openAchievements,
+    openLeaderboard,
+    openWagers,
+    openRecap,
+    liveCount,
     openAdmin,
     user?.role
   ])
