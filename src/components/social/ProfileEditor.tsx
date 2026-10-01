@@ -80,10 +80,9 @@ import { ProfileHero, ProfileIdentity } from './ProfileCard'
  * links). Até aqui a personalização comprada só se trocava dentro da Lojinha;
  * quem abria "editar perfil" via um aviso mandando ir lá.
  *
- * A COR DO NOME não passa pelo /equip da API (que só conhece cinco slots):
- * é `PUT /users/me { profileColor }`, e o servidor só mantém a cor de quem
- * comprou o item correspondente — por isso o seletor só oferece as cores
- * que a pessoa tem.
+ * A COR DO NOME equipa pela mesma rota dos outros (`/gamification/equip`
+ * com `nameColor`); a API grava o hex em `profileColor` e recusa cor que a
+ * pessoa não comprou.
  *
  * IMAGEM sobe como arquivo (endpoint /uploads) ou vem de uma URL que o
  * servidor copia (/uploads/from-url) — nunca base64 no JSON, que incharia
@@ -211,18 +210,6 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
     } finally {
       setWorking(null)
     }
-  }
-
-  /**
-   * Cor do nome: salva NA HORA, como equipar. Não entra no Salvar do rodapé
-   * porque a cor é cosmético comprado, não texto digitado — e porque o
-   * servidor confere posse no PUT inteiro, então mandar a cor junto com a bio
-   * faria uma bio boa falhar por causa de uma cor que a pessoa não tem.
-   */
-  const setColor = async (hex: string | null): Promise<void> => {
-    if (!token) return
-    const updated = await usersApi.updateProfile(token, { profileColor: hex })
-    applyUser(updated)
   }
 
   const handleSave = async (): Promise<void> => {
@@ -445,7 +432,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
 
               {/* -------------------------------------------------- ESTILO */}
               <TabsContent value="estilo" className="pr-1">
-                <StyleTab me={user} onOpenShop={goToShop} onColor={setColor} />
+                <StyleTab me={user} onOpenShop={goToShop} />
               </TabsContent>
 
               {/* --------------------------------------------- SOBRE VOCÊ */}
@@ -850,15 +837,7 @@ function equippedOf(user: AuthUser | null, type: CosmeticType, items: ShopItem[]
   }
 }
 
-function StyleTab({
-  me,
-  onOpenShop,
-  onColor
-}: {
-  me: AuthUser | null
-  onOpenShop: () => void
-  onColor: (hex: string | null) => Promise<void>
-}) {
+function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => void }) {
   const { shop, loadShop, equip } = useGamification()
   const { settings } = useSettings()
   const [loading, setLoading] = React.useState(!shop)
@@ -901,9 +880,7 @@ function StyleTab({
   }
 
   const setSlot = (type: CosmeticType, item: ShopItem | null): Promise<void> =>
-    run(item?.id ?? `${type}:none`, () =>
-      type === 'nameColor' ? onColor(item ? colorOf(item) : null) : equip(type, item?.id ?? null)
-    )
+    run(item?.id ?? `${type}:none`, () => equip(type, item?.id ?? null))
 
   if (loading && !shop) {
     return (

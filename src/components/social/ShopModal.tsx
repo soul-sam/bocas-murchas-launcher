@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { X, Loader2, Check, Tag, Sparkles, Frame, Smile, Volume2, Play } from 'lucide-react'
+import { X, Loader2, Check, Tag, Sparkles, Frame, Smile, Volume2, Play, Palette } from 'lucide-react'
 import { GiftIcon, MurchosIcon, ShopIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
@@ -43,6 +43,7 @@ import { TitleTag } from '@/lib/cosmetic-icons'
  */
 
 const TABS: { type: CosmeticType; label: string; Icon: typeof Tag }[] = [
+  { type: 'nameColor', label: 'Cores', Icon: Palette },
   { type: 'title', label: 'Títulos', Icon: Tag },
   { type: 'nameEffect', label: 'Efeitos', Icon: Sparkles },
   { type: 'avatarFrame', label: 'Molduras', Icon: Frame },
@@ -59,7 +60,7 @@ export function ShopModal() {
   const { shop, loadShop, buy, equip, profile, catalog, pushToast } = useGamification()
   const { settings } = useSettings()
 
-  const [tab, setTab] = React.useState<CosmeticType>('title')
+  const [tab, setTab] = React.useState<CosmeticType>('nameColor')
   const [hovered, setHovered] = React.useState<ShopItem | null>(null)
   const [confirming, setConfirming] = React.useState<string | null>(null)
   // Item sendo presenteado: o painel de "pra quem?" cobre a prateleira.
@@ -112,6 +113,8 @@ export function ShopModal() {
   // O id, e nao so o nome: e dele que sai o icone do titulo.
   const previewTitleId = hovered?.type === 'title' ? hovered.id : me.title
   const previewEffect = hovered?.type === 'nameEffect' ? hovered.id : me.nameEffect
+  // Cor sob o mouse pinta o nome da prévia; fora disso, a que está equipada.
+  const previewColor = (hovered && colorOf(hovered)) ?? color
   const previewFrame = hovered?.type === 'avatarFrame' ? hovered.id : me.avatarFrame
   const previewEmoji =
     hovered?.type === 'emoji' ? cosmeticEmoji(hovered) : cosmeticEmoji(catalog[me.emoji ?? ''])
@@ -195,12 +198,12 @@ export function ShopModal() {
           <UserAvatar
             src={resolveAssetUrl(me.avatar)}
             name={me.displayName}
-            ringColor={color}
+            ringColor={previewColor}
             frame={previewFrame}
             className="h-11 w-11 border-2"
           />
           <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-1.5 font-display text-base leading-tight" style={{ color }}>
+            <p className="flex items-center gap-1.5 font-display text-base leading-tight" style={{ color: previewColor }}>
               <NameEffect effect={previewEffect} className="truncate">
                 {me.displayName}
               </NameEffect>
@@ -315,6 +318,13 @@ export function ShopModal() {
   )
 }
 
+/** Hex de um item de cor do nome (`data.color`), ou null. */
+function colorOf(item: Pick<ShopItem, 'type' | 'data'>): string | null {
+  if (item.type !== 'nameColor') return null
+  const hex = item.data?.color
+  return typeof hex === 'string' && /^#[0-9a-f]{6}$/i.test(hex) ? hex : null
+}
+
 /** Texto do título equipado a partir do catálogo (o user guarda só o id). */
 function titleName(items: ShopItem[] | undefined, id: string | null | undefined): string | null {
   if (!id) return null
@@ -382,6 +392,18 @@ function ItemTile({
     >
       {/* Amostra do item, do jeito que vai aparecer. */}
       <div className="flex h-12 items-center justify-center rounded-brutal bg-void px-2">
+        {item.type === 'nameColor' && (
+          <span className="flex min-w-0 items-center gap-2">
+            <span
+              aria-hidden
+              className="h-5 w-5 shrink-0 rounded-full border border-line-strong"
+              style={{ background: colorOf(item) ?? undefined }}
+            />
+            <span className="truncate font-display text-base" style={{ color: colorOf(item) ?? undefined }}>
+              {me.name}
+            </span>
+          </span>
+        )}
         {item.type === 'title' && (
           <TitleTag
             titleId={item.id}

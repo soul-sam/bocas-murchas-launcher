@@ -27,9 +27,8 @@ import { request, type GameSessionSummary } from './api'
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
 
 /**
- * `nameColor` é a cor do nome: a API lista na lojinha e só aceita no perfil
- * a cor de quem comprou — mas NÃO passa pelo /equip (que só conhece os
- * cinco slots do User); equipar cor é `PUT /users/me { profileColor }`.
+ * `nameColor` é a cor do nome. Equipa pelo /equip como os outros, mas não
+ * tem coluna própria: a API grava o hex de `data.color` em `profileColor`.
  */
 export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji' | 'joinSound' | 'nameColor'
 
