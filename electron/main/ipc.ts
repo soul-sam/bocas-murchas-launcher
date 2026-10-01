@@ -29,6 +29,7 @@ import {
   getOverlayMode,
   getOverlayState,
   pushOverlayState,
+  pushOverlayToast,
   relayOverlayAction,
   requestOverlayState,
   setOverlayInteractive,
@@ -41,7 +42,8 @@ import type {
   OverlayDock,
   OverlayHitArea,
   OverlayMode,
-  OverlayState
+  OverlayState,
+  OverlayToast
 } from '../preload/types.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 import { app, powerMonitor } from 'electron'
@@ -187,6 +189,21 @@ export function registerIpcHandlers(): void {
     applyOverlaySettings(next)
   })
 
+  /** A logo de fora de partida foi arrastada. Mesmo caminho do `set-dock`. */
+  ipcMain.handle('overlay:set-idle-offset', async (_e, offset: number) => {
+    if (!Number.isFinite(offset)) return
+    const current = await loadSettings()
+    const idleOffset = Math.min(0.94, Math.max(0.06, offset))
+    const next = await updateSettings({ overlay: { ...current.overlay, idleOffset } })
+    applyOverlaySettings(next)
+  })
+
+  /** Notificacao montada na janela principal (quem entrou na call, etc.). */
+  ipcMain.handle('overlay:toast', async (_e, toast: OverlayToast) => {
+    if (!toast || typeof toast.title !== 'string') return
+    pushOverlayToast(toast)
+  })
+
   ipcMain.handle('app:apply-autostart', async () => applyAutostart())
 
   ipcMain.handle('app:launched-at-login', async () => launchedAtLogin())
@@ -295,6 +312,21 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     'notify:show',
     async (_e, payload: { title: string; body: string; silent?: boolean }) => {
+      // Com a sobreposicao na tela, a notificacao sai LA — do lado da logo, ou
+      // por cima do jogo, onde o balao do Windows nao aparece (o "assistente
+      // de foco" segura tudo durante jogo). As duas juntas seriam o mesmo
+      // aviso duas vezes.
+      if (
+        pushOverlayToast({
+          kind: 'message',
+          title: payload.title,
+          body: payload.body,
+          at: Date.now()
+        })
+      ) {
+        return
+      }
+
       if (!Notification.isSupported()) return
 
       const notification = new Notification({

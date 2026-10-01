@@ -181,7 +181,10 @@ function normalizeOverlay(
   return {
     enabled: o.enabled ?? d.enabled,
     corner,
-    dock: normalizeDock(o.dock, corner)
+    dock: normalizeDock(o.dock, corner),
+    // Mesma trava do `dock.offset`: com o centro colado na borda a logo sai
+    // metade pra fora em cima ou embaixo, alem da metade que ja esconde.
+    idleOffset: clamp(Number(o.idleOffset), 0.06, 0.94, d.idleOffset)
   }
 }
 

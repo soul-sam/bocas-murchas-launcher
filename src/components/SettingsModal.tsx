@@ -798,8 +798,8 @@ function HotkeysTab() {
           onChange={(soundWheel) => patch({ soundWheel })}
         />
         <HotkeyRow
-          label="Painel de canto"
-          hint="Microfone, clipe, cutucada e as apostas da partida, sem sair do jogo."
+          label="Minimizar / trazer a sobreposição"
+          hint="Tira a sobreposição da tela e traz de volta. Voltando, o painel abre por uns segundos."
           value={hotkeys.overlay}
           onChange={(overlay) => patch({ overlay })}
         />
@@ -831,18 +831,18 @@ function OverlayTab() {
       <section>
         <SectionTitle>Sobreposição</SectionTitle>
         <SwitchRow
-          label="Mostrar por cima do jogo"
-          hint="Microfone, roda de sons, clipe, cutucada — e as apostas quando tem partida rolando. Desligado, nem o atalho abre."
+          label="Mostrar a sobreposição"
+          hint="Fica sempre na tela: a logo meio escondida na direita fora de jogo, a aba fina durante a partida. Mostra quem entrou na call, mensagens e apostas. Desligado, nem o atalho abre."
           checked={overlay.enabled}
           onCheckedChange={(enabled) => patch({ enabled })}
         />
 
         <label className="flex items-center justify-between gap-3 py-2">
           <span className="min-w-0">
-            <span className="block text-sm font-medium">Lado da tela</span>
+            <span className="block text-sm font-medium">Lado da aba em partida</span>
             <span className="block text-xs leading-snug text-muted-foreground">
-              A sobreposição fica numa aba fina na lateral e cresce quando você
-              encosta o mouse. Dá pra <strong>arrastar a aba</strong> por cima
+              Durante a partida a sobreposição vira uma aba fina na lateral, que cresce quando você
+              encosta o mouse. Fora de jogo ela é a logo na direita, que sobe e desce arrastando. Dá pra <strong>arrastar a aba</strong> por cima
               do jogo pra mudar de lado e de altura — isto aqui é só o atalho. A
               roda de sons ignora: ela abre sempre no meio.
             </span>
@@ -864,7 +864,7 @@ function OverlayTab() {
 
         <label className="flex items-center justify-between gap-3 py-2">
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-medium">Altura da aba</span>
+            <span className="block text-sm font-medium">Altura da aba em partida</span>
             <span className="block text-xs leading-snug text-muted-foreground">
               Onde ela fica na lateral. Arrastar por cima do jogo mexe nisto.
             </span>
@@ -896,7 +896,7 @@ function OverlayTab() {
           <strong className="font-mono font-medium text-foreground">
             {formatAccelerator(hotkeys.soundWheel)}
           </strong>
-          . Painel de canto:{' '}
+          . Minimizar e trazer de volta:{' '}
           <strong className="font-mono font-medium text-foreground">
             {formatAccelerator(hotkeys.overlay)}
           </strong>
@@ -906,7 +906,7 @@ function OverlayTab() {
 
         <SwitchRow
           label="Abrir o painel sozinho quando a partida começa"
-          hint="Vale só pra partida de League. Desligado, o painel continua vindo no atalho — o que muda é ele aparecer por conta própria."
+          hint="Vale só pra partida de League: o painel abre uns segundos (mesmo minimizado) pra avisar que dá pra apostar. Desligado, ele fica como você deixou."
           checked={lol.overlay}
           disabled={!overlay.enabled || !lol.enabled}
           onCheckedChange={(next) => void update({ lol: { ...lol, overlay: next } })}

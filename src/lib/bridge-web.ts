@@ -398,7 +398,7 @@ function criarPonte(): BocasAPI {
       onState: semEventos,
       send: async () => {},
       requestState: async () => {},
-      mode: async () => ({ dock: false, wheel: false }),
+      mode: async () => ({ dock: false, wheel: false, inGame: false, appFocused: true, reveal: 0 }),
       onMode: semEventos,
       setMode: async () => {},
       onCorner: semEventos,
@@ -408,6 +408,10 @@ function criarPonte(): BocasAPI {
       onPointer: semEventos,
       setInteractive: async () => {},
       dismiss: async () => {},
+      toast: async () => {},
+      onToast: semEventos,
+      setIdleOffset: async () => {},
+      onIdleOffset: semEventos,
     },
 
     app: {

@@ -1,7 +1,9 @@
 import * as React from 'react'
 import {
+  Bell,
   ChevronLeft,
   ChevronRight,
+  CircleDot,
   Coins,
   Dices,
   ExternalLink,
@@ -9,18 +11,22 @@ import {
   Headphones,
   HeadphoneOff,
   Loader2,
+  type LucideIcon,
+  MessageSquare,
   Mic,
   MicOff,
   Minus,
   Music,
   PhoneOff,
   Pickaxe,
+  PinOff,
   Scissors,
   Swords,
   TrendingDown,
   TrendingUp,
+  UserMinus,
+  UserPlus,
   Waves,
-  X,
   Zap
 } from 'lucide-react'
 import type {
@@ -32,6 +38,7 @@ import type {
   OverlayState,
   OverlayMyGame,
   OverlaySound,
+  OverlayToast,
   OverlayVoice
 } from '../../electron/preload/types'
 import { cn, formatClock } from '@/lib/utils'
@@ -162,7 +169,10 @@ export function OverlayPage() {
   const { state, offline } = useOverlayState()
   const mode = useOverlayMode()
   const { dock, preview, commit } = useDock()
+  const { offset: idleOffset, preview: previewIdle, commit: commitIdle } = useIdleOffset()
   const now = useOverlayClock()
+  const { live: liveToasts, recent: recentToasts } = useToasts()
+  const minimizeKey = useMinimizeKey()
 
   /** Arrastando a aba: a janela não pode largar o mouse no meio do caminho. */
   const [dragging, setDragging] = React.useState(false)
@@ -173,6 +183,26 @@ export function OverlayPage() {
   const [expanded, setExpanded] = React.useState(false)
 
   const inMatch = Boolean(state?.myGame)
+
+  /**
+   * Qual das duas caras está na tela — ou nenhuma.
+   *
+   *   - `tab`  — em partida: a aba fina de sempre, que se arrasta pra onde o
+   *              HUD deixa livre.
+   *   - `logo` — fora de partida: a logo meio escondida na direita. Some com o
+   *              launcher em primeiro plano (ela ficaria por cima da lista de
+   *              membros dele) e antes do login (não teria o que mostrar).
+   *
+   * A roda de sons manda as duas embora — ver o comentário do JSX.
+   */
+  const face: 'tab' | 'logo' | null =
+    !mode.dock || mode.wheel
+      ? null
+      : mode.inGame
+        ? 'tab'
+        : !mode.appFocused && state?.ready
+          ? 'logo'
+          : null
 
   /**
    * O ponteiro manda; o alfinete e o arrasto seguram.
@@ -189,31 +219,39 @@ export function OverlayPage() {
     return () => clearTimeout(timer)
   }, [pointerOnPanel, pinned, dragging])
 
+  // Minimizou, ou trocou de cara (a partida começou ou acabou): o alfinete
+  // não pode sobreviver. Declarado ANTES do efeito de baixo de propósito — na
+  // partida que começa os dois disparam no mesmo quadro, e quem abre tem que
+  // ser o último.
+  React.useEffect(() => {
+    setPinned(false)
+  }, [mode.dock, mode.inGame])
+
   /**
-   * ABRIU? ENTÃO MOSTRA. Por alguns segundos, e depois sai da frente.
+   * TROUXE DE VOLTA? ENTÃO MOSTRA. Por alguns segundos, e depois sai da frente.
    *
-   * Vale pra QUALQUER motivo de a sobreposição existir — o atalho global e a
-   * partida começando. Isto já dependeu de haver partida registrada
-   * (`inMatch`), e essa era a versão errada da regra por dois motivos: quem
-   * aperta o atalho apertou pra VER alguma coisa, e não pra caçar uma aba de
-   * 10px com o mouse; e numa partida personalizada não há aposta registrada,
-   * então `inMatch` é falso e não aparecia nada — a sobreposição "não abria".
+   * Vale pros momentos em que a pessoa está OLHANDO pra sobreposição de
+   * propósito: o atalho que a tirou do minimizado e a partida começando (que
+   * é o aviso de que dá pra apostar). O boot do launcher não conta — com a
+   * sobreposição sempre de pé, abrir o painel ali seria abrir na cara de quem
+   * só ligou o PC. Quem decide é o main, pelo carimbo `reveal`.
+   *
+   * O carimbo é hora, e não contador, pra janela recém-criada saber quanto
+   * falta: minimizar destrói a janela, e o atalho que a traz de volta cria
+   * outra, que monta com o `reveal` já dado.
    *
    * Passados os segundos ela encolhe e a partir daí é o mouse que manda. Quem
    * já levou o ponteiro até lá não vê nada fechar na mão: o `pointerOnPanel`
    * segura sozinho, sem precisar clicar no alfinete.
    */
   React.useEffect(() => {
-    if (!mode.dock) return
+    if (!mode.dock || !mode.reveal) return
+    const left = mode.reveal + AUTO_OPEN_MS - Date.now()
+    if (left <= 0) return
     setPinned(true)
-    const timer = setTimeout(() => setPinned(false), AUTO_OPEN_MS)
+    const timer = setTimeout(() => setPinned(false), left)
     return () => clearTimeout(timer)
-  }, [mode.dock])
-
-  // Fechou a sobreposição: o alfinete não pode sobreviver pra próxima abertura.
-  React.useEffect(() => {
-    if (!mode.dock) setPinned(false)
-  }, [mode.dock])
+  }, [mode.dock, mode.reveal])
 
   /**
    * O ARRASTO.
@@ -227,6 +265,10 @@ export function OverlayPage() {
    */
   const latestRef = React.useRef(dock)
   latestRef.current = dock
+  const latestIdleRef = React.useRef(idleOffset)
+  latestIdleRef.current = idleOffset
+  /** A logo só sobe e desce: o lado dela é a direita, e não se escolhe. */
+  const verticalOnly = face === 'logo'
 
   const startDrag = React.useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -259,6 +301,10 @@ export function OverlayPage() {
           0.94,
           Math.max(0.06, moveEvent.clientY / Math.max(1, window.innerHeight))
         )
+        if (verticalOnly) {
+          previewIdle(offset)
+          return
+        }
         const side: OverlaySide =
           moveEvent.clientX < window.innerWidth / 2 ? 'left' : 'right'
         preview({ side, offset })
@@ -270,7 +316,10 @@ export function OverlayPage() {
         window.removeEventListener('pointercancel', onUp)
         setDragging(false)
 
-        if (moved) commit(latestRef.current)
+        if (moved) {
+          if (verticalOnly) commitIdle(latestIdleRef.current)
+          else commit(latestRef.current)
+        }
         // Clique seco na aba: prende (ou solta) o painel.
         else setPinned((value) => !value)
       }
@@ -279,7 +328,7 @@ export function OverlayPage() {
       window.addEventListener('pointerup', onUp)
       window.addEventListener('pointercancel', onUp)
     },
-    [preview, commit]
+    [preview, commit, verticalOnly, previewIdle, commitIdle]
   )
 
   // A janela cobre a tela inteira (ver services/overlay.ts), então a posição
@@ -300,31 +349,59 @@ export function OverlayPage() {
         deixaria de valer. Sumir é o que toda roda de jogo faz, e a aba volta
         assim que a roda fecha.
       */}
-      {mode.dock && !mode.wheel && (
-        <>
-          <EdgeTab
-            state={state}
-            side={dock.side}
-            offset={dock.offset}
-            expanded={expanded}
-            pinned={pinned}
-            dragging={dragging}
-            onPointerDown={startDrag}
-          />
+      {face === 'tab' && (
+        <EdgeTab
+          state={state}
+          side={dock.side}
+          offset={dock.offset}
+          expanded={expanded}
+          pinned={pinned}
+          dragging={dragging}
+          onPointerDown={startDrag}
+        />
+      )}
 
-          {expanded && (
-            <DockedPanel side={dock.side} offset={dock.offset}>
-              <Panel
-                state={state}
-                offline={offline}
-                now={now}
-                inMatch={inMatch}
-                pinned={pinned}
-                onCollapse={() => setPinned(false)}
-              />
-            </DockedPanel>
-          )}
-        </>
+      {face === 'logo' && (
+        <LogoTab
+          state={state}
+          offset={idleOffset}
+          expanded={expanded}
+          pinned={pinned}
+          dragging={dragging}
+          alerting={liveToasts.length > 0}
+          onPointerDown={startDrag}
+        />
+      )}
+
+      {face && expanded && (
+        <DockedPanel
+          side={face === 'logo' ? 'right' : dock.side}
+          offset={face === 'logo' ? idleOffset : dock.offset}
+          inset={face === 'logo' ? 'right-[4.75rem]' : undefined}
+        >
+          <Panel
+            state={state}
+            offline={offline}
+            now={now}
+            inMatch={inMatch}
+            pinned={pinned}
+            minimizeKey={minimizeKey}
+            recent={recentToasts}
+            onCollapse={() => setPinned(false)}
+          />
+        </DockedPanel>
+      )}
+
+      {/* As notificações saem do lado da aba/logo e somem sozinhas. Com o
+          painel aberto elas iriam pra baixo dele — lá dentro já tem a lista
+          das recentes. */}
+      {face && !expanded && liveToasts.length > 0 && (
+        <ToastStack
+          toasts={liveToasts}
+          side={face === 'logo' ? 'right' : dock.side}
+          offset={face === 'logo' ? idleOffset : dock.offset}
+          inset={face === 'logo' ? 'right-11' : undefined}
+        />
       )}
 
       {mode.wheel && (
@@ -358,10 +435,13 @@ export function OverlayPage() {
 function DockedPanel({
   side,
   offset,
+  inset,
   children
 }: {
   side: OverlaySide
   offset: number
+  /** Distância da borda, quando não é a da aba fina (a logo é mais larga). */
+  inset?: string
   children: React.ReactNode
 }) {
   const ref = React.useRef<HTMLDivElement | null>(null)
@@ -414,7 +494,7 @@ function DockedPanel({
         // pra apostar é muito mais alto que o de nenhuma.
         'absolute z-gaveta flex max-h-[calc(100vh-2rem)] w-[22rem] min-h-0 flex-col',
         // Encostado na aba (que tem 12px), não na borda da tela.
-        side === 'left' ? 'left-4' : 'right-4'
+        inset ?? (side === 'left' ? 'left-4' : 'right-4')
       )}
     >
       {children}
@@ -504,6 +584,102 @@ function useDock(): {
   return { dock, preview, commit }
 }
 
+/** A altura da logo de fora de partida. Mesmo arranjo do `useDock`. */
+function useIdleOffset(): {
+  offset: number
+  preview: (offset: number) => void
+  commit: (offset: number) => void
+} {
+  const [offset, setOffset] = React.useState(0.6)
+
+  React.useEffect(() => {
+    void window.bocas.settings
+      .get()
+      .then((settings) => setOffset(settings.overlay.idleOffset))
+      .catch(() => {})
+    return window.bocas.overlay.onIdleOffset(setOffset)
+  }, [])
+
+  const preview = React.useCallback((next: number) => setOffset(next), [])
+
+  const commit = React.useCallback((next: number) => {
+    setOffset(next)
+    void window.bocas.overlay.setIdleOffset(next).catch(() => {})
+  }, [])
+
+  return { offset, preview, commit }
+}
+
+/**
+ * A tecla que minimiza e traz de volta, pra dizer no botão.
+ *
+ * Sem ela escrita ali, minimizar seria uma porta sem maçaneta do lado de
+ * fora: a sobreposição some e nada na tela conta como voltar.
+ */
+function useMinimizeKey(): string {
+  const [key, setKey] = React.useState('')
+
+  React.useEffect(() => {
+    void window.bocas.settings
+      .get()
+      .then((settings) => setKey(settings.hotkeys.overlay))
+      .catch(() => {})
+  }, [])
+
+  return key ? shortKey(key) : ''
+}
+
+/** Quanto uma notificação fica flutuando do lado da aba. */
+const TOAST_TTL_MS = 6_000
+/** Flutuando ao mesmo tempo. A quarta empurra a mais velha pra fora. */
+const TOAST_MAX_LIVE = 3
+/** Quantas o painel guarda na lista de recentes. */
+const TOAST_MAX_RECENT = 8
+
+/**
+ * As notificações que chegaram do processo main (ver OverlayToast).
+ *
+ * `live` são as que flutuam agora; `recent`, as que o painel lista — quem
+ * estava com a cabeça no jogo quando a notificação passou acha ela ali.
+ * Tudo em memória: minimizar destrói a janela e leva a lista junto, o que é o
+ * certo pra uma lista de "agora há pouco".
+ */
+function useToasts(): { live: OverlayToast[]; recent: OverlayToast[] } {
+  const [recent, setRecent] = React.useState<OverlayToast[]>([])
+  const [clock, setClock] = React.useState(() => Date.now())
+
+  React.useEffect(() => {
+    return window.bocas.overlay.onToast((toast) => {
+      setRecent((prev) => [toast, ...prev].slice(0, TOAST_MAX_RECENT))
+      setClock(Date.now())
+    })
+  }, [])
+
+  // Um despertador só, pra hora em que a mais nova vence — e não um relógio
+  // batendo à toa com nada na tela.
+  const newest = recent[0]?.at ?? 0
+  React.useEffect(() => {
+    if (!newest) return
+    const left = newest + TOAST_TTL_MS - Date.now()
+    if (left <= 0) return
+    const timer = setTimeout(() => setClock(Date.now()), left + 50)
+    return () => clearTimeout(timer)
+  }, [newest])
+
+  const live = React.useMemo(
+    () =>
+      recent
+        .filter((toast) => clock - toast.at < TOAST_TTL_MS)
+        .slice(0, TOAST_MAX_LIVE)
+        // Mais velha em cima: a nova entra embaixo, perto de onde o olho já
+        // estava lendo.
+        .reverse(),
+    [recent, clock]
+  )
+
+  return { live, recent }
+}
+
 /**
  * O QUE está aberto agora — o painel, a roda, ou os dois.
  *
@@ -513,7 +689,13 @@ function useDock(): {
  * primeiro aviso, e a janela abriria desenhando a peça errada.
  */
 function useOverlayMode(): OverlayMode {
-  const [mode, setMode] = React.useState<OverlayMode>({ dock: false, wheel: false })
+  const [mode, setMode] = React.useState<OverlayMode>({
+    dock: false,
+    wheel: false,
+    inGame: false,
+    appFocused: false,
+    reveal: 0
+  })
 
   React.useEffect(() => {
     void window.bocas.overlay.mode().then(setMode).catch(() => {})
@@ -675,6 +857,187 @@ function EdgeTab({
   )
 }
 
+/**
+ * A LOGO — a cara da sobreposição fora de partida.
+ *
+ * Metade escondida atrás da borda direita: presente sem ocupar a tela, e
+ * encostar o mouse na borda naquela altura é o bastante pra ela sair inteira
+ * e o painel abrir ao lado. Clicar prende aberto e arrastar muda a altura,
+ * igual à aba do jogo — só que ela não troca de lado.
+ *
+ * Quem mede o ponteiro é o main, contra o retângulo que esta peça publica (ver
+ * `useClickThrough`). A metade escondida fica fora da janela e não conta; a
+ * folga de 24px do main é o que deixa encostar na borda sem mirar.
+ */
+function LogoTab({
+  state,
+  offset,
+  expanded,
+  pinned,
+  dragging,
+  alerting,
+  onPointerDown
+}: {
+  state: OverlayState | null
+  offset: number
+  expanded: boolean
+  pinned: boolean
+  dragging: boolean
+  /** Tem notificação flutuando agora. */
+  alerting: boolean
+  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void
+}) {
+  const open = state?.targets.filter((t) => !t.myWager).length ?? 0
+
+  return (
+    <div
+      data-overlay-hit
+      onPointerDown={onPointerDown}
+      title="Arraste pra subir ou descer · clique pra prender aberto"
+      style={{
+        top: `${offset * 100}%`,
+        // Encolhida, metade pra fora da tela; aberta, inteira e desencostada
+        // da borda. É transform, e não `right`, pra deslizar sem layout.
+        transform: `translate(${expanded ? '-0.5rem' : '50%'}, -50%)`
+      }}
+      className={cn(
+        'absolute right-0 z-conteudo flex h-14 w-14 cursor-grab items-center justify-center rounded-full',
+        'border bg-void/90 shadow-neon-1 backdrop-blur-sm transition-[transform,border-color] duration-200 ease-out',
+        dragging && 'cursor-grabbing',
+        pinned ? 'border-acid/70' : expanded ? 'border-burn/70' : 'border-line'
+      )}
+    >
+      <img
+        src="bocas-murchas-transp.png"
+        alt="Bocas Murchas"
+        draggable={false}
+        className="h-10 w-10 select-none"
+      />
+      {/* Na metade que aparece: com a logo encolhida, o lado direito dela
+          está fora da tela. */}
+      {(open > 0 || alerting) && (
+        <span
+          aria-label={open > 0 ? `${open} pra apostar` : 'notificação nova'}
+          className="absolute left-1.5 top-1.5 h-2 w-2 animate-pulse rounded-full bg-burn"
+        />
+      )}
+    </div>
+  )
+}
+
+// ============================================
+// NOTIFICAÇÕES
+// ============================================
+
+const TOAST_LOOK: Record<OverlayToast['kind'], { icon: LucideIcon; tone: string }> = {
+  'voice-join': { icon: UserPlus, tone: 'text-acid' },
+  'voice-leave': { icon: UserMinus, tone: 'text-muted-foreground' },
+  online: { icon: CircleDot, tone: 'text-acid' },
+  game: { icon: Swords, tone: 'text-burn' },
+  message: { icon: MessageSquare, tone: 'text-foreground' },
+  info: { icon: Bell, tone: 'text-foreground' }
+}
+
+/**
+ * As notificações flutuando do lado da aba/logo.
+ *
+ * SEM `data-overlay-hit`, de propósito: elas passam por cima do jogo e o
+ * clique atravessa — um aviso que come o clique de uma habilidade é pior que
+ * aviso nenhum. Somem sozinhas; quem quiser reler abre o painel.
+ */
+function ToastStack({
+  toasts,
+  side,
+  offset,
+  inset
+}: {
+  toasts: OverlayToast[]
+  side: OverlaySide
+  offset: number
+  inset?: string
+}) {
+  return (
+    <div
+      style={{
+        // Centrada na aba, mas sem sair da tela: a pilha cheia tem ~11rem.
+        top: `clamp(1rem, calc(${offset * 100}% - 5.5rem), calc(100% - 12rem))`
+      }}
+      className={cn(
+        'pointer-events-none absolute z-gaveta flex w-72 flex-col gap-1.5',
+        inset ?? (side === 'left' ? 'left-5' : 'right-5')
+      )}
+    >
+      {toasts.map((toast) => (
+        <ToastCard key={`${toast.at}-${toast.title}`} toast={toast} side={side} />
+      ))}
+    </div>
+  )
+}
+
+function ToastCard({ toast, side }: { toast: OverlayToast; side: OverlaySide }) {
+  const { icon: Icon, tone } = TOAST_LOOK[toast.kind] ?? TOAST_LOOK.info
+
+  return (
+    <div
+      className={cn(
+        'flex items-start gap-2 rounded-brutal border border-line bg-void/90 px-2.5 py-2',
+        'shadow-neon-1 backdrop-blur-sm animate-in fade-in duration-200',
+        side === 'left' ? 'slide-in-from-left-2' : 'slide-in-from-right-2'
+      )}
+    >
+      <Icon className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', tone)} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-medium leading-tight text-foreground">{toast.title}</p>
+        {toast.body && (
+          <p className="line-clamp-2 text-[11.5px] leading-snug text-muted-foreground">
+            {toast.body}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** As notificações de agora há pouco, dentro do painel. */
+function RecentList({ toasts, now }: { toasts: OverlayToast[]; now: number }) {
+  return (
+    <section className="mt-3 border-t border-line pt-2">
+      <h3 className="mb-1.5 font-mono text-[11px] font-normal uppercase tracking-widest text-muted-foreground">
+        agora há pouco
+      </h3>
+      <ul className="space-y-1.5">
+        {toasts.map((toast) => {
+          const { icon: Icon, tone } = TOAST_LOOK[toast.kind] ?? TOAST_LOOK.info
+          return (
+            <li key={`${toast.at}-${toast.title}`} className="flex items-start gap-2">
+              <Icon className={cn('mt-0.5 h-3 w-3 shrink-0', tone)} aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11.5px] leading-tight text-foreground">
+                  {toast.title}
+                </p>
+                {toast.body && (
+                  <p className="truncate text-[11px] text-muted-foreground">{toast.body}</p>
+                )}
+              </div>
+              <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                {ago(toast.at, now)}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+/** "agora", "3 min", "1 h". */
+function ago(at: number, now: number): string {
+  const min = Math.floor((now - at) / 60_000)
+  if (min < 1) return 'agora'
+  if (min < 60) return `${min} min`
+  return `${Math.floor(min / 60)} h`
+}
+
 // ============================================
 // PAINEL
 // ============================================
@@ -685,6 +1048,8 @@ function Panel({
   now,
   inMatch,
   pinned,
+  minimizeKey,
+  recent,
   onCollapse
 }: {
   state: OverlayState | null
@@ -694,6 +1059,9 @@ function Panel({
   inMatch: boolean
   /** Preso aberto pelo clique na aba — só então há o que soltar. */
   pinned: boolean
+  /** A tecla que traz de volta depois de minimizar, já legível. */
+  minimizeKey: string
+  recent: OverlayToast[]
   onCollapse: () => void
 }) {
   return (
@@ -718,11 +1086,16 @@ function Panel({
             diferente do que já vai acontecer só ocupa espaço. */}
         {pinned && (
           <IconButton label="Soltar (volta a fechar sozinho)" onClick={onCollapse}>
-            <Minus className="h-3.5 w-3.5" />
+            <PinOff className="h-3.5 w-3.5" />
           </IconButton>
         )}
-        <IconButton label="Fechar" onClick={() => void window.bocas.overlay.dismiss()}>
-          <X className="h-3.5 w-3.5" />
+        {/* Minimizar tira a sobreposição inteira da tela, e o título diz como
+            voltar — senão seria uma porta sem maçaneta do lado de fora. */}
+        <IconButton
+          label={minimizeKey ? `Minimizar (${minimizeKey} traz de volta)` : 'Minimizar'}
+          onClick={() => void window.bocas.overlay.dismiss()}
+        >
+          <Minus className="h-3.5 w-3.5" />
         </IconButton>
       </header>
 
@@ -753,6 +1126,7 @@ function Panel({
               />
             )}
             <TargetList state={state} now={now} />
+            {recent.length > 0 && <RecentList toasts={recent} now={now} />}
           </>
         )}
       </div>

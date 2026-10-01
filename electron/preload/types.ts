@@ -464,6 +464,14 @@ export interface OverlaySettings {
   corner: OverlayCorner
   /** Onde a aba fica grudada. A roda de sons ignora isto: ela e centrada. */
   dock: OverlayDock
+  /**
+   * Altura da LOGO de fora de partida, como fracao da tela (0 = topo).
+   *
+   * Separada do `dock` de proposito: o lugar livre no HUD do jogo e o lugar
+   * livre na area de trabalho nao sao o mesmo, e arrastar uma nao pode mover a
+   * outra. O lado nao se escolhe — a logo mora na direita.
+   */
+  idleOffset: number
 }
 
 /** Preferencias da integracao com o LoL. */
@@ -624,10 +632,46 @@ export interface OverlayState {
  * atalho acabou de abrir.
  */
 export interface OverlayMode {
-  /** O painel de canto: apostas da partida e as acoes rapidas. */
+  /**
+   * A aba (em partida) ou a logo (fora dela) esta na tela. Com a sobreposicao
+   * ligada isto so e falso quando a pessoa MINIMIZOU — o atalho traz de volta.
+   */
   dock: boolean
   /** A roda de sons, centrada na tela. */
   wheel: boolean
+  /** Partida de League rolando: aba fina do jogo em vez da logo da area de trabalho. */
+  inGame: boolean
+  /**
+   * A janela principal do launcher esta em primeiro plano. Fora de partida a
+   * logo se esconde enquanto isso: ela ficaria por cima da lista de membros
+   * do proprio app, e as notificacoes ja aparecem la dentro.
+   */
+  appFocused: boolean
+  /**
+   * Epoch ms da ultima vez em que o painel deve ABRIR SOZINHO por uns
+   * segundos — a partida comecou ou o atalho trouxe a sobreposicao de volta.
+   * Hora, e nao booleano: dois pedidos seguidos valem os dois, e a janela
+   * recem-criada sabe quanto falta. O boot do app nao conta (fica 0), senao
+   * o painel abriria na cara de quem so ligou o PC.
+   */
+  reveal: number
+}
+
+/**
+ * Uma notificacao pra sobreposicao — quem entrou na call, quem comecou a
+ * jogar, mensagem nova.
+ *
+ * E EVENTO, nao retrato, e por isso nao vai dentro do `OverlayState`: o
+ * retrato e comparado por conteudo e guardado pra pintar a proxima abertura,
+ * e uma notificacao repetida na proxima abertura e exatamente o que nao pode
+ * acontecer.
+ */
+export interface OverlayToast {
+  kind: 'voice-join' | 'voice-leave' | 'online' | 'game' | 'message' | 'info'
+  title: string
+  body?: string
+  /** Epoch ms. Com o `title`, e o que identifica a notificacao na tela. */
+  at: number
 }
 
 export type OverlayAction =
@@ -904,7 +948,10 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     corner: 'top-right',
     // Do lado direito e um pouco acima do meio: fora do HUD de habilidades (que
     // e embaixo no centro) e fora do placar/minimapa (que sao os cantos).
-    dock: { side: 'right', offset: 0.38 }
+    dock: { side: 'right', offset: 0.38 },
+    // Um pouco abaixo do meio: longe do X das janelas maximizadas (topo) e da
+    // bandeja do Windows (base).
+    idleOffset: 0.6
   },
 
   voice: {
@@ -1083,6 +1130,8 @@ export interface BocasAPI {
     onAction: (cb: (action: OverlayAction) => void) => () => void
     /** A sobreposicao abriu e quer dados frescos. */
     onStateRequested: (cb: () => void) => () => void
+    /** Notificacao pra aparecer por cima de tudo (ver OverlayToast). */
+    toast: (toast: OverlayToast) => Promise<void>
 
     // --- lado da sobreposicao ---
     /** Ultimo retrato empurrado (undefined antes do primeiro). */
@@ -1096,8 +1145,15 @@ export interface BocasAPI {
      * quando o ponteiro entra no painel e desliga quando sai.
      */
     setInteractive: (interactive: boolean) => Promise<void>
-    /** Fecha a sobreposicao ate a proxima partida. */
+    /**
+     * MINIMIZA: some da tela ate o atalho trazer de volta (ou ate a proxima
+     * partida, se o painel abre sozinho nela).
+     */
     dismiss: () => Promise<void>
+    onToast: (cb: (toast: OverlayToast) => void) => () => void
+    /** A logo de fora de partida foi arrastada; grava a altura. */
+    setIdleOffset: (offset: number) => Promise<void>
+    onIdleOffset: (cb: (offset: number) => void) => () => void
 
     // --- modo (quem manda e o processo main; ver OverlayMode) ---
     /** O que esta aberto agora. */

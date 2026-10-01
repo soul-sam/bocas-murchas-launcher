@@ -9,7 +9,8 @@ import type {
   OverlayDock,
   OverlayHitArea,
   OverlayMode,
-  OverlayState
+  OverlayState,
+  OverlayToast
 } from '../../preload/types.js'
 
 /**
@@ -29,9 +30,10 @@ import type {
  *
  * ## Dois motivos pra estar aberta, e eles convivem
  *
- *   - `dock`  — o painel de canto: apostas da partida e as acoes rapidas do
- *               servidor. Abre sozinho quando a partida comeca (se
- *               `lol.overlay`) e tambem pelo atalho global.
+ *   - `dock`  — a aba/logo com o painel: apostas, acoes rapidas do servidor e
+ *               as notificacoes. Fica SEMPRE na tela com a sobreposicao
+ *               ligada (ver `minimized`); em partida vira a aba fina do
+ *               jogo, fora dela a logo meio escondida na direita.
  *   - `wheel` — a roda de sons, no centro da tela. So por atalho ou pelo botao
  *               do painel.
  *
@@ -82,17 +84,46 @@ let overlayWindow: BrowserWindow | null = null
 let lastState: OverlayState | null = null
 
 /** Nenhum motivo pra estar aberta = nao existe janela. */
-let mode: OverlayMode = { dock: false, wheel: false }
+let mode: OverlayMode = { dock: false, wheel: false, inGame: false, appFocused: false, reveal: 0 }
+
+/**
+ * ===========================================================================
+ * SEMPRE DE PE — e o unico jeito de ela sumir e a pessoa pedir.
+ * ===========================================================================
+ *
+ * A sobreposicao ja nasceu so com motivo (partida comecando, atalho) e morria
+ * quando o motivo acabava. Hoje, ligada, ela fica na tela o tempo todo: aba
+ * fina em partida, a logo meio escondida na direita fora dela. O que tira da
+ * tela e MINIMIZAR (o botao do painel ou o atalho), e o mesmo atalho traz de
+ * volta.
+ *
+ * Minimizado a janela e DESTRUIDA, e nao escondida: sem janela nao ha relogio
+ * de cursor nem renderer ocupando memoria atras do jogo, e voltar e barato.
+ *
+ * Nao sobrevive ao reinicio de proposito: "sempre ativo" e o padrao, e quem
+ * minimizou ontem e esqueceu acharia que a sobreposicao quebrou.
+ */
+let minimized = false
+/** Partida de League em andamento (fase `in-progress`). */
+let inGame = false
+/** Alguma janela do launcher esta com o foco. Ver `OverlayMode.appFocused`. */
+let appFocused = false
+/** Ver `OverlayMode.reveal`. */
+let reveal = 0
+/** A roda de sons: so por atalho ou pelo botao do painel. */
+let wheelOpen = false
 
 let prefs: {
   enabled: boolean
   corner: OverlayCorner
   dock: OverlayDock
+  idleOffset: number
   autoOnMatch: boolean
 } = {
   enabled: true,
   corner: 'top-right',
   dock: { side: 'right', offset: 0.38 },
+  idleOffset: 0.6,
   autoOnMatch: true
 }
 
@@ -166,6 +197,18 @@ function pollCursor(): void {
   const win = overlayWindow
   if (!win || win.isDestroyed()) return
 
+  // Na mesma volta do relogio, e nao por evento de foco: a janela principal
+  // nao e a unica do launcher (configuracoes, abertura), e perguntar "quem tem
+  // o foco agora" cobre todas sem pendurar ouvinte em cada uma.
+  const focused = BrowserWindow.getFocusedWindow()
+  const nextFocused = Boolean(focused && focused !== win && !focused.isDestroyed())
+  if (nextFocused !== appFocused) {
+    appFocused = nextFocused
+    applyMode()
+    // `applyMode` pode ter mandado a janela embora.
+    if (win.isDestroyed()) return
+  }
+
   if (forcedInteractive) {
     applyInteractive(true)
     return
@@ -206,27 +249,15 @@ function stopCursorWatch(): void {
   forcedInteractive = false
 }
 
-/** `phaseSince` da partida em andamento (0 fora de partida). */
+/**
+ * `phaseSince` da partida em andamento (0 fora de partida).
+ *
+ * E o que separa "a partida COMECOU" de "o watcher publicou de novo a mesma
+ * partida" — ele publica o tempo todo, e so a primeira vez de cada partida
+ * pode desminimizar e abrir o painel sozinho. Minimizar no meio de uma
+ * partida vale pra ela inteira; a proxima tem outro `phaseSince`.
+ */
 let currentPhaseSince = 0
-/**
- * `phaseSince` da partida que a pessoa mandou embora. Guardar o inicio da
- * partida — e nao um booleano — e o que faz o "fechar" valer so pra ELA: a
- * proxima tem outro `phaseSince` e a sobreposicao volta sozinha.
- */
-let dismissedSince: number | null = null
-
-/**
- * O painel de canto foi aberto PELA PARTIDA, e nao pelo atalho.
- *
- * Sem esta distincao o atalho nao funcionaria pra ninguem com o LoL ligado —
- * que e o padrao. O watcher publica status o tempo todo, inclusive "nao esta
- * em partida", e cada publicacao chama `syncOverlayWithLol`: o painel aberto
- * na tecla seria fechado na fracao de segundo seguinte, o que pareceria
- * exatamente uma tecla quebrada.
- *
- * Fim de partida fecha o que a PARTIDA abriu. O que a pessoa abriu e dela.
- */
-let dockFromMatch = false
 
 /** Todas as janelas menos a propria sobreposicao. Na pratica, a principal. */
 function mainWindow(): BrowserWindow | null {
@@ -337,6 +368,7 @@ function createOverlayWindow(): BrowserWindow {
     // janela foi o atalho da roda.
     win.webContents.send('overlay:mode', mode)
     win.webContents.send('overlay:dock', prefs.dock)
+    win.webContents.send('overlay:idle-offset', prefs.idleOffset)
     // O ultimo retrato ja empurrado pinta a tela no primeiro quadro; o pedido
     // abaixo busca dados frescos (o poll da principal e de 30s).
     if (lastState) win.webContents.send('overlay:state', lastState)
@@ -357,10 +389,16 @@ function createOverlayWindow(): BrowserWindow {
   return win
 }
 
-function showOverlay(): void {
+/**
+ * @param rebound refaz o retangulo no monitor do cursor. A janela agora vive
+ * o dia inteiro, entao so faz isso nos momentos em que a pessoa esta olhando
+ * pra ela de proposito (partida comecando, atalho) — mudar de monitor a cada
+ * mexida no foco faria a logo pular de tela enquanto o mouse passa.
+ */
+function showOverlay(rebound: boolean): void {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     // A pessoa pode ter mudado de monitor entre uma abertura e outra.
-    overlayWindow.setBounds(targetBounds())
+    if (rebound) overlayWindow.setBounds(targetBounds())
     if (!overlayWindow.isVisible()) overlayWindow.showInactive()
     return
   }
@@ -382,27 +420,44 @@ function closeOverlay(): void {
 // ---------------- modo ----------------
 
 /**
- * Aplica o modo pedido e acerta a janela.
+ * Recalcula o modo a partir do estado e acerta a janela.
  *
  * Um lugar so decide "existe janela?", e a resposta e sempre a mesma pergunta:
- * sobrou algum motivo? Enquanto isso estava espalhado (uma funcao que abria na
- * partida, outra que fechava no fim) dava pra chegar num estado em que a
- * janela estava fechada com um motivo de pe.
+ * sobrou algum motivo? Com a sobreposicao ligada o motivo quase sempre existe
+ * — so nao existe com ela minimizada e a roda fechada.
+ *
+ * @param rebound ver `showOverlay`.
  */
-function applyMode(next: OverlayMode): void {
-  const wanted = prefs.enabled ? next : { dock: false, wheel: false }
+function applyMode(rebound = false): void {
+  const next: OverlayMode = {
+    dock: prefs.enabled && !minimized,
+    wheel: prefs.enabled && wheelOpen,
+    inGame,
+    appFocused,
+    reveal
+  }
 
-  if (wanted.dock === mode.dock && wanted.wheel === mode.wheel) return
-  mode = wanted
+  const same =
+    next.dock === mode.dock &&
+    next.wheel === mode.wheel &&
+    next.inGame === mode.inGame &&
+    next.appFocused === mode.appFocused &&
+    next.reveal === mode.reveal
+  const exists = Boolean(overlayWindow && !overlayWindow.isDestroyed())
+  const wanted = next.dock || next.wheel
 
-  if (!mode.dock && !mode.wheel) {
+  // Nada mudou e a janela esta como devia: o relogio chama isto 20x/s.
+  if (same && exists === wanted && !rebound) return
+  mode = next
+
+  if (!wanted) {
     closeOverlay()
     return
   }
 
-  showOverlay()
+  showOverlay(rebound)
   // A janela recem-criada recebe o modo no `did-finish-load`; esta linha e
-  // pros casos em que ela JA estava aberta (abrir a roda com o painel na tela).
+  // pros casos em que ela JA estava aberta.
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.webContents.send('overlay:mode', mode)
   }
@@ -412,27 +467,33 @@ export function getOverlayMode(): OverlayMode {
   return mode
 }
 
-/** Pedido da propria sobreposicao (botao "sons", X de cada peca). */
+/**
+ * Pedido da propria sobreposicao: o botao "sons" do painel e o gomo escolhido
+ * (`wheel`). `dock: false` e o mesmo que minimizar.
+ */
 export function setOverlayMode(patch: Partial<OverlayMode>): void {
-  applyMode({ ...mode, ...patch })
+  if (typeof patch.wheel === 'boolean') wheelOpen = patch.wheel
+  if (typeof patch.dock === 'boolean') minimized = !patch.dock
+  applyMode()
 }
 
 /**
  * Atalho global. Alterna UMA peca.
  *
- * Abrir o painel pelo atalho tambem desfaz o "fechei esta partida": quem pediu
- * pra ver de novo esta dizendo exatamente isso, e sem esta linha o atalho nao
- * faria nada pelo resto da partida — parecendo tecla quebrada.
+ * O do painel e o MINIMIZAR/TRAZER DE VOLTA. Voltando, o painel abre sozinho
+ * por uns segundos (`reveal`): quem apertou a tecla apertou pra ver alguma
+ * coisa, e uma logo meio escondida na borda nao e "alguma coisa".
  */
-export function toggleOverlayPart(part: keyof OverlayMode): void {
+export function toggleOverlayPart(part: 'dock' | 'wheel'): void {
   if (!prefs.enabled) return
-  if (part === 'dock') {
-    if (!mode.dock) dismissedSince = null
-    // Mexeu na tecla: abrindo ou fechando, o painel passa a ser da pessoa e
-    // para de ser fechado pelo fim da partida.
-    dockFromMatch = false
+  if (part === 'wheel') {
+    wheelOpen = !wheelOpen
+    applyMode()
+    return
   }
-  applyMode({ ...mode, [part]: !mode[part] })
+  minimized = !minimized
+  if (!minimized) reveal = Date.now()
+  applyMode(!minimized)
 }
 
 // ---------------- ciclo de vida ----------------
@@ -443,38 +504,40 @@ export function applyOverlaySettings(settings: LauncherSettings): void {
   const dockChanged =
     prefs.dock.side !== settings.overlay.dock.side ||
     prefs.dock.offset !== settings.overlay.dock.offset
+  const idleChanged = prefs.idleOffset !== settings.overlay.idleOffset
 
   prefs = {
     enabled: settings.overlay.enabled,
     corner: settings.overlay.corner,
     dock: settings.overlay.dock,
+    idleOffset: settings.overlay.idleOffset,
     autoOnMatch: settings.lol.enabled && settings.lol.overlay
   }
 
   if (!prefs.enabled) {
-    dockFromMatch = false
-    applyMode({ dock: false, wheel: false })
+    wheelOpen = false
+    applyMode()
     return
   }
+
+  // Ligou (ou e o boot): a sobreposicao aparece. Sem isto ela so nasceria na
+  // proxima mudanca de estado.
+  applyMode()
+
+  const win = overlayWindow && !overlayWindow.isDestroyed() ? overlayWindow : null
+  if (!win) return
 
   // O canto decide de que lado o CONTEUDO se ancora dentro da janela, e o
   // renderer le essa preferencia na montagem. Com a janela aberta, avisar e
   // mais barato que refazer — a janela cobre a tela toda, entao mudar de canto
   // nao mexe em nada dela, so no CSS de dentro.
-  if (cornerChanged && overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.webContents.send('overlay:corner', prefs.corner)
-  }
+  if (cornerChanged) win.webContents.send('overlay:corner', prefs.corner)
 
   // A propria janela e quem manda o arrasto, entao na maioria das vezes ela ja
   // esta desenhada no lugar certo quando este aviso volta. Mandar mesmo assim
   // e o que faz a posicao valer quando quem mexeu foram as CONFIGURACOES.
-  if (dockChanged && overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.webContents.send('overlay:dock', prefs.dock)
-  }
-
-  // Desligar "abrir sozinho" no meio de uma partida NAO fecha o que ja esta na
-  // tela: a pessoa mexeu numa preferencia sobre o FUTURO, e ver o painel sumir
-  // pareceria que ela desligou a sobreposicao inteira. O X fecha.
+  if (dockChanged) win.webContents.send('overlay:dock', prefs.dock)
+  if (idleChanged) win.webContents.send('overlay:idle-offset', prefs.idleOffset)
 }
 
 /**
@@ -482,48 +545,65 @@ export function applyOverlaySettings(settings: LauncherSettings): void {
  * cada publicacao de status — idempotente de proposito, porque o status sai
  * varias vezes durante a mesma partida.
  *
- * So mexe no `dock`: a roda de sons nao tem nada a ver com estar em partida, e
- * fechar ela no fim do jogo tiraria a roda da mao de quem acabou de abrir.
+ * A partida so troca o DESENHO (aba do jogo em vez da logo). O que ela ainda
+ * decide sozinha, com `lol.overlay` ligado, e o comeco: desminimiza e abre o
+ * painel por uns segundos, que e o aviso de que da pra apostar.
  */
 export function syncOverlayWithLol(status: LolStatus): void {
-  const inGame = status.clientRunning && status.phase === 'in-progress'
+  const playing = status.clientRunning && status.phase === 'in-progress'
 
-  if (!inGame) {
-    // Partida acabou: a proxima merece painel de novo, mesmo que este tenha
-    // sido fechado na mao.
+  if (!playing) {
     currentPhaseSince = 0
-    dismissedSince = null
-    // Fecha SO o painel que a partida abriu — ver `dockFromMatch`. Esta funcao
-    // roda a cada publicacao de status, e a maioria delas e "fora de partida".
-    if (dockFromMatch) {
-      dockFromMatch = false
-      applyMode({ ...mode, dock: false })
+    if (inGame) {
+      inGame = false
+      applyMode()
     }
     return
   }
 
+  const started = status.phaseSince !== currentPhaseSince
   currentPhaseSince = status.phaseSince
-  if (!prefs.autoOnMatch) return
-  if (dismissedSince === status.phaseSince) return
 
-  if (!mode.dock) dockFromMatch = true
-  applyMode({ ...mode, dock: true })
+  if (!started) return
+  inGame = true
+  if (prefs.autoOnMatch) {
+    minimized = false
+    reveal = Date.now()
+  }
+  // Rebound: e o monitor do jogo que importa, e o cursor esta preso nele.
+  applyMode(true)
 }
 
-/** Fecha o painel de canto ate a proxima partida (botao X). */
+/** Botao de minimizar do painel. O atalho traz de volta. */
 export function dismissOverlay(): void {
-  dismissedSince = currentPhaseSince
-  dockFromMatch = false
-  applyMode({ ...mode, dock: false })
+  minimized = true
+  applyMode()
 }
 
 export function destroyOverlay(): void {
   closeOverlay()
-  mode = { dock: false, wheel: false }
+  mode = { dock: false, wheel: false, inGame: false, appFocused: false, reveal: 0 }
   lastState = null
-  dismissedSince = null
-  dockFromMatch = false
+  minimized = false
+  wheelOpen = false
+  inGame = false
   currentPhaseSince = 0
+}
+
+/**
+ * Uma notificacao pra janela da sobreposicao.
+ *
+ * Devolve se ela vai APARECER — quem chama usa isso pra nao repetir a mesma
+ * coisa na notificacao do Windows. So aparece com a logo/aba na tela e sem o
+ * launcher em primeiro plano fora de partida (ai quem mostra e o proprio app).
+ */
+export function pushOverlayToast(toast: OverlayToast): boolean {
+  const win = overlayWindow
+  if (!win || win.isDestroyed()) return false
+  if (!mode.dock) return false
+  if (mode.appFocused && !mode.inGame) return false
+  win.webContents.send('overlay:toast', toast)
+  return true
 }
 
 // ---------------- ponte entre as duas janelas ----------------

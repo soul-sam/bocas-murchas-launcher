@@ -64,6 +64,7 @@ import { AchievementsModal } from '@/components/social/AchievementsModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
 import { OverlayBridge } from '@/lib/overlay-bridge'
+import { OverlayFeed } from '@/lib/overlay-feed'
 import { MusicHost } from '@/components/social/MusicHost'
 import { MusicPanel } from '@/components/social/MusicPanel'
 import { ProfileModal } from '@/components/social/ProfileModal'
@@ -241,6 +242,9 @@ function GlobalOverlays() {
           catálogo de sons, estado da call) e executa os cliques que voltam de
           lá — ver lib/overlay-bridge. */}
       <OverlayBridge />
+      {/* E as notificações dela: quem entrou na call, ficou online ou
+          começou partida. Ver lib/overlay-feed. */}
+      <OverlayFeed />
       {/* A jukebox. Mora AQUI, e não no palco da call, porque a música tem que
           continuar quando a pessoa vai pra tela de jogar — que é quando ela
           serve pra alguma coisa. Ver components/social/MusicHost.tsx. */}

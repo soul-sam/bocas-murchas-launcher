@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.33.0',
+    headline: 'A sobreposição agora fica sempre na tela — e avisa quem chegou',
+    items: [
+      'Fora de jogo, a logo do Bocas fica meio escondida na borda direita. Encostou o mouse, ela sai e o painel abre do lado; arrastando, ela sobe e desce.',
+      'Na partida continua a aba fina de sempre, no lugar em que você deixou.',
+      'Notificações por cima de tudo: quem entrou ou saiu da sua call, quem ficou online, quem começou partida (com aviso da aposta aberta) e as mensagens.',
+      'O painel guarda as notificações de agora há pouco, pra quem estava com a cabeça no jogo.',
+      'O botão de minimizar tira a sobreposição da tela; Ctrl+Shift+O traz de volta (a tecla se troca em Atalhos).'
+    ],
+    note: 'Com a sobreposição na tela, a mensagem aparece nela em vez do balão do Windows. Com o launcher aberto na frente, a logo se esconde.'
+  },
+  {
     version: '1.32.0',
     headline: 'Mercado de horas virou loja, e o histórico ganhou aba própria',
     items: [

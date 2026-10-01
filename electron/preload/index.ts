@@ -96,6 +96,7 @@ const api: BocasAPI = {
     // O `on` daqui entrega o payload; este canal nao tem payload nenhum, so
     // o aviso. Embrulhado pra o consumidor receber uma funcao sem argumento.
     onStateRequested: (cb) => on('overlay:request-state', () => cb()),
+    toast: (toast) => ipcRenderer.invoke('overlay:toast', toast),
 
     state: () => ipcRenderer.invoke('overlay:state'),
     onState: (cb) => on('overlay:state', cb),
@@ -103,6 +104,9 @@ const api: BocasAPI = {
     requestState: () => ipcRenderer.invoke('overlay:request-state'),
     setInteractive: (interactive) => ipcRenderer.invoke('overlay:set-interactive', interactive),
     dismiss: () => ipcRenderer.invoke('overlay:dismiss'),
+    onToast: (cb) => on('overlay:toast', cb),
+    setIdleOffset: (offset) => ipcRenderer.invoke('overlay:set-idle-offset', offset),
+    onIdleOffset: (cb) => on('overlay:idle-offset', cb),
 
     mode: () => ipcRenderer.invoke('overlay:mode'),
     onMode: (cb) => on('overlay:mode', cb),
