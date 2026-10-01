@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { RefreshCw, Server, Users } from 'lucide-react'
+import { RefreshCw, Users } from 'lucide-react'
+import { ServerIcon } from '@/lib/bocas-icons'
 import { Button } from '@/components/ui/button'
 import { useServerStatus } from '@/lib/server-status-context'
 import type { PlayerSample } from '../../electron/preload/types'
@@ -65,7 +66,7 @@ export function ServerStatusCard() {
           <span className={`h-3 w-3 rounded-full ${dotClass}`} aria-hidden />
           <div>
             <div className="flex items-center gap-2">
-              <Server className="h-3.5 w-3.5 text-muted-foreground" />
+              <ServerIcon className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="font-display text-sm uppercase tracking-wider text-foreground">
                 {online ? 'Servidor Online' : 'Servidor Offline'}
               </span>

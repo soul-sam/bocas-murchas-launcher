@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { MessagesSquare, Gamepad2, LogOut, Keyboard, Printer, Server } from 'lucide-react'
+import { LogOut, Keyboard } from 'lucide-react'
+import { ChatIcon, GameIcon, PrinterIcon, ServerIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
@@ -123,7 +124,7 @@ export function AppRail() {
         forceInactive={onSocial && dmActive}
         onClick={openSocial}
       >
-        <MessagesSquare className="h-5 w-5" />
+        <ChatIcon className="h-5 w-5" variant="regular" />
       </RailLink>
 
       {/* Na web esta aba não é o launcher: o Minecraft não abre de dentro do
@@ -131,7 +132,7 @@ export function AppRail() {
           ícone contam isso antes do toque — antes prometia "Minecraft" e
           entregava botões que não faziam nada. */}
       <RailLink to="/jogo" label={isWeb() ? 'Servidor' : 'Minecraft'}>
-        {isWeb() ? <Server className="h-5 w-5" /> : <Gamepad2 className="h-5 w-5" />}
+        {isWeb() ? <ServerIcon className="h-5 w-5" /> : <GameIcon className="h-5 w-5" />}
       </RailLink>
 
       {/* A impressora só existe na barra pra quem tem o cargo "Impressora
@@ -140,7 +141,7 @@ export function AppRail() {
           sobre o `can()` ser falso enquanto o catálogo não chegou. */}
       {can('print') && (
         <RailLink to="/impressao" label="Impressora 3D">
-          <Printer className="h-5 w-5" />
+          <PrinterIcon className="h-5 w-5" />
         </RailLink>
       )}
 
@@ -223,7 +224,7 @@ export function AppRail() {
         onClick={openCosts}
         className="alvo-dedo relative rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
       >
-        <Server className="h-4 w-4" />
+        <ServerIcon className="h-4 w-4" />
         {costs && !costs.iPaid && (
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border border-void bg-burn" />
         )}

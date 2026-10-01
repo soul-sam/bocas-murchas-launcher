@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Coins, Loader2, Paperclip, ReceiptText, X } from 'lucide-react'
+import { Loader2, Paperclip, ReceiptText, X } from 'lucide-react'
+import { MurchosIcon } from '@/lib/bocas-icons'
 import { Button } from '@/components/ui/button'
 import { parseChannelFeeds } from '@/lib/api'
 import { printApi } from '@/lib/api-print'
@@ -200,7 +201,7 @@ export function PrintRequestComposer() {
 
           <div className="space-y-1.5">
             <label htmlFor="encomenda-oferta" className="flex items-center gap-1.5 text-sm font-medium">
-              <Coins className="h-4 w-4 text-burn" />
+              <MurchosIcon className="h-4 w-4 text-burn" />
               Oferta em murchos
             </label>
             <input

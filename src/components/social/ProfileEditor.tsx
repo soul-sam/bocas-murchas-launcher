@@ -2,7 +2,6 @@ import * as React from 'react'
 import {
   Cake,
   Clock,
-  Gamepad2,
   ImageIcon,
   ImagePlus,
   Link as LinkIcon,
@@ -12,6 +11,7 @@ import {
   Upload,
   X
 } from 'lucide-react'
+import { GameIcon as BocasGameIcon } from '@/lib/bocas-icons'
 import {
   Dialog,
   DialogContent,
@@ -530,7 +530,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                             title="Tirar da lista"
                             className="flex items-center gap-1 rounded-brutal border-2 border-acid bg-acid/10 px-2 py-1 font-mono text-[11.5px] uppercase tracking-widest text-acid"
                           >
-                            <Gamepad2 className="h-3 w-3" />
+                            <BocasGameIcon className="h-3 w-3" />
                             {gameLabel(game)}
                             <X className="h-3 w-3" />
                           </button>

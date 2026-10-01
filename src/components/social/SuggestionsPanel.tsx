@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Bug, Lightbulb, Loader2, Plus, Printer, ThumbsUp, X } from 'lucide-react'
+import { Bug, Lightbulb, Loader2, Plus, ThumbsUp, X } from 'lucide-react'
+import { PrinterIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import {
   suggestions as suggestionsApi,
@@ -223,7 +224,7 @@ export function SuggestionsPanel() {
                         {item.kind === 'bug' ? (
                           <Bug className="h-2.5 w-2.5 shrink-0" />
                         ) : item.kind === 'impressao' ? (
-                          <Printer className="h-2.5 w-2.5 shrink-0" />
+                          <PrinterIcon className="h-2.5 w-2.5 shrink-0" />
                         ) : (
                           <Lightbulb className="h-2.5 w-2.5 shrink-0" />
                         )}

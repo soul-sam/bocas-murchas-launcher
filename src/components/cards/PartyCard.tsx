@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Ban, Headphones, Loader2, LogIn, LogOut, Zap } from 'lucide-react'
+import { Ban, Loader2, LogIn, LogOut, Zap } from 'lucide-react'
+import { VoiceIcon } from '@/lib/bocas-icons'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -240,7 +241,7 @@ export function PartyCard({ metadata }: CardProps<PartyCardMetadata>) {
               filled
               disabled={busy}
               onClick={() => void voice.join(callChannel)}
-              icon={<Headphones className="h-3 w-3" />}
+              icon={<VoiceIcon className="h-3 w-3" />}
             >
               Entrar na call
             </ActionButton>

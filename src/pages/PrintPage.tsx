@@ -20,7 +20,6 @@ import {
   Pin,
   PinOff,
   Play,
-  Printer,
   ReceiptText,
   RefreshCw,
   Repeat,
@@ -33,6 +32,7 @@ import {
   WifiOff,
   Wrench
 } from 'lucide-react'
+import { PrinterIcon } from '@/lib/bocas-icons'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -142,7 +142,7 @@ export function PrintPage() {
     <div className="flex flex-1 flex-col overflow-auto p-4 sm:p-8">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Printer className="h-9 w-9 text-muted-foreground drop-shadow-[0_0_10px_rgb(var(--neon-rgb)/0.3)]" />
+          <PrinterIcon className="h-9 w-9 text-muted-foreground drop-shadow-[0_0_10px_rgb(var(--neon-rgb)/0.3)]" />
           <div>
             <h1 className="title-brutal text-3xl">Impressora 3D</h1>
             <p className="text-xs text-muted-foreground">

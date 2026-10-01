@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Clock, Coins, Copy, ExternalLink, Film, Layers, Loader2, Printer, ReceiptText } from 'lucide-react'
+import { Clock, Copy, ExternalLink, Film, Layers, Loader2, ReceiptText } from 'lucide-react'
+import { MurchosIcon, PrinterIcon } from '@/lib/bocas-icons'
 import { resolveAssetUrl } from '@/lib/api'
 import { formatSeconds, printApi, type PrintCardMetadata, type PrintRequestStatus } from '@/lib/api-print'
 import { useAuth } from '@/lib/auth-context'
@@ -62,7 +63,7 @@ function JobCard({ metadata }: { metadata: Extract<PrintCardMetadata, { kind: 'j
 
   return (
     <CardFrame
-      icon={<Printer className="h-3.5 w-3.5" />}
+      icon={<PrinterIcon className="h-3.5 w-3.5" />}
       title={metadata.requestId ? 'Encomenda entregue' : 'Peça pronta'}
       footer={
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -187,7 +188,7 @@ function RequestCard({ metadata }: { metadata: Extract<PrintCardMetadata, { kind
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {metadata.offerCoins > 0 ? (
             <span className="flex items-center gap-1 text-burn">
-              <Coins className="h-3 w-3" />
+              <MurchosIcon className="h-3 w-3" />
               {metadata.offerCoins} murchos
             </span>
           ) : (

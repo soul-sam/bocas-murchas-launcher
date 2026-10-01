@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { HandCoins, PartyPopper, Server, X } from 'lucide-react'
+import { HandCoins, PartyPopper, X } from 'lucide-react'
+import { ServerIcon } from '@/lib/bocas-icons'
 import { formatBRL, monthName, progressoDaConta } from '@/lib/api-costs'
 import { useCosts } from '@/lib/costs-context'
 import { useOverlays } from '@/lib/overlay-context'
@@ -100,7 +101,7 @@ export function CostShareBanner() {
         </div>
       ) : (
         <div className="pointer-events-auto flex w-full max-w-2xl items-center gap-3 rounded-brutal border border-burn/50 bg-void/95 px-3 py-2 shadow-glow-burn backdrop-blur-sm">
-          <Server className="h-4 w-4 shrink-0 text-burn" />
+          <ServerIcon className="h-4 w-4 shrink-0 text-burn" />
 
           <p className="min-w-0 flex-1 text-xs leading-snug text-foreground">
             Faltam <span className="font-mono text-burn">{formatBRL(progresso.faltaCents)}</span> pra

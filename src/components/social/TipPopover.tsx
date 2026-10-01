@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Coins, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { MurchosIcon, TipIcon } from '@/lib/bocas-icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Hint } from '@/components/ui/tooltip'
 import { messages as messagesApi, type ChatMessage, type MessageTip } from '@/lib/api'
@@ -84,7 +85,7 @@ export function TipButton({
     return (
       <Hint label="Você já deu gorjeta nessa" side="top">
         <span className={cn('flex items-center justify-center p-1.5 text-acid', className)}>
-          <Coins className="h-3.5 w-3.5" />
+          <TipIcon className="h-3.5 w-3.5" />
         </span>
       </Hint>
     )
@@ -95,7 +96,7 @@ export function TipButton({
       <PopoverTrigger asChild>
         <Hint label="Dar gorjeta" description="murchos seus pra quem escreveu" side="top">
           <button type="button" aria-label="Dar gorjeta" className={className}>
-            <Coins className="h-3.5 w-3.5" />
+            <TipIcon className="h-3.5 w-3.5" />
           </button>
         </Hint>
       </PopoverTrigger>
@@ -150,7 +151,7 @@ export function TipChip({ tips }: { tips: MessageTip[] | undefined }) {
   return (
     <Hint label={tips.length === 1 ? 'Uma gorjeta' : `${tips.length} gorjetas`} description={quem} side="top">
       <span className="flex items-center gap-1 rounded-brutal border border-acid/50 bg-acid/10 px-1.5 py-0.5 text-acid">
-        <Coins className="h-3 w-3" />
+        <MurchosIcon className="h-3 w-3" />
         <span className="font-mono text-[11.5px]">{total.toLocaleString('pt-BR')}</span>
         {tips.length > 1 && (
           <span className="text-[11px] text-muted-foreground">×{tips.length}</span>

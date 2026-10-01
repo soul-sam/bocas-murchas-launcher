@@ -9,9 +9,9 @@ import {
   UserCog,
   Settings,
   Headphones,
-  MessageSquare,
   Trash2
 } from 'lucide-react'
+import { ChatIcon } from '@/lib/bocas-icons'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -129,7 +129,7 @@ export function UserContextMenu() {
             {/* Primeira coisa do menu: é a ação mais pedida e a única que não
                 tinha caminho nenhum na interface antes. */}
             <DropdownMenuItem onSelect={() => void openDm(userId)}>
-              <MessageSquare className="h-3.5 w-3.5" />
+              <ChatIcon className="h-3.5 w-3.5" />
               Mandar mensagem
             </DropdownMenuItem>
 

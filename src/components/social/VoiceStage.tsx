@@ -8,7 +8,6 @@ import {
   MonitorUp,
   MonitorX,
   PhoneOff,
-  Music,
   Zap,
   Loader2,
   Users,
@@ -16,10 +15,10 @@ import {
   Video,
   VideoOff,
   SwitchCamera,
-  Tv,
   Radio,
   Disc3
 } from 'lucide-react'
+import { SoundboardIcon, TvIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import { useVoice, type ScreenShareFeed } from '@/lib/voice-context'
 import { useNudge } from '@/lib/nudge-context'
@@ -285,7 +284,7 @@ export function VoiceStage() {
               title={watch.current.title ?? 'Assistindo junto'}
               className="flex items-center gap-1.5 rounded-brutal border border-acid/50 bg-acid/10 px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20"
             >
-              <Tv className="h-3 w-3" />
+              <TvIcon className="h-3 w-3" />
               {watch.current.playing ? 'assistindo' : 'vídeo pausado'}
             </button>
           )}
@@ -452,7 +451,7 @@ export function VoiceStage() {
 
           <SoundboardPopover align="center">
             <ControlButton label="Soundboard">
-              <Music className="h-4 w-4" />
+              <SoundboardIcon className="h-4 w-4" />
             </ControlButton>
           </SoundboardPopover>
 
@@ -482,7 +481,7 @@ export function VoiceStage() {
             text={compact ? undefined : watchVideoId && !watchOpen ? 'Rolando' : 'Assistir'}
             onClick={toggleWatch}
           >
-            <Tv className="h-4 w-4" />
+            <TvIcon className="h-4 w-4" />
           </ControlButton>
 
           <ControlButton

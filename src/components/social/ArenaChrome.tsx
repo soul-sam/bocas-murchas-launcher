@@ -1,5 +1,7 @@
 import * as React from 'react'
-import { X, Trophy, Dices, Medal, ShoppingBag, ScrollText, type LucideIcon } from 'lucide-react'
+import { X, ScrollText } from 'lucide-react'
+import { BetIcon, MedalIcon, ShopIcon, TrophyIcon } from '@/lib/bocas-icons'
+import type { IconComponent } from '@/lib/icon-component'
 import { cn } from '@/lib/utils'
 import { useLayout } from '@/lib/layout-context'
 import { useGamification } from '@/lib/gamification-context'
@@ -23,11 +25,11 @@ import { useGamification } from '@/lib/gamification-context'
 
 export type ArenaItem = 'ranking' | 'wagers' | 'achievements' | 'shop' | 'recap'
 
-export const ARENA_ICON: Record<ArenaItem, LucideIcon> = {
-  ranking: Trophy,
-  wagers: Dices,
-  achievements: Medal,
-  shop: ShoppingBag,
+export const ARENA_ICON: Record<ArenaItem, IconComponent> = {
+  ranking: TrophyIcon,
+  wagers: BetIcon,
+  achievements: MedalIcon,
+  shop: ShopIcon,
   recap: ScrollText
 }
 

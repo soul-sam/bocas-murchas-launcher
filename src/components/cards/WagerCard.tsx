@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { useTicker } from '@/lib/use-now'
-import { Coins, Swords, Pickaxe, Radio, Trophy } from 'lucide-react'
+import { Swords, Pickaxe, Radio } from 'lucide-react'
+import { MurchosIcon, TrophyIcon } from '@/lib/bocas-icons'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -100,7 +101,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
       accent={accent}
       icon={
         settled ? (
-          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+          <MurchosIcon className="h-3.5 w-3.5 text-muted-foreground" />
         ) : (
           <Radio className="h-3.5 w-3.5 text-destructive" />
         )
@@ -199,7 +200,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
 
       {settled && metadata.jackpot && (
         <p className="mt-2 flex items-center gap-1.5 rounded-brutal border border-acid/40 bg-acid/[0.06] px-2 py-1 text-xs text-foreground">
-          <Trophy className="h-3 w-3 shrink-0 text-acid-text" />
+          <TrophyIcon className="h-3 w-3 shrink-0 text-acid-text" />
           Todo mundo acertou: o pote de{' '}
           <span className="font-mono text-acid-text">{metadata.jackpot.amount}</span> foi dividido
           entre {metadata.jackpot.winners} (

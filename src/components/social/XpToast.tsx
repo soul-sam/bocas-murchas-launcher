@@ -1,4 +1,6 @@
-import { X, ArrowUp, Award, Coins, Flame, Gift, Info, TriangleAlert } from 'lucide-react'
+import { X, ArrowUp, Info, TriangleAlert } from 'lucide-react'
+import { BadgeIcon as BocasBadgeIcon, GiftIcon, MurchosIcon, StreakIcon } from '@/lib/bocas-icons'
+import type { IconComponent } from '@/lib/icon-component'
 import { cn } from '@/lib/utils'
 import { NaFila } from '@/components/ui/filas'
 import { BadgeIcon } from '@/lib/cosmetic-icons'
@@ -44,12 +46,12 @@ export function XpToasts({
   )
 }
 
-const ACCENT: Record<GamificationToast['kind'], { border: string; text: string; Icon: typeof ArrowUp }> = {
+const ACCENT: Record<GamificationToast['kind'], { border: string; text: string; Icon: IconComponent }> = {
   levelup: { border: 'border-acid', text: 'text-acid', Icon: ArrowUp },
-  badge: { border: 'border-burn/60', text: 'text-burn', Icon: Award },
-  coins: { border: 'border-burn/60', text: 'text-burn', Icon: Coins },
-  checkin: { border: 'border-burn/60', text: 'text-burn', Icon: Flame },
-  gift: { border: 'border-acid', text: 'text-acid', Icon: Gift },
+  badge: { border: 'border-burn/60', text: 'text-burn', Icon: BocasBadgeIcon },
+  coins: { border: 'border-burn/60', text: 'text-burn', Icon: MurchosIcon },
+  checkin: { border: 'border-burn/60', text: 'text-burn', Icon: StreakIcon },
+  gift: { border: 'border-acid', text: 'text-acid', Icon: GiftIcon },
   info: { border: 'border-line-strong', text: 'text-muted-foreground', Icon: Info },
   error: { border: 'border-destructive/60', text: 'text-destructive', Icon: TriangleAlert }
 }

@@ -2,16 +2,15 @@ import * as React from 'react'
 import {
   ChevronDown,
   ChevronUp,
-  Coins,
   Pickaxe,
   Radio,
   RefreshCw,
   Swords,
   Timer,
-  Trophy,
   Users,
   Vault
 } from 'lucide-react'
+import { TrophyIcon, WalletIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Hint } from '@/components/ui/tooltip'
 import { resolveAssetUrl } from '@/lib/api'
@@ -102,7 +101,7 @@ export function WagersPanel() {
       <div className="scroll-stable min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
         {/* Carteira: quanto eu tenho pra apostar, sempre à vista. */}
         <div className="flex items-center gap-2 rounded-brutal border border-line bg-void/60 px-3 py-2">
-          <Coins className="h-4 w-4 shrink-0 text-burn" aria-hidden />
+          <WalletIcon className="h-4 w-4 shrink-0 text-burn" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="text-[11px] text-muted-foreground">seus murchos</p>
             <p className="font-mono text-sm text-burn">{profile ? formatCompact(profile.coins) : '—'}</p>
@@ -187,7 +186,7 @@ function HouseVault({ jackpot, bonusFund }: { jackpot: number; bonusFund: number
       >
         <div className="cursor-help rounded-brutal border border-acid-dark/60 bg-acid/[0.05] px-2.5 py-2">
           <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Trophy className="h-3 w-3 text-acid-text" aria-hidden />
+            <TrophyIcon className="h-3 w-3 text-acid-text" aria-hidden />
             pote
           </p>
           <p className="font-mono text-sm text-acid-text">{formatCompact(jackpot)}</p>

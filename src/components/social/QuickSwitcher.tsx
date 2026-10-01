@@ -5,11 +5,10 @@ import {
   UserCog,
   MonitorUp,
   PhoneOff,
-  Gamepad2,
   CornerDownLeft,
-  ShoppingBag,
   Shield
 } from 'lucide-react'
+import { GameIcon, ShopIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/lib/chat-context'
 import { useVoice } from '@/lib/voice-context'
@@ -142,7 +141,7 @@ export function QuickSwitcher() {
       id: 'cmd:game',
       label: 'Minecraft',
       hint: 'abrir o launcher',
-      icon: <Gamepad2 className="h-3.5 w-3.5" />,
+      icon: <GameIcon className="h-3.5 w-3.5" />,
       keywords: 'minecraft jogo jogar launcher',
       run: () => navigate('/jogo')
     })
@@ -238,7 +237,7 @@ export function QuickSwitcher() {
       id: 'cmd:shop',
       label: ARENA_LABEL.shop,
       hint: 'gastar murchos',
-      icon: <ShoppingBag className="h-3.5 w-3.5" />,
+      icon: <ShopIcon className="h-3.5 w-3.5" />,
       keywords: 'loja lojinha moedas murchos cosmeticos titulo moldura comprar arena',
       run: openShop
     })

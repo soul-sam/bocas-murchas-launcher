@@ -6,7 +6,6 @@ import {
   HeadphoneOff,
   MonitorUp,
   MonitorX,
-  Music,
   PhoneOff,
   Settings,
   ScreenShare,
@@ -16,10 +15,10 @@ import {
   Search,
   X,
   Eye,
-  MessageSquare,
   Settings2,
   ChevronRight
 } from 'lucide-react'
+import { ChatIcon, SoundboardIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -270,7 +269,7 @@ export function ChannelSidebar({
           altura ela descobriu o caminho, e a linha virava ruído permanente. */}
       {dmChannels.length === 0 && (
         <p className="mx-2 mb-1 mt-1.5 flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground/70">
-          <MessageSquare className="h-2.5 w-2.5" />
+          <ChatIcon className="h-2.5 w-2.5" />
           botão direito em alguém = conversa (aparece na barra)
         </p>
       )}
@@ -622,7 +621,7 @@ export function ChannelSidebar({
                 label="Soundboard"
                 description="Os sons do grupo. Todo mundo na call ouve."
               >
-                <Music className="h-3.5 w-3.5" />
+                <SoundboardIcon className="h-3.5 w-3.5" />
               </DockButton>
             </SoundboardPopover>
 

@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Search, X, Loader2, Hash, MessageSquare, Filter } from 'lucide-react'
+import { Search, X, Loader2, Hash, Filter } from 'lucide-react'
+import { ChatIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { messages as messagesApi, resolveAssetUrl, type ChatMessage } from '@/lib/api'
@@ -256,7 +257,7 @@ export function SearchPanel() {
 
                 <span className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
                   {message.conversationId ? (
-                    <MessageSquare className="h-2.5 w-2.5" />
+                    <ChatIcon className="h-2.5 w-2.5" />
                   ) : (
                     <Hash className="h-2.5 w-2.5" />
                   )}

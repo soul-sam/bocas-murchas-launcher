@@ -1,4 +1,6 @@
-import { ArrowUp, Award, ShoppingBag, Info } from 'lucide-react'
+import { ArrowUp, Info } from 'lucide-react'
+import { BadgeIcon as BocasBadgeIcon, ShopIcon } from '@/lib/bocas-icons'
+import type { IconComponent } from '@/lib/icon-component'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
 import type { SystemCardMeta } from '@/lib/api-gamification'
@@ -11,11 +13,11 @@ import type { SystemCardMeta } from '@/lib/api-gamification'
 
 const KIND: Record<
   SystemCardMeta['kind'],
-  { accent: 'acid' | 'burn' | 'muted'; label: string; Icon: typeof Info }
+  { accent: 'acid' | 'burn' | 'muted'; label: string; Icon: IconComponent }
 > = {
   levelup: { accent: 'acid', label: 'Subiu de nível', Icon: ArrowUp },
-  badge: { accent: 'burn', label: 'Badge nova', Icon: Award },
-  purchase: { accent: 'burn', label: 'Lojinha', Icon: ShoppingBag },
+  badge: { accent: 'burn', label: 'Badge nova', Icon: BocasBadgeIcon },
+  purchase: { accent: 'burn', label: 'Lojinha', Icon: ShopIcon },
   info: { accent: 'muted', label: 'Sistema', Icon: Info }
 }
 

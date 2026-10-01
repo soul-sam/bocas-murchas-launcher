@@ -2,17 +2,13 @@ import * as React from 'react'
 import {
   AlertTriangle,
   Check,
-  Coins,
-  Dices,
   ExternalLink,
-  Flame,
   Headphones,
   HeadphoneOff,
   Loader2,
   Mic,
   MicOff,
   Minus,
-  Music,
   PhoneOff,
   Pickaxe,
   PinOff,
@@ -22,6 +18,7 @@ import {
   TrendingUp,
   Waves
 } from 'lucide-react'
+import { BetIcon, MurchosIcon, SoundboardIcon, StreakIcon } from '@/lib/bocas-icons'
 import { cn, formatClock } from '@/lib/utils'
 import type {
   OverlayAction,
@@ -258,13 +255,13 @@ function PlayerHeader({
       {ready && state && (
         <div className="mt-2.5 flex items-center gap-1.5">
           <Chip tone="burn">
-            <Coins className="h-3 w-3" aria-hidden />
+            <MurchosIcon className="h-3 w-3" aria-hidden />
             <span className="font-mono font-semibold text-foreground">{compact(state.coins)}</span>
             murchos
           </Chip>
           {state.streak > 0 && (
             <Chip tone="neutral">
-              <Flame className="h-3 w-3 text-burn" aria-hidden />
+              <StreakIcon className="h-3 w-3 text-burn" aria-hidden />
               <span className="font-mono font-semibold text-foreground">{state.streak}</span>
               {state.streak === 1 ? 'dia seguido' : 'dias seguidos'}
             </Chip>
@@ -304,7 +301,7 @@ function QuickActions({ voice }: { voice: OverlayVoice | null }) {
             'border-acid-dark/60 bg-acid/10 text-acid-text transition-colors hover:border-acid hover:bg-acid/20'
           )}
         >
-          <Music className="h-3.5 w-3.5" aria-hidden />
+          <SoundboardIcon className="h-3.5 w-3.5" aria-hidden />
           Sons
         </button>
 
@@ -580,7 +577,7 @@ function SelfBet({
             {sending ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
-              <Dices className="h-4 w-4" aria-hidden />
+              <BetIcon className="h-4 w-4" aria-hidden />
             )}
             Apostar {amount}
           </button>
@@ -771,7 +768,7 @@ function TargetRow({
             'border-burn/40 text-xs font-medium text-burn transition-colors hover:bg-burn/10'
           )}
         >
-          <Coins className="h-3.5 w-3.5" aria-hidden />
+          <MurchosIcon className="h-3.5 w-3.5" aria-hidden />
           Apostar
         </button>
       )}

@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { ArrowLeft, Coins, Gift, Loader2, Search } from 'lucide-react'
+import { ArrowLeft, Loader2, Search } from 'lucide-react'
+import { GiftIcon, MurchosIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
 import { DEFAULT_NAME_COLOR, type ShopItem } from '@/lib/api-gamification'
@@ -80,7 +81,7 @@ export function GiftPanel({
           voltar
         </button>
         <p className="ml-auto flex items-center gap-1.5 text-sm font-semibold">
-          <Gift className="h-4 w-4 text-acid" />
+          <GiftIcon className="h-4 w-4 text-acid" />
           Presentear <span className="text-acid">{item.name}</span>
           <span className="font-mono text-xs text-muted-foreground">
             · {item.price.toLocaleString('pt-BR')} murchos
@@ -166,7 +167,7 @@ export function GiftPanel({
         onClick={() => void send()}
         className="flex items-center justify-center gap-1.5 rounded-brutal bg-acid px-3 py-2 text-sm font-bold text-void transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Coins className="h-4 w-4" />}
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MurchosIcon className="h-4 w-4" />}
         {picked
           ? `Dar ${item.name} pra ${picked.displayName}`
           : 'Escolhe alguém aí em cima'}

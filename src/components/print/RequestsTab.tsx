@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Coins, ExternalLink, Loader2, Plus, Upload } from 'lucide-react'
+import { ExternalLink, Loader2, Plus, Upload } from 'lucide-react'
+import { MurchosIcon } from '@/lib/bocas-icons'
 import { Button } from '@/components/ui/button'
 import { formatSeconds, printApi, type PrintRequestRow, type PrintRequestStatus } from '@/lib/api-print'
 import { useAuth } from '@/lib/auth-context'
@@ -186,7 +187,7 @@ function RequestRow({
         <div className="shrink-0 text-right">
           {row.offerCoins > 0 ? (
             <span className="flex items-center gap-1 font-mono text-sm text-burn">
-              <Coins className="h-3.5 w-3.5" />
+              <MurchosIcon className="h-3.5 w-3.5" />
               {row.offerCoins}
             </span>
           ) : (

@@ -8,14 +8,10 @@ import {
   ChartColumn,
   Clapperboard,
   Coffee,
-  Coins,
   Crosshair,
-  Crown,
   Film,
   Flame,
-  Gamepad2,
   Ghost,
-  Headphones,
   Image,
   Laugh,
   Lightbulb,
@@ -23,27 +19,35 @@ import {
   MapPin,
   Megaphone,
   MessageCircle,
-  MessagesSquare,
   Mic,
   Moon,
   Pickaxe,
   Popcorn,
-  Printer,
   Radiation,
   Radio,
   ScrollText,
   Shield,
-  ShoppingBag,
   Skull,
   Swords,
   Target,
-  Trophy,
-  Tv,
   UtensilsCrossed,
   Volume2,
-  Zap,
-  type LucideIcon
+  Zap
 } from 'lucide-react'
+import {
+  BetIcon,
+  ChatIcon,
+  CrownIcon,
+  GameIcon,
+  MurchosIcon,
+  MusicIcon,
+  PrinterIcon,
+  ShopIcon,
+  TrophyIcon,
+  TvIcon,
+  VoiceIcon
+} from './bocas-icons'
+import type { IconComponent } from './icon-component'
 import { BADGE_GLYPH, Glyph } from './cosmetic-glyphs'
 
 /**
@@ -59,12 +63,13 @@ import { BADGE_GLYPH, Glyph } from './cosmetic-glyphs'
  * um emoji antigo que não está no mapa de migração — cai no símbolo do tipo
  * do canal, então nada quebra se a lista mudar.
  *
- * Os da casa (caveira do pentakill, dado das apostas, vinil do DJ, balão do
- * tagarela) vêm de `cosmetic-glyphs.tsx`, que já segue as mesmas regras de
- * arte do lucide: traço 2, ponta redonda, área segura de 20.
+ * Os da casa vêm de dois lugares: os que têm símbolo próprio no conjunto Bocas
+ * UI (moeda, loja, dado das apostas, nota da música…) usam `bocas-icons.tsx`,
+ * o mesmo desenho do resto do app; caveira do pentakill e balão do tagarela
+ * seguem emprestados de `cosmetic-glyphs.tsx`. Todos no traço 2 do lucide.
  */
 
-type Art = { lucide: LucideIcon } | { glyph: ReactNode }
+type Art = { lucide: IconComponent } | { glyph: ReactNode }
 
 export interface ChannelIconDef {
   key: string
@@ -77,7 +82,7 @@ export interface ChannelIconGroup {
   icons: ChannelIconDef[]
 }
 
-const L = (key: string, label: string, icon: LucideIcon): ChannelIconDef => ({
+const L = (key: string, label: string, icon: IconComponent): ChannelIconDef => ({
   key,
   label,
   art: { lucide: icon }
@@ -93,7 +98,7 @@ export const CHANNEL_ICON_GROUPS: ChannelIconGroup[] = [
     label: 'Conversa',
     icons: [
       L('chat', 'Papo', MessageCircle),
-      L('geral', 'Geral', MessagesSquare),
+      L('geral', 'Geral', ChatIcon),
       G('tagarela', 'Tagarela', BADGE_GLYPH['tagarela-1000']),
       L('memes', 'Memes', Laugh),
       L('cafe', 'Café', Coffee),
@@ -105,15 +110,15 @@ export const CHANNEL_ICON_GROUPS: ChannelIconGroup[] = [
     icons: [
       L('lol', 'LoL', Swords),
       G('pentakill', 'Pentakill', BADGE_GLYPH.pentakill),
-      L('controle', 'Controle', Gamepad2),
+      L('controle', 'Controle', GameIcon),
       L('mira', 'Mira', Crosshair),
       L('alvo', 'Alvo', Target),
       L('minecraft', 'Minecraft', Pickaxe),
       L('arc', 'Arc Raiders', Radiation),
       L('caveira', 'Caveira', Skull),
       L('escudo', 'Escudo', Shield),
-      L('trofeu', 'Troféu', Trophy),
-      L('coroa', 'Coroa', Crown),
+      L('trofeu', 'Troféu', TrophyIcon),
+      L('coroa', 'Coroa', CrownIcon),
       L('raio', 'Ranked', Zap)
     ]
   },
@@ -136,15 +141,15 @@ export const CHANNEL_ICON_GROUPS: ChannelIconGroup[] = [
     label: 'Servidor',
     icons: [
       L('avisos', 'Avisos', Megaphone),
-      G('apostas', 'Apostas', BADGE_GLYPH.apostador),
-      L('moedas', 'Moedas', Coins),
-      L('loja', 'Lojinha', ShoppingBag),
+      L('apostas', 'Apostas', BetIcon),
+      L('moedas', 'Moedas', MurchosIcon),
+      L('loja', 'Lojinha', ShopIcon),
       L('clipes', 'Clipes', Clapperboard),
-      G('musica', 'Música', BADGE_GLYPH.dj),
+      L('musica', 'Música', MusicIcon),
       L('fotos', 'Fotos', Image),
       L('links', 'Links', Link),
       L('regras', 'Regras', ScrollText),
-      L('impressora', 'Impressora', Printer),
+      L('impressora', 'Impressora', PrinterIcon),
       L('bot', 'Bot', Bot)
     ]
   },
@@ -152,10 +157,10 @@ export const CHANNEL_ICON_GROUPS: ChannelIconGroup[] = [
     label: 'Voz',
     icons: [
       L('voz', 'Voz', Volume2),
-      L('fone', 'Fone', Headphones),
+      L('fone', 'Fone', VoiceIcon),
       L('mic', 'Microfone', Mic),
       L('radio', 'Rádio', Radio),
-      L('tv', 'TV', Tv),
+      L('tv', 'TV', TvIcon),
       L('sofa', 'Sofá', Armchair),
       L('afk', 'AFK', Moon)
     ]

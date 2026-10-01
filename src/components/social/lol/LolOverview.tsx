@@ -1,4 +1,5 @@
-import { Flame, Skull } from 'lucide-react'
+import { Skull } from 'lucide-react'
+import { StreakIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import {
   DASH,
@@ -219,7 +220,7 @@ export function LolOverview({ stats }: { stats: LolStats }) {
                         : 'sem sequência'
                   }
                 >
-                  {row.current > 0 ? <Flame className="h-3 w-3" /> : row.current < 0 ? <Skull className="h-3 w-3" /> : null}
+                  {row.current > 0 ? <StreakIcon className="h-3 w-3" /> : row.current < 0 ? <Skull className="h-3 w-3" /> : null}
                   {row.current > 0 ? `${row.current}V` : row.current < 0 ? `${Math.abs(row.current)}D` : DASH}
                 </span>
                 <span className="shrink-0 text-[11px] text-muted-foreground" title="Melhor sequência de vitórias e pior de derrotas no período">

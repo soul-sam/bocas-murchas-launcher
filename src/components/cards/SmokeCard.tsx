@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Ban, Check, Flame, Headphones, Loader2, LogIn, LogOut } from 'lucide-react'
+import { Ban, Check, Flame, Loader2, LogIn, LogOut } from 'lucide-react'
+import { VoiceIcon } from '@/lib/bocas-icons'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -225,7 +226,7 @@ export function SmokeCard({ metadata }: CardProps<SmokeCardMetadata>) {
               filled={due}
               disabled={busy}
               onClick={() => void voice.join(callChannel)}
-              icon={<Headphones className="h-3 w-3" />}
+              icon={<VoiceIcon className="h-3 w-3" />}
             >
               Entrar na call
             </ActionButton>

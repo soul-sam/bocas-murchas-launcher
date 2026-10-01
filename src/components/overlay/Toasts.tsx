@@ -1,12 +1,12 @@
 import {
   Bell,
   CircleDot,
-  type LucideIcon,
-  MessageSquare,
   Swords,
   UserMinus,
   UserPlus
 } from 'lucide-react'
+import { ChatIcon } from '@/lib/bocas-icons'
+import type { IconComponent } from '@/lib/icon-component'
 import { cn } from '@/lib/utils'
 import type { OverlaySide, OverlayToast } from '../../../electron/preload/types'
 
@@ -20,7 +20,7 @@ export const TOAST_TTL_MS = 6_000
 /** Ícone de traço + o tom do azulejo, por tipo. Nada de emoji: ver a regra da casa. */
 export const TOAST_LOOK: Record<
   OverlayToast['kind'],
-  { icon: LucideIcon; tone: string; tile: string }
+  { icon: IconComponent; tone: string; tile: string }
 > = {
   'voice-join': { icon: UserPlus, tone: 'text-acid-text', tile: 'border-acid-dark/60 bg-acid/10' },
   'voice-leave': {
@@ -30,7 +30,7 @@ export const TOAST_LOOK: Record<
   },
   online: { icon: CircleDot, tone: 'text-acid-text', tile: 'border-acid-dark/60 bg-acid/10' },
   game: { icon: Swords, tone: 'text-burn', tile: 'border-burn/40 bg-burn/10' },
-  message: { icon: MessageSquare, tone: 'text-foreground', tile: 'border-line bg-surface-raised' },
+  message: { icon: ChatIcon, tone: 'text-foreground', tile: 'border-line bg-surface-raised' },
   info: { icon: Bell, tone: 'text-foreground', tile: 'border-line bg-surface-raised' }
 }
 

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { useTicker } from '@/lib/use-now'
-import { Coins, Loader2, TrendingDown, TrendingUp, Swords, Pickaxe, Trophy, Users } from 'lucide-react'
+import { Loader2, TrendingDown, TrendingUp, Swords, Pickaxe, Users } from 'lucide-react'
+import { MurchosIcon, TrophyIcon } from '@/lib/bocas-icons'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { ApiError } from '@/lib/api'
 import {
@@ -296,7 +297,7 @@ export function PoolBars({
           className="mt-0.5 flex items-center justify-center gap-1 font-mono text-[11px] text-acid-text"
           title={`O pote sai quando ${JACKPOT_MIN_BETTORS} ou mais pessoas apostam na partida e todo mundo acerta. Ele cresce com o que é perdido em aposta.`}
         >
-          <Trophy className="h-2.5 w-2.5" />
+          <TrophyIcon className="h-2.5 w-2.5" />
           pote {formatCompact(house.jackpot)}
           {' · '}
           {(bonus?.bettors ?? 0) >= JACKPOT_MIN_BETTORS
@@ -457,7 +458,7 @@ export function BetForm({
 
       <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
         <span className="flex items-center gap-1">
-          <Coins className="h-2.5 w-2.5 text-burn" />
+          <MurchosIcon className="h-2.5 w-2.5 text-burn" />
           você tem {formatCompact(coins)}
         </span>
         <span title={limit < WAGER_MAX ? `Seu teto sobe a cada aposta, até ${WAGER_MAX}` : undefined}>
@@ -516,7 +517,7 @@ export function BetForm({
           'disabled:cursor-not-allowed disabled:opacity-40'
         )}
       >
-        {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Coins className="h-3 w-3" />}
+        {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <MurchosIcon className="h-3 w-3" />}
         apostar {valid ? value : '—'} em{' '}
         {self ? 'mim' : prediction === 'win' ? 'vitória' : 'derrota'}
       </button>

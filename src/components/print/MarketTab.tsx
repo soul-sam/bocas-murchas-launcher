@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Coins, Gift, Hourglass, Loader2, Search, ShoppingCart, Store, Tag, X } from 'lucide-react'
+import { Hourglass, Loader2, Search, ShoppingCart, Store, Tag, X } from 'lucide-react'
+import { GiftIcon, WalletIcon } from '@/lib/bocas-icons'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
@@ -168,7 +169,7 @@ function Storefront({
       </div>
 
       <div className="grid grid-cols-2 gap-3 font-mono sm:grid-cols-4">
-        <Stat icon={Coins} tone="text-acid" value={murchos(coins)} label="sua carteira (murchos)" />
+        <Stat icon={WalletIcon} tone="text-acid" value={murchos(coins)} label="sua carteira (murchos)" />
         <Stat icon={Hourglass} value={formatSeconds(quota.availableSeconds)} label="suas horas livres" />
         <Stat icon={ShoppingCart} value={stock > 0 ? formatSeconds(stock) : '0 min'} label="à venda na prateleira" />
         <Stat icon={Tag} value={String(sellers)} label={sellers === 1 ? 'vendedor' : 'vendedores'} />
@@ -627,13 +628,13 @@ function Donate({ quota, onDone }: { quota: PrintQuota; onDone: OnDone }) {
 
   return (
     <section className="card-gradient rounded-brutal p-4">
-      <SectionTitle icon={Gift}>Presentear</SectionTitle>
+      <SectionTitle icon={GiftIcon}>Presentear</SectionTitle>
 
       {!open ? (
         <div className="space-y-2">
           <p className="text-[11.5px] text-muted-foreground">Manda hora de graça pra alguém da call.</p>
           <Button size="sm" variant="ghost" className="w-full" onClick={() => setOpen(true)}>
-            <Gift className="mr-1.5 h-3.5 w-3.5" />
+            <GiftIcon className="mr-1.5 h-3.5 w-3.5" />
             Doar horas
           </Button>
         </div>
@@ -700,7 +701,7 @@ function Donate({ quota, onDone }: { quota: PrintQuota; onDone: OnDone }) {
           </select>
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" className="btn-acid" disabled={busy || !pickedPerson} onClick={() => void send()}>
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Gift className="mr-1.5 h-3.5 w-3.5" />}
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GiftIcon className="mr-1.5 h-3.5 w-3.5" />}
               {pickedPerson ? `Doar pra ${pickedPerson.displayName}` : 'Doar'}
             </Button>
             <Button size="sm" variant="ghost" onClick={close} disabled={busy}>

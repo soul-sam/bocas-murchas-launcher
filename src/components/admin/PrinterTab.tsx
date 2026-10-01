@@ -5,13 +5,13 @@ import {
   HardDrive,
   Loader2,
   Plus,
-  Printer,
   RotateCcw,
   Save,
   Timer,
   Trash2,
   WifiOff
 } from 'lucide-react'
+import { PrinterIcon } from '@/lib/bocas-icons'
 import { useAuth } from '@/lib/auth-context'
 import { usePrint } from '@/lib/print-context'
 import { useCargos } from '@/lib/cargos-context'
@@ -242,7 +242,7 @@ function MachineSection({
   return (
     <section className="space-y-2 rounded-brutal border-2 border-border p-3">
       <div className="flex items-center gap-2">
-        <Printer className="h-4 w-4 text-acid" />
+        <PrinterIcon className="h-4 w-4 text-acid" />
         <span className="flex-1 text-sm">{printer.model}</span>
         <span
           className={cn(

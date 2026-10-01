@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Check, Copy, HandCoins, Loader2, Server, Undo2, X } from 'lucide-react'
+import { Check, Copy, HandCoins, Loader2, Undo2, X } from 'lucide-react'
+import { ServerIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
 import { formatBRL, monthName, progressoDaConta, type CostSummary } from '@/lib/api-costs'
@@ -83,7 +84,7 @@ export function CostsModal() {
 
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
           <div className="mb-4 flex items-center gap-3">
-            <Server className="h-7 w-7 shrink-0 text-burn" />
+            <ServerIcon className="h-7 w-7 shrink-0 text-burn" />
             <div className="min-w-0">
               <h2 className="title-brutal text-2xl">A conta do Bocas Murchas</h2>
               <p className="text-[11.5px] text-muted-foreground">

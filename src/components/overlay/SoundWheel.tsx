@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { ChevronLeft, ChevronRight, Music, PhoneOff } from 'lucide-react'
+import { ChevronLeft, ChevronRight, PhoneOff } from 'lucide-react'
+import { SoundboardIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import type { OverlaySound, OverlayVoice } from '../../../electron/preload/types'
 import { IconButton, shortKey } from './parts'
@@ -128,7 +129,7 @@ export function SoundWheel({
           {hovered && canPlay ? (
             <span className="text-4xl leading-none">{hovered.emoji}</span>
           ) : canPlay ? (
-            <Music className="h-6 w-6 shrink-0 text-acid" aria-hidden />
+            <SoundboardIcon className="h-6 w-6 shrink-0 text-acid" aria-hidden />
           ) : (
             <PhoneOff className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden />
           )}

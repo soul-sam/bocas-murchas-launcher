@@ -1,4 +1,5 @@
-import { Lightbulb, Medal, TrendingDown, TrendingUp } from 'lucide-react'
+import { Lightbulb, TrendingDown, TrendingUp } from 'lucide-react'
+import { MedalIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import {
   DASH,
@@ -95,7 +96,7 @@ function RecordCard({ record }: { record: LolRecord }) {
   return (
     <div className="rounded-brutal border border-line bg-void/40 p-2">
       <div className="flex items-baseline gap-2">
-        <Medal className="h-3.5 w-3.5 shrink-0 self-center text-burn" />
+        <MedalIcon className="h-3.5 w-3.5 shrink-0 self-center text-burn" />
         <p className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground">{record.label}</p>
         <p className="shrink-0 font-display text-base text-foreground">
           {record.format === 'duration' ? fmtDuration(record.value) : fmtCompact(record.value)}

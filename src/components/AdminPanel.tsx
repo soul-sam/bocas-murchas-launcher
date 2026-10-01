@@ -7,7 +7,6 @@ import {
   Loader2,
   Play,
   Plus,
-  Printer as PrinterIcon,
   RefreshCw,
   ShieldMinus,
   ShieldPlus,
@@ -18,6 +17,7 @@ import {
   Wrench,
   XCircle
 } from 'lucide-react'
+import { PrinterIcon } from '@/lib/bocas-icons'
 import { useAuth } from '@/lib/auth-context'
 import { useSoundboard } from '@/lib/soundboard-context'
 import {

@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Flame, Headphones, Loader2, Plus, X } from 'lucide-react'
+import { Flame, Loader2, Plus, X } from 'lucide-react'
+import { VoiceIcon } from '@/lib/bocas-icons'
 import { useAuth } from '@/lib/auth-context'
 import { useChat } from '@/lib/chat-context'
 import { useLayout } from '@/lib/layout-context'
@@ -70,7 +71,7 @@ export function SmokeStrip() {
       {callAlert && !voice.connected && (
         <div className="rounded-brutal border-2 border-acid bg-acid/10 px-2 py-1.5">
           <div className="flex items-start gap-2">
-            <Headphones className="mt-0.5 h-3.5 w-3.5 shrink-0 text-acid" />
+            <VoiceIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-acid" />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-acid">Encheu: {callAlert.size} na call</p>
               <p className="truncate text-[11px] text-muted-foreground">

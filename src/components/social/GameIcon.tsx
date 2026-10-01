@@ -6,15 +6,15 @@ import {
   Crosshair,
   Film,
   Flame,
-  Gamepad2,
   Ghost,
   Pickaxe,
   Radiation,
   Swords,
   Target,
-  UtensilsCrossed,
-  type LucideIcon
+  UtensilsCrossed
 } from 'lucide-react'
+import { GameIcon as BocasGameIcon } from '@/lib/bocas-icons'
+import type { IconComponent } from '@/lib/icon-component'
 
 /**
  * Ícone do jogo. Um lugar só pra agenda, os cards, a faixa de "bora?" e os
@@ -27,7 +27,7 @@ import {
  * senão cada jogo novo que a galera resolvesse jogar viraria um deploy de API.
  */
 
-const GAME_ICON: Record<string, LucideIcon> = {
+const GAME_ICON: Record<string, IconComponent> = {
   lol: Swords,
   minecraft: Pickaxe,
   valorant: Crosshair,
@@ -76,6 +76,6 @@ export function gameLabel(game: string): string {
 
 export function GameIcon({ game, className }: { game: string | null | undefined; className?: string }) {
   const cls = className ?? 'h-3.5 w-3.5'
-  const Icon = (game && GAME_ICON[game]) || Gamepad2
+  const Icon = (game && GAME_ICON[game]) || BocasGameIcon
   return <Icon className={cls} aria-label={game ? gameLabel(game) : 'jogo'} />
 }

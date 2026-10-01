@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Disc3, ExternalLink, Play, Tv, Users } from 'lucide-react'
+import { Disc3, ExternalLink, Play, Users } from 'lucide-react'
+import { TvIcon } from '@/lib/bocas-icons'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -53,7 +54,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
   const music = metadata.mode === 'music'
   const title = metadata.title?.trim() || (music ? 'Som do YouTube' : 'Vídeo do YouTube')
   const label = music ? 'Música na call' : 'Assistir junto'
-  const Icon = music ? Disc3 : Tv
+  const Icon = music ? Disc3 : TvIcon
 
   /**
    * Ainda está no ar? O retrato de canais em que não estou vem do connect e
@@ -156,7 +157,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
             />
           ) : (
             <span className="flex h-full w-full items-center justify-center">
-              <Tv className="h-6 w-6 text-muted-foreground" />
+              <TvIcon className="h-6 w-6 text-muted-foreground" />
             </span>
           )}
           <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">

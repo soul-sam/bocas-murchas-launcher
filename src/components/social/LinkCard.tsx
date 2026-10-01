@@ -5,12 +5,12 @@ import {
   ImageIcon,
   Link2,
   Loader2,
-  MessageSquare,
   Play,
   ShoppingCart,
   Trash2,
   type LucideIcon
 } from 'lucide-react'
+import { ChatIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { Hint } from '@/components/ui/tooltip'
@@ -205,7 +205,7 @@ export function LinkCard({ link, canDelete, onPatch, onRemoved, onJump }: LinkCa
             aria-label="Ir pra mensagem"
             className="rounded-brutal p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            <MessageSquare className="h-3 w-3" />
+            <ChatIcon className="h-3 w-3" />
           </button>
 
           <button

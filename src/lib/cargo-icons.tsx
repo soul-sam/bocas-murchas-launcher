@@ -2,25 +2,20 @@ import {
   Anvil,
   Beer,
   Bomb,
-  Crown,
-  Dices,
   Flame,
-  Gamepad2,
   Ghost,
   Hammer,
-  Headphones,
   Heart,
-  Music,
-  Printer,
   Rocket,
   Shield,
   Skull,
   Sparkles,
   Star,
   Swords,
-  Wrench,
-  type LucideIcon
+  Wrench
 } from 'lucide-react'
+import { BetIcon, CrownIcon, GameIcon, MusicIcon, PrinterIcon, VoiceIcon } from '@/lib/bocas-icons'
+import type { IconComponent } from '@/lib/icon-component'
 import { cn } from '@/lib/utils'
 import { Hint } from '@/components/ui/tooltip'
 import type { Cargo } from '@/lib/api-cargos'
@@ -42,14 +37,18 @@ import type { Cargo } from '@/lib/api-cargos'
  * Esta lista é também o que o painel do admin oferece na hora de criar cargo:
  * o que não está aqui não aparece pra escolher, então não existe cargo com
  * ícone quebrado. Pra somar um ícone, importe e ponha no mapa — uma linha.
+ *
+ * A CHAVE é o nome gravado no banco e não muda nunca; o desenho pode. Por isso
+ * `Printer`, `Crown`, `Dices`… apontam pros símbolos da casa (`bocas-icons`)
+ * sem migrar cargo nenhum.
  */
-export const CARGO_ICONS: Record<string, LucideIcon> = {
+export const CARGO_ICONS: Record<string, IconComponent> = {
   Shield,
-  Printer,
+  Printer: PrinterIcon,
   Wrench,
   Hammer,
   Anvil,
-  Crown,
+  Crown: CrownIcon,
   Star,
   Sparkles,
   Flame,
@@ -57,10 +56,10 @@ export const CARGO_ICONS: Record<string, LucideIcon> = {
   Ghost,
   Bomb,
   Swords,
-  Dices,
-  Gamepad2,
-  Headphones,
-  Music,
+  Dices: BetIcon,
+  Gamepad2: GameIcon,
+  Headphones: VoiceIcon,
+  Music: MusicIcon,
   Rocket,
   Heart,
   Beer
@@ -69,7 +68,7 @@ export const CARGO_ICONS: Record<string, LucideIcon> = {
 /** Ordem em que o seletor do admin mostra. Escudo primeiro: é o padrão. */
 export const CARGO_ICON_NAMES = Object.keys(CARGO_ICONS)
 
-export function cargoIcon(name: string | null | undefined): LucideIcon {
+export function cargoIcon(name: string | null | undefined): IconComponent {
   return (name && CARGO_ICONS[name]) || Shield
 }
 

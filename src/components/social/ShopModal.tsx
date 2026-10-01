@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { X, Coins, Loader2, Check, ShoppingBag, Tag, Sparkles, Frame, Smile, Volume2, Play, Gift } from 'lucide-react'
+import { X, Loader2, Check, Tag, Sparkles, Frame, Smile, Volume2, Play } from 'lucide-react'
+import { GiftIcon, MurchosIcon, ShopIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
 import {
@@ -167,7 +168,7 @@ export function ShopModal() {
         </button>
 
         <div className="mb-4 flex items-center gap-3">
-          <ShoppingBag className="h-7 w-7 text-burn drop-shadow-[0_0_8px_rgba(242,183,5,0.6)]" />
+          <ShopIcon className="h-7 w-7 text-burn drop-shadow-[0_0_8px_rgba(242,183,5,0.6)]" />
           <div className="min-w-0 flex-1">
             <h2 className="title-brutal text-2xl">Lojinha</h2>
             <p className="text-[11.5px] text-muted-foreground">
@@ -182,7 +183,7 @@ export function ShopModal() {
               className="flex items-center gap-1.5 rounded-brutal border-2 border-burn/60 bg-burn/10 px-3 py-1.5 font-mono text-sm text-burn"
               title="Seu saldo"
             >
-              <Coins className="h-4 w-4" />
+              <MurchosIcon className="h-4 w-4" />
               {formatCompact(coins)}
               <span className="text-[11.5px] opacity-70">murchos</span>
             </div>
@@ -484,7 +485,7 @@ function ItemTile({
               onClick={onBuy}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-brutal bg-acid px-2 py-1.5 text-xs font-bold text-void shadow-[0_0_16px_rgb(var(--neon-rgb)/0.25)] transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Coins className="h-3 w-3" />}
+              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <MurchosIcon className="h-3 w-3" />}
               Confirmar
             </button>
             <button
@@ -517,7 +518,7 @@ function ItemTile({
                 : 'cursor-not-allowed border-border text-muted-foreground opacity-60'
             )}
           >
-            <Coins className="h-3 w-3" />
+            <MurchosIcon className="h-3 w-3" />
             {affordable ? 'Comprar' : 'Sem saldo'}
           </button>
         )}
@@ -532,7 +533,7 @@ function ItemTile({
             aria-label="Presentear"
             className="flex items-center justify-center rounded-brutal border border-line px-2 py-1.5 text-muted-foreground transition-colors hover:border-acid/60 hover:text-acid disabled:opacity-50"
           >
-            <Gift className="h-3.5 w-3.5" />
+            <GiftIcon className="h-3.5 w-3.5" />
           </button>
         )}
       </div>

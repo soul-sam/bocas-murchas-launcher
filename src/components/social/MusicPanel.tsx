@@ -8,11 +8,11 @@ import {
   Link2,
   ListPlus,
   Loader2,
-  Music,
   Play,
   Search,
   X
 } from 'lucide-react'
+import { MusicIcon } from '@/lib/bocas-icons'
 import { cn, formatClock } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useOverlays } from '@/lib/overlay-context'
@@ -834,7 +834,7 @@ function SpotifyLibrary({
                 <img src={playlist.artUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <span className="flex h-full w-full items-center justify-center">
-                  <Music className="h-4 w-4 text-muted-foreground" />
+                  <MusicIcon className="h-4 w-4 text-muted-foreground" />
                 </span>
               )}
             </span>
@@ -896,7 +896,7 @@ function ResultRow({
             <img src={track.artUrl} alt="" className="h-full w-full object-cover" />
           ) : (
             <span className="flex h-full w-full items-center justify-center">
-              <Music className="h-4 w-4 text-muted-foreground" />
+              <MusicIcon className="h-4 w-4 text-muted-foreground" />
             </span>
           )}
           {busy && (

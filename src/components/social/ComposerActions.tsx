@@ -1,4 +1,5 @@
-import { Plus, BarChart3, CalendarPlus, Swords, Megaphone, Store, Lightbulb, Printer } from 'lucide-react'
+import { Plus, BarChart3, CalendarPlus, Swords, Megaphone, Lightbulb } from 'lucide-react'
+import { PrinterIcon, ShopIcon } from '@/lib/bocas-icons'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,12 +75,12 @@ export function ComposerActions({ onDrop }: { onDrop?: () => void }) {
           <span className="ml-auto font-mono text-[11px] text-muted-foreground">/sugestao</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={openPrintRequestComposer}>
-          <Printer className="h-3.5 w-3.5 text-muted-foreground" />
+          <PrinterIcon className="h-3.5 w-3.5 text-muted-foreground" />
           Encomendar peça
           <span className="ml-auto font-mono text-[11px] text-muted-foreground">/encomendar</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={openShop}>
-          <Store className="h-3.5 w-3.5" />
+          <ShopIcon className="h-3.5 w-3.5" />
           Lojinha
         </DropdownMenuItem>
       </DropdownMenuContent>

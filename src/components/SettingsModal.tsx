@@ -6,8 +6,6 @@ import {
   Mic,
   Keyboard,
   Zap,
-  Gamepad2,
-  MessagesSquare,
   Loader2,
   TriangleAlert,
   Power,
@@ -18,6 +16,7 @@ import {
   Sparkles,
   Smartphone
 } from 'lucide-react'
+import { ChatIcon, GameIcon } from '@/lib/bocas-icons'
 import { useSettings } from '@/lib/settings-context'
 import { useHotkeys } from '@/lib/hotkeys-context'
 import { useNudge } from '@/lib/nudge-context'
@@ -91,7 +90,7 @@ export function SettingsModal() {
               Voz
             </TabsTrigger>
             <TabsTrigger value="chat">
-              <MessagesSquare className="mr-1.5 inline h-3 w-3" />
+              <ChatIcon className="mr-1.5 inline h-3 w-3" />
               Chat
             </TabsTrigger>
             <TabsTrigger value="atalhos">
@@ -103,7 +102,7 @@ export function SettingsModal() {
               Zoeira
             </TabsTrigger>
             <TabsTrigger value="jogo">
-              <Gamepad2 className="mr-1.5 inline h-3 w-3" />
+              <GameIcon className="mr-1.5 inline h-3 w-3" />
               Jogo
             </TabsTrigger>
             <TabsTrigger value="inicio">

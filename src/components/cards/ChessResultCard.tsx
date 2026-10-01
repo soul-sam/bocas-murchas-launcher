@@ -1,4 +1,5 @@
-import { Zap, Coins, ExternalLink, Crown } from 'lucide-react'
+import { ExternalLink, Crown } from 'lucide-react'
+import { MurchosIcon, XpIcon } from '@/lib/bocas-icons'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -56,12 +57,12 @@ export function ChessResultCard({ metadata, compact }: CardProps<ChessCardMeta>)
           <p className="flex items-center gap-3">
             {metadata.xpAwarded > 0 && (
               <span className="flex items-center gap-1 text-acid-text">
-                <Zap className="h-2.5 w-2.5" />+{metadata.xpAwarded} XP
+                <XpIcon className="h-2.5 w-2.5" />+{metadata.xpAwarded} XP
               </span>
             )}
             {metadata.coinsAwarded > 0 && (
               <span className="flex items-center gap-1 text-burn">
-                <Coins className="h-2.5 w-2.5" />+{metadata.coinsAwarded} murchos
+                <MurchosIcon className="h-2.5 w-2.5" />+{metadata.coinsAwarded} murchos
               </span>
             )}
           </p>

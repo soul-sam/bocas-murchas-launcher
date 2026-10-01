@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { X, Loader2, Medal, Search, Pin, PinOff, Crown, Lock, HelpCircle, ArrowLeft } from 'lucide-react'
+import { X, Loader2, Search, Pin, PinOff, Lock, HelpCircle, ArrowLeft } from 'lucide-react'
+import { CrownIcon, MedalIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
 import {
@@ -193,7 +194,7 @@ export function AchievementsModal() {
         </button>
 
         <div className="mb-3 flex flex-wrap items-center gap-3 pr-8 sm:mb-4">
-          <Medal className="hidden h-7 w-7 text-acid sm:block" />
+          <MedalIcon className="hidden h-7 w-7 text-acid sm:block" variant="regular" />
           <div className="min-w-0 flex-1">
             <h2 className="title-brutal text-2xl">Conquistas</h2>
             <p className="text-[11.5px] text-muted-foreground">
@@ -207,7 +208,7 @@ export function AchievementsModal() {
               className="flex items-center gap-2 rounded-brutal border-2 border-acid/60 bg-acid/10 px-3 py-1.5 font-mono text-sm text-acid"
               title="Seus pontos de colecionador: a soma dos pontos das suas badges"
             >
-              <Crown className="h-4 w-4" />
+              <CrownIcon className="h-4 w-4" />
               {board.me.points} pts
               {board.me.rank && <span className="text-[11.5px] opacity-70">#{board.me.rank}</span>}
             </div>
@@ -584,7 +585,7 @@ function BadgeDetail({
                   <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{name}</span>
                   {index === 0 && (
                     <span className="flex items-center gap-1 rounded-brutal border border-burn/50 px-1 text-[11px] text-burn" title="Foi quem abriu essa conquista no grupo">
-                      <Crown className="h-2.5 w-2.5" /> 1º
+                      <CrownIcon className="h-2.5 w-2.5" /> 1º
                     </span>
                   )}
                   <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{shortDate(owner.earnedAt)}</span>

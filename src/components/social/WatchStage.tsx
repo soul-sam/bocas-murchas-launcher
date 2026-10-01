@@ -11,11 +11,11 @@ import {
   Play,
   SkipForward,
   Square,
-  Tv,
   Volume2,
   VolumeX,
   X
 } from 'lucide-react'
+import { TvIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn, formatClock } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
@@ -211,7 +211,7 @@ function EmptyWatch({
   if (collapsed) {
     return (
       <div className="flex shrink-0 items-center gap-2 rounded-brutal border-2 border-line bg-void/60 px-2 py-1.5">
-        <Tv className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <TvIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <UrlForm onSubmit={watch.set} compact />
         {watch.feedback && (
           <span className="truncate font-mono text-[11.5px] text-destructive">{watch.feedback}</span>
@@ -239,7 +239,7 @@ function EmptyWatch({
         <X className="h-4 w-4" />
       </button>
 
-      <Tv className="h-8 w-8 text-muted-foreground" />
+      <TvIcon className="h-8 w-8 text-muted-foreground" />
       <div>
         <p className="title-brutal text-lg">Assistir junto</p>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
@@ -509,7 +509,7 @@ function Player({
 
             {blocked && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-void/90 p-4 text-center">
-                <Tv className="h-6 w-6 text-burn" />
+                <TvIcon className="h-6 w-6 text-burn" />
                 <div>
                   <p className="text-sm text-foreground">{errorInfo?.title}</p>
                   <p className="mt-1 max-w-sm text-xs text-muted-foreground">{errorInfo?.body}</p>
@@ -560,7 +560,7 @@ function Player({
             {session.playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
           </button>
 
-          <Tv className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <TvIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <span className="min-w-0 truncate text-xs text-foreground">{title}</span>
           <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">
             {formatClock(shown)}
@@ -601,7 +601,7 @@ function Player({
         <>
           {/* Cabeçalho: o que é, quem trouxe */}
           <div className="order-1 flex shrink-0 items-center gap-2">
-            <Tv className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <TvIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span className="shrink-0 text-[11.5px] text-muted-foreground">
               assistindo junto
             </span>

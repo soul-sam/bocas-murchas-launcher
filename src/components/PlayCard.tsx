@@ -1,4 +1,5 @@
-import { FileText, Gamepad2, Loader2, Server, TriangleAlert, Wifi } from 'lucide-react'
+import { FileText, Loader2, TriangleAlert, Wifi } from 'lucide-react'
+import { GameIcon, ServerIcon } from '@/lib/bocas-icons'
 import type { LaunchStatus } from '../../electron/preload/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,10 +30,10 @@ export function PlayCard({ status, readyToPlay, onLaunch, serverTarget }: Props)
   return (
     <Card>
       <CardHeader className="items-center text-center">
-        <Gamepad2 className="mb-2 h-10 w-10 text-muted-foreground" />
+        <GameIcon className="mb-2 h-10 w-10 text-muted-foreground" />
         <CardTitle className="title-acid text-2xl">Servidor de Minecraft</CardTitle>
         <CardDescription className="mt-1 flex items-center justify-center gap-2">
-          <Server className="h-3 w-3" />
+          <ServerIcon className="h-3 w-3" />
           <span className="font-mono">{target}</span>
         </CardDescription>
       </CardHeader>
@@ -83,12 +84,12 @@ export function PlayCard({ status, readyToPlay, onLaunch, serverTarget }: Props)
             </>
           ) : isRunning ? (
             <>
-              <Gamepad2 className="mr-2 h-5 w-5" />
+              <GameIcon className="mr-2 h-5 w-5" />
               Jogando
             </>
           ) : (
             <>
-              <Gamepad2 className="mr-2 h-5 w-5" />
+              <GameIcon className="mr-2 h-5 w-5" />
               Jogar
             </>
           )}

@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Bug, Hash, Lightbulb, Loader2, Printer, X } from 'lucide-react'
+import { Bug, Hash, Lightbulb, Loader2, X } from 'lucide-react'
+import { PrinterIcon } from '@/lib/bocas-icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { suggestions as suggestionsApi, type SuggestionKind } from '@/lib/api-suggestions'
@@ -49,7 +50,7 @@ const KINDS: Array<{
     id: 'impressao',
     label: 'Imprimir',
     hint: 'Uma peça que a impressora devia fazer pro grupo.',
-    icon: <Printer className="h-4 w-4" />
+    icon: <PrinterIcon className="h-4 w-4" />
   }
 ]
 

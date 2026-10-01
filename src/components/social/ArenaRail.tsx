@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Flame } from 'lucide-react'
+import { StreakIcon } from '@/lib/bocas-icons'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -238,7 +238,7 @@ function StreakFlame({ streak }: { streak: number }) {
       title={`Streak de check-in: ${streak} dias seguidos`}
       className="flex items-center gap-0.5 rounded-brutal px-1 font-mono text-[11.5px] font-bold text-burn"
     >
-      <Flame className="h-3 w-3" aria-hidden />
+      <StreakIcon className="h-3 w-3" aria-hidden />
       {streak}
     </span>
   )

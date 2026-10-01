@@ -1,4 +1,5 @@
-import { Headphones, X, Swords } from 'lucide-react'
+import { X, Swords } from 'lucide-react'
+import { VoiceIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
 import { useActivity } from '@/lib/activity-context'
@@ -67,7 +68,7 @@ export function PartyCallPrompt() {
           onClick={acceptPendingCall}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-brutal bg-acid px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-void transition-colors hover:bg-acid/90"
         >
-          <Headphones className="h-3.5 w-3.5" />
+          <VoiceIcon className="h-3.5 w-3.5" />
           entrar na call
         </button>
         <button

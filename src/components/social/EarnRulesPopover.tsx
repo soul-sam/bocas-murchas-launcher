@@ -1,15 +1,12 @@
 import * as React from 'react'
 import {
   CalendarCheck,
-  Coins,
-  Dices,
-  Gamepad2,
   HelpCircle,
   Loader2,
   Mic,
-  Target,
   TrendingUp
 } from 'lucide-react'
+import { BetIcon, GameIcon, MissionIcon, MurchosIcon } from '@/lib/bocas-icons'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { gamification, type EarnRules } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
@@ -73,7 +70,7 @@ export function EarnRulesPopover({ className }: { className?: string }) {
 
       <PopoverContent side="bottom" align="end" className="w-[19rem] p-0">
         <header className="flex items-center gap-2 border-b border-line px-3 py-2.5">
-          <Coins className="h-4 w-4 shrink-0 text-burn" />
+          <MurchosIcon className="h-4 w-4 shrink-0 text-burn" />
           <div className="min-w-0 flex-1">
             <p className="font-display text-sm leading-tight text-foreground">
               De onde vem murcho
@@ -123,21 +120,21 @@ function RulesList({ rules }: { rules: EarnRules }) {
           mais {actions.checkinPerStreak} por dia de sequência, até {actions.checkinStreakMax}
         </Row>
         <Row Icon={Mic} label="Meia hora em call" value={`+${actions.voicePer30Min}`} />
-        <Row Icon={Target} label="Missão concluída" value={`+${actions.missionComplete}`} />
+        <Row Icon={MissionIcon} label="Missão concluída" value={`+${actions.missionComplete}`} />
       </Section>
 
       <Section title="Jogando">
-        <Row Icon={Gamepad2} label="League of Legends">
+        <Row Icon={GameIcon} label="League of Legends">
           toda partida paga, vitória paga mais
         </Row>
         <Row Icon={ChessGlyph} label="Xadrez">
           quanto mais longo o controle de tempo, mais paga; vitória dobra
         </Row>
-        <Row Icon={Dices} label="Apostando">
+        <Row Icon={BetIcon} label="Apostando">
           quem acerta leva o dobro do que apostou; só nos {Math.round(wager.betWindowMs / 60000)}{' '}
           primeiros minutos da partida, uma aposta por partida
         </Row>
-        <Row Icon={Dices} label="Seu teto de aposta" value={`${wager.myMax}`}>
+        <Row Icon={BetIcon} label="Seu teto de aposta" value={`${wager.myMax}`}>
           começa em {wager.startMax} e sobe a cada aposta até {wager.max}, na{' '}
           {wager.rampBets}ª
         </Row>
@@ -147,7 +144,7 @@ function RulesList({ rules }: { rules: EarnRules }) {
         <Row Icon={TrendingUp} label={`Subir pro nível ${levelUp.next.level}`} highlight>
           cada nível paga mais que o anterior
         </Row>
-        <Row Icon={Coins} label="Prêmio do recap">
+        <Row Icon={MurchosIcon} label="Prêmio do recap">
           pra quem se destaca na semana
         </Row>
       </Section>

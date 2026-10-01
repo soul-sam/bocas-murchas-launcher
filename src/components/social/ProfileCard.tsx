@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Zap, Shield, ExternalLink, Coins, Flame, Swords, Cake, Clock } from 'lucide-react'
+import { Zap, Shield, ExternalLink, Swords, Cake, Clock } from 'lucide-react'
+import { MurchosIcon, StreakIcon } from '@/lib/bocas-icons'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { UserAvatar } from '@/components/ui/avatar'
 import { parseFavoriteGames, parseLinks, resolveAssetUrl } from '@/lib/api'
@@ -209,7 +210,7 @@ export function ProfileBody({
                     'transition-colors hover:bg-acid/15 disabled:cursor-not-allowed disabled:opacity-40'
                   )}
                 >
-                  <Coins className="h-3 w-3" />
+                  <MurchosIcon className="h-3 w-3" />
                   apostar
                 </button>
               </BetPopover>
@@ -443,14 +444,14 @@ function GamificationBlock({ profile }: { profile: GamificationProfile }) {
 
       <div className="flex items-center gap-3 font-mono text-[11.5px]">
         <span className="flex items-center gap-1 text-burn" title="Murchos (moeda da casa)">
-          <Coins className="h-3 w-3" />
+          <MurchosIcon className="h-3 w-3" />
           {formatCompact(profile.coins)}
         </span>
         <span
           className={cn('flex items-center gap-1', profile.streak >= 2 ? 'text-burn' : 'text-muted-foreground')}
           title={`Streak de check-in · melhor: ${profile.bestStreak}`}
         >
-          <Flame className="h-3 w-3" />
+          <StreakIcon className="h-3 w-3" />
           {profile.streak}
         </span>
         <span className="ml-auto text-muted-foreground" title="Partidas ganhas / jogadas">

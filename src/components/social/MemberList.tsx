@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Shield, Search, Volume2, ScreenShare, X, Coins } from 'lucide-react'
+import { Shield, Search, Volume2, ScreenShare, X } from 'lucide-react'
+import { MurchosIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { resolveAssetUrl } from '@/lib/api'
@@ -268,7 +269,7 @@ function Group({
                     aria-label={`Apostar em ${member.displayName}`}
                     className="mr-1 shrink-0 rounded-brutal p-1 text-burn/70 transition-colors hover:bg-burn/15 hover:text-burn disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                   >
-                    <Coins className="h-3.5 w-3.5" />
+                    <MurchosIcon className="h-3.5 w-3.5" />
                   </button>
                 </BetPopover>
               )}

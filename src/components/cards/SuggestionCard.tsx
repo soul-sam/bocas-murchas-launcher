@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Bug, ChevronDown, Lightbulb, Loader2, Printer, ThumbsUp } from 'lucide-react'
+import { Bug, ChevronDown, Lightbulb, Loader2, ThumbsUp } from 'lucide-react'
+import { PrinterIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import {
   suggestions as suggestionsApi,
@@ -154,7 +155,7 @@ export function SuggestionCard({ metadata, compact }: CardProps<SuggestionCardMe
         kind === 'bug' ? (
           <Bug className="h-3.5 w-3.5" />
         ) : kind === 'impressao' ? (
-          <Printer className="h-3.5 w-3.5" />
+          <PrinterIcon className="h-3.5 w-3.5" />
         ) : (
           <Lightbulb className="h-3.5 w-3.5" />
         )

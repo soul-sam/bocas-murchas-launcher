@@ -1,16 +1,11 @@
 import * as React from 'react'
 import {
-  Coins,
-  Flame,
   Loader2,
-  Medal,
-  MessageSquare,
   Mic,
-  Music,
-  Swords,
-  Zap,
-  type LucideIcon
+  Swords
 } from 'lucide-react'
+import { ChatIcon, MedalIcon, MurchosIcon, SoundboardIcon, StreakIcon, XpIcon } from '@/lib/bocas-icons'
+import type { IconComponent } from '@/lib/icon-component'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
 import {
@@ -48,14 +43,14 @@ import { ArenaHeader, ArenaTabs } from './ArenaChrome'
 
 const METRICS: LeaderboardMetric[] = ['xp', 'coins', 'streak', 'wins', 'voice', 'sounds', 'messages']
 
-const METRIC_ICON: Record<LeaderboardMetric, LucideIcon> = {
-  xp: Zap,
-  coins: Coins,
-  streak: Flame,
+const METRIC_ICON: Record<LeaderboardMetric, IconComponent> = {
+  xp: XpIcon,
+  coins: MurchosIcon,
+  streak: StreakIcon,
   wins: Swords,
   voice: Mic,
-  sounds: Music,
-  messages: MessageSquare
+  sounds: SoundboardIcon,
+  messages: ChatIcon
 }
 
 /**
@@ -373,7 +368,7 @@ function PodiumSlot({ entry, metric, tall }: { entry: LeaderboardEntry; metric: 
         )}
         style={{ color: medal }}
       >
-        <Medal className="h-3 w-3" aria-hidden />
+        <MedalIcon className="h-3 w-3" aria-hidden />
         {entry.rank}
       </span>
     </li>
