@@ -173,6 +173,57 @@ const CURSOR_POLL_MS = 50
  */
 const HIT_MARGIN = 24
 
+/**
+ * ===========================================================================
+ * "NAO APARECE": A JANELA PERDE O TOPO E NINGUEM REPARA.
+ * ===========================================================================
+ *
+ * `setAlwaysOnTop(true, 'screen-saver')` e dado UMA vez, na criacao. So que o
+ * z-order do Windows nao e uma promessa: um jogo "sem bordas" que abre (ou
+ * ganha foco) depois da sobreposicao pode empurrar a nossa pra tras, e com a
+ * janela atravessavel e sem foco nao ha sintoma nenhum — ela segue "visivel",
+ * desenhando, so que por baixo. Era a causa de "a logo sumiu depois que a
+ * partida carregou" que nao e tela cheia exclusiva (essa nao tem conserto).
+ *
+ * Reafirmar o topo custa um `SetWindowPos` com NOACTIVATE — nao rouba foco,
+ * nao pisca — e roda no mesmo relogio do cursor, a cada TOP_REASSERT_MS. Junto
+ * vai a conferencia de que a janela continua visivel: se alguma coisa a
+ * escondeu (Win+D, troca de sessao), ela volta sozinha.
+ */
+const TOP_REASSERT_MS = 1500
+let lastTopAt = 0
+/** A janela ja foi mostrada uma vez (antes disso `isVisible()` e falso por desenho). */
+let overlayShown = false
+
+function keepOnTop(win: BrowserWindow): void {
+  if (overlayShown && !win.isVisible()) win.showInactive()
+  win.setAlwaysOnTop(true, 'screen-saver')
+  win.moveTop()
+}
+
+/**
+ * Encaixa a janela no retangulo do monitor.
+ *
+ * Duas vezes DE PROPOSITO. Com monitores de escala diferente (um a 100%, outro
+ * a 125%) o Electron aplica o `setBounds` com a escala do monitor de ORIGEM da
+ * janela: o primeiro chamado move, e o tamanho sai errado — a sobreposicao
+ * ficava cobrindo so um pedaco da tela, ou sobrando pra fora, com a logo
+ * longe da borda onde devia estar. O segundo chamado, ja no monitor certo,
+ * acerta o tamanho. Conferir antes de repetir evita um repaint a toa.
+ */
+function fitToDisplay(win: BrowserWindow, bounds: Electron.Rectangle): void {
+  win.setBounds(bounds)
+  const got = win.getBounds()
+  if (
+    got.x !== bounds.x ||
+    got.y !== bounds.y ||
+    got.width !== bounds.width ||
+    got.height !== bounds.height
+  ) {
+    win.setBounds(bounds)
+  }
+}
+
 let hitAreas: OverlayHitArea[] = []
 let pointerOn = false
 let interactiveNow = false
@@ -207,6 +258,12 @@ function pollCursor(): void {
     applyMode()
     // `applyMode` pode ter mandado a janela embora.
     if (win.isDestroyed()) return
+  }
+
+  const tick = Date.now()
+  if (tick - lastTopAt >= TOP_REASSERT_MS) {
+    lastTopAt = tick
+    keepOnTop(win)
   }
 
   if (forcedInteractive) {
@@ -247,6 +304,8 @@ function stopCursorWatch(): void {
   pointerOn = false
   interactiveNow = false
   forcedInteractive = false
+  overlayShown = false
+  lastTopAt = 0
 }
 
 /**
@@ -306,11 +365,16 @@ function watchDisplayMetrics(): void {
   if (watchingDisplays) return
   watchingDisplays = true
 
-  screen.on('display-metrics-changed', () => {
+  // Trocar de resolucao, ligar ou desligar um monitor: a janela e do tamanho
+  // da TELA, entao o retangulo antigo aparece na hora (sobrando ou faltando).
+  const refit = (): void => {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.setBounds(targetBounds())
+      fitToDisplay(overlayWindow, targetBounds())
     }
-  })
+  }
+  screen.on('display-metrics-changed', refit)
+  screen.on('display-added', refit)
+  screen.on('display-removed', refit)
 }
 
 function createOverlayWindow(): BrowserWindow {
@@ -356,6 +420,8 @@ function createOverlayWindow(): BrowserWindow {
   // Nasce atravessavel; quem liga e desliga daqui pra frente e o `pollCursor`.
   win.setIgnoreMouseEvents(true, { forward: true })
   interactiveNow = false
+  overlayShown = false
+  lastTopAt = Date.now()
   startCursorWatch()
 
   // Um link na sobreposicao nao pode virar uma segunda janela sem moldura por
@@ -398,7 +464,7 @@ function createOverlayWindow(): BrowserWindow {
 function showOverlay(rebound: boolean): void {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     // A pessoa pode ter mudado de monitor entre uma abertura e outra.
-    if (rebound) overlayWindow.setBounds(targetBounds())
+    if (rebound) fitToDisplay(overlayWindow, targetBounds())
     if (!overlayWindow.isVisible()) overlayWindow.showInactive()
     return
   }
@@ -407,13 +473,24 @@ function showOverlay(rebound: boolean): void {
   // showInactive e nao show: `show()` tenta ativar a janela e, mesmo com
   // focusable:false, isso pisca por cima do jogo.
   win.once('ready-to-show', () => {
-    if (!win.isDestroyed()) win.showInactive()
+    if (win.isDestroyed()) return
+    // O segundo `setBounds` do monitor de escala diferente so pega com a
+    // janela ja criada — ver `fitToDisplay`.
+    fitToDisplay(win, targetBounds())
+    win.showInactive()
+    overlayShown = true
+    keepOnTop(win)
   })
 }
 
 function closeOverlay(): void {
   const win = overlayWindow
   overlayWindow = null
+  // O ouvinte de 'closed' so desliga o relogio quando a janela ainda e a
+  // `overlayWindow` — e aqui ela ja foi zerada. Sem isto o relogio de cursor
+  // seguia batendo 20x/s depois de minimizar, com os retangulos da janela
+  // morta valendo pra proxima.
+  stopCursorWatch()
   if (win && !win.isDestroyed()) win.destroy()
 }
 

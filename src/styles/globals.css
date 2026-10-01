@@ -426,6 +426,44 @@
     pointer-events: auto;
   }
 
+  /* MOVIMENTO DA SOBREPOSICAO.
+     Os `slide-in-from-*` do tailwindcss-animate NUNCA existiram no CSS gerado
+     (o plugin entra no config como promessa e o Tailwind a ignora), entao os
+     avisos apareciam secos. Estes sao curtos de proposito: a tela e do jogo, e
+     uma animacao longa por cima da luta e ruido. */
+  @keyframes ov-in-right {
+    from { opacity: 0; transform: translateX(12px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes ov-in-left {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes ov-pop {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: none; }
+  }
+  /* Halo que respira em volta da logo quando ha o que ver (aposta aberta,
+     aviso novo). Sombra e nao anel de SVG: nao mexe em layout. */
+  @keyframes ov-halo {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(var(--neon-rgb) / 0); }
+    50% { box-shadow: 0 0 16px 3px rgb(var(--neon-rgb) / 0.4); }
+  }
+  .ov-in-right { animation: ov-in-right 160ms ease-out both; }
+  .ov-in-left { animation: ov-in-left 160ms ease-out both; }
+  .ov-pop { animation: ov-pop 140ms ease-out both; }
+  .ov-halo { animation: ov-halo 1.8s ease-in-out infinite; }
+
+  /* Rolagem fina e sem trilho: o trilho solido do app inteiro virava uma
+     faixa chapada dentro do painel translucido. */
+  .ov-scroll { scrollbar-width: thin; scrollbar-color: hsl(var(--border-strong)) transparent; }
+  .ov-scroll::-webkit-scrollbar { width: 6px; }
+  .ov-scroll::-webkit-scrollbar-track { background: transparent; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ov-in-right, .ov-in-left, .ov-pop, .ov-halo { animation: none; }
+  }
+
   /* ------------------------------------------------------------------
      SUPERFICIES
      ------------------------------------------------------------------

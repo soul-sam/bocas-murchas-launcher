@@ -235,6 +235,10 @@ export function OverlayBridge(): null {
     () => ({
       ready: Boolean(user),
       coins: profile?.coins ?? 0,
+      level: profile?.level ?? 1,
+      levelXp: profile?.levelXp ?? 0,
+      nextLevelXp: profile?.nextLevelXp ?? 100,
+      streak: profile?.streak ?? 0,
       myGame,
       targets,
       notice,
@@ -242,7 +246,19 @@ export function OverlayBridge(): null {
       sounds,
       voice: voiceSnapshot
     }),
-    [user, profile?.coins, myGame, targets, notice, sounds, voiceSnapshot]
+    [
+      user,
+      profile?.coins,
+      profile?.level,
+      profile?.levelXp,
+      profile?.nextLevelXp,
+      profile?.streak,
+      myGame,
+      targets,
+      notice,
+      sounds,
+      voiceSnapshot
+    ]
   )
 
   React.useEffect(() => {
@@ -282,6 +298,10 @@ export function OverlayBridge(): null {
         .push({
           ready: false,
           coins: 0,
+          level: 1,
+          levelXp: 0,
+          nextLevelXp: 100,
+          streak: 0,
           myGame: null,
           targets: [],
           notice: null,

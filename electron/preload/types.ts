@@ -610,6 +610,14 @@ export interface OverlayState {
   ready: boolean
   /** Meu saldo de murchos. */
   coins: number
+  /** Meu nivel, e o quanto falta pro proximo — o anel de XP da logo e do painel. */
+  level: number
+  /** XP ja acumulado DENTRO do nivel atual (0..nextLevelXp). */
+  levelXp: number
+  /** Quanto XP o nivel atual pede pra virar o proximo. */
+  nextLevelXp: number
+  /** Dias seguidos de check-in. */
+  streak: number
   myGame: OverlayMyGame | null
   targets: OverlayBetTarget[]
   notice: OverlayNotice | null
