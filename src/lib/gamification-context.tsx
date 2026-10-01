@@ -5,6 +5,7 @@ import {
   gamification as api,
   cosmeticEmoji as glyphOf,
   cosmeticFallbackName,
+  cosmeticTheme,
   xpReasonLabel,
   type Badge,
   type CosmeticType,
@@ -22,6 +23,7 @@ import { useSettings } from './settings-context'
 import { useLayout } from './layout-context'
 import { useActivity } from './activity-context'
 import { playUiSound, type UiSound } from './ui-sounds'
+import { DEFAULT_SETTINGS, isShopThemeId } from '../../electron/preload/types'
 import { XpToasts } from '@/components/social/XpToast'
 
 /**
@@ -129,7 +131,7 @@ let toastSeq = 0
 export function GamificationProvider({ children }: { children: React.ReactNode }) {
   const { token, user, applyUser } = useAuth()
   const { socket } = useSocket()
-  const { settings } = useSettings()
+  const { settings, update: updateSettings } = useSettings()
   const { wagersOpen } = useLayout()
   const { inGame } = useActivity()
 
@@ -271,6 +273,16 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     if (!token) return
     void loadShop()
   }, [token, loadShop])
+
+  // Tema da Lojinha só pra quem tem: a escolha é local (settings), a posse é
+  // do servidor. Se o catálogo diz que a pessoa NÃO tem o tema que está
+  // vestindo (item aposentado, arquivo de configurações editado na mão), volta
+  // pro padrão — sem isso o arquivo seria um jeito de ter o tema sem pagar.
+  React.useEffect(() => {
+    if (!shop || !isShopThemeId(settings.theme)) return
+    const mine = shop.items.some((item) => item.owned && cosmeticTheme(item) === settings.theme)
+    if (!mine) void updateSettings({ theme: DEFAULT_SETTINGS.theme })
+  }, [shop, settings.theme, updateSettings])
 
   const catalog = React.useMemo(() => {
     const map: Record<string, ShopItem> = {}

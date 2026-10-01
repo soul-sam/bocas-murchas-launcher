@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.40.0',
+    headline: 'Temas na Lojinha: o launcher inteiro na sua cor',
+    items: [
+      'Nove temas novos pra comprar com murchos, na aba Temas da Lojinha: Oceano, Brasa, Floresta, Vinho e Café com Leite (raros), Tóquio Neon, Ouro Negro e Lavanda (épicos) e o lendário Aurora Murcha — o único que se mexe.',
+      'Passa o mouse num tema e o launcher inteiro veste ele na hora, antes de gastar. Tira o mouse e volta pro seu.',
+      'Cada tema da Lojinha tem uma luz própria nos cantos da janela, além da paleta. Os cinco de graça continuam iguais.',
+      'Os temas que você tem aparecem também na aba Estilo do perfil e nas Configurações, ao lado dos de graça. Os que faltam mostram um cadeado e abrem a Lojinha.',
+      'Dá pra presentear tema como qualquer item. Comprar libera em todo lugar, mas o PC e o celular podem ficar em temas diferentes: a escolha é por máquina.'
+    ]
+  },
+  {
     version: '1.39.0',
     headline: 'Apostar pela sobreposição: qualquer valor, sem teclado',
     items: [

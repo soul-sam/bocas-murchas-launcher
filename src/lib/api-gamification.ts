@@ -1,4 +1,5 @@
 import { request, type GameSessionSummary } from './api'
+import { isShopThemeId, type ShopThemeId } from '../../electron/preload/types'
 
 /**
  * Contrato com /api/gamification (implementado no backend pelo módulo de
@@ -29,8 +30,13 @@ export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
 /**
  * `nameColor` é a cor do nome. Equipa pelo /equip como os outros, mas não
  * tem coluna própria: a API grava o hex de `data.color` em `profileColor`.
+ *
+ * `theme` é o tema do launcher. Só a POSSE é do servidor: vestir é
+ * `settings.theme`, local, por máquina — o /equip recusa esse tipo e o /shop
+ * devolve `equipped: false` sempre; a Lojinha marca sozinha o que está em
+ * uso. `data.theme` é o ThemeId (electron/preload/types.ts).
  */
-export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji' | 'joinSound' | 'nameColor'
+export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji' | 'joinSound' | 'nameColor' | 'theme'
 
 /**
  * Cor do nome: a cor de texto padrão. A cor comprada saiu da lojinha
@@ -685,6 +691,17 @@ export function cosmeticSound(item: Pick<ShopItem, 'type' | 'data'> | undefined)
   if (item?.type !== 'joinSound') return null
   const key = item.data?.sound
   return typeof key === 'string' && key ? key : null
+}
+
+/**
+ * ThemeId de um cosmético `theme` (`theme:oceano` → "oceano"), ou null se não
+ * for um — ou se for um tema que ESTA versão do launcher não conhece (API
+ * mais nova que o app): aí não dá pra vestir, e a loja pede pra atualizar.
+ */
+export function cosmeticTheme(item: Pick<ShopItem, 'type' | 'data'> | undefined): ShopThemeId | null {
+  if (item?.type !== 'theme') return null
+  const id = item.data?.theme
+  return isShopThemeId(id) ? id : null
 }
 
 /** Nome legível a partir só do id, quando o catálogo ainda não chegou. */

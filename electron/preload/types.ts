@@ -707,23 +707,67 @@ export type OverlayAction =
 
 /**
  * Temas. Cada um e uma folha de tokens em src/styles/globals.css, aplicada
- * pelo `data-theme` do <html>; nenhum componente sabe qual esta ativo. Tres
- * escuros e dois claros — ver docs da desintoxicacao visual.
+ * pelo `data-theme` do <html>; nenhum componente sabe qual esta ativo.
+ *
+ * Cinco vem de graca (tres escuros e dois claros — ver docs da desintoxicacao
+ * visual). Os outros nove sao itens da Lojinha: `theme:<id>` no catalogo da
+ * API (rules.ts), com o MESMO id daqui. A posse fica no servidor; a escolha
+ * fica nas configuracoes, por maquina. O `isThemeId` do processo main aceita
+ * todos — quem confere se a pessoa TEM o tema que esta vestindo e o launcher
+ * (gamification-context), nao o arquivo.
  */
-export type ThemeId = 'grafite' | 'meia-noite' | 'roxo' | 'papel' | 'acido-claro'
+export type FreeThemeId = 'grafite' | 'meia-noite' | 'roxo' | 'papel' | 'acido-claro'
+export type ShopThemeId =
+  | 'oceano'
+  | 'brasa'
+  | 'floresta'
+  | 'vinho'
+  | 'cafe'
+  | 'toquio'
+  | 'ouro-negro'
+  | 'lavanda'
+  | 'aurora'
+export type ThemeId = FreeThemeId | ShopThemeId
 
-export const THEME_IDS: readonly ThemeId[] = ['grafite', 'meia-noite', 'roxo', 'papel', 'acido-claro']
+export const FREE_THEME_IDS: readonly FreeThemeId[] = ['grafite', 'meia-noite', 'roxo', 'papel', 'acido-claro']
+/** Na ordem da loja: raros, epicos, o lendario. */
+export const SHOP_THEME_IDS: readonly ShopThemeId[] = [
+  'oceano',
+  'brasa',
+  'floresta',
+  'vinho',
+  'cafe',
+  'toquio',
+  'ouro-negro',
+  'lavanda',
+  'aurora'
+]
+export const THEME_IDS: readonly ThemeId[] = [...FREE_THEME_IDS, ...SHOP_THEME_IDS]
 
 export const THEME_LABEL: Record<ThemeId, { name: string; hint: string; light: boolean }> = {
   grafite: { name: 'Grafite', hint: 'Preto neutro.', light: false },
   'meia-noite': { name: 'Meia-Noite', hint: 'Azul-marinho. Mais confortável em call longa.', light: false },
   roxo: { name: 'Roxo Murcho', hint: 'Roxo profundo, o complemento do verde. O padrão.', light: false },
   papel: { name: 'Papel Murcho', hint: 'Claro e neutro, quase sem neon.', light: true },
-  'acido-claro': { name: 'Ácido Claro', hint: 'Claro com um resto de verde nos botões.', light: true }
+  'acido-claro': { name: 'Ácido Claro', hint: 'Claro com um resto de verde nos botões.', light: true },
+  // Da Lojinha. Os textos batem com o catalogo da API.
+  oceano: { name: 'Oceano', hint: 'Azul-petróleo com ciano. Fundo do mar.', light: false },
+  brasa: { name: 'Brasa', hint: 'Cinza quente com laranja de carvão aceso.', light: false },
+  floresta: { name: 'Floresta', hint: 'Verde-musgo com limão. Mata fechada.', light: false },
+  vinho: { name: 'Vinho', hint: 'Bordô profundo com rosa. Taça cheia.', light: false },
+  cafe: { name: 'Café com Leite', hint: 'Claro e quente: creme com espresso.', light: true },
+  toquio: { name: 'Tóquio Neon', hint: 'Preto-violeta com rosa-choque e ciano.', light: false },
+  'ouro-negro': { name: 'Ouro Negro', hint: 'Preto absoluto com ouro. Sem neon.', light: false },
+  lavanda: { name: 'Lavanda', hint: 'Claro em lilás com violeta.', light: true },
+  aurora: { name: 'Aurora Murcha', hint: 'Céu polar com aurora que se mexe devagar.', light: false }
 }
 
 export function isThemeId(value: unknown): value is ThemeId {
   return typeof value === 'string' && (THEME_IDS as readonly string[]).includes(value)
+}
+
+export function isShopThemeId(value: unknown): value is ShopThemeId {
+  return typeof value === 'string' && (SHOP_THEME_IDS as readonly string[]).includes(value)
 }
 
 export interface LauncherSettings {

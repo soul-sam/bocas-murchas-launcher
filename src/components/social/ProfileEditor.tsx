@@ -45,10 +45,13 @@ import {
   RARITY_LABEL,
   cosmeticEmoji,
   cosmeticSound,
+  cosmeticTheme,
   type CosmeticType,
   type Rarity,
   type ShopItem
 } from '@/lib/api-gamification'
+import { ThemeSwatch } from '@/components/ThemeSwatch'
+import { DEFAULT_SETTINGS, type ThemeId } from '../../../electron/preload/types'
 import {
   MONTHS,
   daysInMonth,
@@ -806,7 +809,9 @@ const SLOTS: { type: CosmeticType; label: string; hint: string }[] = [
   { type: 'nameEffect', label: 'Efeito do nome', hint: 'brilho, gelo, fogo…' },
   { type: 'avatarFrame', label: 'Moldura', hint: 'em volta da sua foto, também na call' },
   { type: 'emoji', label: 'Emoji', hint: 'do lado do nome, em todo canto' },
-  { type: 'joinSound', label: 'Som de entrada', hint: 'todo mundo ouve quando você entra na call' }
+  { type: 'joinSound', label: 'Som de entrada', hint: 'todo mundo ouve quando você entra na call' },
+  // Tema por último: é o único que só VOCÊ vê — os outros são pros outros.
+  { type: 'theme', label: 'Tema do launcher', hint: 'as cores do app inteiro, só nesta máquina' }
 ]
 
 /** Hex de um item de cor (`data.color`), ou null. */
@@ -816,8 +821,11 @@ function colorOf(item: Pick<ShopItem, 'type' | 'data'>): string | null {
   return typeof hex === 'string' && /^#[0-9a-f]{6}$/i.test(hex) ? hex : null
 }
 
-/** O id equipado num slot, lido do usuário (que é a verdade; a lojinha só espelha). */
-function equippedOf(user: AuthUser | null, type: CosmeticType, items: ShopItem[]): string | null {
+/**
+ * O id equipado num slot, lido do usuário (que é a verdade; a lojinha só
+ * espelha). Tema é a exceção: a verdade é `settings.theme`, desta máquina.
+ */
+function equippedOf(user: AuthUser | null, type: CosmeticType, items: ShopItem[], theme: ThemeId): string | null {
   if (!user) return null
   switch (type) {
     case 'title':
@@ -834,12 +842,14 @@ function equippedOf(user: AuthUser | null, type: CosmeticType, items: ShopItem[]
       const current = (user.profileColor ?? '').toLowerCase()
       return items.find((i) => (colorOf(i) ?? '').toLowerCase() === current)?.id ?? null
     }
+    case 'theme':
+      return items.find((i) => cosmeticTheme(i) === theme)?.id ?? null
   }
 }
 
 function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => void }) {
   const { shop, loadShop, equip } = useGamification()
-  const { settings } = useSettings()
+  const { settings, update: updateSettings } = useSettings()
   const [loading, setLoading] = React.useState(!shop)
   const [busy, setBusy] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
@@ -879,8 +889,13 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
     }
   }
 
+  // Tema é configuração local, não slot no servidor; "tirar" volta pro padrão.
   const setSlot = (type: CosmeticType, item: ShopItem | null): Promise<void> =>
-    run(item?.id ?? `${type}:none`, () => equip(type, item?.id ?? null))
+    run(item?.id ?? `${type}:none`, () =>
+      type === 'theme'
+        ? updateSettings({ theme: (item && cosmeticTheme(item)) ?? DEFAULT_SETTINGS.theme })
+        : equip(type, item?.id ?? null)
+    )
 
   if (loading && !shop) {
     return (
@@ -895,8 +910,8 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
       <div className="flex flex-col items-start gap-3 rounded-brutal border border-dashed border-line px-4 py-5">
         <p className="text-sm text-foreground">Você ainda não tem nada pra vestir.</p>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Cor do nome, título, efeito, moldura, emoji e som de entrada são itens da Lojinha,
-          pagos em murchos. O que você comprar aparece aqui pra equipar.
+          Tema do launcher, cor do nome, título, efeito, moldura, emoji e som de entrada são
+          itens da Lojinha, pagos em murchos. O que você comprar aparece aqui pra equipar.
         </p>
         <Button type="button" variant="outline" size="sm" onClick={onOpenShop}>
           <ShopIcon className="mr-1.5 h-3.5 w-3.5" />
@@ -915,7 +930,7 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
       {SLOTS.map((slot) => {
         const mine = owned.filter((i) => i.type === slot.type)
         if (mine.length === 0) return null
-        const equippedId = equippedOf(me, slot.type, mine)
+        const equippedId = equippedOf(me, slot.type, mine, settings.theme)
         return (
           <section key={slot.type} className="flex flex-col gap-2">
             <div className="flex items-end justify-between gap-2">
@@ -1056,6 +1071,12 @@ function StyleTile({
             </>
           )}
           {item.type === 'joinSound' && <span className="truncate text-sm">{item.name}</span>}
+          {item.type === 'theme' && (
+            <>
+              {cosmeticTheme(item) && <ThemeSwatch theme={cosmeticTheme(item)!} className="h-7 w-12 shrink-0" />}
+              <span className="truncate text-sm">{item.name}</span>
+            </>
+          )}
         </span>
       </Hint>
 

@@ -14,19 +14,23 @@ import {
   Layers,
   RefreshCw,
   Sparkles,
-  Smartphone
+  Smartphone,
+  Lock
 } from 'lucide-react'
 import { ChatIcon, GameIcon } from '@/lib/bocas-icons'
 import { useSettings } from '@/lib/settings-context'
 import { useHotkeys } from '@/lib/hotkeys-context'
 import { useNudge } from '@/lib/nudge-context'
 import { useOverlays } from '@/lib/overlay-context'
+import { useGamification } from '@/lib/gamification-context'
+import { cosmeticTheme } from '@/lib/api-gamification'
+import { ThemeSwatch } from '@/components/ThemeSwatch'
 import { useUpdater } from '@/lib/updater-context'
 import { useVoice } from '@/lib/voice-context'
 import { useAudioDevices, useVideoDevices } from '@/lib/use-audio-devices'
 import { playUiSound } from '@/lib/ui-sounds'
 import { GATE_OFF_DB } from '@/lib/audio-processor'
-import { RAM_LIMITS, type LolPhase, type LolStatus, type OverlaySide, THEME_IDS, THEME_LABEL, type ThemeId } from '../../electron/preload/types'
+import { RAM_LIMITS, type LolPhase, type LolStatus, type OverlaySide, FREE_THEME_IDS, SHOP_THEME_IDS, THEME_LABEL, type ThemeId } from '../../electron/preload/types'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -1177,9 +1181,21 @@ function GameTab({
 
 function StartupTab() {
   const { settings, update } = useSettings()
-  const { openWhatsNew } = useOverlays()
+  const { openWhatsNew, openShop } = useOverlays()
   const { close: closeSettings } = useSettings()
   const { status } = useUpdater()
+  const { shop } = useGamification()
+
+  // Temas da Lojinha que a pessoa já tem (o /shop diz; sem catálogo, nenhum —
+  // e aí a pessoa vê os seus com cadeado por um instante, não o contrário).
+  const ownedThemes = React.useMemo(() => {
+    const set = new Set<ThemeId>()
+    for (const item of shop?.items ?? []) {
+      const theme = item.owned ? cosmeticTheme(item) : null
+      if (theme) set.add(theme)
+    }
+    return set
+  }, [shop])
   const [autostart, setAutostart] = React.useState<{ enabled: boolean; supported: boolean } | null>(
     null
   )
@@ -1233,7 +1249,17 @@ function StartupTab() {
 
       <section>
         <SectionTitle>Tema</SectionTitle>
-        <ThemePicker value={settings.theme} onChange={(theme) => void update({ theme })} />
+        <ThemePicker
+          value={settings.theme}
+          owned={ownedThemes}
+          onChange={(theme) => void update({ theme })}
+          onLocked={() => {
+            // Tema que falta: a Lojinha é o lugar dele. Fecha aqui antes —
+            // a loja é camada própria e ficaria por baixo deste diálogo.
+            closeSettings()
+            openShop()
+          }}
+        />
       </section>
 
       <section>
@@ -1486,40 +1512,64 @@ function StatusRow({ label, children }: { label: string; children: React.ReactNo
 }
 
 /**
- * Cinco temas como cinco amostras clicaveis. A amostra mostra o fundo, uma
- * superficie e o botao primario do tema — o suficiente pra escolher sem
- * aplicar. `aria-pressed` porque e um grupo de escolha unica.
+ * Os temas como amostras clicaveis: a miniatura (ThemeSwatch) pinta a janela
+ * do launcher com os tokens DO TEMA, entao da pra escolher sem aplicar.
+ * `aria-pressed` porque e um grupo de escolha unica.
+ *
+ * Os cinco de graca vem primeiro. Os da Lojinha vem embaixo: o que a pessoa
+ * TEM e clicavel como os outros; o que falta aparece com cadeado e leva pra
+ * loja — e o unico lugar das Configuracoes que vende alguma coisa, e e de
+ * proposito: quem veio aqui trocar de tema e quem mais quer saber que existem
+ * outros.
  */
-function ThemePicker({ value, onChange }: { value: ThemeId; onChange: (theme: ThemeId) => void }) {
+function ThemePicker({
+  value,
+  owned,
+  onChange,
+  onLocked
+}: {
+  value: ThemeId
+  owned: ReadonlySet<ThemeId>
+  onChange: (theme: ThemeId) => void
+  onLocked: () => void
+}) {
+  const tile = (id: ThemeId, locked: boolean): React.ReactNode => {
+    const meta = THEME_LABEL[id]
+    const on = id === value
+    return (
+      <button
+        key={id}
+        type="button"
+        aria-pressed={on}
+        onClick={() => (locked ? onLocked() : onChange(id))}
+        title={locked ? 'Na Lojinha' : undefined}
+        className={cn(
+          'flex flex-col gap-2 rounded-brutal border p-2 text-left transition-colors',
+          on ? 'border-acid bg-acid/5' : 'border-line hover:border-line-strong',
+          locked && 'opacity-70 hover:opacity-100'
+        )}
+      >
+        <ThemeSwatch theme={id} className="h-12" />
+        <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
+          {locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="na Lojinha" />}
+          {meta.name}
+        </span>
+        <span className="text-[11px] leading-snug text-muted-foreground">{meta.hint}</span>
+      </button>
+    )
+  }
+
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-      {THEME_IDS.map((id) => {
-        const meta = THEME_LABEL[id]
-        const on = id === value
-        return (
-          <button
-            key={id}
-            type="button"
-            aria-pressed={on}
-            onClick={() => onChange(id)}
-            className={cn(
-              'flex flex-col gap-2 rounded-brutal border p-2 text-left transition-colors',
-              on ? 'border-acid bg-acid/5' : 'border-line hover:border-line-strong'
-            )}
-          >
-            <span
-              aria-hidden
-              data-theme={id}
-              className="flex h-12 w-full items-end gap-1 rounded-[4px] border border-border bg-background p-1.5"
-            >
-              <span className="h-full flex-1 rounded-[3px] border border-border bg-card" />
-              <span className="h-4 w-7 rounded-[3px] bg-primary" />
-            </span>
-            <span className="text-xs font-semibold text-foreground">{meta.name}</span>
-            <span className="text-[11px] leading-snug text-muted-foreground">{meta.hint}</span>
-          </button>
-        )
-      })}
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{FREE_THEME_IDS.map((id) => tile(id, false))}</div>
+      <div>
+        <p className="mb-1.5 text-[11px] text-muted-foreground">
+          Da Lojinha, pagos em murchos. Os seus ficam liberados aqui; os outros abrem a loja.
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {SHOP_THEME_IDS.map((id) => tile(id, !owned.has(id)))}
+        </div>
+      </div>
     </div>
   )
 }

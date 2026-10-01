@@ -1,11 +1,12 @@
 import * as React from 'react'
-import { X, Loader2, Check, Tag, Sparkles, Frame, Smile, Volume2, Play, Palette } from 'lucide-react'
+import { X, Loader2, Check, Tag, Sparkles, Frame, Smile, Volume2, Play, Palette, Paintbrush } from 'lucide-react'
 import { GiftIcon, MurchosIcon, ShopIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
 import {
   cosmeticSound,
   cosmeticEmoji,
+  cosmeticTheme,
   formatCompact,
   RARITY_COLOR,
   RARITY_GLYPH,
@@ -22,6 +23,8 @@ import { useOverlays } from '@/lib/overlay-context'
 import { useGamification } from '@/lib/gamification-context'
 import { useSettings } from '@/lib/settings-context'
 import { playJoinSound } from '@/lib/ui-sounds'
+import { ThemeSwatch } from '@/components/ThemeSwatch'
+import { DEFAULT_SETTINGS } from '../../../electron/preload/types'
 import { cn } from '@/lib/utils'
 import { EarnRulesPopover } from './EarnRulesPopover'
 import { GiftPanel } from './GiftPanel'
@@ -30,8 +33,9 @@ import { NameEmoji } from './NameEmoji'
 import { TitleTag } from '@/lib/cosmetic-icons'
 
 /**
- * LOJINHA — gastar murchos em título, efeito de nome, moldura de avatar,
- * emoji do lado do nome (`Nome · 😎 · Título`) e som de entrar/sair da call.
+ * LOJINHA — gastar murchos em tema do launcher, cor e título, efeito de nome,
+ * moldura de avatar, emoji do lado do nome (`Nome · 😎 · Título`) e som de
+ * entrar/sair da call.
  *
  * Camada própria (div fixed + clique fora fecha), NÃO Radix Dialog: ela mora
  * em GlobalOverlays mas quem abre pode estar numa tela que some, e camada
@@ -40,9 +44,15 @@ import { TitleTag } from '@/lib/cosmetic-icons'
  * A prévia do topo mostra MEU nome/avatar com o item em que o mouse está,
  * caindo no que está equipado quando o mouse sai. É assim que a pessoa decide
  * se o rainbow fica bom com a cor dela antes de gastar.
+ *
+ * TEMA é diferente dos outros: a prévia é o launcher INTEIRO (o <html> veste o
+ * tema enquanto o mouse está no card), e vestir é configuração local — a API
+ * só guarda a posse (ver api-gamification.ts). Por isso o equipado dos temas
+ * sai de `settings.theme`, não do servidor.
  */
 
 const TABS: { type: CosmeticType; label: string; Icon: typeof Tag }[] = [
+  { type: 'theme', label: 'Temas', Icon: Paintbrush },
   { type: 'nameColor', label: 'Cores', Icon: Palette },
   { type: 'title', label: 'Títulos', Icon: Tag },
   { type: 'nameEffect', label: 'Efeitos', Icon: Sparkles },
@@ -58,9 +68,9 @@ export function ShopModal() {
   const { user } = useAuth()
   const { byId } = useMembers()
   const { shop, loadShop, buy, equip, profile, catalog, pushToast } = useGamification()
-  const { settings } = useSettings()
+  const { settings, update: updateSettings } = useSettings()
 
-  const [tab, setTab] = React.useState<CosmeticType>('nameColor')
+  const [tab, setTab] = React.useState<CosmeticType>('theme')
   const [hovered, setHovered] = React.useState<ShopItem | null>(null)
   const [confirming, setConfirming] = React.useState<string | null>(null)
   // Item sendo presenteado: o painel de "pra quem?" cobre a prateleira.
@@ -71,6 +81,10 @@ export function ShopModal() {
 
   // Rebusca ao abrir: preço e saldo podem ter mudado desde o login.
   React.useEffect(() => {
+    // Nos dois sentidos: quem fecha com Esc com o mouse em cima de um tema
+    // deixaria um `hovered` velho, e a prévia do tema voltaria por um quadro
+    // na próxima abertura.
+    setHovered(null)
     if (!open) return
     setLoading(true)
     setError(null)
@@ -78,6 +92,19 @@ export function ShopModal() {
     setGifting(null)
     void loadShop().finally(() => setLoading(false))
   }, [open, loadShop])
+
+  // Prévia de tema é o app inteiro: enquanto o mouse está num tema, o <html>
+  // veste ele; ao sair (ou ao fechar a loja), volta pro das configurações.
+  // Mora aqui e não no card porque a volta tem que acontecer mesmo que o card
+  // suma debaixo do mouse.
+  const previewTheme = open && hovered?.type === 'theme' ? cosmeticTheme(hovered) : null
+  React.useEffect(() => {
+    if (!previewTheme) return
+    document.documentElement.dataset.theme = previewTheme
+    return () => {
+      document.documentElement.dataset.theme = settings.theme
+    }
+  }, [previewTheme, settings.theme])
 
   React.useEffect(() => {
     if (!open) return
@@ -105,6 +132,11 @@ export function ShopModal() {
 
   const items = (shop?.items ?? [])
     .filter((item) => item.type === tab)
+    // Tema: o servidor não sabe qual está vestido (é configuração desta
+    // máquina), então a marca de equipado sai daqui.
+    .map((item) =>
+      item.type === 'theme' ? { ...item, equipped: cosmeticTheme(item) === settings.theme } : item
+    )
     .sort((a, b) => (RARITY_ORDER[a.rarity] ?? 0) - (RARITY_ORDER[b.rarity] ?? 0) || a.price - b.price)
 
   // Prévia: item sob o mouse ganha do equipado, mas só no slot dele.
@@ -144,7 +176,15 @@ export function ShopModal() {
     setBusy(item.id)
     setError(null)
     try {
-      await equip(item.type, unequip ? null : item.id)
+      if (item.type === 'theme') {
+        // Tema é configuração local, não slot no servidor; "tirar" volta pro
+        // padrão do launcher.
+        const theme = cosmeticTheme(item)
+        if (!theme) throw new Error('Esse tema é de uma versão mais nova do launcher. Atualiza ele.')
+        await updateSettings({ theme: unequip ? DEFAULT_SETTINGS.theme : theme })
+      } else {
+        await equip(item.type, unequip ? null : item.id)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não deu pra equipar agora.')
     } finally {
@@ -175,7 +215,7 @@ export function ShopModal() {
           <div className="min-w-0 flex-1">
             <h2 className="title-brutal text-2xl">Lojinha</h2>
             <p className="text-[11.5px] text-muted-foreground">
-              enfeite pro seu nome, pago em murchos
+              enfeite pro seu nome e pro seu launcher, pago em murchos
             </p>
           </div>
           {/* O "?" fica à ESQUERDA do saldo: à direita ele passaria por baixo
@@ -222,7 +262,11 @@ export function ShopModal() {
               )}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              {hovered ? `prévia: ${hovered.name}` : 'é assim que a galera te vê'}
+              {hovered
+                ? hovered.type === 'theme'
+                  ? `prévia: ${hovered.name} — o launcher inteiro, só pra você`
+                  : `prévia: ${hovered.name}`
+                : 'é assim que a galera te vê'}
             </p>
           </div>
         </div>
@@ -391,7 +435,20 @@ function ItemTile({
       }
     >
       {/* Amostra do item, do jeito que vai aparecer. */}
-      <div className="flex h-12 items-center justify-center rounded-brutal bg-void px-2">
+      <div
+        className={cn(
+          'flex h-12 items-center justify-center rounded-brutal bg-void',
+          item.type === 'theme' ? 'overflow-hidden' : 'px-2'
+        )}
+      >
+        {item.type === 'theme' &&
+          (cosmeticTheme(item) ? (
+            <ThemeSwatch theme={cosmeticTheme(item)!} className="h-full rounded-brutal border-0" />
+          ) : (
+            <span className="px-2 text-center text-[11px] leading-snug text-muted-foreground">
+              tema de uma versão mais nova — atualiza o launcher
+            </span>
+          ))}
         {item.type === 'nameColor' && (
           <span className="flex min-w-0 items-center gap-2">
             <span
@@ -494,10 +551,19 @@ function ItemTile({
                 ? 'border-acid bg-acid/15 text-acid hover:bg-destructive/15 hover:text-destructive hover:border-destructive/60'
                 : 'border-acid-dark text-acid hover:bg-acid/15'
             )}
-            title={item.equipped ? 'Clique pra tirar' : 'Equipar'}
+            title={
+              item.type === 'theme'
+                ? item.equipped
+                  ? 'Clique pra voltar ao tema padrão'
+                  : 'Vestir este tema'
+                : item.equipped
+                  ? 'Clique pra tirar'
+                  : 'Equipar'
+            }
           >
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : item.equipped ? <Check className="h-3 w-3" /> : null}
-            {item.equipped ? 'Equipado' : 'Equipar'}
+            {/* Tema se USA, não se equipa: é o launcher, não o nome. */}
+            {item.type === 'theme' ? (item.equipped ? 'Em uso' : 'Usar') : item.equipped ? 'Equipado' : 'Equipar'}
           </button>
         ) : confirming ? (
           <div className="flex flex-1 gap-1">
