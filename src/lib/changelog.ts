@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.39.0',
+    headline: 'Apostar pela sobreposição: qualquer valor, sem teclado',
+    items: [
+      'O valor da aposta ganhou uma régua: arrasta até quanto quiser, de 10 em 10, entre o mínimo e o seu limite. Antes eram cinco fichas fixas — entre 100 e o teto só dava 250.',
+      'Botões de − e + ao lado do valor (segurar acelera) e a roda do mouse em cima do número também ajustam.',
+      'As fichas rápidas continuam (10, 50, 100, 250, 500), e a última é sempre o seu limite: o teto da aposta ou tudo que você tem.',
+      'Antes de confirmar você vê quanto volta se acertar, o bônus de grupo e quanto falta pra janela fechar — a linha do botão esvazia junto com o tempo.',
+      'Apostar na partida dos outros agora confirma num botão, em vez de disparar no toque da ficha. Os lados mostram pra onde a galera está indo.',
+      'Partida fechando em menos de um minuto fica com o relógio em vermelho, e o cartão abre e fecha pelo próprio título.'
+    ]
+  },
+  {
     version: '1.35.0',
     headline: 'O Ranking virou a Arena: cada coisa no seu lugar',
     items: [

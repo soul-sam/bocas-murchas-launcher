@@ -147,7 +147,10 @@ export function OverlayBridge(): null {
         pool: game.pool,
         myWager: game.myWager,
         closesAt: Date.parse(game.closesAt),
-        maxAmount: game.maxAmount
+        maxAmount: game.maxAmount,
+        // Servidor antigo vem sem `groupBonus`; as apostas do board servem,
+        // porque e uma por pessoa por partida.
+        bettors: game.groupBonus?.bettors ?? new Set(game.bets.map((bet) => bet.userId)).size
       })
     }
 

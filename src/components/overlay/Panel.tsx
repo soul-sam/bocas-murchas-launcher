@@ -2,10 +2,10 @@ import * as React from 'react'
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
   ExternalLink,
   Headphones,
   HeadphoneOff,
-  Loader2,
   Mic,
   MicOff,
   Minus,
@@ -14,11 +14,9 @@ import {
   PinOff,
   Scissors,
   Swords,
-  TrendingDown,
-  TrendingUp,
   Waves
 } from 'lucide-react'
-import { BetIcon, MurchosIcon, SoundboardIcon, StreakIcon } from '@/lib/bocas-icons'
+import { MurchosIcon, SoundboardIcon, StreakIcon } from '@/lib/bocas-icons'
 import { cn, formatClock } from '@/lib/utils'
 import type {
   OverlayAction,
@@ -29,6 +27,7 @@ import type {
   OverlayToast,
   OverlayVoice
 } from '../../../electron/preload/types'
+import { BetComposer } from './Bet'
 import {
   ago,
   Chip,
@@ -41,9 +40,6 @@ import {
   Medallion,
   PoolBar,
   SectionTitle,
-  useSendLock,
-  WindowBar,
-  windowLeft,
   XpBar
 } from './parts'
 import { toastLook } from './Toasts'
@@ -59,35 +55,20 @@ import { toastLook } from './Toasts'
  *   5. o que aconteceu agora há pouco.
  *
  * Sem teclado e sem rede (ver o cabeçalho da OverlayPage): tudo é botão e tudo
- * volta pra janela principal por `send`.
+ * volta pra janela principal por `send`. O formulário de aposta — valor por
+ * régua, fichas e botões — mora em `Bet.tsx`.
  */
 
-/** Valores de aposta oferecidos. Sem campo de digitar — a janela nunca recebe tecla. */
-const AMOUNT_PRESETS = [10, 50, 100, 250, 500] as const
 /** A janela de aposta em mim, em ms. Espelha o SELF_WAGER do servidor (3 min). */
 const SELF_WINDOW_MS = 180_000
 /** A janela das apostas nos outros (5 min do início da partida). */
 const TARGET_WINDOW_MS = 300_000
+/** Abaixo disso o relógio da partida fica vermelho: é agora ou nunca. */
+const URGENT_MS = 60_000
 
 /** Atalho pros cliques que voltam pra janela principal. */
 export function send(action: OverlayAction): void {
   void window.bocas.overlay.send(action)
-}
-
-/**
- * As quantias que cabem na fileira: as fixas dentro do teto, e o próprio teto
- * como "máx" quando ele passa da maior. Até cinco — mais que isso e o botão
- * deixa de ser alvo de mouse no meio de uma luta.
- */
-function amountOptions(min: number, ceiling: number): { value: number; label: string }[] {
-  const base: { value: number; label: string }[] = AMOUNT_PRESETS.filter(
-    (v) => v >= min && v <= ceiling
-  ).map((v) => ({ value: v, label: String(v) }))
-  if (ceiling >= min && !base.some((o) => o.value === ceiling)) {
-    if (base.length >= 5) base.pop()
-    base.push({ value: ceiling, label: 'máx' })
-  }
-  return base.slice(0, 5)
 }
 
 export function Panel({
@@ -467,11 +448,8 @@ function MyGameCard({
  *
  * Só aparece enquanto a janela está aberta. Não há escolha de lado: apostar na
  * própria derrota seria pago pra intar, e o servidor recusa. O retorno vem da
- * odd da própria winrate, já calculada lá.
- *
- * O valor é por CLIQUE, não por campo: esta janela é `focusable: false` e nunca
- * recebe tecla. Escolhe-se a quantia numa fileira de fichas, e o botão grande
- * confirma — dinheiro de verdade pede dois toques.
+ * odd da própria winrate, já calculada lá. O formulário é o mesmo da aposta no
+ * colega (ver Bet.tsx), só sem o seletor de lado.
  */
 function SelfBet({
   game,
@@ -484,18 +462,6 @@ function SelfBet({
   wagerMin: number
   now: number
 }) {
-  const self = game.self
-  const ceiling = Math.min(self?.maxAmount ?? 0, coins)
-  const options = React.useMemo(() => amountOptions(wagerMin, ceiling), [wagerMin, ceiling])
-  const [amount, setAmount] = React.useState(wagerMin)
-  const [sending, lock] = useSendLock()
-
-  // O teto só chega junto com o primeiro retrato do servidor; quando ele
-  // encolhe (saldo caiu), o valor escolhido não pode ficar acima dele.
-  React.useEffect(() => {
-    setAmount((v) => Math.max(wagerMin, Math.min(v, Math.max(wagerMin, ceiling))))
-  }, [ceiling, wagerMin])
-
   if (game.myWager) {
     return (
       <p className="mt-3 flex items-start gap-2 rounded-brutal border border-acid-dark/60 bg-acid/10 px-2.5 py-2 text-[11.5px] leading-snug text-foreground">
@@ -510,118 +476,26 @@ function SelfBet({
     )
   }
 
+  const self = game.self
   if (!self) return null
-  const left = countdown(self.closesAt, now)
-  if (!left) return null
-
-  const canBet = ceiling >= wagerMin
-  const payout = Math.round(amount * self.multiplier)
-
-  const bet = (): void => {
-    if (sending || !canBet) return
-    lock()
-    void window.bocas.overlay.send({
-      type: 'bet',
-      sessionId: self.sessionId,
-      prediction: 'win',
-      amount
-    })
-  }
+  if (!countdown(self.closesAt, now)) return null
 
   return (
-    <div className="mt-3 border-t border-line pt-3" data-overlay-hit>
-      <SectionTitle
-        aside={
-          <span className="rounded-full border border-burn/40 bg-burn/10 px-1.5 font-mono text-[11px] font-bold normal-case tracking-normal text-burn">
-            {self.multiplier.toFixed(2)}x
-          </span>
+    <div className="mt-3 border-t border-line pt-3">
+      <SectionTitle>aposte em você</SectionTitle>
+      <BetComposer
+        mode={{ kind: 'self', multiplier: self.multiplier }}
+        min={wagerMin}
+        max={self.maxAmount}
+        coins={coins}
+        bettors={game.bettors}
+        closesAt={self.closesAt}
+        now={now}
+        windowMs={SELF_WINDOW_MS}
+        onBet={(_side, amount) =>
+          send({ type: 'bet', sessionId: self.sessionId, prediction: 'win', amount })
         }
-      >
-        aposte em você
-      </SectionTitle>
-
-      {!canBet ? (
-        <p className="text-[11.5px] text-destructive">Você não tem murchos pra apostar em você.</p>
-      ) : (
-        <>
-          <AmountChips options={options} value={amount} onPick={setAmount} />
-
-          <div className="mt-2.5 flex items-end justify-between gap-2">
-            <div>
-              <p className="text-[11.5px] leading-tight text-muted-foreground">se ganhar volta</p>
-              <p className="font-mono text-lg font-bold leading-tight tabular-nums text-acid-text">
-                {payout}
-                <span className="ml-1 font-sans text-[11.5px] font-normal text-muted-foreground">
-                  murchos
-                </span>
-              </p>
-            </div>
-            <p className="text-right text-[11.5px] leading-tight text-muted-foreground">
-              fecha em
-              <span className="block font-mono text-sm tabular-nums text-foreground">{left}</span>
-            </p>
-          </div>
-
-          <WindowBarFor closesAt={self.closesAt} now={now} total={SELF_WINDOW_MS} />
-
-          <button
-            type="button"
-            disabled={sending}
-            onClick={bet}
-            className={cn(
-              'mt-2.5 flex w-full items-center justify-center gap-2 rounded-brutal bg-acid px-3 py-2',
-              'text-sm font-semibold text-primary-foreground shadow-neon-2 transition-[filter]',
-              'hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50'
-            )}
-          >
-            {sending ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <BetIcon className="h-4 w-4" aria-hidden />
-            )}
-            Apostar {amount}
-          </button>
-        </>
-      )}
-    </div>
-  )
-}
-
-/** A faixa que esvazia até a janela de aposta fechar. */
-function WindowBarFor({ closesAt, now, total }: { closesAt: number; now: number; total: number }) {
-  return <WindowBar fraction={windowLeft(closesAt, now, total)} className="mt-2" />
-}
-
-/** A fileira de fichas. Selecionada fica verde; desligada (acima do saldo) some o hover. */
-function AmountChips({
-  options,
-  value,
-  onPick
-}: {
-  options: { value: number; label: string }[]
-  value: number
-  onPick: (value: number) => void
-}) {
-  return (
-    <div
-      className="grid gap-1"
-      style={{ gridTemplateColumns: `repeat(${Math.max(1, options.length)}, minmax(0, 1fr))` }}
-    >
-      {options.map((option) => (
-        <button
-          key={option.label}
-          type="button"
-          onClick={() => onPick(option.value)}
-          className={cn(
-            'rounded-brutal border py-1.5 font-mono text-xs tabular-nums transition-colors',
-            option.value === value
-              ? 'border-acid bg-acid/15 font-bold text-acid'
-              : 'border-line text-muted-foreground hover:border-acid-dark hover:text-foreground'
-          )}
-        >
-          {option.label}
-        </button>
-      ))}
+      />
     </div>
   )
 }
@@ -673,6 +547,11 @@ function TargetList({ state, now }: { state: OverlayState; now: number }) {
   )
 }
 
+/**
+ * Uma partida do grupo. Fechada é um resumo (quem, o quê, a pool, o relógio);
+ * aberta vira o formulário. O título inteiro abre e fecha — alvo grande,
+ * pra mão que está no meio de uma luta.
+ */
 function TargetRow({
   target,
   coins,
@@ -691,32 +570,68 @@ function TargetRow({
   const detail = [target.champion, target.queue].filter(Boolean).join(' · ')
   const GameIcon = target.game === 'minecraft' ? Pickaxe : Swords
   const left = countdown(target.closesAt, now)
+  const urgent = left !== null && target.closesAt - now < URGENT_MS
+  /** Há formulário pra abrir: ainda não apostei e a janela está de pé. */
+  const canOpen = !target.myWager && left !== null
+
+  const header = (
+    <>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-brutal border border-burn/40 bg-burn/10">
+        <GameIcon className="h-4 w-4 text-burn" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs font-semibold leading-tight text-foreground">
+          {target.displayName}
+          {target.squad.length > 0 && (
+            <span className="font-normal text-muted-foreground"> +{target.squad.length}</span>
+          )}
+        </span>
+        {detail && (
+          <span className="mt-0.5 block truncate text-[11.5px] leading-tight text-muted-foreground">
+            {detail}
+          </span>
+        )}
+      </span>
+      {left && (
+        <Chip
+          tone={urgent ? 'danger' : 'burn'}
+          className={cn('font-mono tabular-nums', urgent && 'animate-pulse font-semibold')}
+        >
+          {left}
+        </Chip>
+      )}
+      {canOpen && (
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+            open && 'rotate-180'
+          )}
+          aria-hidden
+        />
+      )}
+    </>
+  )
 
   return (
-    <section className="rounded-[10px] border border-line bg-surface-raised/40 p-2.5">
-      <header className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-brutal border border-burn/40 bg-burn/10">
-          <GameIcon className="h-4 w-4 text-burn" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-semibold leading-tight text-foreground">
-            {target.displayName}
-            {target.squad.length > 0 && (
-              <span className="font-normal text-muted-foreground"> +{target.squad.length}</span>
-            )}
-          </p>
-          {detail && (
-            <p className="mt-0.5 truncate text-[11.5px] leading-tight text-muted-foreground">
-              {detail}
-            </p>
-          )}
-        </div>
-        {left && (
-          <Chip tone="burn" className="font-mono tabular-nums">
-            {left}
-          </Chip>
-        )}
-      </header>
+    <section
+      className={cn(
+        'rounded-[10px] border bg-surface-raised/40 p-2.5 transition-colors',
+        open ? 'border-burn/50' : 'border-line'
+      )}
+    >
+      {canOpen ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          title={open ? 'Fechar o formulário' : 'Apostar nesta partida'}
+          className="-m-1 flex w-[calc(100%+0.5rem)] items-center gap-2.5 rounded-brutal p-1 text-left transition-colors hover:bg-surface-raised/60"
+        >
+          {header}
+        </button>
+      ) : (
+        <header className="flex items-center gap-2.5">{header}</header>
+      )}
 
       {/* A explicação do grupo só aparece com o formulário aberto: fechada, o
           "+N" do título já diz que há mais gente, e a frase custa uma linha
@@ -750,15 +665,21 @@ function TargetRow({
           Aposta fechada — só nos 5 primeiros minutos da partida.
         </p>
       ) : open ? (
-        <>
-          <WindowBarFor closesAt={target.closesAt} now={now} total={TARGET_WINDOW_MS} />
-          <BetButtons
-            sessionId={target.sessionId}
-            coins={coins}
-            wagerMin={wagerMin}
-            maxAmount={target.maxAmount}
-          />
-        </>
+        <BetComposer
+          className="mt-2.5"
+          mode={{ kind: 'target' }}
+          min={wagerMin}
+          max={target.maxAmount}
+          coins={coins}
+          bettors={target.bettors}
+          pool={target.pool}
+          closesAt={target.closesAt}
+          now={now}
+          windowMs={TARGET_WINDOW_MS}
+          onBet={(prediction, amount) =>
+            send({ type: 'bet', sessionId: target.sessionId, prediction, amount })
+          }
+        />
       ) : (
         <button
           type="button"
@@ -773,121 +694,6 @@ function TargetRow({
         </button>
       )}
     </section>
-  )
-}
-
-/**
- * Lado + valor em dois toques, sem estado de "confirmar": escolher o valor JÁ é
- * a aposta. Um passo a menos importa aqui — cada segundo desta tela é um
- * segundo em que a pessoa não está olhando pro jogo.
- */
-function BetButtons({
-  sessionId,
-  coins,
-  wagerMin,
-  maxAmount
-}: {
-  sessionId: string
-  coins: number
-  wagerMin: number
-  /** Teto pessoal desta partida, vindo do servidor. */
-  maxAmount: number
-}) {
-  const [prediction, setPrediction] = React.useState<'win' | 'loss'>('win')
-  const [sending, lock] = useSendLock()
-
-  const bet = (amount: number): void => {
-    if (sending) return
-    lock()
-    void window.bocas.overlay.send({ type: 'bet', sessionId, prediction, amount })
-  }
-
-  const amounts = amountOptions(wagerMin, maxAmount)
-
-  return (
-    <div className="mt-2.5 space-y-1.5">
-      <div className="grid grid-cols-2 gap-1">
-        <SideButton
-          active={prediction === 'win'}
-          tone="acid"
-          onClick={() => setPrediction('win')}
-          icon={<TrendingUp className="h-3.5 w-3.5" />}
-        >
-          vitória
-        </SideButton>
-        <SideButton
-          active={prediction === 'loss'}
-          tone="destructive"
-          onClick={() => setPrediction('loss')}
-          icon={<TrendingDown className="h-3.5 w-3.5" />}
-        >
-          derrota
-        </SideButton>
-      </div>
-
-      <div
-        className="grid gap-1"
-        style={{ gridTemplateColumns: `repeat(${Math.max(1, amounts.length)}, minmax(0, 1fr))` }}
-      >
-        {amounts.map((option) => (
-          <button
-            key={option.label}
-            type="button"
-            disabled={sending || option.value > coins}
-            onClick={() => bet(option.value)}
-            className={cn(
-              'flex items-center justify-center rounded-brutal border py-1.5 font-mono text-xs tabular-nums transition-colors',
-              prediction === 'win'
-                ? 'border-acid-dark text-acid hover:bg-acid/20'
-                : 'border-destructive/60 text-destructive hover:bg-destructive/20',
-              'disabled:cursor-not-allowed disabled:border-line disabled:text-muted-foreground disabled:hover:bg-transparent'
-            )}
-          >
-            {sending ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : option.label}
-          </button>
-        ))}
-      </div>
-
-      <p className="text-center text-[11.5px] text-muted-foreground">
-        tocar num valor já faz a aposta
-      </p>
-
-      {coins < wagerMin && (
-        <p className="text-[11.5px] text-destructive">Você não tem murchos pra apostar.</p>
-      )}
-    </div>
-  )
-}
-
-function SideButton({
-  active,
-  tone,
-  onClick,
-  icon,
-  children
-}: {
-  active: boolean
-  tone: 'acid' | 'destructive'
-  onClick: () => void
-  icon: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex items-center justify-center gap-1.5 rounded-brutal border px-2 py-1.5 text-xs font-medium transition-colors',
-        active
-          ? tone === 'acid'
-            ? 'border-acid bg-acid/15 text-acid'
-            : 'border-destructive bg-destructive/15 text-destructive'
-          : 'border-line text-muted-foreground hover:text-foreground'
-      )}
-    >
-      {icon}
-      {children}
-    </button>
   )
 }
 

@@ -534,6 +534,12 @@ export interface OverlayBetTarget {
   closesAt: number
   /** Teto pessoal de quem esta apostando — sobe de 50 a 5000 conforme aposta. */
   maxAmount: number
+  /**
+   * Apostadores distintos ja nesta partida. E o que a previa do bonus de grupo
+   * precisa: +15% por pessoa alem da primeira, e quem abre o formulario e mais
+   * uma.
+   */
+  bettors: number
 }
 
 /**

@@ -50,6 +50,18 @@ export function joinNames(names: string[]): string {
   return `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}`
 }
 
+/**
+ * Prévia do bônus de grupo: +15% do valor por apostador além do primeiro, até
+ * 5 pessoas, teto de 200 por aposta. Cópia enxuta do `groupBonusPreview` de
+ * lib/api-gamification — ver o cabeçalho do arquivo pra por que não importar
+ * de lá. Só prévia: o servidor conta de novo na liquidação, e o bônus sai do
+ * cofre da casa, então pode vir menor se o fundo estiver baixo.
+ */
+export function groupBonusPreview(amount: number, bettors: number): number {
+  const extra = Math.max(0, Math.min(5, Math.floor(bettors)) - 1)
+  return Math.min(200, Math.max(0, Math.round((amount * extra * 15) / 100)))
+}
+
 /** "agora", "3 min", "1 h". */
 export function ago(at: number, now: number): string {
   const min = Math.floor((now - at) / 60_000)
