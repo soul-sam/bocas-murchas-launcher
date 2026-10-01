@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.33.1',
+    headline: 'Apostar pela sobreposição voltou a funcionar',
+    items: [
+      'Quem joga com o launcher na bandeja via "O servidor ainda não registrou sua partida" a partida inteira. Agora a sobreposição acha sua partida e as dos outros normalmente.',
+      'Abrir o painel da sobreposição já traz a pool e as partidas atualizadas.'
+    ]
+  },
+  {
     version: '1.33.0',
     headline: 'A sobreposição agora fica sempre na tela — e avisa quem chegou',
     items: [

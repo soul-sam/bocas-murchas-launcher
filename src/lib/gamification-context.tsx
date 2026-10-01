@@ -362,19 +362,26 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
    * apostar aparece na lista de membros).
    */
   const shouldPoll = leaderboardOpen || inGame.length > 0
+  /**
+   * Janela escondida (minimizada atras do jogo) so pode pular o poll se a
+   * sobreposicao estiver desligada. Ligada, ela fica na tela o tempo todo e
+   * desenha as apostas com o que este contexto tem — pular aqui deixava o
+   * board congelado no retrato do inicio da partida, de antes de o servidor
+   * registrar a sessao ("O servidor ainda nao registrou sua partida" pra
+   * sempre, pra quem joga com o launcher na bandeja).
+   */
+  const overlayOn = settings.overlay.enabled
   React.useEffect(() => {
     if (!token || !shouldPoll) {
       setLiveGames([])
       return
     }
     void refreshLiveGames()
-    // Janela escondida (minimizada atras do jogo): ninguem ve o botao de
-    // apostar, entao a requisicao espera a janela voltar.
     const timer = setInterval(() => {
-      if (!document.hidden) void refreshLiveGames()
+      if (overlayOn || !document.hidden) void refreshLiveGames()
     }, LIVE_POLL_MS)
     return () => clearInterval(timer)
-  }, [token, shouldPoll, refreshLiveGames])
+  }, [token, shouldPoll, overlayOn, refreshLiveGames])
 
   const placeWager = React.useCallback(
     async (sessionId: string, prediction: WagerPrediction, amount: number) => {

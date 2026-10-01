@@ -219,6 +219,13 @@ export function OverlayPage() {
     return () => clearTimeout(timer)
   }, [pointerOnPanel, pinned, dragging])
 
+  // Abriu o painel: pede pool e partidas frescas. A janela agora vive o dia
+  // inteiro, entao o pedido da montagem (useOverlayState) so acontece no boot.
+  // A ponte ja tem trava contra rajada.
+  React.useEffect(() => {
+    if (expanded) void window.bocas.overlay.requestState().catch(() => {})
+  }, [expanded])
+
   // Minimizou, ou trocou de cara (a partida começou ou acabou): o alfinete
   // não pode sobreviver. Declarado ANTES do efeito de baixo de propósito — na
   // partida que começa os dois disparam no mesmo quadro, e quem abre tem que
