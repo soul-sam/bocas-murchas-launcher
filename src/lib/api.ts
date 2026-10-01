@@ -211,6 +211,8 @@ export interface AuthUser {
   timezone?: string | null
   /** JSON string de string[] — use parseFavoriteGames(). */
   favoriteGames?: string | null
+  /** Quem apresentou a pessoa ao grupo (padrinho). Null = veterano. */
+  sponsorId?: string | null
 }
 
 // Tipos de presença de jogo, compartilhados com o processo main.

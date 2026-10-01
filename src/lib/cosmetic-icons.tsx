@@ -1,6 +1,7 @@
+import type * as React from 'react'
 import { cn } from '@/lib/utils'
 import { Hint } from '@/components/ui/tooltip'
-import { RARITY_COLOR, type Rarity } from '@/lib/api-gamification'
+import { RARITY_COLOR, RARITY_STYLE, type Rarity } from '@/lib/api-gamification'
 import {
   AWARD_GLYPH,
   BADGE_GLYPH,
@@ -87,6 +88,8 @@ export function BadgeChip({
   description,
   rarity,
   className,
+  iconClassName,
+  glow,
   onClick
 }: {
   badgeId: string
@@ -94,31 +97,42 @@ export function BadgeChip({
   description?: string
   rarity?: Rarity | string
   className?: string
+  /** Tamanho do ícone dentro do quadradinho — cresce junto com `className`. */
+  iconClassName?: string
+  /**
+   * Halo e lavagem da raridade (só épico pra cima brilha, como na lojinha).
+   * É o que a VITRINE do perfil usa: as três badges que a pessoa escolheu
+   * mostrar têm que parecer escolhidas, não mais um quadradinho na fila.
+   */
+  glow?: boolean
   /** Com clique vira botão (abre o painel de conquistas nessa badge). */
   onClick?: () => void
 }) {
-  const color = RARITY_COLOR[rarity as Rarity] ?? RARITY_COLOR.common
+  const tier = (rarity as Rarity) in RARITY_COLOR ? (rarity as Rarity) : 'common'
+  const color = RARITY_COLOR[tier]
+  const halo = glow ? RARITY_STYLE[tier] : null
   const classes = cn(
     'flex h-6 w-6 shrink-0 items-center justify-center rounded-brutal border bg-void',
     onClick && 'transition-transform hover:-translate-y-px',
     className
   )
+  const style: React.CSSProperties = {
+    borderColor: halo ? halo.ring : `${color}66`,
+    color,
+    ...(halo ? { background: halo.wash } : {}),
+    ...(halo && halo.glow !== 'none' ? { boxShadow: halo.glow } : {})
+  }
+  const icon = <BadgeIcon badgeId={badgeId} className={iconClassName ?? 'h-3.5 w-3.5'} />
 
   return (
     <Hint label={name} description={description}>
       {onClick ? (
-        <button
-          type="button"
-          aria-label={name}
-          onClick={onClick}
-          className={classes}
-          style={{ borderColor: `${color}66`, color }}
-        >
-          <BadgeIcon badgeId={badgeId} className="h-3.5 w-3.5" />
+        <button type="button" aria-label={name} onClick={onClick} className={classes} style={style}>
+          {icon}
         </button>
       ) : (
-        <span aria-label={name} className={classes} style={{ borderColor: `${color}66`, color }}>
-          <BadgeIcon badgeId={badgeId} className="h-3.5 w-3.5" />
+        <span aria-label={name} className={classes} style={style}>
+          {icon}
         </span>
       )}
     </Hint>

@@ -17,6 +17,7 @@ export function LevelRing({
   size = 64,
   stroke = 3,
   className,
+  labelClassName,
   children
 }: {
   level: number
@@ -26,6 +27,12 @@ export function LevelRing({
   size?: number
   stroke?: number
   className?: string
+  /**
+   * Classes da etiqueta do número. O padrão serve pro popover (anel de 84px);
+   * o modal, com anel de 128px, pede etiqueta maior — senão o nível vira
+   * um selo de 11px embaixo de uma foto de 112.
+   */
+  labelClassName?: string
   children: React.ReactNode
 }) {
   const clamped = Math.max(0, Math.min(1, Number.isFinite(progress) ? progress : 0))
@@ -75,7 +82,8 @@ export function LevelRing({
         title={`Nível ${level}`}
         className={cn(
           'absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-brutal border border-acid-dark bg-void px-1.5',
-          'font-mono text-[11px] font-bold leading-4 text-acid'
+          'font-mono text-[11px] font-bold leading-4 text-acid',
+          labelClassName
         )}
       >
         {level}

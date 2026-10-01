@@ -53,6 +53,7 @@ export function BetPopover({
   targetName,
   side = 'left',
   align = 'center',
+  contentClassName,
   children
 }: {
   /** Quem está jogando. Usado pra achar a partida quando não há sessionId. */
@@ -62,6 +63,13 @@ export function BetPopover({
   targetName?: string
   side?: 'left' | 'right' | 'top' | 'bottom'
   align?: 'start' | 'center' | 'end'
+  /**
+   * Classe extra no painel. Existe por causa da CAMADA: o perfil em modal
+   * vive em `z-perfil`, acima de `z-dialogo` (onde o popover nasce) — sem
+   * subir o painel, apostar de dentro do perfil abria o formulário ATRÁS do
+   * próprio perfil.
+   */
+  contentClassName?: string
   /** O gatilho — um <button>. */
   children: React.ReactElement
 }) {
@@ -111,7 +119,7 @@ export function BetPopover({
   return (
     <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent side={side} align={align} className="w-64 p-3">
+      <PopoverContent side={side} align={align} className={cn('w-64 p-3', contentClassName)}>
         <header className="mb-2 flex items-start gap-2">
           <GameIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-burn" />
           <div className="min-w-0 flex-1">

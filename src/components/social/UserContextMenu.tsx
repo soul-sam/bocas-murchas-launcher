@@ -11,7 +11,7 @@ import {
   Headphones,
   Trash2
 } from 'lucide-react'
-import { ChatIcon } from '@/lib/bocas-icons'
+import { ChatIcon, ProfileIcon } from '@/lib/bocas-icons'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -48,7 +48,7 @@ export function UserContextMenu() {
   const voice = useVoice()
   const { nudgeUser } = useNudge()
   const { open: openSettings } = useSettings()
-  const { userMenu, closeUserMenu, openProfileEditor } = useOverlays()
+  const { userMenu, closeUserMenu, openProfileEditor, openProfile } = useOverlays()
 
   const target = userMenu ? byId[userMenu.userId] : undefined
   const targetIsAway = target?.status === 'away'
@@ -123,6 +123,14 @@ export function UserContextMenu() {
           {displayName}
           {isSelf && <span className="ml-1 normal-case tracking-normal">(você)</span>}
         </DropdownMenuLabel>
+
+        {/* Primeira coisa do menu, pra todo mundo (inclusive eu): o perfil
+            inteiro. Clicar na foto ja abre, mas a foto nem sempre esta a
+            vista — numa linha do chat em modo compacto, por exemplo. */}
+        <DropdownMenuItem onSelect={() => openProfile(userId)}>
+          <ProfileIcon className="h-3.5 w-3.5" />
+          Ver perfil
+        </DropdownMenuItem>
 
         {!isSelf && (
           <>

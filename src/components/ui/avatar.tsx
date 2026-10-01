@@ -119,12 +119,15 @@ export function UserAvatar({
   speaking,
   frame,
   style,
-  userId
+  userId,
+  fallbackClassName
 }: {
   src?: string
   name: string
   status?: string
   className?: string
+  /** Classe das iniciais sem foto (o tamanho da fonte acompanha a caixa). */
+  fallbackClassName?: string
   ringColor?: string | null
   speaking?: boolean
   /** Id do cosmético de moldura (`frame:gold`) ou só a chave (`gold`). */
@@ -185,7 +188,7 @@ export function UserAvatar({
         }}
       >
         {src && <AvatarImage src={src} alt="" />}
-        <AvatarFallback>{name.slice(0, 2)}</AvatarFallback>
+        <AvatarFallback className={fallbackClassName}>{name.slice(0, 2)}</AvatarFallback>
       </Avatar>
 
       {status && (

@@ -26,7 +26,12 @@ import { request, type GameSessionSummary } from './api'
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
 
-export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji' | 'joinSound'
+/**
+ * `nameColor` é a cor do nome: a API lista na lojinha e só aceita no perfil
+ * a cor de quem comprou — mas NÃO passa pelo /equip (que só conhece os
+ * cinco slots do User); equipar cor é `PUT /users/me { profileColor }`.
+ */
+export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji' | 'joinSound' | 'nameColor'
 
 /**
  * Cor do nome: a cor de texto padrão. A cor comprada saiu da lojinha
