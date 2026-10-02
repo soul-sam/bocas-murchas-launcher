@@ -79,7 +79,8 @@ export function Panel({
   pinned,
   minimizeKey,
   recent,
-  onCollapse
+  onCollapse,
+  onMinimize
 }: {
   state: OverlayState | null
   offline: boolean
@@ -87,10 +88,12 @@ export function Panel({
   side: OverlaySide
   /** Preso aberto pelo clique na aba — só então há o que soltar. */
   pinned: boolean
-  /** A tecla que traz de volta depois de minimizar, já legível. */
+  /** O atalho que esconde a sobreposição inteira (e traz de volta), já legível. */
   minimizeKey: string
   recent: OverlayToast[]
   onCollapse: () => void
+  /** Encolhe o painel de volta pra aba. A aba continua na tela. */
+  onMinimize: () => void
 }) {
   const ready = Boolean(state?.ready)
 
@@ -103,7 +106,7 @@ export function Panel({
         side === 'left' ? 'ov-in-left' : 'ov-in-right'
       )}
     >
-      <PlayerHeader state={state} pinned={pinned} onCollapse={onCollapse} minimizeKey={minimizeKey} />
+      <PlayerHeader state={state} pinned={pinned} onCollapse={onCollapse} onMinimize={onMinimize} />
 
       {state?.ready && <QuickActions voice={state.voice} />}
 
@@ -141,7 +144,7 @@ export function Panel({
               {minimizeKey}
             </kbd>
           )}
-          minimiza
+          esconde
         </span>
         <button
           type="button"
@@ -173,13 +176,13 @@ export function Panel({
 function PlayerHeader({
   state,
   pinned,
-  minimizeKey,
-  onCollapse
+  onCollapse,
+  onMinimize
 }: {
   state: OverlayState | null
   pinned: boolean
-  minimizeKey: string
   onCollapse: () => void
+  onMinimize: () => void
 }) {
   const ready = Boolean(state?.ready)
   const level = state?.level ?? 1
@@ -222,12 +225,10 @@ function PlayerHeader({
               <PinOff className="h-3.5 w-3.5" />
             </IconButton>
           )}
-          {/* Minimizar tira a sobreposição inteira da tela, e o rodapé diz a
-              tecla que traz de volta — senão seria uma porta sem maçaneta. */}
-          <IconButton
-            label={minimizeKey ? `Minimizar (${minimizeKey} traz de volta)` : 'Minimizar'}
-            onClick={() => void window.bocas.overlay.dismiss()}
-          >
+          {/* Minimizar ENCOLHE pra aba, que fica na tela. Esconder tudo é só
+              pelo atalho do rodapé — o botão sumir com a aba deixava a pessoa
+              sem nada na tela pra clicar de volta. */}
+          <IconButton label="Minimizar" onClick={onMinimize}>
             <Minus className="h-3.5 w-3.5" />
           </IconButton>
         </div>

@@ -143,6 +143,20 @@ export function OverlayPage() {
   /** Clicou na aba: fica aberto até clicar de novo. */
   const [pinned, setPinned] = React.useState(false)
   const [expanded, setExpanded] = React.useState(false)
+  /**
+   * ENCOLHIDO DE PROPÓSITO — o botão de minimizar ou o clique fora.
+   *
+   * Segura o painel fechado mesmo com o ponteiro ainda em cima dele: quem
+   * clicou em minimizar está com o mouse no painel, e sem isto o
+   * `pointerOnPanel` o reabriria no mesmo quadro. Solta quando o ponteiro sai
+   * — encostar na aba de novo volta a abrir.
+   */
+  const [held, setHeld] = React.useState(false)
+
+  const collapse = React.useCallback(() => {
+    setPinned(false)
+    setHeld(true)
+  }, [])
 
   /**
    * Qual das duas caras está na tela — ou nenhuma.
@@ -175,13 +189,23 @@ export function OverlayPage() {
    * sem o painel sumir na mão de quem está clicando.
    */
   React.useEffect(() => {
-    if (pointerOnPanel || pinned || dragging) {
+    if (pinned || dragging || (pointerOnPanel && !held)) {
       setExpanded(true)
+      return
+    }
+    // Encolhido de propósito: sem carência, a pessoa pediu.
+    if (held) {
+      setExpanded(false)
       return
     }
     const timer = setTimeout(() => setExpanded(false), COLLAPSE_GRACE_MS)
     return () => clearTimeout(timer)
-  }, [pointerOnPanel, pinned, dragging])
+  }, [pointerOnPanel, pinned, dragging, held])
+
+  // Já fechou e o ponteiro saiu: a próxima encostada na aba volta a abrir.
+  React.useEffect(() => {
+    if (held && !expanded && !pointerOnPanel) setHeld(false)
+  }, [held, expanded, pointerOnPanel])
 
   // Abriu o painel: pede pool e partidas frescas. A janela agora vive o dia
   // inteiro, entao o pedido da montagem (useOverlayState) so acontece no boot.
@@ -189,6 +213,19 @@ export function OverlayPage() {
   React.useEffect(() => {
     if (expanded) void window.bocas.overlay.requestState().catch(() => {})
   }, [expanded])
+
+  /**
+   * CLIQUE FORA ENCOLHE. Quem vê o clique é o main (a janela é atravessável
+   * fora das peças, o clique vai pro jogo); ele só vigia com o painel aberto,
+   * por isso o aviso de abrir/fechar. Ver `watchOutsideClick` em
+   * electron/main/services/overlay.ts.
+   */
+  const panelOpen = Boolean(face) && expanded
+  React.useEffect(() => {
+    void window.bocas.overlay.setPanelOpen(panelOpen).catch(() => {})
+  }, [panelOpen])
+
+  React.useEffect(() => window.bocas.overlay.onOutsideClick(collapse), [collapse])
 
   // Minimizou, ou trocou de cara (a partida começou ou acabou): o alfinete
   // não pode sobreviver. Declarado ANTES do efeito de baixo de propósito — na
@@ -359,6 +396,7 @@ export function OverlayPage() {
             minimizeKey={minimizeKey}
             recent={recentToasts}
             onCollapse={() => setPinned(false)}
+            onMinimize={collapse}
           />
         </DockedPanel>
       )}
