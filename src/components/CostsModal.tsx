@@ -65,25 +65,30 @@ export function CostsModal() {
   const mes = monthName(summary.month)
 
   return (
+    /* NO CELULAR, FOLHA DE BAIXO — igual ao components/ui/dialog.tsx.
+       Centralizada com `max-h-full`, a conta (que é comprida) ocupava a tela
+       inteira e o X do canto caía embaixo da barra de status, onde o toque é
+       do sistema e não da página: não dava pra fechar. Colada embaixo, com teto
+       de 88dvh, o topo fica sempre visível e a safe area entra no rodapé. */
     <div
-      className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/70 p-6"
+      className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/70 p-6 max-sm:items-end max-sm:p-0"
       onClick={closeCosts}
     >
       <div
-        className="card-acid relative flex max-h-full w-full max-w-lg flex-col rounded-brutal"
+        className="card-acid relative flex max-h-full w-full max-w-lg flex-col rounded-brutal max-sm:max-h-[88dvh] max-sm:max-w-full max-sm:rounded-b-none max-sm:pb-[env(safe-area-inset-bottom,0px)]"
         onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           aria-label="Fechar"
           onClick={closeCosts}
-          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+          className="alvo-dedo absolute right-2 top-2 z-10 flex items-center justify-center rounded-brutal p-1.5 text-muted-foreground hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
-          <div className="mb-4 flex items-center gap-3">
+          <div className="mb-4 flex items-center gap-3 pr-8">
             <ServerIcon className="h-7 w-7 shrink-0 text-burn" />
             <div className="min-w-0">
               <h2 className="title-brutal text-2xl">A conta do Bocas Murchas</h2>
