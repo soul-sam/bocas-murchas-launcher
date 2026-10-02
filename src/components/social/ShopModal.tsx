@@ -271,7 +271,10 @@ export function ShopModal() {
           </div>
         </div>
 
-        <div className="mb-3 flex gap-1">
+        {/* Sete abas em 632px de miolo: com px-3 + tracking-widest a fileira
+            media 698px e o "Sons" saía do modal. px-2 + tracking-wider = 618px.
+            O flex-wrap é a rede pro site no celular (342px): quebra em vez de vazar. */}
+        <div className="mb-3 flex flex-wrap gap-1">
           {TABS.map(({ type, label, Icon }) => (
             <button
               key={type}
@@ -283,7 +286,7 @@ export function ShopModal() {
                 setError(null)
               }}
               className={cn(
-                'flex items-center gap-1.5 rounded-brutal border-2 px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest transition-colors',
+                'flex items-center gap-1.5 rounded-brutal border-2 px-2 py-1.5 font-mono text-[11.5px] uppercase tracking-wider transition-colors',
                 tab === type
                   ? 'border-acid bg-acid/10 text-acid'
                   : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
