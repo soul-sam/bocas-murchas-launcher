@@ -2,6 +2,7 @@ import * as React from 'react'
 import { users as usersApi } from './api'
 import { useAuth } from './auth-context'
 import { useSettings } from './settings-context'
+import { useSocket } from './socket-context'
 import { useVoice } from './voice-context'
 import { marcarFala, marcarVolta, silencioMs } from './presenca-de-fala'
 
@@ -159,6 +160,7 @@ const AfkContext = React.createContext<AfkContextValue | null>(null)
 export function AfkProvider({ children }: { children: React.ReactNode }) {
   const { user, token, applyUser } = useAuth()
   const { settings } = useSettings()
+  const { socket } = useSocket()
   const voice = useVoice()
 
   const [afk, setAfk] = React.useState(false)
@@ -235,11 +237,32 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
    * Falhar não desfaz o estado local: insistir numa rede ruim só deixaria o
    * botão travado.
    */
-  const applyRemote = React.useCallback((status: 'away' | 'online' | 'dnd' | 'offline') => {
+  const applyRemote = React.useCallback((status: 'away' | 'online' | 'dnd') => {
     const auth = tokenRef.current
     if (!auth) return
     void usersApi.setStatus(auth, status).catch(() => {})
   }, [])
+
+  /**
+   * RECONECTOU AUSENTE: repete o 'away'.
+   *
+   * Uma queda de rede mais longa que a carência do servidor grava 'offline'
+   * lá, e a reconexão seguinte promove pra 'online' — o servidor não tem
+   * como saber que o crachá continua ligado aqui. Sem repetir, a pessoa
+   * voltava verde pra todo mundo com o "Volto logo!" ainda aceso na tela
+   * dela, e o rodapé (que agora acompanha o servidor) mostrava o contrário
+   * do botão.
+   */
+  React.useEffect(() => {
+    if (!socket) return
+    const reassert = (): void => {
+      if (afkRef.current) applyRemote('away')
+    }
+    socket.on('connect', reassert)
+    return () => {
+      socket.off('connect', reassert)
+    }
+  }, [socket, applyRemote])
 
   const enable = React.useCallback(
     (nextNote?: string, auto: MotivoAutomatico = null) => {
@@ -309,10 +332,12 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
       if (audio.micEnabled) void call.setMic(true)
     }
 
-    const status = (before?.status ?? 'online') as 'away' | 'online' | 'dnd' | 'offline'
-    // Voltar pra 'away' não faz sentido: se a pessoa está mexendo, ela está
-    // online. Quem estava em "não perturbe" ou invisível mantém a escolha.
-    const restored = status === 'away' ? 'online' : status
+    // Voltar é estar online. Só "não perturbe" sobrevive à ida e volta, porque
+    // foi uma escolha. 'away' não (quem está mexendo não está ausente) — e
+    // 'offline' muito menos: esse valor nunca é escolha de ninguém aqui, é o
+    // que o banco guarda de quem fechou o launcher. Devolvê-lo pro servidor
+    // era o que deixava a pessoa cinza pra todo mundo depois do "Voltei!".
+    const restored: 'online' | 'dnd' = before?.status === 'dnd' ? 'dnd' : 'online'
 
     applyRemote(restored)
     if (user) applyUser({ ...user, status: restored })
@@ -400,10 +425,6 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // Invisível é uma escolha explícita de não aparecer; mexer no status de
-      // quem pediu isso seria desfazer a escolha dela.
-      if (user?.status === 'offline') return
-
       if (minutes > 0 && idleSeconds * 1000 >= limitMs && silencioMs() >= limitMs) {
         enable(AFK_AUTO_NOTE, 'ocioso')
         return
@@ -416,7 +437,7 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
 
     const timer = window.setInterval(() => void check(), IDLE_POLL_MS)
     return () => window.clearInterval(timer)
-  }, [settings.afkAutoMinutes, settings.afkSilenceMinutes, token, user?.status, enable, disable])
+  }, [settings.afkAutoMinutes, settings.afkSilenceMinutes, token, enable, disable])
 
   const value = React.useMemo<AfkContextValue>(
     () => ({

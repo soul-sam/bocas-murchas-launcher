@@ -88,7 +88,17 @@ export interface VoiceFlags {
 const SocketContext = React.createContext<SocketContextValue | null>(null)
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
-  const { token, user, expireSession } = useAuth()
+  const { token, user, expireSession, applyUser } = useAuth()
+
+  /**
+   * O usuário de AGORA, pra dentro dos handlers do socket.
+   *
+   * Os handlers são registrados uma vez por conexão e não podem depender do
+   * objeto `user` (cada mudança de status refaria a conexão inteira). A ref
+   * é como eles enxergam o status atual sem virar dependência.
+   */
+  const userRef = React.useRef(user)
+  userRef.current = user
 
   const [socket, setSocket] = React.useState<Socket | null>(null)
   const [connected, setConnected] = React.useState(false)
@@ -177,12 +187,42 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       console.warn('[socket] falha ao conectar:', err.message)
     }
 
+    /**
+     * EU TAMBÉM ESTOU NA LISTA — e é dela que o meu status sai.
+     *
+     * O `user` do AuthProvider nasce do `/auth/me` da abertura do app, e o
+     * banco guarda 'offline' pra quem fechou o launcher da última vez. O
+     * servidor promove pra 'online' ao conectar, mas ninguém contava isso pro
+     * objeto local. Três estragos saíam daí:
+     *
+     *   - o rodapé desenhava a própria bolinha cinza o dia inteiro;
+     *   - o AFK automático lia esse 'offline' como "escolheu ficar invisível"
+     *     e nunca marcava ninguém — era por isso que "ausente" só existia na
+     *     mão;
+     *   - "Voltei!" devolvia esse 'offline' pro servidor, e a pessoa ficava
+     *     cinza pra TODO MUNDO, estando online e na call.
+     *
+     * Agora o retrato da presença (que o servidor tira fresco do banco) e o
+     * `user:profileUpdated` corrigem o status local sempre que divergirem.
+     */
+    const syncSelf = (fresh: { status?: UserStatus; customStatus?: string | null }): void => {
+      const me = userRef.current
+      if (!me) return
+      const status = fresh.status ?? me.status
+      const customStatus = fresh.customStatus ?? null
+      if (status === me.status && customStatus === (me.customStatus ?? null)) return
+      applyUser({ ...me, status, customStatus })
+    }
+
     const handlePresence = (data: {
       onlineUsers?: OnlineUser[]
       activities?: Record<string, ActivityEntry>
     }): void => {
       if (Array.isArray(data?.onlineUsers)) {
-        setOnlineUsers(data.onlineUsers.filter(Boolean))
+        const list = data.onlineUsers.filter(Boolean)
+        setOnlineUsers(list)
+        const me = list.find((person) => person.id === userRef.current?.id)
+        if (me) syncSelf(me)
       }
       // Retrato completo: SUBSTITUI, pelo mesmo motivo do estado de voz.
       if (data?.activities && typeof data.activities === 'object') {
@@ -318,7 +358,34 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     const handleProfileUpdated = (data: { user: AuthUser }): void => {
       if (!data?.user?.id) return
-      setProfileUpdates((prev) => ({ ...prev, [data.user.id]: data.user }))
+      const fresh = data.user
+      setProfileUpdates((prev) => ({ ...prev, [fresh.id]: fresh }))
+
+      /**
+       * A presença também carrega nome, avatar e status: se a pessoa está
+       * online, o retrato dela acompanha a edição na hora. É o que permite à
+       * lista de membros desenhar a presença POR CIMA da edição de perfil
+       * (ver members-context) sem perder a edição — e sem o estrago antigo,
+       * em que a edição ficava por cima de todo retrato futuro, pra sempre.
+       */
+      const keep = <T,>(next: T | undefined, current: T): T =>
+        next === undefined ? current : next
+      setOnlineUsers((prev) =>
+        prev.map((person) =>
+          person.id === fresh.id
+            ? {
+                ...person,
+                displayName: fresh.displayName || person.displayName,
+                avatar: keep(fresh.avatar, person.avatar),
+                status: keep(fresh.status, person.status),
+                customStatus: keep(fresh.customStatus, person.customStatus),
+                profileColor: keep(fresh.profileColor, person.profileColor)
+              }
+            : person
+        )
+      )
+
+      if (fresh.id === userRef.current?.id) syncSelf(fresh)
     }
 
     client.on('connect', handleConnect)
@@ -355,7 +422,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setSocket(null)
       setConnected(false)
     }
-  }, [token, user?.id, expireSession])
+  }, [token, user?.id, expireSession, applyUser])
 
   const onlineIds = React.useMemo(
     () => new Set(onlineUsers.map((u) => u.id)),

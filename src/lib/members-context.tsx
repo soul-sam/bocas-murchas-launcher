@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { users as usersApi, type AuthUser } from './api'
+import { users as usersApi, type AuthUser, type UserStatus } from './api'
 import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 
@@ -25,6 +25,21 @@ interface MembersContextValue {
 }
 
 const MembersContext = React.createContext<MembersContextValue | null>(null)
+
+/**
+ * A bolinha de alguém, num lugar só.
+ *
+ * Quem não tem socket é cinza, escolha o que escolher no banco; quem tem usa
+ * o status que a presença traz. É a MESMA regra da lista de membros — e é
+ * pra ser usada onde quer que uma pessoa apareça com bolinha (conversa
+ * direta, cabeçalho do chat), em vez do `status` que veio no REST, que é
+ * uma foto velha de quando o app abriu.
+ */
+export function statusOf(member: Member | undefined, fallback: UserStatus = 'offline'): UserStatus {
+  if (!member) return fallback
+  if (!member.isOnline) return 'offline'
+  return member.status ?? 'online'
+}
 
 export function MembersProvider({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuth()
@@ -81,28 +96,37 @@ export function MembersProvider({ children }: { children: React.ReactNode }) {
         /**
          * Tres camadas, da mais velha pra mais nova.
          *
-         * `raw` e a foto REST tirada quando o app abriu. A presenca vem por
-         * cima porque chega a cada entrada e saida de alguem. E a edicao de
-         * perfil por cima de tudo, porque e o aviso mais recente que existe.
+         * `raw` e a foto REST tirada quando o app abriu. A edicao de perfil
+         * (`user:profileUpdated`) vem por cima: e o aviso que traz os campos
+         * que a presenca nao carrega (emoji, bio, moldura). E a PRESENCA por
+         * cima de tudo, porque e um retrato fresco do banco a cada entrada e
+         * saida de alguem — e porque a edicao ja foi dobrada nela (ver
+         * handleProfileUpdated em socket-context), entao ela nunca e mais
+         * velha que a edicao.
          *
-         * Faltava a camada do meio: sem ela, quem entrasse em "nao perturbe"
-         * (ou trocasse de nome) continuava aparecendo do jeito antigo pra todo
-         * mundo que ja estava com o launcher aberto.
+         * A ordem era a inversa, e isso era um bug: `profileUpdates` nunca
+         * vence. Um unico `user:profileUpdated` com status 'away' ou 'offline'
+         * ficava por cima de TODO retrato de presenca dali em diante — a
+         * pessoa voltava, o servidor dizia online, e a lista de todo mundo
+         * continuava mostrando ela ausente/cinza ate alguem reabrir o app.
+         * Era o "demora muito pra atualizar" que nunca atualizava.
          */
-        const presence = presenceById[member.id]
-        const withPresence = presence
-          ? {
-              ...member,
-              displayName: presence.displayName || member.displayName,
-              avatar: presence.avatar ?? member.avatar,
-              status: presence.status ?? member.status,
-              customStatus: presence.customStatus ?? member.customStatus,
-              profileColor: presence.profileColor ?? member.profileColor
-            }
-          : member
-
         const patched = profileUpdates[member.id]
-        const merged = patched ? { ...withPresence, ...patched } : withPresence
+        const edited = patched ? { ...member, ...patched } : member
+
+        const presence = presenceById[member.id]
+        const merged = presence
+          ? {
+              ...edited,
+              displayName: presence.displayName || edited.displayName,
+              avatar: presence.avatar ?? edited.avatar,
+              status: presence.status ?? edited.status,
+              // `null` e "limpou o recado"; so `undefined` e "nao veio".
+              customStatus:
+                presence.customStatus === undefined ? edited.customStatus : presence.customStatus,
+              profileColor: presence.profileColor ?? edited.profileColor
+            }
+          : edited
 
         return {
           ...merged,

@@ -56,11 +56,20 @@ import { AlcaDeLargura } from '@/components/ui/alca'
 import { toqueLongo } from '@/lib/toque-longo'
 import { podeCompartilharTela } from '@/lib/platform'
 
+/**
+ * Sem "Invisível". O servidor nunca honrou essa escolha: quem tem socket
+ * aparece online pra todo mundo (a presença promove offline→online de
+ * propósito, porque 'offline' no banco é o rastro de quem fechou o app, não
+ * uma escolha), e a próxima reconexão apagava o valor. Na prática o botão só
+ * deixava a pessoa cinza por alguns segundos — e, pior, deixava 'offline'
+ * guardado no objeto local pro "Voltei!" devolver ao servidor. Uma
+ * invisibilidade de verdade precisa de coluna própria; até lá, não se promete
+ * o que não se faz.
+ */
 const STATUS_OPTIONS: Array<{ value: UserStatus; label: string; color: string }> = [
   { value: 'online', label: 'Online', color: 'hsl(var(--acid))' },
   { value: 'away', label: 'Ausente', color: 'hsl(var(--burn))' },
-  { value: 'dnd', label: 'Não perturbe', color: '#B33' },
-  { value: 'offline', label: 'Invisível', color: '#3A3A3A' }
+  { value: 'dnd', label: 'Não perturbe', color: '#B33' }
 ]
 
 interface ChannelSidebarProps {
