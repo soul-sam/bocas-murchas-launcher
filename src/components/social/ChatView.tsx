@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import { Hint } from '@/components/ui/tooltip'
 import { useChat, isDmId, conversationIdOf } from '@/lib/chat-context'
 import { useAuth } from '@/lib/auth-context'
+import { statusOf, useMembers } from '@/lib/members-context'
 import { useLayout } from '@/lib/layout-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { Button } from '@/components/ui/button'
@@ -58,6 +59,7 @@ function formatDay(iso: string): string {
 }
 
 export function ChatView() {
+  const { byId: memberById } = useMembers()
   const {
     activeChannel,
     activeChannelId,
@@ -241,10 +243,11 @@ export function ChatView() {
   const muted = isMuted(activeChannel.id)
 
   // Numa conversa o "canal" é uma pessoa: o cabeçalho mostra o avatar e o
-  // @usuário dela, não uma cerquilha.
+  // @usuário dela, não uma cerquilha. A bolinha vem da presença (ver AppRail).
   const peer = isDm
     ? conversations.find((c) => c.id === conversationIdOf(activeChannel.id))?.other
     : undefined
+  const peerStatus = statusOf(peer ? memberById[peer.id] : undefined)
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -266,7 +269,7 @@ export function ChatView() {
           <UserAvatar
             src={resolveAssetUrl(peer?.avatar)}
             name={peer?.displayName ?? activeChannel.name}
-            status={peer?.status ?? 'offline'}
+            status={peerStatus}
             ringColor={peer?.profileColor}
             className="h-6 w-6"
           />

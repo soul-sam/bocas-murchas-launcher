@@ -7,6 +7,7 @@ import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useChat } from '@/lib/chat-context'
+import { statusOf, useMembers } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { useCargos } from '@/lib/cargos-context'
@@ -30,6 +31,10 @@ export function AppRail() {
     useChat()
   const { toggleShortcuts, openUserMenu, openCosts } = useOverlays()
   const { summary: costs } = useCosts()
+  // A bolinha de cada conversa sai da presenca, nao do `other.status` que o
+  // /dm trouxe: aquele e a foto do banco de quando a lista carregou, e era
+  // por isso que a pessoa aparecia online na lista de membros e cinza aqui.
+  const { byId: memberById } = useMembers()
   const { view, setView, isPhone } = useLayout()
   const { can } = useCargos()
   const navigate = useNavigate()
@@ -198,7 +203,7 @@ export function AppRail() {
                 <UserAvatar
                   src={resolveAssetUrl(peer?.avatar)}
                   name={peer?.displayName ?? channel.name}
-                  status={peer?.status ?? 'offline'}
+                  status={statusOf(peer ? memberById[peer.id] : undefined)}
                   className={cn('h-9 w-9', active && 'ring-1 ring-acid')}
                 />
                 {count > 0 && !active && (

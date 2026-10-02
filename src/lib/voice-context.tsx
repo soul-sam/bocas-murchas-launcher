@@ -1173,6 +1173,25 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           setConnected(state === ConnectionState.Connected)
         })
 
+        /**
+         * O LiveKit caiu e voltou SOZINHO (a sessão foi refeita por baixo).
+         *
+         * Enquanto ele tentava, o servidor pode ter dado a pessoa como fora
+         * da sala: a faxina de fantasmas (sweepVoiceGhosts, na API) tira quem
+         * falta em duas conferências seguidas no LiveKit, e uma reconexão
+         * longa cabe nisso. O socket não caiu junto — ele é outra conexão —,
+         * então o `handleConnect` lá embaixo não reavisa nada: a pessoa
+         * voltava a falar na call sem existir na barra lateral de ninguém,
+         * até sair e entrar na mão. Reavisar é idempotente no servidor.
+         */
+        next.on(RoomEvent.Reconnected, () => {
+          socketRef.current?.emit('joinVoice', target.id)
+          if (screenSharingRef.current) {
+            socketRef.current?.emit('screenshare:state', { active: true })
+          }
+          publishFlags()
+        })
+
         next.on(RoomEvent.Disconnected, () => {
           void leave()
         })
