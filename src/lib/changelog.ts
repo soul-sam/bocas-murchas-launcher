@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.41.0',
+    headline: 'Ranking de apostas e conquistas de XP',
+    items: [
+      'Ranking de apostas no Recap: quem mais ganhou (e perdeu) murchos apostando, com aproveitamento de acertos — na semana que está na tela.',
+      'Duas conquistas novas: Cem Mil (100.000 de XP) e Meio Milhão (500.000 de XP).',
+      'Peça pronta na impressora agora dá 100 XP por hora impressa, e tirar da mesa a peça de outra pessoa passou a valer 30 XP.',
+      'Sobreposição: o botão de minimizar encolhe o painel pra aba em vez de sumir com tudo, e clicar fora fecha o painel e a roda de sons sem roubar o clique do jogo.',
+      'Nos temas claros a logo ganhou uma versão própria, que não some no fundo.',
+      'No celular, a conta do grupo abre de baixo e o X de fechar voltou a ser alcançável.'
+    ]
+  },
+  {
     version: '1.40.0',
     headline: 'Temas na Lojinha: o launcher inteiro na sua cor',
     items: [
