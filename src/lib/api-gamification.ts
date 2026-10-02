@@ -16,6 +16,7 @@ import { isShopThemeId, type ShopThemeId } from '../../electron/preload/types'
  *   POST /gamification/equip { type, cosmeticId|null } -> { user }
  *   POST /gamification/checkin                  -> { profile, awarded|null }
  *   GET  /gamification/wagers/live              -> { games }
+ *   GET  /gamification/wagers/ranking?period&weekStart -> { period, entries }  saldo e aproveitamento
  *   POST /gamification/wagers { sessionId, prediction, amount } -> { wager, coins }
  *   GET  /gamification/recap/latest             -> { recap|null }
  *   GET  /games/recent?limit=                   -> { sessions }
@@ -645,6 +646,25 @@ export const METRIC_LABEL: Record<LeaderboardMetric, string> = {
   messages: 'Msgs'
 }
 
+/**
+ * Uma linha do ranking de apostas (só apostas liquidadas). Devolução não é
+ * acerto nem erro: fica fora de `wins`/`losses`. `net` = returned + jackpot − staked.
+ */
+export interface WagerRankingEntry {
+  userId: string
+  displayName: string
+  avatar: string | null
+  profileColor: string | null
+  bets: number
+  wins: number
+  losses: number
+  refunds: number
+  staked: number
+  returned: number
+  jackpot: number
+  net: number
+}
+
 /** "1.2k" pra número grande, inteiro pra número pequeno. */
 export function formatCompact(value: number): string {
   if (!Number.isFinite(value)) return '0'
@@ -809,6 +829,21 @@ export const gamification = {
   async liveWagers(token: string): Promise<LiveWagerGame[]> {
     const res = await request<{ games: LiveWagerGame[] }>('/gamification/wagers/live', { token })
     return Array.isArray(res?.games) ? res.games : []
+  },
+
+  /** `weekStart` (ISO) escolhe a semana; sem ele, a corrente. Ignorado em `all`. */
+  async wagerRanking(
+    token: string,
+    period: LeaderboardPeriod,
+    weekStart?: string
+  ): Promise<WagerRankingEntry[]> {
+    const params = new URLSearchParams({ period })
+    if (period === 'week' && weekStart) params.set('weekStart', weekStart)
+    const res = await request<{ entries: WagerRankingEntry[] }>(
+      `/gamification/wagers/ranking?${params.toString()}`,
+      { token }
+    )
+    return Array.isArray(res?.entries) ? res.entries : []
   },
 
   async placeWager(

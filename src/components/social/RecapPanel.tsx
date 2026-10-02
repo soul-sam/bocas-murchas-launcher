@@ -14,6 +14,7 @@ import { useOverlays } from '@/lib/overlay-context'
 import { AwardIcon, BadgeIcon } from '@/lib/cosmetic-icons'
 import { cn } from '@/lib/utils'
 import { ArenaHeader, ArenaTabs } from './ArenaChrome'
+import { WagerRanking } from './WagerRanking'
 
 /**
  * RECAP — a semana do grupo, e as anteriores.
@@ -105,6 +106,9 @@ export function RecapPanel() {
             <RecapBody recap={recap} />
           </>
         )}
+
+        {/* Apostas: segue a semana na tela; sem recap, a semana corrente. */}
+        {recaps !== undefined && <WagerRanking weekStart={recap?.weekStart} />}
 
         {/* A retrospectiva fica sempre alcançável — inclusive sem recap nenhum,
             porque o ano tem mais que semanas. */}
