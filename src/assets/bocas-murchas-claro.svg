@@ -1,7 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="77 60 1100 1100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254">
   <!-- Logo "adesivo": as cores originais dentro de um rosto escuro com
        contorno, pra fundo claro (tema Papel). Desenhada no Claude Design a
-       partir de public/bocas-murchas-transp.png. -->
+       partir de public/bocas-murchas-transp.png. O viewBox e o canvas inteiro
+       do PNG (1254x1254, mesma folga em volta): recortado, a logo clara
+       saia maior que a escura no mesmo <img>. -->
   <g fill="#1C1530" stroke="#1C1530" stroke-width="56" stroke-linejoin="round" stroke-linecap="round">
     <path d="M250 520 Q260 400 380 360 L470 300 L790 300 L880 360 Q1000 400 1005 520 L1015 760 Q1040 830 1000 900 L880 1010 Q820 1050 760 1050 L494 1050 Q434 1050 374 1010 L254 900 Q214 830 240 760 Z"/>
     <polyline points="265,445 325,340 495,232 755,232 925,340 985,445" fill="none" stroke-width="124"/>
