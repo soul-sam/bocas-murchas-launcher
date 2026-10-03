@@ -199,8 +199,10 @@ export function PokerTable({ onOpenRules }: { onOpenRules: (category?: HandCateg
   const positions = seatPositions(table.maxSeats, isPhone)
   const rotated = table.seats.map((seat, index) => {
     const slot = (index - anchor + table.maxSeats) % table.maxSeats
-    return { index, seat, pos: positions[slot] }
+    return { index, seat, pos: positions[slot], slot }
   })
+
+  const ghosts = useGhosts(table, rotated)
 
   const bestLabel = me?.best?.label ?? null
   const myCategory = me?.best?.category ?? null
@@ -267,18 +269,23 @@ export function PokerTable({ onOpenRules }: { onOpenRules: (category?: HandCateg
       <div className={cn('flex min-h-0 flex-1', isPhone ? 'flex-col' : 'flex-row')}>
         {/* O feltro */}
         <div className="relative flex min-h-0 flex-1 flex-col">
-          <div className={cn('relative mx-auto w-full flex-1', isPhone ? 'px-12 py-12' : 'px-24 py-14 xl:px-32 2xl:px-48 2xl:py-20')}>
+          <div className={cn('poker-area relative mx-auto w-full flex-1', isPhone ? 'px-12 py-12' : 'px-24 py-14 xl:px-32 2xl:px-48 2xl:py-20')}>
             <div className="poker-felt h-full w-full">
               <Board table={table} fmt={fmt} />
             </div>
 
-            {rotated.map(({ index, seat, pos }) => (
+            {ghosts.map((g) => (
+              <Ghost key={g.id} ghost={g} table={table} />
+            ))}
+
+            {rotated.map(({ index, seat, pos, slot }) => (
               <SeatSpot
                 key={index}
                 table={table}
                 index={index}
                 seat={seat}
                 pos={pos}
+                dealOrder={slot}
                 isMe={index === table.mySeat}
                 canSit={canSitHere}
                 onSit={() => setSitAt(index)}
@@ -455,6 +462,15 @@ function Board({ table, fmt }: { table: TableView; fmt: (v: number) => string })
 
   const streetLabel = table.street ? STREET_LABEL[table.street] ?? table.street : null
 
+  // Só as cartas NOVAS viram: a partir de quantas já estavam na mesa. Mão nova
+  // zera a conta (o handId muda).
+  const shownRef = React.useRef({ handId: table.handId, count: 0 })
+  if (shownRef.current.handId !== table.handId) shownRef.current = { handId: table.handId, count: 0 }
+  const staggerFrom = Math.min(shownRef.current.count, table.board.length)
+  React.useEffect(() => {
+    shownRef.current = { handId: table.handId, count: table.board.length }
+  }, [table.handId, table.board.length])
+
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6">
       {table.street === null ? (
@@ -470,7 +486,15 @@ function Board({ table, fmt }: { table: TableView; fmt: (v: number) => string })
           {streetLabel && !result && (
             <p className="text-[11.5px] text-muted-foreground">{streetLabel}</p>
           )}
-          <CardRow codes={table.board} size={isPhone ? 'sm' : 'md'} slots={5} highlightCodes={winningCards} animate />
+          <CardRow
+            codes={table.board}
+            size={isPhone ? 'sm' : 'md'}
+            slots={5}
+            highlightCodes={winningCards}
+            enter="flip"
+            staggerMs={180}
+            staggerFrom={staggerFrom}
+          />
           {!result && (
             <div
               key={pulse}
@@ -517,6 +541,101 @@ function ResultBanner({ table, fmt }: { table: TableView; fmt: (v: number) => st
 }
 
 // ---------------------------------------------------------------------------
+// Fantasmas: fichas indo pro pote, pote indo pro vencedor, cartas de quem
+// desistiu indo pro meio. Existem só durante a animação.
+// ---------------------------------------------------------------------------
+
+interface GhostSpec {
+  id: number
+  kind: 'bet' | 'win' | 'fold'
+  /** Onde nasce (bet/fold) ou onde chega (win), em % da área. */
+  pos: [number, number]
+  amount?: number
+}
+
+let ghostSeq = 0
+
+function useGhosts(
+  table: TableView,
+  rotated: Array<{ index: number; seat: SeatView | null; pos: [number, number] }>
+): GhostSpec[] {
+  const [ghosts, setGhosts] = React.useState<GhostSpec[]>([])
+  const prevRef = React.useRef<TableView | null>(null)
+
+  React.useEffect(() => {
+    const prev = prevRef.current
+    prevRef.current = table
+    if (!prev || prev.id !== table.id || prev.handId !== table.handId) return
+
+    const born: GhostSpec[] = []
+    const posOf = (index: number): [number, number] => rotated.find((r) => r.index === index)?.pos ?? [50, 50]
+    const betPosOf = (index: number): [number, number] => {
+      const p = posOf(index)
+      return [p[0] + (50 - p[0]) * 0.42, p[1] + (50 - p[1]) * 0.42]
+    }
+
+    for (const seat of table.seats) {
+      if (!seat) continue
+      const before = prev.seats[seat.index]
+      if (!before) continue
+      // Rodada fechou: o que estava na frente de cada um vai pro meio.
+      if (before.bet > 0 && seat.bet === 0 && !prev.result) {
+        born.push({ id: ++ghostSeq, kind: 'bet', pos: betPosOf(seat.index), amount: before.bet })
+      }
+      // Desistiu: as cartas vão pro centro.
+      if (!before.folded && seat.folded && before.hasCards) {
+        born.push({ id: ++ghostSeq, kind: 'fold', pos: posOf(seat.index) })
+      }
+      // Levou: o pote sai do meio e vai até o assento.
+      if (table.result && !prev.result && (seat.won ?? 0) > 0) {
+        born.push({ id: ++ghostSeq, kind: 'win', pos: posOf(seat.index), amount: seat.won ?? 0 })
+      }
+    }
+
+    if (born.length === 0) return
+    setGhosts((g) => [...g, ...born])
+    const timer = setTimeout(() => {
+      const ids = new Set(born.map((b) => b.id))
+      setGhosts((g) => g.filter((x) => !ids.has(x.id)))
+    }, 1_300)
+    return () => clearTimeout(timer)
+  }, [table, rotated])
+
+  return ghosts
+}
+
+function Ghost({ ghost, table }: { ghost: GhostSpec; table: TableView }) {
+  const style = {
+    ['--x' as string]: `${ghost.pos[0]}%`,
+    ['--y' as string]: `${ghost.pos[1]}%`,
+    ['--seat-x' as string]: ghost.pos[0],
+    ['--seat-y' as string]: ghost.pos[1]
+  } as React.CSSProperties
+
+  if (ghost.kind === 'bet') {
+    return (
+      <div className="poker-fantasma poker-fantasma--pote flex items-center gap-1 rounded-full border border-line bg-void/85 py-0.5 pl-1 pr-2 font-mono text-[11.5px] text-foreground" style={style} aria-hidden>
+        <BetChip amount={ghost.amount ?? 0} bigBlind={table.stake.bigBlind} />
+        {formatMoneyShort(ghost.amount ?? 0, table.stake.currency)}
+      </div>
+    )
+  }
+  if (ghost.kind === 'win') {
+    return (
+      <div className="poker-fantasma poker-fantasma--vencedor flex items-center gap-1.5 rounded-full border border-burn/70 bg-void/90 px-2.5 py-1 font-mono text-sm text-burn shadow-[0_0_18px_hsl(var(--burn)/0.35)]" style={style} aria-hidden>
+        <span className="poker-ficha-redonda inline-block h-4 w-4" />
+        +{formatMoneyShort(ghost.amount ?? 0, table.stake.currency)}
+      </div>
+    )
+  }
+  return (
+    <div className="poker-fantasma poker-fantasma--fold" style={style} aria-hidden>
+      <CardRow codes={['?', '?']} size="xs" faceDown overlap dim />
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Um assento
 // ---------------------------------------------------------------------------
 
@@ -525,6 +644,7 @@ function SeatSpot({
   index,
   seat,
   pos,
+  dealOrder,
   isMe,
   canSit,
   onSit,
@@ -535,6 +655,8 @@ function SeatSpot({
   index: number
   seat: SeatView | null
   pos: [number, number]
+  /** Posição na roda a partir de mim: define a ordem (e o atraso) das cartas dadas. */
+  dealOrder: number
   isMe: boolean
   canSit: boolean
   onSit: () => void
@@ -542,7 +664,12 @@ function SeatSpot({
   phone: boolean
 }) {
   const { byId } = useMembers()
-  const style: React.CSSProperties = { left: `${pos[0]}%`, top: `${pos[1]}%` }
+  const style = {
+    left: `${pos[0]}%`,
+    top: `${pos[1]}%`,
+    ['--seat-x' as string]: pos[0],
+    ['--seat-y' as string]: pos[1]
+  } as React.CSSProperties
   const betPos = {
     left: `${pos[0] + (CENTER[0] - pos[0]) * 0.42}%`,
     top: `${pos[1] + (CENTER[1] - pos[1]) * 0.42}%`
@@ -597,7 +724,19 @@ function SeatSpot({
         {/* As cartas: atrás do avatar pros outros, grandes e à frente pra mim */}
         {seat.hasCards && !isMe && (
           <div className={cn('-mb-3', dim && 'opacity-60')}>
-            <CardRow codes={cards ?? ['?', '?']} size={phone ? 'xs' : 'sm'} faceDown={!cards} dim={dim} highlightCodes={highlight} overlap animate={!!cards} />
+            <CardRow
+              codes={cards ?? ['?', '?']}
+              size={phone ? 'xs' : 'sm'}
+              faceDown={!cards}
+              dim={dim}
+              highlightCodes={highlight}
+              overlap
+              // Viradas pra baixo: voam do baralho, uma pessoa de cada vez.
+              // Viradas pra cima (showdown): chegam de costas e viram.
+              enter={cards ? 'flip' : 'fly'}
+              staggerMs={cards ? 140 : 90}
+              baseDelayMs={cards ? 0 : dealOrder * 130}
+            />
           </div>
         )}
 
@@ -679,7 +818,9 @@ function HeroCards({ table, seat, phone }: { table: TableView; seat: SeatView; p
       size={phone ? 'md' : 'lg'}
       dim={seat.folded || lost}
       highlightCodes={won ? mine : null}
-      animate
+      enter="slide"
+      staggerMs={120}
+      baseDelayMs={200}
       className="-my-1"
     />
   )

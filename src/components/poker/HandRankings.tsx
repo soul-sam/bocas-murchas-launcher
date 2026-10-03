@@ -299,8 +299,8 @@ function Pots() {
 }
 
 function OurTable({ rules }: { rules: PokerRules | null }) {
-  const normal = rules ? Math.round(rules.timers.normal / 1000) : 25
-  const turbo = rules ? Math.round(rules.timers.turbo / 1000) : 12
+  const normal = rules ? Math.round(rules.timers.normal / 1000) : 60
+  const turbo = rules ? Math.round(rules.timers.turbo / 1000) : 20
   const rakePct = rules?.rake.percent ?? 2.5
   const rakeCap = rules?.rake.capBb ?? 3
   const missed = rules?.missedTurnsToSitOut ?? 2

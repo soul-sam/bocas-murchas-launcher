@@ -36,6 +36,8 @@ export function PlayingCard({
   dim,
   highlight,
   animate,
+  enter,
+  delayMs,
   className,
   style
 }: {
@@ -48,13 +50,24 @@ export function PlayingCard({
   dim?: boolean
   /** Faz parte da mão vencedora. */
   highlight?: boolean
-  /** Entra virando (carta recém-dada). */
+  /** Entra deslizando (nome antigo; igual a `enter="slide"`). */
   animate?: boolean
+  /**
+   * Como a carta chega: `fly` sai do centro da mesa até o assento (cartas
+   * dadas), `slide` desce de cima (as suas, no rodapé), `none` fica parada.
+   */
+  enter?: 'fly' | 'slide' | 'none'
+  /** Escalonamento da entrada, em ms (`--carta-atraso`). */
+  delayMs?: number
   className?: string
   style?: React.CSSProperties
 }) {
   const s = SIZE[size]
   const card = code ? parseCard(code) : null
+  const mode = enter ?? (animate ? 'slide' : 'none')
+  const enterClass = mode === 'fly' ? 'carta--voa' : mode === 'slide' ? 'carta--desliza' : null
+  const enterStyle: React.CSSProperties | undefined =
+    delayMs ? ({ ['--carta-atraso' as string]: `${delayMs}ms` } as React.CSSProperties) : undefined
 
   if (!card && !faceDown) {
     if (!placeholder) return null
@@ -66,8 +79,8 @@ export function PlayingCard({
       <span
         role="img"
         aria-label="carta virada"
-        className={cn('carta carta--verso', dim && 'carta--apagada', animate && 'carta--entra', className)}
-        style={{ width: s.w, ...style }}
+        className={cn('carta carta--verso', dim && 'carta--apagada', enterClass, className)}
+        style={{ width: s.w, ...enterStyle, ...style }}
       />
     )
   }
@@ -84,10 +97,10 @@ export function PlayingCard({
         red ? 'carta--vermelha' : 'carta--preta',
         dim && 'carta--apagada',
         highlight && 'carta--vencedora',
-        animate && 'carta--entra',
+        enterClass,
         className
       )}
-      style={{ width: s.w, ...style }}
+      style={{ width: s.w, ...enterStyle, ...style }}
     >
       {/* canto: valor em cima do naipe pequeno */}
       <span
@@ -106,6 +119,40 @@ export function PlayingCard({
   )
 }
 
+/**
+ * Carta que chega de costas e VIRA (3D de verdade: duas faces num pai com
+ * preserve-3d). É assim que a mesa abre o flop e que as cartas dos outros
+ * aparecem no showdown.
+ */
+export function FlipCard({
+  code,
+  size = 'md',
+  dim,
+  highlight,
+  delayMs,
+  className
+}: {
+  code: string
+  size?: CardSize
+  dim?: boolean
+  highlight?: boolean
+  delayMs?: number
+  className?: string
+}) {
+  const s = SIZE[size]
+  return (
+    <span className={cn('carta-flip', className)} style={{ width: s.w }}>
+      <span
+        className="carta-flip-inner"
+        style={delayMs ? ({ ['--carta-atraso' as string]: `${delayMs}ms` } as React.CSSProperties) : undefined}
+      >
+        <PlayingCard faceDown size={size} className="carta-flip-face carta-flip-back" />
+        <PlayingCard code={code} size={size} dim={dim} highlight={highlight} className="carta-flip-face" />
+      </span>
+    </span>
+  )
+}
+
 /** Fileira de cartas, com sobreposição leve quando pedido (mãos nos assentos). */
 export function CardRow({
   codes,
@@ -115,6 +162,10 @@ export function CardRow({
   highlightCodes,
   overlap,
   animate,
+  enter,
+  staggerMs = 90,
+  staggerFrom = 0,
+  baseDelayMs = 0,
   slots,
   className
 }: {
@@ -125,17 +176,45 @@ export function CardRow({
   /** Cartas que fazem parte da melhor mão. */
   highlightCodes?: string[] | null
   overlap?: boolean
+  /** Nome antigo de `enter="slide"`. */
   animate?: boolean
+  /**
+   * Como as cartas chegam: `fly` do centro (dadas), `slide` de cima (as
+   * suas), `flip` de costas virando (mesa, showdown), `none` paradas.
+   */
+  enter?: 'fly' | 'slide' | 'flip' | 'none'
+  /** Intervalo entre uma carta e a seguinte. */
+  staggerMs?: number
+  /** A partir deste índice as cartas são NOVAS (só elas animam e escalonam). */
+  staggerFrom?: number
+  /** Atraso base de todas (o assento N espera os anteriores receberem). */
+  baseDelayMs?: number
   /** Quantas vagas desenhar no total (a mesa tem 5). */
   slots?: number
   className?: string
 }) {
   const total = slots ?? codes.length
   const hl = highlightCodes ? new Set(highlightCodes) : null
+  const mode = enter ?? (animate ? 'slide' : 'none')
   return (
     <span className={cn('inline-flex items-center', overlap ? '-space-x-2' : 'gap-1', className)}>
       {Array.from({ length: total }).map((_, i) => {
         const code = codes[i]
+        const fresh = i >= staggerFrom
+        const delay = fresh ? baseDelayMs + (i - staggerFrom) * staggerMs : 0
+        const rotate = overlap ? { transform: `rotate(${(i - (total - 1) / 2) * 6}deg)` } : undefined
+        if (code && mode === 'flip' && fresh && !faceDown) {
+          return (
+            <FlipCard
+              key={`${code}-${i}`}
+              code={code}
+              size={size}
+              dim={dim}
+              highlight={!!hl && hl.has(code)}
+              delayMs={delay}
+            />
+          )
+        }
         return (
           <PlayingCard
             key={code ? `${code}-${i}` : `vaga-${i}`}
@@ -145,8 +224,9 @@ export function CardRow({
             placeholder={!code}
             dim={dim}
             highlight={!!code && !!hl && hl.has(code)}
-            animate={animate && !!code}
-            style={overlap ? { transform: `rotate(${(i - (total - 1) / 2) * 6}deg)` } : undefined}
+            enter={code && fresh && mode !== 'flip' ? mode : 'none'}
+            delayMs={delay}
+            style={rotate}
           />
         )
       })}

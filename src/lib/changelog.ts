@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.45.0',
+    headline: 'Pôquer: um minuto pra jogar, e cartas que se mexem',
+    items: [
+      'O relógio de ação passou de 25 segundos pra 1 minuto na mesa normal (e de 12 pra 20 na turbo). Dá pra pensar — e pra terminar a frase na call.',
+      'As cartas agora são dadas de verdade: saem do meio da mesa e pousam em cada lugar, uma pessoa de cada vez; as suas descem pro rodapé.',
+      'Flop, turn e river chegam de costas e viram; no showdown as cartas dos outros viram do mesmo jeito.',
+      'As fichas apostadas voam pro pote quando a rodada fecha, o pote voa pra quem levou, e as cartas de quem desistiu vão pro meio. Quem pediu menos movimento no sistema vê tudo parado, como antes.'
+    ]
+  },
+  {
     version: '1.44.0',
     headline: 'O pôquer ganhou tela própria',
     items: [

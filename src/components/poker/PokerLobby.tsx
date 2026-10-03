@@ -419,7 +419,7 @@ function CreateTableForm({
                   s === speed ? 'border-acid/60 bg-acid/10 text-acid' : 'border-line text-muted-foreground hover:text-foreground'
                 )}
               >
-                {SPEED_LABEL[s]} <span className="font-mono">{rules ? Math.round(rules.timers[s] / 1000) : s === 'normal' ? 25 : 12}s</span>
+                {SPEED_LABEL[s]} <span className="font-mono">{rules ? Math.round(rules.timers[s] / 1000) : s === 'normal' ? 60 : 20}s</span>
               </button>
             ))}
           </div>

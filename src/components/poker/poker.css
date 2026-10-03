@@ -114,12 +114,117 @@
   box-shadow: none;
 }
 
-@keyframes carta-entra {
-  from { opacity: 0; transform: translateY(-10px) rotateY(80deg) scale(0.92); }
-  60% { opacity: 1; }
+/* ---------- movimento das cartas ----------
+   A area da mesa e' um container de tamanho (`.poker-area`): as animacoes
+   usam cqw/cqh pra sair DO CENTRO do feltro e chegar no assento, seja qual
+   for o tamanho da janela. Cada assento publica `--seat-x`/`--seat-y` (em %)
+   e cada carta `--carta-atraso` (o escalonamento da distribuicao). */
+.poker-area { container-type: size; }
+
+/* Dada: sai do meio da mesa (o baralho) e pousa no assento, girando um pouco. */
+@keyframes carta-voa {
+  from {
+    opacity: 0;
+    transform: translate(calc((50 - var(--seat-x, 50)) * 1cqw), calc((50 - var(--seat-y, 50)) * 1cqh)) scale(0.45) rotate(-18deg);
+  }
+  55% { opacity: 1; }
   to { opacity: 1; transform: none; }
 }
-.carta--entra { animation: carta-entra 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.carta--voa {
+  animation: carta-voa 480ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+  animation-delay: var(--carta-atraso, 0ms);
+}
+
+/* As SUAS, no rodape: descem da mesa e assentam. */
+@keyframes carta-desliza {
+  from { opacity: 0; transform: translateY(-64px) rotate(-7deg) scale(0.86); }
+  to { opacity: 1; transform: none; }
+}
+.carta--desliza {
+  animation: carta-desliza 440ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+  animation-delay: var(--carta-atraso, 0ms);
+}
+
+/* Virada 3D: a carta chega de costas, levanta e vira. Mesa e showdown. */
+.carta-flip {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  aspect-ratio: 5 / 7;
+  perspective: 700px;
+}
+.carta-flip-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: carta-vira 600ms cubic-bezier(0.3, 0.7, 0.25, 1) both;
+  animation-delay: var(--carta-atraso, 0ms);
+}
+.carta-flip-face {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.carta-flip-back { transform: rotateY(180deg); }
+@keyframes carta-vira {
+  0% { opacity: 0; transform: translateY(-22px) rotateY(180deg) scale(0.9); }
+  35% { opacity: 1; transform: translateY(-10px) rotateY(180deg) scale(1); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* Compatibilidade: o nome antigo vira o deslize. */
+.carta--entra {
+  animation: carta-desliza 440ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+  animation-delay: var(--carta-atraso, 0ms);
+}
+
+/* A mao vencedora respira. Declarado DEPOIS das entradas pra ganhar delas. */
+@keyframes carta-brilha {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.carta--vencedora { animation: carta-brilha 1.4s ease-in-out infinite; }
+
+/* ---------- fantasmas: fichas e cartas em transito ----------
+   Elementos que so existem durante a animacao (ver PokerTable). */
+.poker-fantasma {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  pointer-events: none;
+  z-index: 15;
+}
+/* Aposta da rodada indo pro pote (do assento ao centro). */
+@keyframes ficha-pro-pote {
+  0% { opacity: 1; transform: translate(-50%, -50%); }
+  70% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(calc((50 - var(--seat-x)) * 1cqw), calc((50 - var(--seat-y)) * 1cqh)) scale(0.7);
+  }
+}
+.poker-fantasma--pote { animation: ficha-pro-pote 560ms cubic-bezier(0.3, 0.6, 0.2, 1) both; }
+/* O pote indo pra quem levou (do centro ao assento). */
+@keyframes pote-pro-vencedor {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(calc((var(--seat-x) - 50) * 1cqw), calc((var(--seat-y) - 50) * 1cqh)) scale(0.9);
+  }
+}
+.poker-fantasma--vencedor { animation: pote-pro-vencedor 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+/* Cartas de quem desistiu, jogadas pro meio. */
+@keyframes cartas-pro-centro {
+  0% { opacity: 0.95; transform: translate(-50%, -50%); }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(calc((50 - var(--seat-x)) * 0.55cqw), calc((50 - var(--seat-y)) * 0.55cqh)) rotate(28deg) scale(0.7);
+  }
+}
+.poker-fantasma--fold { animation: cartas-pro-centro 520ms ease-in both; }
 
 /* ---------- assentos ---------- */
 
@@ -223,6 +328,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .carta--entra,
+  .carta--voa,
+  .carta--desliza,
+  .carta-flip-inner,
+  .carta--vencedora,
+  .poker-fantasma,
   .poker-vez,
   .poker-vencedor,
   .poker-ficha,
@@ -234,6 +344,7 @@
   .poker-vencedor { box-shadow: 0 0 0 2px hsl(var(--burn)); }
 }
 html.game-running .poker-vez,
-html.game-running .poker-vencedor {
+html.game-running .poker-vencedor,
+html.game-running .carta--vencedora {
   animation: none !important;
 }
