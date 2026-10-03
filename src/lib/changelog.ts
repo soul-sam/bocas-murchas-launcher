@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.43.0',
+    headline: 'Pôquer na Arena',
+    items: [
+      "Texas Hold'em sem limite, com murchos como fichas: abra uma mesa (2 a 6 lugares, blinds baixa, média ou alta), sente com um buy-in e jogue com a galera — o ícone novo fica na barra da esquerda, embaixo das apostas.",
+      'Regras completinhas: botão, blinds, aumento mínimo, all-in que não reabre, potes laterais, aposta não paga devolvida, empate e ficha ímpar. Tudo o que o servidor faz está escrito na colinha.',
+      'Colinha das combinações dentro da mesa: as dez mãos do royal flush à carta alta, com exemplo desenhado, como desempata e a chance de ter cada uma no river. A sua mão atual fica marcada.',
+      'Relógio de 25 segundos por jogada (12 na mesa turbo): estourou, a mesa dá check ou desiste por você; duas vezes e você senta fora. Fechar a tela não levanta da mesa — a barra avisa quando é a sua vez.',
+      'Mesa valendo dinheiro de verdade, só por diversão: até R$ 20 por pessoa por mesa, sem a casa tirar nada. Depósito e saque por Pix pelo caixa, com a taxa do Asaas mostrada antes de confirmar. Aparece só quando o servidor tem o caixa ligado.',
+      'Abrir uma mesa posta um card no canal de jogos com quem está sentado; /poker e o Ctrl+K também abrem o saguão. Oito conquistas novas, do primeiro pote ao royal flush.'
+    ],
+    note: 'Mão que viu o flop deixa 2,5% do pote (até 3 big blinds) no cofre da casa — o mesmo pote das apostas. Na mesa valendo não há rake nenhum.'
+  },
+  {
     version: '1.42.0',
     headline: 'Ranking de apostas e conquistas de XP',
     items: [
