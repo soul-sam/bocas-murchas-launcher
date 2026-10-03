@@ -23,6 +23,7 @@ import { OverlayProvider, useOverlays } from '@/lib/overlay-context'
 import { LayoutProvider, useLayout } from '@/lib/layout-context'
 import { ActivityProvider } from '@/lib/activity-context'
 import { PartyProvider } from '@/lib/party-context'
+import { PokerProvider } from '@/lib/poker-context'
 import { SmokeProvider } from '@/lib/smoke-context'
 import { ClipProvider } from '@/lib/clip-context'
 import { GamificationProvider } from '@/lib/gamification-context'
@@ -61,6 +62,7 @@ import { ClipComposer } from '@/components/social/ClipComposer'
 import { WrappedModal } from '@/components/social/WrappedModal'
 import { ShopModal } from '@/components/social/ShopModal'
 import { AchievementsModal } from '@/components/social/AchievementsModal'
+import { PokerModal } from '@/components/poker/PokerModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
 import { OverlayBridge } from '@/lib/overlay-bridge'
@@ -219,6 +221,9 @@ function GlobalOverlays() {
       <SmokeComposer />
       <ShopModal />
       <AchievementsModal />
+      {/* O pôquer: saguão, mesa e caixa. Camada própria pelo mesmo motivo da
+          lojinha; abre da barra, do Ctrl+K, de /poker e do card no chat. */}
+      <PokerModal />
       <AdminModal />
       {/* Novidades da versão: camada própria (sem Radix) porque pode abrir
           sozinha no primeiro quadro, antes de qualquer clique. */}
@@ -339,6 +344,11 @@ function AuthedLayout() {
                                 paguei" — e ela vive dentro do AuthedShell. */}
                             <CostsProvider>
                             <PartyProvider>
+                            {/* Pôquer: espelho das mesas via socket. Precisa de
+                                socket, auth e settings (som da vez). Fica acima do
+                                AuthedShell porque a barra de ícones mostra "sua
+                                vez" e o card do chat lê o saguão. */}
+                            <PokerProvider>
                               <SmokeProvider>
                               <WatchProvider>
                                 {/* Índices de @pessoa e #canal montados uma
@@ -356,6 +366,7 @@ function AuthedLayout() {
                                 </RichTextProvider>
                               </WatchProvider>
                               </SmokeProvider>
+                            </PokerProvider>
                             </PartyProvider>
                             </CostsProvider>
                           </GamificationProvider>

@@ -114,6 +114,16 @@ interface OverlayContextValue {
   closeShop: () => void
 
   /**
+   * Pôquer: a camada com saguão, mesa e caixa. `pokerTableId` é a mesa que
+   * deve abrir de cara (o card do chat manda); null = saguão (ou a mesa em
+   * que a pessoa já está sentada, que o modal resolve sozinho).
+   */
+  pokerOpen: boolean
+  pokerTableId: string | null
+  openPoker: (tableId?: string) => void
+  closePoker: () => void
+
+  /**
    * Painel de conquistas: o catálogo inteiro de badges, quem tem cada uma e
    * o placar de colecionador. `achievementsFocus` é a badge que abre
    * selecionada — clicar num chip de badge em qualquer lugar cai direto nela.
@@ -192,6 +202,8 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [wrappedOpen, setWrappedOpen] = React.useState(false)
   const [wrappedYear, setWrappedYear] = React.useState(() => new Date().getFullYear())
   const [shopOpen, setShopOpen] = React.useState(false)
+  const [pokerOpen, setPokerOpen] = React.useState(false)
+  const [pokerTableId, setPokerTableId] = React.useState<string | null>(null)
   const [achievementsOpen, setAchievementsOpen] = React.useState(false)
   const [achievementsFocus, setAchievementsFocus] = React.useState<string | null>(null)
   const [profileUserId, setProfileUserId] = React.useState<string | null>(null)
@@ -307,6 +319,17 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       openShop: () => setShopOpen(true),
       closeShop: () => setShopOpen(false),
 
+      pokerOpen,
+      pokerTableId,
+      openPoker: (tableId?: string) => {
+        setPokerTableId(tableId ?? null)
+        setPokerOpen(true)
+      },
+      closePoker: () => {
+        setPokerOpen(false)
+        setPokerTableId(null)
+      },
+
       achievementsOpen,
       achievementsFocus,
       openAchievements: (badgeId?: string) => {
@@ -358,6 +381,8 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       wrappedOpen,
       wrappedYear,
       shopOpen,
+      pokerOpen,
+      pokerTableId,
       achievementsOpen,
       achievementsFocus,
       profileUserId,

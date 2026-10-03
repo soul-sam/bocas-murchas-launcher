@@ -1,0 +1,219 @@
+/* ==================================================================
+   PÔQUER — feltro, cartas e o pouco de movimento que a mesa pede.
+   ==================================================================
+   Tudo que é cromo vem dos tokens do tema (a mesa fica rosa no Vinho e
+   dourada no Ouro Negro, de propósito: a mesa é do grupo, não de um cassino).
+   As CARTAS são a exceção, e são conteúdo: uma carta é branca com pretos e
+   vermelhos em qualquer tema, senão o 7 de copas vira outra carta. */
+
+.poker-felt {
+  position: relative;
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgb(var(--neon-rgb) / 0.16), transparent 62%),
+    radial-gradient(ellipse at 50% 50%, hsl(var(--depth-3)), hsl(var(--background)) 100%);
+  border: 2px solid hsl(var(--acid-dark));
+  box-shadow:
+    inset 0 0 0 10px hsl(var(--depth-2)),
+    inset 0 0 0 12px hsl(var(--border-strong)),
+    inset 0 0 60px rgb(0 0 0 / 0.45),
+    0 20px 60px rgb(0 0 0 / 0.45);
+}
+
+/* Linha da mesa: o risco onde as cartas da mesa se apoiam. */
+.poker-felt::before {
+  content: '';
+  position: absolute;
+  inset: 16%;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--neon-rgb) / 0.14);
+  pointer-events: none;
+}
+
+/* ---------- cartas ---------- */
+
+.carta {
+  --carta-face: #f6f2e9;
+  --carta-face-2: #ebe5d8;
+  --carta-tinta: #1d1d24;
+  --carta-vermelho: #c8102e;
+  --carta-preto: #1d1d24;
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  border-radius: 9%/6.5%;
+  background: linear-gradient(160deg, var(--carta-face), var(--carta-face-2));
+  color: var(--carta-tinta);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.35) inset,
+    0 2px 6px rgb(0 0 0 / 0.5);
+  user-select: none;
+  overflow: hidden;
+  aspect-ratio: 5 / 7;
+}
+
+.carta--vermelha { color: var(--carta-vermelho); }
+.carta--preta { color: var(--carta-preto); }
+
+/* O verso: listras finas da marca sobre o fundo escuro, com uma moldura
+   clara — igual verso de baralho de verdade, só que nas nossas cores. */
+.carta--verso {
+  background:
+    repeating-linear-gradient(135deg, rgb(var(--neon-rgb) / 0.55) 0 2px, transparent 2px 7px),
+    hsl(var(--depth-2));
+  box-shadow:
+    inset 0 0 0 2px #f6f2e9,
+    inset 0 0 0 3px hsl(var(--acid-dark)),
+    0 2px 6px rgb(0 0 0 / 0.5);
+}
+
+.carta--verso::after {
+  content: '';
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  border: 1.5px solid rgb(var(--neon-rgb) / 0.7);
+  background: hsl(var(--depth-2));
+}
+
+/* Apagada: foldou, ou perdeu no showdown. */
+.carta--apagada { opacity: 0.45; filter: grayscale(0.6); }
+
+/* Carta que faz parte da mão vencedora. */
+.carta--vencedora {
+  box-shadow:
+    0 0 0 2px hsl(var(--acid)),
+    0 0 18px rgb(var(--neon-rgb) / 0.45),
+    0 2px 6px rgb(0 0 0 / 0.5);
+}
+
+/* Lugar vazio na mesa (flop/turn/river ainda não saíram). */
+.carta--vaga {
+  background: transparent;
+  border: 1.5px dashed rgb(var(--neon-rgb) / 0.25);
+  box-shadow: none;
+}
+
+@keyframes carta-entra {
+  from { opacity: 0; transform: translateY(-10px) rotateY(80deg) scale(0.92); }
+  60% { opacity: 1; }
+  to { opacity: 1; transform: none; }
+}
+.carta--entra { animation: carta-entra 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* ---------- assentos ---------- */
+
+@keyframes poker-vez {
+  0%, 100% { box-shadow: 0 0 0 2px hsl(var(--acid)), 0 0 0 0 rgb(var(--neon-rgb) / 0); }
+  50% { box-shadow: 0 0 0 2px hsl(var(--acid)), 0 0 18px 4px rgb(var(--neon-rgb) / 0.35); }
+}
+.poker-vez { animation: poker-vez 1.6s ease-in-out infinite; }
+
+@keyframes poker-vencedor {
+  0%, 100% { box-shadow: 0 0 0 2px hsl(var(--burn)), 0 0 0 0 rgb(0 0 0 / 0); }
+  50% { box-shadow: 0 0 0 2px hsl(var(--burn)), 0 0 22px 4px hsl(var(--burn) / 0.45); }
+}
+.poker-vencedor { animation: poker-vencedor 1.2s ease-in-out infinite; }
+
+/* Relógio de ação: o anel esvazia no sentido horário. A duração vem inline
+   (tempo que falta); o atraso negativo pula o que já passou. */
+.poker-anel {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+.poker-anel circle.poker-anel-arco {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: poker-anel-esvazia linear forwards;
+}
+@keyframes poker-anel-esvazia {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 1; }
+}
+
+/* Fichas apostadas voando pro pote. */
+@keyframes poker-ficha-entra {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.poker-ficha { animation: poker-ficha-entra 220ms ease-out both; }
+
+/* Pote crescendo dá um "tum". */
+@keyframes poker-pote-pulso {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.poker-pote-pulso { animation: poker-pote-pulso 260ms ease-out; }
+
+/* A faixa do resultado desce do centro. */
+@keyframes poker-faixa {
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.poker-faixa { animation: poker-faixa 260ms ease-out both; }
+
+/* Ficha redonda (botão do dealer e as pilhas). */
+.poker-ficha-redonda {
+  border-radius: 999px;
+  background:
+    repeating-conic-gradient(from 0deg, hsl(var(--foreground)) 0 18deg, transparent 18deg 45deg),
+    hsl(var(--burn));
+  box-shadow: inset 0 0 0 3px hsl(var(--burn)), inset 0 0 0 4px hsl(var(--background) / 0.6), 0 2px 4px rgb(0 0 0 / 0.5);
+}
+
+/* Fichas de aposta: a cor diz a ordem de grandeza, como numa mesa de verdade. */
+.poker-ficha-redonda--aposta {
+  background:
+    repeating-conic-gradient(from 0deg, hsl(var(--foreground) / 0.9) 0 16deg, transparent 16deg 60deg),
+    var(--ficha-cor, hsl(var(--acid)));
+  box-shadow: inset 0 0 0 2px var(--ficha-cor, hsl(var(--acid))), inset 0 0 0 3px hsl(var(--background) / 0.5), 0 1px 3px rgb(0 0 0 / 0.6);
+}
+
+/* Botão do dealer: branco com D, como em qualquer mesa. */
+.poker-dealer {
+  background: #f6f2e9;
+  color: #1d1d24;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.6), inset 0 0 0 1.5px #d8d1c2;
+}
+
+/* Trilho da régua de aposta. */
+.poker-regua {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--acid-dark));
+  outline: none;
+  cursor: pointer;
+}
+.poker-regua::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+  border: 2px solid hsl(var(--acid-light));
+  box-shadow: 0 0 10px rgb(var(--neon-rgb) / 0.4);
+  cursor: pointer;
+}
+.poker-regua:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) {
+  .carta--entra,
+  .poker-vez,
+  .poker-vencedor,
+  .poker-ficha,
+  .poker-pote-pulso,
+  .poker-faixa {
+    animation: none !important;
+  }
+  .poker-vez { box-shadow: 0 0 0 2px hsl(var(--acid)); }
+  .poker-vencedor { box-shadow: 0 0 0 2px hsl(var(--burn)); }
+}
+html.game-running .poker-vez,
+html.game-running .poker-vencedor {
+  animation: none !important;
+}

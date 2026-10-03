@@ -122,6 +122,7 @@ export function MessageComposer({
     openPartyComposer,
     openShop,
     openAchievements,
+    openPoker,
     openMusicPanel,
     openSuggestionComposer,
     openPrintRequestComposer,
@@ -498,6 +499,9 @@ export function MessageComposer({
         break
       case 'wagers':
         openWagers()
+        break
+      case 'poker':
+        openPoker()
         break
       case 'recap':
         openRecap()

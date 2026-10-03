@@ -76,6 +76,7 @@ export function QuickSwitcher() {
     openScreenPicker,
     openShop,
     openAchievements,
+    openPoker,
     openAdmin
   } = useOverlays()
   const { user } = useAuth()
@@ -224,6 +225,16 @@ export function QuickSwitcher() {
       }
     })
 
+    const PokerCmdIcon = ARENA_ICON.poker
+    list.push({
+      id: 'cmd:poker',
+      label: ARENA_LABEL.poker,
+      hint: "mesas de hold'em",
+      icon: <PokerCmdIcon className="h-3.5 w-3.5" />,
+      keywords: 'poker poquer pôquer cartas mesa holdem fichas valendo arena',
+      run: () => openPoker()
+    })
+
     list.push({
       id: 'cmd:achievements',
       label: ARENA_LABEL.achievements,
@@ -280,6 +291,7 @@ export function QuickSwitcher() {
     openSettings,
     openShop,
     openAchievements,
+    openPoker,
     openLeaderboard,
     openWagers,
     openRecap,

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { X, ScrollText } from 'lucide-react'
 import { BetIcon, MedalIcon, ShopIcon, TrophyIcon } from '@/lib/bocas-icons'
+import { PokerIcon } from '@/components/poker/PokerGlyphs'
 import type { IconComponent } from '@/lib/icon-component'
 import { cn } from '@/lib/utils'
 import { useLayout } from '@/lib/layout-context'
@@ -23,11 +24,13 @@ import { useGamification } from '@/lib/gamification-context'
  * sair do ranking e cair nas apostas é um passeio.
  */
 
-export type ArenaItem = 'ranking' | 'wagers' | 'achievements' | 'shop' | 'recap'
+export type ArenaItem = 'ranking' | 'wagers' | 'poker' | 'achievements' | 'shop' | 'recap'
 
 export const ARENA_ICON: Record<ArenaItem, IconComponent> = {
   ranking: TrophyIcon,
   wagers: BetIcon,
+  // O pôquer é modal (components/poker/PokerModal), como lojinha e conquistas.
+  poker: PokerIcon,
   achievements: MedalIcon,
   shop: ShopIcon,
   recap: ScrollText
@@ -36,6 +39,7 @@ export const ARENA_ICON: Record<ArenaItem, IconComponent> = {
 export const ARENA_LABEL: Record<ArenaItem, string> = {
   ranking: 'Ranking',
   wagers: 'Apostas',
+  poker: 'Pôquer',
   achievements: 'Conquistas',
   shop: 'Lojinha',
   recap: 'Recap'

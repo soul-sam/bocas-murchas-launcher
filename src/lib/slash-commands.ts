@@ -19,6 +19,8 @@ export type SlashCommand =
   /** Painéis da Arena (coluna da direita): ranking, apostas, recap. */
   | { kind: 'ranking' }
   | { kind: 'wagers' }
+  /** O pôquer (saguão, ou a mesa em que a pessoa está). */
+  | { kind: 'poker' }
   | { kind: 'recap' }
   | { kind: 'suggestion' }
   | { kind: 'printRequest' }
@@ -81,6 +83,11 @@ const ALIASES: Record<string, Exclude<SlashCommand['kind'], 'egg'>> = {
   aposta: 'wagers',
   apostar: 'wagers',
   bet: 'wagers',
+  poker: 'poker',
+  poquer: 'poker',
+  pôquer: 'poker',
+  holdem: 'poker',
+  cartas: 'poker',
   recap: 'recap',
   semana: 'recap',
   fumaca: 'smoke',
@@ -128,6 +135,8 @@ export function parseSlashCommand(text: string): SlashCommand | null {
       return { kind: 'ranking' }
     case 'wagers':
       return { kind: 'wagers' }
+    case 'poker':
+      return { kind: 'poker' }
     case 'recap':
       return { kind: 'recap' }
     case 'suggestion':
@@ -204,6 +213,7 @@ export const SLASH_HELP: Array<{ command: string; hint: string }> = [
   { command: '/encomendar', hint: 'Pedir pra alguém imprimir uma peça na impressora 3D' },
   { command: '/ranking', hint: 'Quem lidera a semana (e desde sempre)' },
   { command: '/apostas', hint: 'Partidas ao vivo pra apostar murchos' },
+  { command: '/poker', hint: "Mesas de Texas Hold'em: murchos, ou valendo até R$ 20" },
   { command: '/loja', hint: 'Abrir a lojinha' },
   { command: '/conquistas', hint: 'Todas as badges, quem tem cada uma e o placar de colecionador' },
   { command: '/recap', hint: 'O recap da semana e as anteriores' },

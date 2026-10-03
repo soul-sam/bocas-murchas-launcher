@@ -38,6 +38,10 @@ export type UiSound =
   | 'xp'
   | 'levelup'
   | 'coins'
+  /** Pôquer: sua vez, cartas dadas, pote levado. */
+  | 'poker-turn'
+  | 'poker-deal'
+  | 'poker-win'
 
 interface Note {
   /** Frequência em Hz. */
@@ -239,6 +243,35 @@ const CUES: Record<UiSound, Cue> = {
     notes: [
       { freq: B5, at: 0, dur: 0.07 },
       { freq: E6, at: 0.07, dur: 0.16 }
+    ]
+  },
+
+  // PÔQUER. Sua vez: duas notas iguais, secas, como quem bate na mesa — tem
+  // que chamar atenção com a janela atrás do jogo, sem assustar.
+  'poker-turn': {
+    volume: 0.7,
+    cutoff: 2600,
+    notes: [
+      { freq: E5, at: 0, dur: 0.07 },
+      { freq: E5, at: 0.12, dur: 0.1 }
+    ]
+  },
+  // Cartas dadas: um toque só, baixo. Toca toda mão; precisa ser quase nada.
+  'poker-deal': {
+    volume: 0.35,
+    cutoff: 1800,
+    type: 'sine',
+    notes: [{ freq: A4, at: 0, dur: 0.05 }]
+  },
+  // Pote levado: arpejo subindo, parente do `levelup` mas mais curto.
+  'poker-win': {
+    volume: 0.7,
+    cutoff: 3600,
+    notes: [
+      { freq: C5, at: 0, dur: 0.08 },
+      { freq: E5, at: 0.07, dur: 0.08 },
+      { freq: G5, at: 0.14, dur: 0.1 },
+      { freq: C6, at: 0.21, dur: 0.2 }
     ]
   }
 }
