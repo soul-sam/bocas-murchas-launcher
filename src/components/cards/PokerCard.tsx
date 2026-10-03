@@ -7,7 +7,6 @@ import { resolveAssetUrl } from '@/lib/api'
 import { SPEED_LABEL, formatMoney, formatMoneyShort, type PokerCardMetadata } from '@/lib/api-poker'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
-import { useOverlays } from '@/lib/overlay-context'
 import { usePoker } from '@/lib/poker-context'
 import { PokerIcon } from '@/components/poker/PokerGlyphs'
 import { cn } from '@/lib/utils'
@@ -25,8 +24,7 @@ import { cn } from '@/lib/utils'
 export function PokerCard({ metadata }: CardProps<PokerCardMetadata>) {
   const { user } = useAuth()
   const { byId } = useMembers()
-  const { tables, ready } = usePoker()
-  const { openPoker } = useOverlays()
+  const { tables, ready, goToPoker } = usePoker()
 
   const live = tables.find((t) => t.id === metadata.tableId)
   const closed = metadata.status === 'closed' || (ready && !live)
@@ -105,7 +103,7 @@ export function PokerCard({ metadata }: CardProps<PokerCardMetadata>) {
         <div className="mt-3">
           <button
             type="button"
-            onClick={() => openPoker(metadata.tableId)}
+            onClick={() => goToPoker(metadata.tableId)}
             className="flex items-center gap-1.5 rounded-brutal border-2 border-acid bg-acid px-2.5 py-1 font-mono text-[11.5px] uppercase tracking-widest text-void transition-colors hover:bg-acid/90"
           >
             <PokerIcon className="h-3 w-3" />

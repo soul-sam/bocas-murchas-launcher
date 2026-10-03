@@ -41,6 +41,7 @@ import { useMembers, type Member } from '@/lib/members-context'
 import { useCargos, type Cargo } from '@/lib/cargos-context'
 import { CargoIcon } from '@/lib/cargo-icons'
 import { useOverlays } from '@/lib/overlay-context'
+import { usePoker } from '@/lib/poker-context'
 import { useLayout } from '@/lib/layout-context'
 import { parseSlashCommand, rewriteBotCommand, rewriteEggCommand, SLASH_HELP } from '@/lib/slash-commands'
 import { emitEgg } from '@/lib/easter-eggs/bus'
@@ -122,13 +123,13 @@ export function MessageComposer({
     openPartyComposer,
     openShop,
     openAchievements,
-    openPoker,
     openMusicPanel,
     openSuggestionComposer,
     openPrintRequestComposer,
     openSmokeComposer,
     openWrapped
   } = useOverlays()
+  const { goToPoker } = usePoker()
   // Os painéis da Arena ficam na coluna da direita desta mesma tela.
   const { openLeaderboard, openWagers, openRecap } = useLayout()
   const { emojis } = useEmojis()
@@ -501,7 +502,7 @@ export function MessageComposer({
         openWagers()
         break
       case 'poker':
-        openPoker()
+        goToPoker()
         break
       case 'recap':
         openRecap()

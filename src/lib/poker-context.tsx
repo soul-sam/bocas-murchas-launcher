@@ -1,5 +1,6 @@
 import * as React from 'react'
 import type { Socket } from 'socket.io-client'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
@@ -31,6 +32,11 @@ interface PokerContextValue {
   openTableId: string | null
   openTable: (tableId: string) => Promise<PokerAck>
   leaveTable: () => void
+  /**
+   * Vai pra TELA do pôquer (rota /poker) e, se vier `tableId`, abre essa mesa
+   * nela. É o que o card do chat, o Ctrl+K, o /poker e a barra chamam.
+   */
+  goToPoker: (tableId?: string) => void
   /** Em qual mesa estou SENTADO (pode ser diferente da aberta). */
   seatedAt: LobbyTable | null
   /** É a minha vez em alguma mesa — pra pílula na barra de ícones. */
@@ -74,6 +80,7 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const { socket, connected } = useSocket()
   const { settings } = useSettings()
+  const navigate = useNavigate()
 
   const [tables, setTables] = React.useState<LobbyTable[]>([])
   const [ready, setReady] = React.useState(false)
@@ -179,6 +186,14 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
     [socket]
   )
 
+  const goToPoker = React.useCallback(
+    (tableId?: string): void => {
+      navigate('/poker')
+      if (tableId) void openTable(tableId)
+    },
+    [navigate, openTable]
+  )
+
   const leaveTable = React.useCallback((): void => {
     const id = openIdRef.current
     if (id && socket) socket.emit('poker:leave', { tableId: id })
@@ -243,6 +258,7 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
       openTableId,
       openTable,
       leaveTable,
+      goToPoker,
       seatedAt,
       myTurn,
       createTable,
@@ -254,7 +270,7 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
       show,
       closeTable
     }),
-    [tables, ready, table, openTableId, openTable, leaveTable, seatedAt, myTurn, createTable, sit, stand, topUp, sitOut, act, show, closeTable]
+    [tables, ready, table, openTableId, openTable, leaveTable, goToPoker, seatedAt, myTurn, createTable, sit, stand, topUp, sitOut, act, show, closeTable]
   )
 
   return <PokerContext.Provider value={value}>{children}</PokerContext.Provider>

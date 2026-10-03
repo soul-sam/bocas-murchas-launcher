@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.44.0',
+    headline: 'O pôquer ganhou tela própria',
+    items: [
+      'O pôquer saiu da janelinha e virou uma tela inteira, como a do Minecraft: o ícone na barra da esquerda leva pra ela, com a luz do tema no fundo e a mesa ocupando tudo.',
+      'Com uma mesa aberta o cabeçalho some: ficam o feltro, os assentos, as suas cartas e a barra de ação. O histórico da mão aparece ao lado já em janelas médias.',
+      'A colinha abre numa gaveta ao lado da mesa, sem cobrir o jogo; no celular sobe de baixo e o botão Voltar fecha.',
+      'Sair da tela não levanta da mesa: a barra avisa quando é a sua vez, e voltar cai direto nela.'
+    ]
+  },
+  {
     version: '1.43.0',
     headline: 'Pôquer na Arena',
     items: [

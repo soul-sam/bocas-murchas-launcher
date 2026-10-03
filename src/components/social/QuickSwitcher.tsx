@@ -15,6 +15,7 @@ import { useVoice } from '@/lib/voice-context'
 import { useSettings } from '@/lib/settings-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
+import { usePoker } from '@/lib/poker-context'
 import { useAuth } from '@/lib/auth-context'
 import { ChannelGlyph } from './ChannelGlyph'
 import { ARENA_ICON, ARENA_LABEL, LiveCount, useLiveMatchCount } from './ArenaChrome'
@@ -76,9 +77,9 @@ export function QuickSwitcher() {
     openScreenPicker,
     openShop,
     openAchievements,
-    openPoker,
     openAdmin
   } = useOverlays()
+  const { goToPoker } = usePoker()
   const { user } = useAuth()
   const { textChannels, voiceChannels, setActiveChannel } = useChat()
   const voice = useVoice()
@@ -232,7 +233,7 @@ export function QuickSwitcher() {
       hint: "mesas de hold'em",
       icon: <PokerCmdIcon className="h-3.5 w-3.5" />,
       keywords: 'poker poquer pôquer cartas mesa holdem fichas valendo arena',
-      run: () => openPoker()
+      run: () => goToPoker()
     })
 
     list.push({
@@ -291,7 +292,7 @@ export function QuickSwitcher() {
     openSettings,
     openShop,
     openAchievements,
-    openPoker,
+    goToPoker,
     openLeaderboard,
     openWagers,
     openRecap,

@@ -36,6 +36,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { HomePage } from '@/pages/HomePage'
 import { SocialPage } from '@/pages/SocialPage'
+import { PokerPage } from '@/pages/PokerPage'
 import { PrintPage } from '@/pages/PrintPage'
 import { TitleBar } from '@/components/TitleBar'
 import { DeepLink } from '@/components/DeepLink'
@@ -62,7 +63,6 @@ import { ClipComposer } from '@/components/social/ClipComposer'
 import { WrappedModal } from '@/components/social/WrappedModal'
 import { ShopModal } from '@/components/social/ShopModal'
 import { AchievementsModal } from '@/components/social/AchievementsModal'
-import { PokerModal } from '@/components/poker/PokerModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
 import { OverlayBridge } from '@/lib/overlay-bridge'
@@ -221,9 +221,6 @@ function GlobalOverlays() {
       <SmokeComposer />
       <ShopModal />
       <AchievementsModal />
-      {/* O pôquer: saguão, mesa e caixa. Camada própria pelo mesmo motivo da
-          lojinha; abre da barra, do Ctrl+K, de /poker e do card no chat. */}
-      <PokerModal />
       <AdminModal />
       {/* Novidades da versão: camada própria (sem Radix) porque pode abrir
           sozinha no primeiro quadro, antes de qualquer clique. */}
@@ -449,6 +446,11 @@ export function App() {
                                 redirecionamento que perde a query — e com
                                 ela o canal. Quem le a query e o DeepLink. */}
                             <Route path="/chat" element={<SocialPage />} />
+                            {/* O pôquer é uma TELA, não um modal: mesa de
+                                cartas dentro de janelinha não dá imersão.
+                                O estado mora no PokerProvider, acima das
+                                rotas, então sair daqui não levanta da mesa. */}
+                            <Route path="/poker" element={<PokerPage />} />
                             <Route
                               path="/impressao"
                               element={

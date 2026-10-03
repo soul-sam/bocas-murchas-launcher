@@ -30,6 +30,26 @@
   pointer-events: none;
 }
 
+/* A TELA: a luz do tema nos cantos, uma textura fina de feltro e uma
+   vinheta — e' o que faz a mesa parecer num salao e nao numa janela. Tudo
+   em tokens: no Vinho a sala fica rosa, no Ouro Negro, dourada. */
+.poker-page-fundo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 12% 0%, rgb(var(--neon-rgb) / 0.11), transparent 70%),
+    radial-gradient(55% 50% at 92% 100%, rgb(var(--neon-rgb) / 0.08), transparent 70%),
+    repeating-linear-gradient(135deg, hsl(var(--foreground) / 0.012) 0 2px, transparent 2px 14px),
+    hsl(var(--depth-2));
+}
+.poker-page-fundo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 45%, transparent 50%, rgb(0 0 0 / 0.5) 100%);
+}
+
 /* ---------- cartas ---------- */
 
 .carta {

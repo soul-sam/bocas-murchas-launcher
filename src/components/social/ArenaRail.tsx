@@ -64,10 +64,12 @@ export function ArenaRail() {
     openWagers,
     openRecap
   } = useLayout()
-  const { openShop, openAchievements, openPoker, shopOpen, achievementsOpen, pokerOpen } = useOverlays()
-  const { tables: pokerTables, myTurn: pokerTurn } = usePoker()
+  const { openShop, openAchievements, shopOpen, achievementsOpen } = useOverlays()
+  const { tables: pokerTables, myTurn: pokerTurn, goToPoker } = usePoker()
   const navigate = useNavigate()
-  const onSocial = useLocation().pathname === '/'
+  const { pathname } = useLocation()
+  const onSocial = pathname === '/'
+  const onPoker = pathname === '/poker'
 
   /**
    * Painel da coluna direita: na tela social alterna; de outra aba (Minecraft,
@@ -107,8 +109,9 @@ export function ArenaRail() {
     },
     {
       id: 'poker',
-      active: pokerOpen,
-      run: () => openPoker(),
+      // Tela própria (rota /poker), não modal: ativo é estar NELA.
+      active: onPoker,
+      run: () => goToPoker(),
       hint: "Mesas de Texas Hold'em com murchos — e, com o caixa ligado, valendo até R$ 20 por pessoa.",
       // Vermelho só quando é a SUA vez com a tela fechada: é a única coisa
       // do pôquer que tem pressa. Mesas abertas são estado, embaixo.

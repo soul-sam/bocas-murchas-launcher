@@ -29,7 +29,7 @@ export type ArenaItem = 'ranking' | 'wagers' | 'poker' | 'achievements' | 'shop'
 export const ARENA_ICON: Record<ArenaItem, IconComponent> = {
   ranking: TrophyIcon,
   wagers: BetIcon,
-  // O pôquer é modal (components/poker/PokerModal), como lojinha e conquistas.
+  // O pôquer é uma TELA (pages/PokerPage, rota /poker), como o Minecraft.
   poker: PokerIcon,
   achievements: MedalIcon,
   shop: ShopIcon,
