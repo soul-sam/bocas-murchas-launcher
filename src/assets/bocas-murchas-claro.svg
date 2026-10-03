@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254">
+  <!-- Logo "adesivo": as cores originais dentro de um rosto escuro com
+       contorno, pra fundo claro (tema Papel). Desenhada no Claude Design a
+       partir de public/bocas-murchas-transp.png. O viewBox e o canvas inteiro
+       do PNG (1254x1254, mesma folga em volta): recortado, a logo clara
+       saia maior que a escura no mesmo <img>. -->
+  <g fill="#1C1530" stroke="#1C1530" stroke-width="56" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M250 520 Q260 400 380 360 L470 300 L790 300 L880 360 Q1000 400 1005 520 L1015 760 Q1040 830 1000 900 L880 1010 Q820 1050 760 1050 L494 1050 Q434 1050 374 1010 L254 900 Q214 830 240 760 Z"/>
+    <polyline points="265,445 325,340 495,232 755,232 925,340 985,445" fill="none" stroke-width="124"/>
+    <rect x="192" y="455" width="96" height="285" rx="22"/>
+    <path d="M182 500 L130 552 L130 668 L190 738 L190 500 Z"/>
+    <rect x="966" y="455" width="96" height="285" rx="22"/>
+    <path d="M1072 500 L1124 552 L1124 668 L1064 738 L1064 500 Z"/>
+  </g>
+  <polyline points="265,445 325,340 495,232 755,232 925,340 985,445" fill="none" stroke="#95F547" stroke-width="68" stroke-linejoin="round"/>
+  <g fill="#95F547">
+    <rect x="192" y="455" width="96" height="285" rx="22"/>
+    <path d="M182 500 L130 552 L130 668 L190 738 L190 650 L178 640 Z"/>
+    <rect x="966" y="455" width="96" height="285" rx="22"/>
+    <path d="M1072 500 L1124 552 L1124 668 L1064 738 L1064 650 L1076 640 Z"/>
+  </g>
+  <g fill="#FF3550">
+    <path d="M310 543 Q302 495 330 468 L402 397 Q422 385 452 385 L518 385 Q560 390 590 430 Q616 470 612 517 Z"/>
+    <path d="M944 543 Q952 495 924 468 L852 397 Q832 385 802 385 L736 385 Q694 390 664 430 Q638 470 642 517 Z"/>
+    <path d="M245 770 L340 690 Q370 662 410 668 L480 680 Q500 683 520 670 L590 625 Q627 605 664 625 L734 670 Q754 683 774 680 L844 668 Q884 662 914 690 L1009 770 Q1030 800 1000 822 Q985 830 965 822 L870 772 Q850 762 830 770 L770 795 Q745 803 720 790 L660 755 Q627 740 594 755 L534 790 Q509 803 484 795 L424 770 Q404 762 384 772 L289 822 Q265 832 248 815 Q228 795 245 770 Z"/>
+    <path d="M285 850 L385 822 Q410 818 430 826 L525 862 Q545 868 565 858 L605 838 Q627 828 649 838 L689 858 Q709 868 729 862 L824 826 Q844 818 869 822 L969 850 Q1000 865 992 900 Q986 912 970 922 L875 995 Q820 1025 770 1025 L484 1025 Q434 1025 379 995 L284 922 Q260 905 262 880 Q268 857 285 850 Z"/>
+  </g>
+  <g fill="#1C1530">
+    <path d="M420 549 A58 58 0 0 0 536 543 Z"/>
+    <path d="M834 549 A58 58 0 0 1 718 543 Z"/>
+  </g>
+  <g fill="#FBECC0" fill-rule="evenodd">
+    <path d="M332 558 L600 537 Q590 600 540 625 Q480 650 420 635 Q350 610 332 558 Z M420 549 A58 58 0 0 0 536 543 Z"/>
+    <path d="M922 558 L654 537 Q664 600 714 625 Q774 650 834 635 Q904 610 922 558 Z M834 549 A58 58 0 0 1 718 543 Z"/>
+  </g>
+</svg>

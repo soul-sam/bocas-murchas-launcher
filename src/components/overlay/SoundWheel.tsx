@@ -40,12 +40,13 @@ const WHEEL_BOX = (WHEEL_RADIUS + SLOT_HALF) * 2
  * pro centro, grandes — dá pra confirmar o som sem ler a etiqueta pequena.
  *
  * Ela FECHA ao escolher, de propósito: é um gesto, não um painel. Quem quer
- * dois sons seguidos aperta o atalho de novo, que é o mesmo dedo. E, sem
- * teclado nesta janela, o atalho é também a única saída — por isso nada aqui
- * pode prender o ponteiro.
+ * dois sons seguidos aperta o atalho de novo, que é o mesmo dedo. Sem teclado
+ * nesta janela, a saída é o atalho ou CLICAR FORA — por isso nada aqui pode
+ * prender o ponteiro.
  *
  * O vão entre os gomos NÃO tem `data-overlay-hit`: o clique que erra o gomo
- * vai pro jogo, como sempre.
+ * vai pro jogo, como sempre, e fecha a roda (quem vê é o main, ver
+ * `watchOutsideClick` em electron/main/services/overlay.ts).
  */
 export function SoundWheel({
   sounds,

@@ -12,6 +12,7 @@ import type {
   OverlayState,
   OverlayToast
 } from '../../preload/types.js'
+import { anyMouseButtonDown } from './mouse-buttons.js'
 
 /**
  * A SOBREPOSICAO — a janela que aparece por cima do jogo.
@@ -65,7 +66,9 @@ import type {
  * Isso vale inclusive com a roda aberta: o fundo dela nao captura clique, so
  * os gomos. Quem abriu a roda no meio de uma luta continua podendo clicar no
  * jogo — a roda nao e modal, e nao tem como ela ser: a janela nunca recebe
- * teclado (abaixo), entao nao haveria Esc pra sair de uma armadilha.
+ * teclado (abaixo), entao nao haveria Esc pra sair de uma armadilha. Clicar
+ * fora fecha a roda (e encolhe o painel) sem tirar o clique do jogo — ver
+ * `watchOutsideClick`.
  *
  * `focusable: false` (WS_EX_NOACTIVATE no Windows): clicar na sobreposicao NAO
  * tira o foco do jogo. E o que permite apostar e tocar som sem que o jogo
@@ -285,11 +288,67 @@ function pollCursor(): void {
   )
 
   applyInteractive(on)
+  if (watchOutsideClick(win, on)) return
 
   // IPC so quando muda: este relogio bate 20x por segundo.
   if (on === pointerOn) return
   pointerOn = on
   win.webContents.send('overlay:pointer', on)
+}
+
+/**
+ * ===========================================================================
+ * CLIQUE FORA FECHA — sem comer o clique do jogo.
+ * ===========================================================================
+ *
+ * Painel aberto ou roda na tela: um clique (qualquer botao) fora das pecas
+ * encolhe o painel de volta pra aba e fecha a roda. A sobreposicao NAO some —
+ * so volta pro estado de repouso.
+ *
+ * Fora das pecas a janela e atravessavel, entao o clique vai pro jogo e esta
+ * janela nunca o ve. Capturar a tela inteira enquanto algo esta aberto daria o
+ * evento, mas engoliria o clique (e a mira) de quem estava jogando. Em vez
+ * disso, o mesmo relogio do cursor pergunta ao Windows se algum botao desceu
+ * (ver services/mouse-buttons.ts) — o jogo recebe o clique E a sobreposicao
+ * fecha.
+ *
+ * So pergunta com algo aberto: o relogio bate 20x/s a partida inteira.
+ */
+let panelOpen = false
+/** O botao ja estava descido na volta anterior: so a DESCIDA conta como clique. */
+let buttonWasDown = false
+/**
+ * A primeira pergunta depois de abrir so zera o estado: o bit "apertado desde
+ * a ultima vez" do Windows pode trazer um clique de antes da abertura, e ele
+ * fecharia na hora o que acabou de abrir.
+ */
+let buttonPrimed = false
+
+/** @returns true se a janela foi embora e o `pollCursor` deve parar. */
+function watchOutsideClick(win: BrowserWindow, onPiece: boolean): boolean {
+  if (!panelOpen && !wheelOpen) {
+    buttonPrimed = false
+    return false
+  }
+
+  const down = anyMouseButtonDown()
+  const pressed = buttonPrimed && down && !buttonWasDown
+  buttonWasDown = down
+  buttonPrimed = true
+  if (!pressed || onPiece) return false
+
+  if (panelOpen) win.webContents.send('overlay:outside-click')
+  if (wheelOpen) {
+    wheelOpen = false
+    applyMode()
+    return win.isDestroyed()
+  }
+  return false
+}
+
+/** O renderer avisa quando o painel abre e fecha. */
+export function setOverlayPanelOpen(open: boolean): void {
+  panelOpen = open
 }
 
 function startCursorWatch(): void {
@@ -306,6 +365,8 @@ function stopCursorWatch(): void {
   forcedInteractive = false
   overlayShown = false
   lastTopAt = 0
+  panelOpen = false
+  buttonPrimed = false
 }
 
 /**

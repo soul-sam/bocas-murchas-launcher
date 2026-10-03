@@ -1240,6 +1240,10 @@ export interface BocasAPI {
     setHitAreas: (areas: OverlayHitArea[]) => Promise<void>
     /** O main viu o ponteiro entrar (ou sair) dos pedacos clicaveis. */
     onPointer: (cb: (on: boolean) => void) => () => void
+    /** O painel abriu ou encolheu: o main so vigia clique fora com ele aberto. */
+    setPanelOpen: (open: boolean) => Promise<void>
+    /** Clicou fora das pecas com o painel aberto: encolhe pra aba. */
+    onOutsideClick: (cb: () => void) => () => void
     /**
      * Abrir/fechar uma parte. Usado pelo botao "sons" do painel de canto e
      * pelo X de cada peca — o atalho global nao passa por aqui, ele ja chega

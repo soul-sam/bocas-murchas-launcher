@@ -61,6 +61,10 @@ export const BADGE_GLYPH: Record<string, ReactNode> = {
   maratonista: <path d="M4 10.5h5l3 4 7 1 1 5H4ZM7 7.5V5h8M15 3.5v3" />,
   // headset coroado
   'mil-horas': <path d="M5 14v-3l3-3.5h8l3 3.5v3M3.5 14h4v6h-4ZM16.5 14h4v6h-4ZM9 7.5v-4l3 2 3-2v4" />,
+  // estrela cheia
+  'cem-mil-xp': <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z" />,
+  // coroa
+  'meio-milhao-xp': <path d="M4 17.5 3.5 7l5 4 3.5-6.5 3.5 6.5 5-4-.5 10.5ZM4 20.5h16" />,
   // dado diagonal
   apostador: (
     <>

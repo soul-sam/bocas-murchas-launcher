@@ -162,6 +162,21 @@
     --burn-dark: 39 100% 22%;
   }
 
+  /* ---------- A logo nos temas CLAROS ----------
+     O PNG da logo foi desenhado pro escuro: rosto vazado, verde neon, olhos
+     creme — no fundo claro sobra meia logo. Nos temas de fundo claro entra a
+     versao "adesivo" (mesmas cores dentro de um rosto escuro com contorno).
+
+     Troca pela imagem, e nao por componente: `content: url()` num <img>
+     substitui o que ele desenha (Chromium), e assim os ~8 lugares que usam o
+     PNG (barra de titulo, home, canais, medalha da sobreposicao...) e o
+     ThemeSwatch da Lojinha seguem o tema sem saber que ele existe. Tema claro
+     novo entra nesta lista. */
+  :is([data-theme='papel'], [data-theme='acido-claro'], [data-theme='cafe'], [data-theme='lavanda'])
+    img[src$='bocas-murchas-transp.png'] {
+    content: url('../assets/bocas-murchas-claro.svg');
+  }
+
   /* ---------- Acido Claro (claro, com um resto de verde) ---------- */
   [data-theme='acido-claro'] {
     --luz: none;

@@ -406,6 +406,8 @@ function criarPonte(): BocasAPI {
       setDock: async () => {},
       setHitAreas: async () => {},
       onPointer: semEventos,
+      setPanelOpen: async () => {},
+      onOutsideClick: semEventos,
       setInteractive: async () => {},
       dismiss: async () => {},
       toast: async () => {},

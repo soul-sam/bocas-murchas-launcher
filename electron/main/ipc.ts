@@ -35,6 +35,7 @@ import {
   setOverlayInteractive,
   setOverlayHitAreas,
   setOverlayMode,
+  setOverlayPanelOpen,
   toggleOverlayPart
 } from './services/overlay.js'
 import type {
@@ -165,6 +166,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('overlay:set-hit-areas', async (_e, areas: OverlayHitArea[]) => {
     setOverlayHitAreas(Array.isArray(areas) ? areas : [])
+  })
+
+  ipcMain.handle('overlay:set-panel-open', async (_e, open: boolean) => {
+    setOverlayPanelOpen(Boolean(open))
   })
 
   ipcMain.handle('overlay:dismiss', async () => {
