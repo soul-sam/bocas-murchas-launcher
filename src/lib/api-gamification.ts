@@ -569,6 +569,15 @@ export function xpReasonLabel(reason: string | undefined | null): string {
   if (reason.startsWith('print_reward:')) return 'impressão concluída'
   if (reason.startsWith('print_hours_buy:')) return 'comprou horas de impressão'
   if (reason.startsWith('print_hours_sell:')) return 'vendeu horas de impressão'
+  // Pôquer (API: lib/poker/table.ts) — `poker:<buyin|topup|cashout|refund>:<tableId>`.
+  if (reason.startsWith('poker:')) {
+    const kind = reason.split(':')[1]
+    if (kind === 'buyin') return 'buy-in na mesa de pôquer'
+    if (kind === 'topup') return 'recarga na mesa de pôquer'
+    if (kind === 'cashout') return 'levantou da mesa de pôquer'
+    if (kind === 'refund') return 'devolução da mesa de pôquer'
+    return 'pôquer'
+  }
   if (reason.startsWith('levelup:')) {
     const level = reason.slice('levelup:'.length)
     return level === 'backfill' ? 'níveis que você já tinha' : `nível ${level}`

@@ -326,6 +326,78 @@
 }
 .poker-regua:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* ---------- QUEBROU: a pilha zerou ----------
+   Veu escuro, carimbo que bate na tela, fichas caindo e o painel de recarga
+   subindo um instante depois — a ordem conta a historia (perdeu, e aqui
+   esta a saida). */
+@keyframes quebrou-veu {
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to { opacity: 1; backdrop-filter: blur(3px); }
+}
+.poker-quebrou { animation: quebrou-veu 420ms ease-out both; }
+
+@keyframes quebrou-carimbo {
+  0% { opacity: 0; transform: scale(2.6) rotate(-16deg); }
+  55% { opacity: 1; transform: scale(0.94) rotate(-6deg); }
+  72% { transform: scale(1.05) rotate(-7deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-6deg); }
+}
+.poker-quebrou-carimbo {
+  animation: quebrou-carimbo 560ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  animation-delay: 180ms;
+  text-shadow: 0 0 24px hsl(var(--destructive) / 0.5);
+}
+
+/* O chao treme quando o carimbo bate. */
+@keyframes quebrou-tremor {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-6px, 2px, 0); }
+  40% { transform: translate3d(5px, -3px, 0); }
+  60% { transform: translate3d(-4px, 2px, 0); }
+  80% { transform: translate3d(3px, -1px, 0); }
+}
+.poker-quebrou-tremor { animation: quebrou-tremor 460ms ease-out both; animation-delay: 480ms; }
+
+@keyframes ficha-cai {
+  0% { opacity: 0; transform: translateY(-160px) rotate(0deg) scale(0.9); }
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(60px) rotate(var(--giro, 320deg)) scale(0.7); }
+}
+.poker-ficha-caindo {
+  position: absolute;
+  top: 30%;
+  left: var(--x);
+  animation: ficha-cai var(--dura, 1300ms) cubic-bezier(0.4, 0, 0.8, 0.6) both;
+  animation-delay: var(--atraso, 0ms);
+}
+
+@keyframes quebrou-painel {
+  from { opacity: 0; transform: translateY(28px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.poker-quebrou-painel { animation: quebrou-painel 460ms cubic-bezier(0.2, 0.85, 0.25, 1) both; animation-delay: 900ms; }
+
+/* O botao de recarregar chama: halo que respira. */
+@keyframes quebrou-chama {
+  0%, 100% { box-shadow: 0 0 22px rgb(var(--neon-rgb) / 0.3); }
+  50% { box-shadow: 0 0 34px rgb(var(--neon-rgb) / 0.55); }
+}
+.poker-quebrou-chama { animation: quebrou-chama 1.6s ease-in-out infinite; animation-delay: 1400ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .poker-quebrou,
+  .poker-quebrou-carimbo,
+  .poker-quebrou-tremor,
+  .poker-ficha-caindo,
+  .poker-quebrou-painel,
+  .poker-quebrou-chama {
+    animation: none !important;
+  }
+  .poker-quebrou { backdrop-filter: blur(3px); }
+  .poker-quebrou-carimbo { transform: rotate(-6deg); }
+  .poker-ficha-caindo { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .carta--entra,
   .carta--voa,

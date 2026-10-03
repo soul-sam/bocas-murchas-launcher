@@ -113,10 +113,12 @@ export function PokerPage() {
 
       <div className="relative z-conteudo flex min-h-0 flex-1">
         <div className="flex min-h-0 flex-1 flex-col">
-          {table ? (
-            <PokerTable onOpenRules={openRules} />
-          ) : view === 'cash' ? (
+          {view === 'cash' ? (
+            // O caixa abre também de dentro da mesa (quem quebrou e precisa
+            // depositar); "voltar" cai na mesa, se houver, senão no saguão.
             <CashPanel onBack={() => setView('lobby')} />
+          ) : table ? (
+            <PokerTable onOpenRules={openRules} onOpenCash={() => setView('cash')} />
           ) : (
             <PokerLobby rules={rules} onOpenRules={() => openRules(null)} onOpenCash={() => setView('cash')} />
           )}

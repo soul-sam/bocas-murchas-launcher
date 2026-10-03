@@ -273,6 +273,8 @@ export interface SeatView {
   lastAction: { type: string; amount: number } | null
   won: number | null
   best: { category: HandCategory; label: string } | null
+  /** Tudo que você já pôs nesta mesa (só na sua vista). */
+  boughtIn?: number | null
 }
 
 export interface ResultView {

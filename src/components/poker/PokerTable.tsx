@@ -151,7 +151,14 @@ function seatPositions(count: number, phone: boolean): Array<[number, number]> {
 
 const CENTER: [number, number] = [50, 50]
 
-export function PokerTable({ onOpenRules }: { onOpenRules: (category?: HandCategory | null) => void }) {
+export function PokerTable({
+  onOpenRules,
+  onOpenCash
+}: {
+  onOpenRules: (category?: HandCategory | null) => void
+  /** Mesa valendo: abre o caixa pra depositar (quem quebrou e está sem saldo). */
+  onOpenCash?: () => void
+}) {
   const { table, leaveTable, act, sit, stand, topUp, sitOut, show, closeTable, seatedAt } = usePoker()
   const { user } = useAuth()
   const { isPhone } = useLayout()
@@ -161,6 +168,8 @@ export function PokerTable({ onOpenRules }: { onOpenRules: (category?: HandCateg
   const [logOpen, setLogOpen] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [busy, setBusy] = React.useState(false)
+  /** Mão em que a pessoa mandou o aviso de "quebrou" embora (volta na próxima). */
+  const [bustDismissedFor, setBustDismissedFor] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (!error) return
@@ -206,6 +215,17 @@ export function PokerTable({ onOpenRules }: { onOpenRules: (category?: HandCateg
 
   const bestLabel = me?.best?.label ?? null
   const myCategory = me?.best?.category ?? null
+
+  // QUEBROU: pilha zerada, sem recarga a caminho, e a mão que zerou já
+  // acabou (all-in no meio da mão ainda não é quebrar). Enquanto o aviso
+  // está na tela a pessoa decide: recarrega, levanta ou fica olhando.
+  const busted =
+    !!me &&
+    me.stack === 0 &&
+    table.pendingTopUp === 0 &&
+    (table.result !== null || !me.inHand || me.folded)
+  const bustKey = table.handId ?? 'sem-mao'
+  const showBusted = busted && bustDismissedFor !== bustKey
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -278,6 +298,18 @@ export function PokerTable({ onOpenRules }: { onOpenRules: (category?: HandCateg
               <Ghost key={g.id} ghost={g} table={table} />
             ))}
 
+            {showBusted && me && (
+              <BustedOverlay
+                table={table}
+                seat={me}
+                busy={busy}
+                onTopUp={(amount) => void run(() => topUp(table.id, amount))}
+                onStand={() => void run(() => stand(table.id))}
+                onDismiss={() => setBustDismissedFor(bustKey)}
+                onOpenCash={onOpenCash}
+              />
+            )}
+
             {rotated.map(({ index, seat, pos, slot }) => (
               <SeatSpot
                 key={index}
@@ -340,6 +372,15 @@ export function PokerTable({ onOpenRules }: { onOpenRules: (category?: HandCateg
                       </span>
                     )}
                   </span>
+                  {busted && !showBusted && (
+                    <button
+                      type="button"
+                      onClick={() => setBustDismissedFor(null)}
+                      className="poker-quebrou-chama rounded-full border border-destructive/60 bg-destructive/10 px-2 py-0.5 text-[11.5px] text-destructive transition-colors hover:bg-destructive/20"
+                    >
+                      sem fichas — recarregar
+                    </button>
+                  )}
                   {bestLabel && inHand && (
                     <button
                       type="button"
@@ -1261,6 +1302,154 @@ function TopUpDialog({
         </p>
       )}
     </AmountDialog>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Quebrou
+// ---------------------------------------------------------------------------
+
+const FALLING_CHIPS: Array<{ x: number; delay: number; dur: number; spin: number; color: string }> = [
+  { x: 18, delay: 0, dur: 1300, spin: 300, color: 'hsl(var(--acid))' },
+  { x: 31, delay: 120, dur: 1500, spin: -260, color: 'hsl(var(--burn))' },
+  { x: 44, delay: 60, dur: 1200, spin: 380, color: 'hsl(var(--destructive))' },
+  { x: 56, delay: 220, dur: 1600, spin: -340, color: 'hsl(var(--acid))' },
+  { x: 67, delay: 90, dur: 1350, spin: 290, color: 'hsl(var(--muted-foreground))' },
+  { x: 79, delay: 260, dur: 1450, spin: -300, color: 'hsl(var(--burn))' },
+  { x: 25, delay: 380, dur: 1250, spin: 330, color: 'hsl(var(--destructive))' },
+  { x: 73, delay: 440, dur: 1400, spin: -280, color: 'hsl(var(--acid))' }
+]
+
+/**
+ * A pilha zerou. Veu por cima do feltro, carimbo "QUEBROU", fichas caindo e
+ * — um instante depois — o painel com a saida: recarregar (o quanto cabe no
+ * teto da mesa e no saldo), levantar, ou ficar olhando. Na mesa valendo sem
+ * saldo no caixa, o caminho e depositar.
+ */
+function BustedOverlay({
+  table,
+  seat,
+  busy,
+  onTopUp,
+  onStand,
+  onDismiss,
+  onOpenCash
+}: {
+  table: TableView
+  seat: SeatView
+  busy: boolean
+  onTopUp: (amount: number) => void
+  onStand: () => void
+  onDismiss: () => void
+  onOpenCash?: () => void
+}) {
+  const balance = useBalanceFor(table)
+  const currency = table.stake.currency
+  const fmt = (v: number): string => formatMoney(v, currency)
+  const step = table.stake.smallBlind
+  const min = table.stake.bigBlind
+  const cap = table.stake.capPerSeat
+  const capRoom = cap !== undefined ? Math.max(0, cap - (seat.boughtIn ?? cap)) : Infinity
+  const max = Math.min(table.maxBuyIn, capRoom)
+  const affordable = balance !== null ? Math.floor(balance / step) * step : max
+  const top = Math.min(max, affordable)
+  const canTopUp = top >= min
+  const capHit = cap !== undefined && capRoom < min
+  const broke = !capHit && balance !== null && affordable < min
+  const [amount, setAmount] = React.useState(() => Math.max(min, Math.min(max, affordable)))
+  React.useEffect(() => {
+    setAmount(Math.max(min, Math.min(max, affordable)))
+  }, [min, max, affordable])
+
+  return (
+    <div
+      className="poker-quebrou absolute inset-0 z-dialogo flex items-center justify-center overflow-hidden bg-black/70 p-4"
+      role="dialog"
+      aria-label="Suas fichas acabaram"
+    >
+      {/* fichas caindo */}
+      {FALLING_CHIPS.map((c, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className="poker-ficha-caindo poker-ficha-redonda poker-ficha-redonda--aposta h-7 w-7"
+          style={
+            {
+              ['--x' as string]: `${c.x}%`,
+              ['--atraso' as string]: `${c.delay}ms`,
+              ['--dura' as string]: `${c.dur}ms`,
+              ['--giro' as string]: `${c.spin}deg`,
+              ['--ficha-cor' as string]: c.color
+            } as React.CSSProperties
+          }
+        />
+      ))}
+
+      <div className="poker-quebrou-tremor flex w-full max-w-md flex-col items-center gap-4">
+        <div className="poker-quebrou-carimbo rounded-brutal border-4 border-destructive px-6 py-2">
+          <p className="font-display text-5xl uppercase leading-none tracking-wide text-destructive sm:text-6xl">Quebrou</p>
+        </div>
+
+        <div className="poker-quebrou-painel card-gradient w-full rounded-brutal border-2 border-acid-dark p-4 shadow-[0_20px_60px_rgb(0_0_0/0.6)]">
+          <p className="text-center text-sm text-foreground">Suas fichas acabaram nesta mesa.</p>
+          <p className="mt-1 text-center text-[11.5px] text-muted-foreground">
+            {capHit
+              ? `Você já pôs o teto de ${fmt(cap ?? 0)} nesta mesa, recargas incluídas. Dá pra ficar olhando ou levantar.`
+              : broke
+                ? currency === 'brl'
+                  ? `Seu caixa tem ${balance === null ? '…' : fmt(balance)}, menos que o mínimo (${fmt(min)}). Deposite por Pix pra voltar.`
+                  : `Você tem ${balance === null ? '…' : fmt(balance)} murchos, menos que o mínimo (${fmt(min)}). Murcho se ganha em call, partida, check-in e missão.`
+                : currency === 'brl'
+                  ? `Recarregue do seu caixa — ainda cabem ${fmt(capRoom === Infinity ? max : capRoom)} no teto desta mesa.`
+                  : 'Recarregue do seu saldo e entre na próxima mão.'}
+          </p>
+
+          {canTopUp && (
+            <>
+              <div className="mt-4 flex items-center gap-2">
+                <input
+                  type="range"
+                  className="poker-regua flex-1"
+                  min={min}
+                  max={Math.max(min, top)}
+                  step={step}
+                  value={Math.min(amount, Math.max(min, top))}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  aria-label="Valor da recarga"
+                />
+                <span className="w-24 text-right font-mono text-sm text-foreground">{fmt(amount)}</span>
+              </div>
+              <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+                <span>mín {fmt(min)}</span>
+                <span>
+                  saldo <span className={cn('font-mono', currency === 'brl' ? 'text-burn' : 'text-burn')}>{balance === null ? '…' : fmt(balance)}</span>
+                </span>
+              </div>
+            </>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={onDismiss} disabled={busy}>
+              Ficar olhando
+            </Button>
+            <Button variant="destructive" size="sm" onClick={onStand} disabled={busy}>
+              <DoorOpen className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              Levantar
+            </Button>
+            {canTopUp ? (
+              <Button size="sm" className="poker-quebrou-chama" disabled={busy} onClick={() => onTopUp(amount)}>
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : `Recarregar ${fmt(amount)}`}
+              </Button>
+            ) : broke && currency === 'brl' && onOpenCash ? (
+              <Button size="sm" className="poker-quebrou-chama" onClick={onOpenCash}>
+                <Coins className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                Depositar no caixa
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

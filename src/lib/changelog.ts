@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.46.0',
+    headline: 'Pôquer: quebrou? Recarrega ali mesmo',
+    items: [
+      'Quando a pilha zera, a mesa avisa com estilo — carimbo, fichas caindo — e já oferece a recarga no mesmo lugar: quanto cabe no teto da mesa e no seu saldo, levantar, ou ficar só olhando.',
+      'Na mesa valendo sem saldo no caixa, o aviso leva direto pro depósito por Pix; o caixa agora abre de dentro da mesa e volta pra ela.'
+    ]
+  },
+  {
     version: '1.45.0',
     headline: 'Pôquer: um minuto pra jogar, e cartas que se mexem',
     items: [
