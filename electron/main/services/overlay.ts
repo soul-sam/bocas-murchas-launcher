@@ -13,6 +13,7 @@ import type {
   OverlayToast
 } from '../../preload/types.js'
 import { anyMouseButtonDown } from './mouse-buttons.js'
+import { ensureNoActivate } from './no-activate.js'
 
 /**
  * A SOBREPOSICAO — a janela que aparece por cima do jogo.
@@ -238,6 +239,8 @@ function applyInteractive(next: boolean): void {
   if (next === interactiveNow) return
   interactiveNow = next
   overlayWindow.setIgnoreMouseEvents(!next, { forward: true })
+  // O Electron reescreve o GWL_EXSTYLE inteiro aqui — ver no-activate.ts.
+  ensureNoActivate(overlayWindow)
 }
 
 /**
@@ -398,7 +401,14 @@ function mainWindow(): BrowserWindow | null {
 function targetBounds(): Electron.Rectangle {
   // `bounds` e nao `workArea`: um jogo sem bordas cobre a barra de tarefas, e
   // a sobreposicao precisa alcancar o mesmo retangulo que ele.
-  return screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds
+  const b = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds
+  // UM PIXEL A MENOS, de proposito. Interativa, a janela perde o
+  // WS_EX_LAYERED/TRANSPARENT e vira, pro Windows, uma janela opaca, por cima
+  // de tudo e do tamanho EXATO do monitor — ou seja, "um app em tela cheia".
+  // O jogo perde o posto de tela cheia e minimiza: era o "passar o mouse na
+  // sobreposicao minimiza o jogo". Uma linha a menos no rodape e invisivel e
+  // tira a janela dessa deteccao.
+  return { ...b, height: b.height - 1 }
 }
 
 /**
@@ -480,6 +490,7 @@ function createOverlayWindow(): BrowserWindow {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   // Nasce atravessavel; quem liga e desliga daqui pra frente e o `pollCursor`.
   win.setIgnoreMouseEvents(true, { forward: true })
+  ensureNoActivate(win)
   interactiveNow = false
   overlayShown = false
   lastTopAt = Date.now()

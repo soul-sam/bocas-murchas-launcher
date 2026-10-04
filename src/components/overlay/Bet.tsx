@@ -40,7 +40,7 @@ const HOLD_REPEAT_MS = 70
 const HOLD_FAST_AFTER = 12
 const HOLD_FAST_STEP = 50
 /** Fichas rápidas. O mínimo e o limite entram sozinhos. */
-const PRESETS = [50, 100, 250, 500] as const
+const PRESETS = [50, 100, 250, 500, 1000, 2500] as const
 /** Primeira aposta da janela: nem o mínimo (tímido) nem o teto (afobado). */
 const DEFAULT_AMOUNT = 50
 /**
@@ -65,7 +65,12 @@ export function snapAmount(value: number, min: number, max: number): number {
  * "daqui não passa" sem precisar de texto.
  */
 export function quickAmounts(min: number, limit: number): number[] {
-  const unique = [...new Set([min, ...PRESETS.filter((v) => v > min && v < limit), limit])]
+  const middle = PRESETS.filter((v) => v > min && v < limit)
+  // Teto alto (sobe até 5000) traria seis fichas do meio. Saem as pequenas do
+  // meio, e não as pontas: o 50 é o valor de sempre e as grandes são o motivo
+  // de o teto ter subido.
+  while (middle.length > 4) middle.splice(1, 1)
+  const unique = [...new Set([min, ...middle, limit])]
   // Até cinco: mais que isso o botão deixa de ser alvo no meio de uma luta.
   // Sai o mínimo primeiro — a régua já começa nele.
   while (unique.length > 5) unique.shift()

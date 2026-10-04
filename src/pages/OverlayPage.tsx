@@ -101,6 +101,12 @@ const AUTO_OPEN_MS = 10_000
 const OFFLINE_AFTER_MS = 5_000
 
 /**
+ * De quanto em quanto tempo os retangulos clicaveis sao medidos de novo, alem
+ * de a cada pintura. Ver `useClickThrough`.
+ */
+const HIT_REMEASURE_MS = 150
+
+/**
  * "Agora", de segundo em segundo, pro cronômetro da partida e pra contagem
  * até a aposta fechar.
  *
@@ -502,8 +508,9 @@ function DockedPanel({
         // `w-[22rem]` e altura limitada pela tela: o painel com cinco partidas
         // pra apostar é muito mais alto que o de nenhuma.
         'absolute z-gaveta flex max-h-[calc(100vh-2rem)] w-[22rem] min-h-0 flex-col',
-        // Encostado na aba (que tem 12px), não na borda da tela.
-        inset ?? (side === 'left' ? 'left-4' : 'right-4')
+        // Encostado na aba (32px, 36px aberta), não na borda da tela. Já foi
+        // `left-4`, da época da aba de 12px: o painel cobria a aba.
+        inset ?? (side === 'left' ? 'left-11' : 'right-11')
       )}
     >
       {children}
@@ -746,10 +753,19 @@ function useClickThrough(force: boolean): boolean {
    * painel abre, encolhe e cresce sozinho quando chega retrato novo, e cada
    * uma dessas mexe nos retangulos. Mandar so quando MUDA evita transformar
    * isso numa enxurrada de IPC.
+   *
+   * SO A PINTURA DESTA PAGINA NAO BASTA. Boa parte do que mexe nos retangulos
+   * nao re-renderiza a OverlayPage: o `DockedPanel` crescendo (ResizeObserver
+   * com estado proprio), o formulario de aposta abrindo (estado do `Bet`), a
+   * logo deslizando (transicao de 200ms, medida no primeiro quadro dela). O
+   * main ficava com o retangulo VELHO — o formulario desenhado, o clique caindo
+   * fora da area publicada e atravessando pro jogo. Era o "nao da pra clicar".
+   * Por isso tambem mede num relogio curto; com a assinatura abaixo, um relogio
+   * que nao acha mudanca nao manda nada.
    */
   const ultimoRef = React.useRef('')
 
-  React.useEffect(() => {
+  const publicar = React.useCallback(() => {
     const areas = [...document.querySelectorAll('[data-overlay-hit]')]
       .map((hit) => {
         const r = hit.getBoundingClientRect()
@@ -766,7 +782,14 @@ function useClickThrough(force: boolean): boolean {
     if (assinatura === ultimoRef.current) return
     ultimoRef.current = assinatura
     void window.bocas.overlay.setHitAreas(areas).catch(() => {})
-  })
+  }, [])
+
+  React.useEffect(publicar)
+
+  React.useEffect(() => {
+    const timer = setInterval(publicar, HIT_REMEASURE_MS)
+    return () => clearInterval(timer)
+  }, [publicar])
 
   // O main viu o ponteiro entrar ou sair. E ele quem manda.
   React.useEffect(() => {

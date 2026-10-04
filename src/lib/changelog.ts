@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.47.1',
+    headline: 'Aposta até o seu teto, e a sobreposição de volta ao clique',
+    items: [
+      'A aposta passava de 999 de jeito nenhum — o campo não aceitava o quarto dígito. Agora vai até o seu teto, e tem o botão "máx" pra apostar tudo que dá.',
+      'Na sobreposição, com teto alto, aparecem as fichas de 1000 e 2500.',
+      'A sobreposição do jogo voltou a aceitar clique: o painel crescia e a parte nova deixava o clique passar direto pro jogo.',
+      'Passar o mouse na sobreposição não minimiza mais o jogo.'
+    ]
+  },
+  {
     version: '1.47.0',
     headline: 'Filamento: rolo cadastrado agora se edita',
     items: [

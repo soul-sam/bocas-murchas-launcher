@@ -367,6 +367,8 @@ export function BetForm({
   const expired = Boolean(closesAt) && left === null
 
   const value = custom ? Number(custom) : amount
+  /** O teto ou tudo que a pessoa tem, o que for menor. */
+  const maxBet = Math.min(limit, Math.floor(coins))
   const valid = Number.isInteger(value) && value >= WAGER_MIN && value <= limit
   const affordable = value <= coins
   const canSubmit = valid && affordable && !busy && !expired
@@ -450,18 +452,38 @@ export function BetForm({
             {preset}
           </button>
         ))}
+        {/* O teto é PESSOAL e sobe até 5000: o campo aceita os dígitos dele (era
+            fixo em 3, e ninguém passava de 999), e o que passar vira o teto. */}
         <input
           type="number"
           min={WAGER_MIN}
           max={limit}
           value={custom}
-          onChange={(e) => setCustom(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/[^\d]/g, '').slice(0, String(limit).length)
+            setCustom(digits && Number(digits) > limit ? String(limit) : digits)
+          }}
           placeholder="outro"
           className={cn(
-            'input-terminal w-14 rounded-brutal px-1 py-1 text-center text-[11.5px]',
+            'input-terminal w-16 rounded-brutal px-1 py-1 text-center text-[11.5px]',
             custom && !valid && 'border-destructive'
           )}
         />
+        {maxBet >= WAGER_MIN && (
+          <button
+            type="button"
+            title={`Tudo que dá: ${maxBet}`}
+            onClick={() => setCustom(String(maxBet))}
+            className={cn(
+              'rounded-brutal border px-1.5 py-1 font-mono text-[11.5px] uppercase transition-colors',
+              custom === String(maxBet)
+                ? 'border-burn bg-burn/15 text-burn'
+                : 'border-line text-muted-foreground hover:border-burn/50 hover:text-foreground'
+            )}
+          >
+            máx
+          </button>
+        )}
       </div>
 
       <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
