@@ -389,6 +389,20 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const standaloneProcessorRef = React.useRef<MicProcessor | null>(null)
   const [monitorHolds, setMonitorHolds] = React.useState(0)
   const [micTestActive, setMicTestActive] = React.useState(false)
+  /** A tela de configurações está lendo o mic (medidor ou teste): não soltar. */
+  const micInUseRef = React.useRef(false)
+  micInUseRef.current = monitorHolds > 0 || micTestActive
+  /** O processador da call soltou o mic (ver releaseMicIfIdle). */
+  const micReleasedRef = React.useRef(false)
+
+  /**
+   * AudioContext da mistura do LiveKit (`webAudioMix`). É nosso, e não o que
+   * o SDK cria sozinho, pra dar pra SUSPENDER ao ensurdecer: contexto rodando
+   * mantém a saída de áudio aberta mesmo sem som, e o Windows não deixa o PC
+   * dormir com um "fluxo de áudio em uso". O SDK não fecha contexto fornecido
+   * — quem fecha é o leave.
+   */
+  const mixContextRef = React.useRef<AudioContext | null>(null)
   /** Incrementa quando um processador nasce ou morre — o loopback reanexa. */
   const [processorEpoch, setProcessorEpoch] = React.useState(0)
 
@@ -430,7 +444,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
       const wanted = shouldSubscribe(
         { source: publication.source, kind: publication.kind },
-        { watching: watchingRef.current === participant.identity, hidden: hiddenRef.current }
+        {
+          watching: watchingRef.current === participant.identity,
+          hidden: hiddenRef.current,
+          deafened: deafenedRef.current
+        }
       )
       // `isDesired` e o que ESTE cliente pediu; sem a comparacao cada
       // sincronizacao mandaria um UpdateSubscription redundante pro servidor.
@@ -773,11 +791,23 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const applyDeafen = React.useCallback(
     (value: boolean) => {
       deafenedRef.current = value
+
+      // Volume zero não bastava: o áudio continuava chegando e tocando em
+      // silêncio, e o fone ficava "em uso" pro Windows (o PC não dormia).
+      // Ensurdecido, o áudio dos outros é DESASSINADO e a mistura suspensa.
+      // A ordem importa ao voltar: mistura rodando antes de as faixas chegarem.
+      const mix = mixContextRef.current
+      if (mix && mix.state !== 'closed') {
+        void (value ? mix.suspend() : mix.resume()).catch(() => {})
+      }
+      const current = roomRef.current
+      if (current) applyAllSubscriptions(current)
+
       // Voltar a ouvir devolve o volume AJUSTADO de cada um. Antes voltava
       // todo mundo pro 1 e apagava o volume que a pessoa tinha escolhido.
       applyVolumes()
     },
-    [applyVolumes]
+    [applyVolumes, applyAllSubscriptions]
   )
 
   const leave = React.useCallback(async () => {
@@ -807,7 +837,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     // do gate continua rodando pra ninguém.
     callProcessorRef.current?.destroy()
     callProcessorRef.current = null
+    micReleasedRef.current = false
     setProcessorEpoch((epoch) => epoch + 1)
+    void mixContextRef.current?.close().catch(() => {})
+    mixContextRef.current = null
 
     // Pela ref, nao pelo `socket` fechado no callback: `leave` e chamada de
     // dentro dos handlers do LiveKit e do menu da bandeja, que foram
@@ -856,6 +889,15 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       try {
         const credentials = await livekit.token(token, `voice-${target.id}`)
 
+        let mixContext: AudioContext | null = null
+        try {
+          mixContext = new AudioContext()
+        } catch {
+          // Sem contexto nosso, o SDK cria o dele. Só não dá pra suspender.
+        }
+        void mixContextRef.current?.close().catch(() => {})
+        mixContextRef.current = mixContext
+
         const next = new Room({
           adaptiveStream: true,
           dynacast: true,
@@ -864,7 +906,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           // IndexSizeError e o ajuste nao aplica). Com WebAudio o volume vira
           // um GainNode, que aceita > 1. A troca de saida continua funcionando:
           // o SDK chama AudioContext.setSinkId alem do setSinkId dos elementos.
-          webAudioMix: true,
+          // O contexto e nosso pra poder suspender ao ensurdecer (mixContextRef).
+          webAudioMix: mixContext ? { audioContext: mixContext } : true,
           audioCaptureDefaults: {
             deviceId:
               settings.voice.inputDeviceId !== 'default'
@@ -1295,6 +1338,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao entrar na call')
         setChannel(null)
+        if (!roomRef.current) {
+          void mixContextRef.current?.close().catch(() => {})
+          mixContextRef.current = null
+        }
       } finally {
         setConnecting(false)
       }
@@ -1314,22 +1361,90 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     ]
   )
 
-  const setMic = React.useCallback(
-    async (enabled: boolean, opts?: { transient?: boolean }) => {
-      const current = roomRef.current
-      if (!current) return
-      await current.localParticipant.setMicrophoneEnabled(enabled)
-      setMicEnabled(enabled)
-      cue(enabled ? 'unmute' : 'mute')
-      void window.bocas.tray.setVoiceState({ inVoice: true, micMuted: !enabled })
+  /**
+   * MUDO DE VERDADE SOLTA O MIC.
+   *
+   * Mutar só desligava a faixa: a captura continuava aberta por baixo, o
+   * Windows via o headset "em uso" e o PC não dormia com a call aberta.
+   *
+   * Solta só no mudo POR ESCOLHA (botão, atalho, ensurdecer). O push-to-talk
+   * não: reabrir o dispositivo a cada aperto da tecla custa um ou dois
+   * décimos de segundo e come o começo de toda frase. E não solta enquanto a
+   * tela de configurações está lendo o medidor ou fazendo o teste.
+   */
+  const releaseMicIfIdle = React.useCallback(() => {
+    const current = roomRef.current
+    const processor = callProcessorRef.current
+    if (!current || !processor || micReleasedRef.current) return
+    if (current.localParticipant.isMicrophoneEnabled) return
+    if (!selfMutedRef.current || micInUseRef.current) return
 
-      if (!opts?.transient) {
-        selfMutedRef.current = !enabled
-        publishFlags()
+    processor.release()
+    micReleasedRef.current = true
+    // Sem faixa medida, o seu anel cai no sinal do servidor (que mutado é
+    // "calado") — e o detector, sem ninguém, suspende o contexto dele.
+    speakingRef.current?.unwatch(current.localParticipant.identity)
+  }, [])
+
+  const ensureMicCaptured = React.useCallback(async () => {
+    const processor = callProcessorRef.current
+    if (!processor || !micReleasedRef.current) return
+    micReleasedRef.current = false
+    try {
+      await processor.reacquire()
+    } catch (err) {
+      // Mic sumiu enquanto estava solto. A faixa segue publicada, em silêncio;
+      // trocar de mic nas configurações ou reentrar na call resolve.
+      console.warn('[voice] não consegui reabrir o mic', err)
+      return
+    }
+    // A call pode ter acabado (ou trocado de processador, ou soltado de novo)
+    // durante o getUserMedia.
+    const current = roomRef.current
+    if (!current || callProcessorRef.current !== processor || micReleasedRef.current) return
+    speakingDetector().watch(current.localParticipant.identity, processor.processedStream)
+  }, [speakingDetector])
+
+  /**
+   * Em fila: desmutar agora espera o mic reabrir, e um mudo clicado nesse
+   * meio-tempo não pode passar na frente — terminaria com o botão aberto e a
+   * captura solta (mic "ligado" mandando silêncio).
+   */
+  const micQueueRef = React.useRef<Promise<void>>(Promise.resolve())
+
+  const setMic = React.useCallback(
+    (enabled: boolean, opts?: { transient?: boolean }): Promise<void> => {
+      const run = async (): Promise<void> => {
+        const current = roomRef.current
+        if (!current) return
+        // Antes de ligar a faixa: senão a primeira sílaba sai no silêncio do
+        // mic ainda abrindo.
+        if (enabled) await ensureMicCaptured()
+        await current.localParticipant.setMicrophoneEnabled(enabled)
+        setMicEnabled(enabled)
+        cue(enabled ? 'unmute' : 'mute')
+        void window.bocas.tray.setVoiceState({ inVoice: true, micMuted: !enabled })
+
+        if (!opts?.transient) {
+          selfMutedRef.current = !enabled
+          publishFlags()
+        }
+        if (!enabled) releaseMicIfIdle()
       }
+      const next = micQueueRef.current.then(run, run)
+      micQueueRef.current = next.catch(() => {})
+      return next
     },
-    [cue, publishFlags]
+    [cue, publishFlags, ensureMicCaptured, releaseMicIfIdle]
   )
+
+  // Abriu o medidor ou o teste com o mic solto: pega de volta. Fechou: solta
+  // de novo se ainda estiver mudo por escolha.
+  React.useEffect(() => {
+    if (!connected) return
+    if (monitorHolds > 0 || micTestActive) void ensureMicCaptured()
+    else releaseMicIfIdle()
+  }, [connected, monitorHolds, micTestActive, ensureMicCaptured, releaseMicIfIdle])
 
   const toggleMic = React.useCallback(async () => {
     const current = roomRef.current
@@ -1855,6 +1970,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       callProcessorRef.current = null
       standaloneProcessorRef.current?.destroy()
       standaloneProcessorRef.current = null
+      void mixContextRef.current?.close().catch(() => {})
+      mixContextRef.current = null
     }
   }, [])
 

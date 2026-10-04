@@ -341,7 +341,7 @@ export function playJoinSound(sound: string | null | undefined, phase: 'join' | 
 
   const audio = audioContext()
   if (!audio) return false
-  if (audio.state === 'suspended') void audio.resume().catch(() => {})
+  wake(audio)
 
   playSynth(audio, pair[phase], volume)
   return true
@@ -371,6 +371,29 @@ function audioContext(): AudioContext | null {
   }
 }
 
+/** Folga depois do último aviso antes de suspender. O mais longo dura ~1s. */
+const IDLE_SUSPEND_MS = 3_000
+
+let idleTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Acorda o contexto pra tocar e agenda a suspensão.
+ *
+ * Contexto rodando mantém a saída de áudio aberta mesmo em silêncio, e pro
+ * Windows isso é "um fluxo de áudio está em uso": o PC não dorme. Um aviso de
+ * meio segundo não pode segurar o fone aberto pelo resto do dia.
+ */
+function wake(audio: AudioContext): void {
+  // Sempre, não só quando 'suspended': um suspend ainda em andamento mostra
+  // 'running', e o resume pedido depois dele é atendido depois dele.
+  void audio.resume().catch(() => {})
+  if (idleTimer) clearTimeout(idleTimer)
+  idleTimer = setTimeout(() => {
+    idleTimer = null
+    if (audio.state === 'running') void audio.suspend().catch(() => {})
+  }, IDLE_SUSPEND_MS)
+}
+
 /**
  * Avisos que vêm de arquivo em vez de sintetizados. Entrar e sair da call
  * tocam pra todo mundo que está na sala: quem chega e quem já estava ouvem
@@ -391,9 +414,7 @@ export function playUiSound(name: UiSound, volume: number): void {
   const audio = audioContext()
   if (!audio) return
 
-  // Depois de um tempo ocioso o contexto pode entrar em suspenso.
-  if (audio.state === 'suspended') void audio.resume().catch(() => {})
-
+  wake(audio)
   playSynth(audio, cue, volume)
 }
 

@@ -35,6 +35,15 @@ test('assistindo com a janela minimizada: corta o video, mantem o audio', () => 
   assert.equal(shouldSubscribe(audio('screen_share_audio'), ctx), true)
 })
 
+test('ensurdecido: nenhum audio chega, imagem continua', () => {
+  const ctx = { watching: true, hidden: false, deafened: true }
+  assert.equal(shouldSubscribe(audio('microphone'), ctx), false)
+  assert.equal(shouldSubscribe(audio('screen_share_audio'), ctx), false)
+  assert.equal(shouldSubscribe(audio('unknown'), ctx), false)
+  assert.equal(shouldSubscribe(video('screen_share'), ctx), true)
+  assert.equal(shouldSubscribe(video('camera'), ctx), true)
+})
+
 test('fonte desconhecida: audio sim, video nao', () => {
   const ctx = { watching: false, hidden: false }
   assert.equal(shouldSubscribe(audio('unknown'), ctx), true)

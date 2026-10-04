@@ -96,7 +96,10 @@ export function ClipProvider({ children }: { children: React.ReactNode }) {
 
   const enabled = settings.clipBuffer
   const room = voice.room
-  const connected = voice.connected
+  // Mudo e ensurdecido não há o que clipar — e o gravador rodando segura a
+  // saída de áudio aberta (o Windows não deixa o PC dormir). Volta a gravar,
+  // do zero, assim que a pessoa volta a ouvir ou falar.
+  const connected = voice.connected && !(voice.deafened && !voice.micEnabled)
 
   // Refs pro atalho global, que é registrado uma vez e não pode depender de
   // valores fechados num render antigo.

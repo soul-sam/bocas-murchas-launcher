@@ -32,18 +32,27 @@ export interface SubscriptionContext {
    * ainda quer ouvir o jogo do amigo.
    */
   hidden: boolean
+  /**
+   * Ensurdecido: nenhum audio e assinado. Volume zero nao bastava — o som
+   * continuava chegando e tocando em silencio, e pro Windows isso e "um fluxo
+   * de audio esta em uso": o PC nao dorme. Sem assinatura nao chega nada. O
+   * anel de quem fala cai no sinal do servidor, que nao depende de receber o
+   * audio.
+   */
+  deafened?: boolean
 }
 
 /**
  * Decide se uma publicacao remota deve estar assinada.
  *
- * - Microfone: sempre. E a call.
+ * - Microfone: sempre, menos ensurdecido. E a call.
  * - Camera: sempre. O adaptiveStream pausa quando nao tem card visivel, e a
  *   webcam e 360p — nao e ela que derruba o FPS de ninguem.
  * - Video da tela: SO quando a pessoa esta assistindo E a janela esta visivel.
- * - Audio da tela: SO quando a pessoa esta assistindo (visivel ou nao).
+ * - Audio da tela: SO quando a pessoa esta assistindo (visivel ou nao) e nao
+ *   esta ensurdecida.
  * - Fonte desconhecida: audio sim (pode ser um mic publicado sem source),
- *   video nao.
+ *   menos ensurdecido; video nao.
  */
 export function shouldSubscribe(
   // `string` e nao os unions: os enums do livekit-client (Track.Source e
@@ -53,16 +62,16 @@ export function shouldSubscribe(
 ): boolean {
   switch (publication.source as TrackSourceName) {
     case 'microphone':
-      return true
+      return !context.deafened
     case 'camera':
       return true
     case 'screen_share':
       return context.watching && !context.hidden
     case 'screen_share_audio':
-      return context.watching
+      return context.watching && !context.deafened
     case 'unknown':
     default:
-      return publication.kind === 'audio'
+      return publication.kind === 'audio' && !context.deafened
   }
 }
 

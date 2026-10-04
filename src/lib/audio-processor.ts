@@ -96,6 +96,15 @@ export interface MicProcessor {
       Pick<MicProcessorOptions, 'inputGain' | 'noiseGateThreshold' | 'rumbleFilter'>
     >
   ) => void
+  /**
+   * Solta o microfone sem desmontar nada: para a captura (o Windows deixa de
+   * ver o dispositivo "em uso") e suspende o contexto (que segura a saída de
+   * áudio aberta só por existir). A faixa processada continua viva e
+   * publicada — sai silêncio, e o LiveKit nem fica sabendo.
+   */
+  release: () => void
+  /** Pega o mic de volta. Resolve quando o som já está correndo de novo. */
+  reacquire: () => Promise<void>
   destroy: () => void
 }
 
@@ -160,7 +169,7 @@ export function dbToMeter(db: number): number {
 }
 
 export async function createMicProcessor(options: MicProcessorOptions): Promise<MicProcessor> {
-  const raw = await navigator.mediaDevices.getUserMedia({
+  const constraints: MediaStreamConstraints = {
     audio: {
       // deviceId "ideal", não "exact": mic desplugado cai pro padrão em vez
       // de derrubar a entrada na call — igual o LiveKit fazia.
@@ -171,7 +180,8 @@ export async function createMicProcessor(options: MicProcessorOptions): Promise<
       channelCount: 1,
       sampleRate: 48_000
     }
-  })
+  }
+  let raw = await navigator.mediaDevices.getUserMedia(constraints)
 
   // 48k é o que o Opus quer; o Chromium reamostra o mic se ele vier em 44.1k.
   let ctx: AudioContext
@@ -181,7 +191,7 @@ export async function createMicProcessor(options: MicProcessorOptions): Promise<
     ctx = new AudioContext({ latencyHint: 'interactive' })
   }
 
-  const source = ctx.createMediaStreamSource(raw)
+  let source = ctx.createMediaStreamSource(raw)
 
   const inputGain = ctx.createGain()
   inputGain.gain.value = clampGain(options.inputGain)
@@ -256,6 +266,13 @@ export async function createMicProcessor(options: MicProcessorOptions): Promise<
   let levelDb = GATE_OFF_DB
   let meter = 0
   let destroyed = false
+  let released = false
+  /**
+   * Cada release/reacquire vira uma geração nova. Um getUserMedia que volta
+   * depois de um release mais recente (desmutou e mutou de novo rápido) solta
+   * o que pegou em vez de reabrir o mic.
+   */
+  let generation = 0
   let timer: ReturnType<typeof setTimeout> | null = null
 
   const voiceSamples = new Float32Array(voiceAnalyser.fftSize)
@@ -293,7 +310,7 @@ export async function createMicProcessor(options: MicProcessorOptions): Promise<
   }
 
   const tick = (): void => {
-    if (destroyed) return
+    if (destroyed || released) return
 
     const now = performance.now()
     const sinceLast = now - lastTickAt
@@ -353,6 +370,46 @@ export async function createMicProcessor(options: MicProcessorOptions): Promise<
       if (patch.rumbleFilter !== undefined) {
         rumbleFilter = patch.rumbleFilter
       }
+    },
+    release: () => {
+      if (destroyed) return
+      // Antes da guarda: um reacquire ainda abrindo o mic tem que desistir.
+      generation++
+      if (released) return
+      released = true
+      if (timer) clearTimeout(timer)
+      timer = null
+      for (const track of raw.getTracks()) track.stop()
+      source.disconnect()
+      // Medidor e anel não podem ficar congelados no último valor.
+      levelDb = GATE_OFF_DB
+      meter = 0
+      open = false
+      gate.gain.cancelScheduledValues(ctx.currentTime)
+      gate.gain.value = 0
+      void ctx.suspend().catch(() => {})
+    },
+    reacquire: async () => {
+      if (destroyed || !released) return
+      const mine = ++generation
+      const fresh = await navigator.mediaDevices.getUserMedia(constraints)
+      // Mutou de novo (ou a call acabou) enquanto o mic abria.
+      if (destroyed || mine !== generation) {
+        for (const track of fresh.getTracks()) track.stop()
+        return
+      }
+      raw = fresh
+      source = ctx.createMediaStreamSource(raw)
+      source.connect(inputGain)
+      await ctx.resume().catch(() => {})
+      released = false
+      // Volta aberto, como um processador recém-criado: o tick fecha em
+      // 250ms se for silêncio, e a primeira sílaba não é comida.
+      open = true
+      gate.gain.value = 1
+      lastAboveAt = performance.now()
+      lastTickAt = performance.now()
+      tick()
     },
     destroy: () => {
       if (destroyed) return

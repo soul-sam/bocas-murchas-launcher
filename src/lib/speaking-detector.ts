@@ -128,6 +128,16 @@ export function createSpeakingDetector(onChange: () => void): SpeakingDetector {
 
   const tick = (): void => {
     if (destroyed) return
+
+    // Ninguém pra medir (mutado e ensurdecido, ou sozinho e mutado): para o
+    // relógio e suspende o contexto. Contexto rodando segura a saída de áudio
+    // aberta mesmo sem tocar nada — e o Windows não deixa o PC dormir.
+    if (watched.size === 0) {
+      timer = null
+      if (ctx?.state === 'running') void ctx.suspend().catch(() => {})
+      return
+    }
+
     const now = performance.now()
     let changed = false
 
@@ -166,9 +176,12 @@ export function createSpeakingDetector(onChange: () => void): SpeakingDetector {
       if (!audio || destroyed) return
       if (stream.getAudioTracks().length === 0) return
 
-      // Contexto nasce suspenso quando não houve gesto do usuário ainda. Sem
-      // resume, o grafo não roda e TODO MUNDO aparece calado.
-      if (audio.state === 'suspended') void audio.resume().catch(() => {})
+      // Contexto nasce suspenso quando não houve gesto do usuário ainda (e é
+      // suspenso por nós quando fica sem ninguém). Sem resume, o grafo não
+      // roda e TODO MUNDO aparece calado. Sempre, não só quando 'suspended':
+      // um suspend ainda em andamento mostra 'running', e o resume pedido
+      // depois dele é atendido depois dele.
+      void audio.resume().catch(() => {})
 
       stop(identity)
 
