@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { AlertTriangle, ChevronDown, Loader2, Lock, Plus, Repeat, Scale, Users, X } from 'lucide-react'
+import { AlertTriangle, ChevronDown, Loader2, Lock, Pencil, Plus, Repeat, Scale, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { printApi, type FilamentGroupRow, type FilamentSpoolRow, type PrintFilament } from '@/lib/api-print'
 import { useAuth } from '@/lib/auth-context'
@@ -97,7 +97,7 @@ export function FilamentTab({
   const stockGrams = activeSpools.reduce((sum, spool) => sum + spool.remainingGrams, 0)
 
   const newSpoolForm = (groupId: string | null) => (
-    <NewSpoolForm
+    <SpoolForm
       key={groupId ?? 'geral'}
       acceptedFilaments={acceptedFilaments}
       groups={groups}
@@ -125,6 +125,7 @@ export function FilamentTab({
                 key={spool.id}
                 spool={spool}
                 groups={groups}
+                acceptedFilaments={acceptedFilaments}
                 slotCount={slotCount}
                 canOperate={canOperate}
                 canAsk={modern && canQueue}
@@ -146,6 +147,7 @@ export function FilamentTab({
                   key={spool.id}
                   spool={spool}
                   groups={groups}
+                  acceptedFilaments={acceptedFilaments}
                   slotCount={slotCount}
                   canOperate={canOperate}
                   canAsk={false}
@@ -527,6 +529,7 @@ function SlotPicker({
 function SpoolRow({
   spool,
   groups,
+  acceptedFilaments,
   slotCount,
   canOperate,
   canAsk,
@@ -535,6 +538,7 @@ function SpoolRow({
 }: {
   spool: FilamentSpoolRow
   groups: FilamentGroupRow[]
+  acceptedFilaments: string[]
   slotCount: number
   canOperate: boolean
   /** Pode pedir troca (tem o cargo da impressora). */
@@ -546,6 +550,7 @@ function SpoolRow({
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [weighing, setWeighing] = React.useState(false)
+  const [editing, setEditing] = React.useState(false)
   const [grams, setGrams] = React.useState(String(spool.remainingGrams))
 
   const pct = spool.totalGrams > 0 ? Math.min(100, (spool.remainingGrams / spool.totalGrams) * 100) : 0
@@ -665,6 +670,10 @@ function SpoolRow({
                   Pesei
                 </Button>
               )}
+              <Button size="sm" variant="ghost" disabled={busy || editing} onClick={() => setEditing(true)}>
+                <Pencil className="mr-2 h-3.5 w-3.5" />
+                Editar
+              </Button>
               {spool.status === 'active' ? (
                 <Button size="sm" variant="ghost" disabled={busy} onClick={() => void update({ status: 'empty' })}>
                   Acabou
@@ -705,11 +714,31 @@ function SpoolRow({
           {error && <span className="text-[11.5px] text-destructive">{error}</span>}
         </div>
       )}
+
+      {canOperate && editing && (
+        <SpoolForm
+          spool={spool}
+          acceptedFilaments={acceptedFilaments}
+          groups={groups}
+          defaultGroupId={spool.groupId ?? null}
+          slotCount={slotCount}
+          onDone={async () => {
+            setEditing(false)
+            await onChanged()
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
     </li>
   )
 }
 
-function NewSpoolForm({
+/**
+ * Cadastro de rolo — ou edição, quando vem `spool`. Editando, slot e grupo
+ * ficam de fora: já se trocam direto na linha do rolo.
+ */
+function SpoolForm({
+  spool,
   acceptedFilaments,
   groups,
   defaultGroupId,
@@ -717,6 +746,7 @@ function NewSpoolForm({
   onDone,
   onCancel
 }: {
+  spool?: FilamentSpoolRow
   acceptedFilaments: string[]
   groups: FilamentGroupRow[]
   defaultGroupId: string | null
@@ -725,29 +755,44 @@ function NewSpoolForm({
   onCancel: () => void
 }) {
   const { token } = useAuth()
-  const [material, setMaterial] = React.useState(acceptedFilaments[0] ?? 'PLA')
-  const [colorName, setColorName] = React.useState('')
-  const [colorHex, setColorHex] = React.useState('#000000')
-  const [brand, setBrand] = React.useState('')
-  const [total, setTotal] = React.useState('1000')
+  const editing = spool !== undefined
+  const [material, setMaterial] = React.useState(spool?.material ?? acceptedFilaments[0] ?? 'PLA')
+  const [colorName, setColorName] = React.useState(spool?.colorName ?? '')
+  const [colorHex, setColorHex] = React.useState(spool?.colorHex ?? '#000000')
+  const [brand, setBrand] = React.useState(spool?.brand ?? '')
+  const [total, setTotal] = React.useState(String(spool?.totalGrams ?? 1000))
   const [slot, setSlot] = React.useState<string>('')
   const [groupId, setGroupId] = React.useState<string>(defaultGroupId ?? '')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  // Material que saiu da lista aceita continua escolhível no rolo que já o tem.
+  const baseMaterials = acceptedFilaments.length ? acceptedFilaments : ['PLA', 'PETG', 'TPU']
+  const materials = baseMaterials.includes(material) ? baseMaterials : [material, ...baseMaterials]
+
   async function save(): Promise<void> {
     setBusy(true)
     setError(null)
     try {
-      await printApi.createSpool(token, {
-        material,
-        colorName: colorName.trim(),
-        colorHex,
-        brand: brand.trim() || undefined,
-        totalGrams: Number(total) || 1000,
-        slot: slot === '' ? null : Number(slot),
-        groupId: groupId || null
-      })
+      if (spool) {
+        await printApi.updateSpool(token, spool.id, {
+          material,
+          colorName: colorName.trim(),
+          colorHex,
+          brand: brand.trim() || null,
+          totalGrams: Number(total) || spool.totalGrams
+        })
+      } else {
+        await printApi.createSpool(token, {
+          material,
+          colorName: colorName.trim(),
+          colorHex,
+          brand: brand.trim() || undefined,
+          totalGrams: Number(total) || 1000,
+          slot: slot === '' ? null : Number(slot),
+          groupId: groupId || null
+        })
+      }
       await onDone()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não deu')
@@ -756,7 +801,9 @@ function NewSpoolForm({
   }
 
   return (
-    <div className="mb-3 space-y-2 rounded-brutal border border-acid-dark/60 bg-acid/5 p-3">
+    <div
+      className={cn('space-y-2 rounded-brutal border border-acid-dark/60 bg-acid/5 p-3', editing ? 'mt-2' : 'mb-3')}
+    >
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <select
           value={material}
@@ -764,7 +811,7 @@ function NewSpoolForm({
           className="input-terminal rounded-brutal px-2 py-1.5 text-sm"
           aria-label="Material"
         >
-          {(acceptedFilaments.length ? acceptedFilaments : ['PLA', 'PETG', 'TPU']).map((option) => (
+          {materials.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
@@ -802,20 +849,22 @@ function NewSpoolForm({
           className="input-terminal rounded-brutal px-2 py-1.5 text-sm tabular-nums"
           aria-label="Peso do rolo em gramas"
         />
-        <select
-          value={slot}
-          onChange={(event) => setSlot(event.target.value)}
-          className="input-terminal rounded-brutal px-2 py-1.5 text-sm"
-          aria-label="Slot do ACE"
-        >
-          <option value="">na prateleira</option>
-          {Array.from({ length: slotCount }, (_, index) => (
-            <option key={index} value={index}>
-              no slot {index + 1}
-            </option>
-          ))}
-        </select>
-        {groups.length > 0 && (
+        {!editing && (
+          <select
+            value={slot}
+            onChange={(event) => setSlot(event.target.value)}
+            className="input-terminal rounded-brutal px-2 py-1.5 text-sm"
+            aria-label="Slot do ACE"
+          >
+            <option value="">na prateleira</option>
+            {Array.from({ length: slotCount }, (_, index) => (
+              <option key={index} value={index}>
+                no slot {index + 1}
+              </option>
+            ))}
+          </select>
+        )}
+        {!editing && groups.length > 0 && (
           <select
             value={groupId}
             onChange={(event) => setGroupId(event.target.value)}
@@ -839,7 +888,7 @@ function NewSpoolForm({
           disabled={busy || colorName.trim().length === 0}
         >
           {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Cadastrar
+          {editing ? 'Salvar' : 'Cadastrar'}
         </Button>
         <Button size="sm" variant="ghost" onClick={onCancel} disabled={busy}>
           Cancelar

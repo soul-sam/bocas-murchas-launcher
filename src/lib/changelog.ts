@@ -42,6 +42,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.47.0',
+    headline: 'Filamento: rolo cadastrado agora se edita',
+    items: [
+      'Errou a cor, o nome ou a marca de um rolo? No estoque de filamento tem o botão Editar: muda material, nome da cor, cor, marca e peso do rolo sem precisar tirar da lista e cadastrar de novo.'
+    ]
+  },
+  {
     version: '1.46.0',
     headline: 'Pôquer: quebrou? Recarrega ali mesmo',
     items: [
