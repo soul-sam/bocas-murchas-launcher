@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { GameIcon as HallIcon } from '@/lib/bocas-icons'
-import { countByActivity, countPokerPlayers } from '@/lib/game-hall'
+import { countBoardPeople, countByActivity, countPokerPlayers } from '@/lib/game-hall'
 import { isWeb } from '@/lib/platform'
+import { useBoard } from '@/lib/board-context'
 import { usePoker } from '@/lib/poker-context'
 import { useSocket } from '@/lib/socket-context'
 import { GameCard } from '@/components/games/GameCard'
@@ -9,15 +10,16 @@ import { GameCard } from '@/components/games/GameCard'
 /**
  * SALÃO DE JOGOS — a porta de todos os jogos do launcher.
  *
- * Cada jogo continua na sua tela (`/jogo`, `/poker`, `/lol`); aqui só se vê
+ * Cada jogo continua na sua tela (`/jogo`, `/poker`, `/lol`, `/xadrez`, `/dama`); aqui só se vê
  * quem está em quê e se entra. A contagem vem do que os contextos já sabem —
- * presença de jogo (socket) e saguão do pôquer — então esta tela não busca
+ * presença de jogo (socket) e saguões do pôquer, do xadrez e da dama — então esta tela não busca
  * nada na API. Regras de contagem em lib/game-hall.ts.
  */
 export function GameHallPage() {
   const navigate = useNavigate()
   const { activities } = useSocket()
   const { tables, goToPoker } = usePoker()
+  const { tables: boardTables, goToBoard } = useBoard()
 
   return (
     <div className="flex-1 overflow-auto">
@@ -53,6 +55,20 @@ export function GameHallPage() {
             subtitle="Partidas e estatísticas do grupo"
             online={countByActivity(activities, 'lol')}
             onEnter={() => navigate('/lol')}
+          />
+          <GameCard
+            game="chess"
+            title="Xadrez"
+            subtitle="PvP valendo murchos"
+            online={countBoardPeople(boardTables, 'chess')}
+            onEnter={() => goToBoard('chess')}
+          />
+          <GameCard
+            game="draughts"
+            title="Dama"
+            subtitle="Brasileira ou americana, valendo murchos"
+            online={countBoardPeople(boardTables, 'draughts')}
+            onEnter={() => goToBoard('draughts')}
           />
         </div>
       </div>

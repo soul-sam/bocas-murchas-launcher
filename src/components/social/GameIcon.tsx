@@ -3,7 +3,9 @@ import {
   Boxes,
   Cake,
   Car,
+  CircleDot,
   Crosshair,
+  Crown,
   Film,
   Flame,
   Ghost,
@@ -32,6 +34,9 @@ const GAME_ICON: Record<string, IconComponent> = {
   lol: Swords,
   minecraft: Pickaxe,
   poker: Spade,
+  // Xadrez e dama: as chaves são os valores de BoardGame (lib/api-board.ts).
+  chess: Crown,
+  draughts: CircleDot,
   valorant: Crosshair,
   cs2: Target,
   'arc-raiders': Radiation,
@@ -62,9 +67,15 @@ export const GAME_CATALOG: { key: string; label: string }[] = [
   { key: 'among-us', label: 'Among Us' }
 ]
 
-const GAME_LABEL: Record<string, string> = Object.fromEntries(
-  GAME_CATALOG.map((game) => [game.key, game.label])
-)
+// Xadrez e dama não são sugestão do perfil (GAME_CATALOG), mas o ícone e o
+// nome precisam ler certo onde aparecem.
+const GAME_LABEL: Record<string, string> = {
+  chess: 'Xadrez',
+  draughts: 'Dama',
+  ...Object.fromEntries(
+    GAME_CATALOG.map((game) => [game.key, game.label])
+  )
+}
 
 /** Nome bonito de um jogo. Chave livre vira "Nome Digitado". */
 export function gameLabel(game: string): string {

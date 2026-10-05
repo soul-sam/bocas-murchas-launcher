@@ -17,6 +17,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { usePoker } from '@/lib/poker-context'
+import { useBoard } from '@/lib/board-context'
 import { useAuth } from '@/lib/auth-context'
 import { ChannelGlyph } from './ChannelGlyph'
 import { ARENA_ICON, ARENA_LABEL, LiveCount, useLiveMatchCount } from './ArenaChrome'
@@ -81,6 +82,7 @@ export function QuickSwitcher() {
     openAdmin
   } = useOverlays()
   const { goToPoker } = usePoker()
+  const { goToBoard } = useBoard()
   const { user } = useAuth()
   const { textChannels, voiceChannels, setActiveChannel } = useChat()
   const voice = useVoice()
@@ -145,7 +147,7 @@ export function QuickSwitcher() {
       label: 'Salão de jogos',
       hint: 'todos os jogos',
       icon: <GameIcon className="h-3.5 w-3.5" />,
-      keywords: 'salao jogos games hub minecraft poker lol',
+      keywords: 'salao jogos games hub minecraft poker lol xadrez dama',
       run: () => navigate('/jogos')
     })
 
@@ -156,6 +158,24 @@ export function QuickSwitcher() {
       icon: <GameGlyph game="lol" className="h-3.5 w-3.5" />,
       keywords: 'lol league legends partidas estatisticas',
       run: () => navigate('/lol')
+    })
+
+    list.push({
+      id: 'cmd:chess',
+      label: 'Xadrez',
+      hint: 'PvP valendo murchos',
+      icon: <GameGlyph game="chess" className="h-3.5 w-3.5" />,
+      keywords: 'xadrez chess tabuleiro pvp murchos',
+      run: () => goToBoard('chess')
+    })
+
+    list.push({
+      id: 'cmd:draughts',
+      label: 'Dama',
+      hint: 'brasileira ou americana',
+      icon: <GameGlyph game="draughts" className="h-3.5 w-3.5" />,
+      keywords: 'dama draughts checkers tabuleiro brasileira americana',
+      run: () => goToBoard('draughts')
     })
 
     list.push({
@@ -312,6 +332,7 @@ export function QuickSwitcher() {
     openShop,
     openAchievements,
     goToPoker,
+    goToBoard,
     openLeaderboard,
     openWagers,
     openRecap,

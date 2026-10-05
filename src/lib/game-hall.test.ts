@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { countByActivity, countPokerPlayers, onlineLabel } from './game-hall.ts'
+import { countBoardPeople, countByActivity, countPokerPlayers, onlineLabel } from './game-hall.ts'
 
 test('conta quem tem atividade naquele jogo, em qualquer fase', () => {
   const activities = {
@@ -37,4 +37,38 @@ test('rótulo de online', () => {
   assert.equal(onlineLabel(0), 'Ninguém agora')
   assert.equal(onlineLabel(1), '1 online')
   assert.equal(onlineLabel(7), '7 online')
+})
+
+const p = (userId: string) => ({ userId })
+const mesa = (
+  game: string,
+  host: string,
+  white: string | null,
+  black: string | null,
+  spectators = 0
+) => ({
+  game,
+  host: p(host),
+  white: white ? p(white) : null,
+  black: black ? p(black) : null,
+  spectators
+})
+
+test('tabuleiro: conta por jogo, duas mesas de xadrez e uma de dama', () => {
+  const tables = [mesa('chess', 'a', 'a', 'b'), mesa('chess', 'c', null, null), mesa('draughts', 'd', 'd', 'e')]
+  assert.equal(countBoardPeople(tables, 'chess'), 3)
+  assert.equal(countBoardPeople(tables, 'draughts'), 2)
+})
+
+test('tabuleiro: mesa aberta só com o host conta 1', () => {
+  assert.equal(countBoardPeople([mesa('chess', 'a', null, null)], 'chess'), 1)
+})
+
+test('tabuleiro: host que também é brancas não conta duas vezes; espectadores somam', () => {
+  assert.equal(countBoardPeople([mesa('chess', 'a', 'a', 'b', 3)], 'chess'), 5)
+})
+
+test('tabuleiro: jogo sem mesa conta 0', () => {
+  assert.equal(countBoardPeople([mesa('chess', 'a', 'a', 'b')], 'draughts'), 0)
+  assert.equal(countBoardPeople([], 'chess'), 0)
 })

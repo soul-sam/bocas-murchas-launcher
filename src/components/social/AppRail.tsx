@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
+import { useBoard } from '@/lib/board-context'
 import { useChat } from '@/lib/chat-context'
 import { statusOf, useMembers } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
@@ -36,6 +37,7 @@ export function AppRail() {
   const { byId: memberById } = useMembers()
   const { view, setView, isPhone } = useLayout()
   const { can } = useCargos()
+  const { myTurn } = useBoard()
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -79,7 +81,7 @@ export function AppRail() {
   const dmActive = activeChannelId?.startsWith('dm:') === true
   // O Salão é a casa de todas as telas de jogo: o ícone fica aceso em
   // qualquer uma delas, não só em `/jogos`.
-  const onGames = ['/jogos', '/jogo', '/poker', '/lol'].includes(pathname)
+  const onGames = ['/jogos', '/jogo', '/poker', '/lol', '/xadrez', '/dama'].includes(pathname)
 
   // Voltar pro servidor tem que cair no canal em que a pessoa estava, não num
   // canal qualquer — por isso guardamos o último canal não-DM visitado.
@@ -137,7 +139,16 @@ export function AppRail() {
       {/* Um ícone só pra todos os jogos. Minecraft, pôquer e LoL moram atrás
           dos cards do Salão — ver pages/GameHallPage.tsx. */}
       <RailLink to="/jogos" label="Salão de jogos" forceActive={onGames}>
-        <GameIcon className="h-5 w-5" />
+        <span className="relative flex">
+          <GameIcon className="h-5 w-5" />
+          {/* Sua vez numa partida de xadrez ou dama. */}
+          {myTurn && (
+            <span
+              aria-label="Sua vez"
+              className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-void bg-burn"
+            />
+          )}
+        </span>
       </RailLink>
 
       {/* A impressora só existe na barra pra quem tem o cargo "Impressora
