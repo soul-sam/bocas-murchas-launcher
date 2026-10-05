@@ -9,6 +9,7 @@ import { WagerCard } from './WagerCard'
 import { WatchCard } from './WatchCard'
 import { SystemCard } from './SystemCard'
 import { ChessResultCard } from './ChessResultCard'
+import { BoardResultCard } from './BoardResultCard'
 import { SuggestionCard } from './SuggestionCard'
 import { SmokeCard } from './SmokeCard'
 import { DayRecapCard } from './DayRecapCard'
@@ -21,7 +22,7 @@ import { PokerCard } from './PokerCard'
  * REGISTRO DE CARTÕES.
  *
  * Uma mensagem com `type` de cartão (poll, event, game, recap, party, wager,
- * watch, system, chess, suggestion, smoke, dayrecap, memory, clip, print) é desenhada
+ * watch, system, chess, board, suggestion, smoke, dayrecap, memory, clip, print) é desenhada
  * por um componente em vez do texto. O texto (`content`) continua existindo
  * como fallback: aparece na busca, na notificação do sistema e em cliente
  * antigo que não conhece o tipo.
@@ -51,6 +52,7 @@ const REGISTRY: Record<string, CardComponent> = {
   watch: WatchCard,
   system: SystemCard,
   chess: ChessResultCard,
+  board: BoardResultCard,
   suggestion: SuggestionCard,
   smoke: SmokeCard,
   dayrecap: DayRecapCard,

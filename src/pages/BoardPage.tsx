@@ -4,6 +4,7 @@ import { useBoard } from '@/lib/board-context'
 import { BackToHall } from '@/components/games/BackToHall'
 import { BoardLobby } from '@/components/board/BoardLobby'
 import { BoardTable } from '@/components/board/BoardTable'
+import { BetPanel } from '@/components/board/BetPanel'
 import { GameIcon } from '@/components/social/GameIcon'
 
 /**
@@ -59,7 +60,13 @@ export function BoardPage({ game }: { game: BoardGame }) {
 
       {/* `key={game}`: trocar de jogo reinicia o estado interno do saguão. */}
       <div key={game} className="relative z-conteudo flex min-h-0 min-w-0 flex-1 flex-col">
-        {here ? <BoardTable /> : <BoardLobby game={game} />}
+        {here ? (
+          <BoardTable>
+            <BetPanel />
+          </BoardTable>
+        ) : (
+          <BoardLobby game={game} />
+        )}
       </div>
     </div>
   )
