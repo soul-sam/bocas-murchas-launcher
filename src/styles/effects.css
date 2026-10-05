@@ -226,8 +226,9 @@
 
 /* --- lendária: Lenda Murcha (animada) --- */
 /* O MESMO fogo do efeito de nome "Rei dos Bocas" (`.fx-fire`): degradê
-   vertical escuro → cor → quase branco, subindo e descendo em 1,1s, com a
-   tremida de 0,35s — aqui no halo, não na opacidade, que piscaria a foto.
+   vertical escuro → cor → quase branco, subindo e descendo em 1,1s, no
+   mesmo compasso da coroa. Sem a tremida do nome: no halo ela virava um
+   pisca-pisca, e na opacidade piscaria a foto.
 
    A borda é FUNDO: duas camadas, o vão por baixo da foto (padding-box) e o
    fogo na caixa toda (border-box), com a borda transparente deixando o fogo
@@ -236,24 +237,27 @@
    UserAvatar desenha — a classe da borda continua servindo pra webcam na
    call. */
 .frame-fire {
-  --fx-flame: linear-gradient(0deg, var(--fx-dd) 0%, var(--fx) 45%, var(--fx-lt) 80%, var(--fx-hi) 100%);
   border-color: transparent !important;
-  background:
-    linear-gradient(var(--fx-gap), var(--fx-gap)) padding-box,
-    var(--fx-flame) border-box !important;
+  /* Longhands, e SEM !important na posição: o atalho `background` com
+     !important travava o background-position também, e animação não vence
+     !important — a borda ficava parada e só a coroa andava. As camadas
+     (imagem, origem, recorte, tamanho) levam !important pra ganhar do
+     bg-* do Tailwind; a posição fica livre pra animar. */
+  background-image:
+    linear-gradient(var(--fx-gap), var(--fx-gap)),
+    linear-gradient(0deg, var(--fx-dd) 0%, var(--fx) 45%, var(--fx-lt) 80%, var(--fx-hi) 100%) !important;
+  background-origin: padding-box, border-box !important;
+  background-clip: padding-box, border-box !important;
   background-size: 100% 100%, 100% 220% !important;
+  background-repeat: no-repeat !important;
+  background-position: 0 0, 50% 100%;
   box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 8px 3px color-mix(in srgb, var(--fx) 50%, transparent);
-  animation: frame-fire 1.1s ease-in-out infinite alternate, frame-fire-flicker 0.35s steps(2, end) infinite;
+  animation: frame-fire 1.1s ease-in-out infinite alternate;
 }
 
 @keyframes frame-fire {
   from { background-position: 0 0, 50% 100%; }
   to { background-position: 0 0, 50% 0%; }
-}
-
-@keyframes frame-fire-flicker {
-  0%, 100% { box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 10px 3px color-mix(in srgb, var(--fx) 70%, transparent); }
-  50%      { box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 6px 3px color-mix(in srgb, var(--fx) 40%, transparent); }
 }
 
 /* A coroa: centrada no topo, por cima da borda. O desenho é máscara e a cor
