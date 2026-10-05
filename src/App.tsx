@@ -38,6 +38,7 @@ import { HomePage } from '@/pages/HomePage'
 import { SocialPage } from '@/pages/SocialPage'
 import { PokerPage } from '@/pages/PokerPage'
 import { GameHallPage } from '@/pages/GameHallPage'
+import { LolPage } from '@/pages/LolPage'
 import { PrintPage } from '@/pages/PrintPage'
 import { TitleBar } from '@/components/TitleBar'
 import { DeepLink } from '@/components/DeepLink'
@@ -454,6 +455,7 @@ export function App() {
                                 ela o canal. Quem le a query e o DeepLink. */}
                             <Route path="/chat" element={<SocialPage />} />
                             <Route path="/jogos" element={<GameHallPage />} />
+                            <Route path="/lol" element={<LolPage />} />
                             {/* O pôquer é uma TELA, não um modal: mesa de
                                 cartas dentro de janelinha não dá imersão.
                                 O estado mora no PokerProvider, acima das
