@@ -56,7 +56,8 @@ const METRIC_ICON: Record<LeaderboardMetric, IconComponent> = {
 /**
  * O que cada métrica conta. Espelha `leaderboardValues` da API
  * (routes/gamification.routes.ts): murchos são os GANHOS no período, não o
- * saldo; streak é o de agora em qualquer período; mensagem de card não conta.
+ * saldo; streak é o de agora na semana e o recorde no geral; mensagem de card
+ * não conta.
  */
 const METRIC_HINT: Record<LeaderboardMetric, string> = {
   xp: 'Tudo que rende XP: mensagem, reação, call, partida, check-in, missão.',
@@ -66,6 +67,13 @@ const METRIC_HINT: Record<LeaderboardMetric, string> = {
   voice: 'Tempo em call.',
   sounds: 'Sons do soundboard tocados.',
   messages: 'Mensagens enviadas. Cards do sistema não contam.'
+}
+
+function metricHint(metric: LeaderboardMetric, period: LeaderboardPeriod): string {
+  if (metric === 'streak' && period === 'all') {
+    return 'O recorde de dias seguidos entrando na call de cada um. Não zera.'
+  }
+  return METRIC_HINT[metric]
 }
 
 /** Quantos o servidor devolve (LEADERBOARD_SIZE na API). */
@@ -176,7 +184,7 @@ export function LeaderboardPanel() {
           </div>
           <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
             <MetricIcon className="mt-0.5 h-3 w-3 shrink-0 text-burn" aria-hidden />
-            <span>{METRIC_HINT[metric]}</span>
+            <span>{metricHint(metric, period)}</span>
           </p>
         </div>
 
@@ -234,7 +242,7 @@ function usePerson() {
  * de fora nos dois períodos.
  */
 function myValueFor(profile: GamificationProfile, period: LeaderboardPeriod, metric: LeaderboardMetric): number | null {
-  if (metric === 'streak') return profile.streak
+  if (metric === 'streak') return period === 'all' ? profile.bestStreak : profile.streak
   if (period === 'week') return metric === 'xp' ? profile.weeklyXp : null
   switch (metric) {
     case 'xp':
@@ -276,7 +284,7 @@ function MyStanding({
         <p className="text-[11px] text-muted-foreground">
           {value != null && value > 0
             ? `Seu total: ${formatMetricValue(metric, value)}. ${entries.length > 0 ? `Falta ${formatMetricValue(metric, Math.max(0, entries[entries.length - 1].value - value))} pra entrar.` : ''}`
-            : METRIC_HINT[metric]}
+            : metricHint(metric, period)}
         </p>
       </div>
     )
