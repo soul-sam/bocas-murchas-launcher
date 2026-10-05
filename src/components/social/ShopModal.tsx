@@ -78,6 +78,20 @@ export function ShopModal() {
   const [busy, setBusy] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
+  /**
+   * A busca falhou. O `loadShop` engole o erro (devolve null) porque o
+   * catálogo também carrega calado no login; aqui, sem isto, a Lojinha que
+   * nunca carregou dizia "Nada nessa prateleira ainda", sem jeito de tentar.
+   */
+  const [loadFailed, setLoadFailed] = React.useState(false)
+
+  const reload = React.useCallback(() => {
+    setLoading(true)
+    setLoadFailed(false)
+    void loadShop()
+      .then((res) => setLoadFailed(!res))
+      .finally(() => setLoading(false))
+  }, [loadShop])
 
   // Rebusca ao abrir: preço e saldo podem ter mudado desde o login.
   React.useEffect(() => {
@@ -86,12 +100,11 @@ export function ShopModal() {
     // na próxima abertura.
     setHovered(null)
     if (!open) return
-    setLoading(true)
     setError(null)
     setConfirming(null)
     setGifting(null)
-    void loadShop().finally(() => setLoading(false))
-  }, [open, loadShop])
+    reload()
+  }, [open, reload])
 
   // Prévia de tema é o app inteiro: enquanto o mouse está num tema, o <html>
   // veste ele; ao sair (ou ao fechar a loja), volta pro das configurações.
@@ -109,7 +122,10 @@ export function ShopModal() {
   React.useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') return
+      // `defaultPrevented`: o Esc já fechou uma camada de dentro (o "?" de
+      // murchos, uma dica) — o Radix marca o evento ao fechar. Sem isto a
+      // Lojinha fechava junto.
+      if (event.key !== 'Escape' || event.defaultPrevented) return
       // Esc no painel de presente volta pra prateleira; só o segundo fecha.
       setGifting((current) => {
         if (!current) close()
@@ -323,6 +339,17 @@ export function ShopModal() {
           {loading && !shop ? (
             <div className="flex h-32 items-center justify-center text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : loadFailed && !shop ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <p className="text-sm text-destructive">Não deu pra carregar a lojinha.</p>
+              <button
+                type="button"
+                onClick={reload}
+                className="rounded-brutal border border-line px-2.5 py-1 text-xs text-foreground transition-colors hover:border-acid/60 hover:text-acid"
+              >
+                Tentar de novo
+              </button>
             </div>
           ) : items.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">

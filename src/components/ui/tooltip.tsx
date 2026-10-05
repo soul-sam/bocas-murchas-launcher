@@ -1,5 +1,6 @@
 import * as React from 'react'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
+import { Slot } from '@radix-ui/react-slot'
 import { cn } from '@/lib/utils'
 
 /**
@@ -98,23 +99,44 @@ export interface HintProps {
  * `aria-label`/`alt` dele: a dica é `aria-describedby`, não substitui o nome
  * acessível — foi por isso que trocar `title` por dica não tirou nada de quem
  * usa leitor de tela.
+ *
+ * REPASSA ref e props pro filho. Não é enfeite: um gatilho do Radix com
+ * `asChild` (`<PopoverTrigger asChild><Hint><button/></Hint></PopoverTrigger>`)
+ * entrega o onClick, o ref e o `aria-*` dele pro primeiro filho — que aqui é o
+ * Hint. Sem repassar, tudo morria nele, e o "Reagir", o "+" do compositor e a
+ * gorjeta só mostravam a dica, sem nunca abrir o popover.
  */
-export function Hint({
-  label,
-  description,
-  shortcut,
-  side = 'top',
-  align = 'center',
-  sideOffset,
-  disabled,
-  delayDuration,
-  children
-}: HintProps) {
-  if (disabled) return <>{children}</>
+export const Hint = React.forwardRef<
+  HTMLElement,
+  HintProps & Omit<React.HTMLAttributes<HTMLElement>, keyof HintProps>
+>(function Hint(
+  {
+    label,
+    description,
+    shortcut,
+    side = 'top',
+    align = 'center',
+    sideOffset,
+    disabled,
+    delayDuration,
+    children,
+    ...rest
+  },
+  ref
+) {
+  if (disabled) {
+    return (
+      <Slot ref={ref} {...rest}>
+        {children}
+      </Slot>
+    )
+  }
 
   return (
     <Tooltip delayDuration={delayDuration}>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipTrigger asChild ref={ref as React.Ref<HTMLButtonElement>} {...rest}>
+        {children}
+      </TooltipTrigger>
       <TooltipContent side={side} align={align} sideOffset={sideOffset}>
         <span className="flex items-baseline gap-2">
           <span className="text-[11.5px] font-medium leading-snug">{label}</span>
@@ -137,4 +159,4 @@ export function Hint({
       </TooltipContent>
     </Tooltip>
   )
-}
+})

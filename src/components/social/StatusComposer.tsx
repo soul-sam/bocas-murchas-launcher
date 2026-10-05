@@ -77,6 +77,27 @@ export function StatusComposer({
     })
   }
 
+  /**
+   * Escape fecha SÓ o seletor, não o editor de perfil junto.
+   *
+   * Mesmo caso do seletor de ícone do ChannelManager: o Dialog do editor e
+   * este Popover carregam cada um a sua cópia de `react-dismissable-layer`,
+   * as duas camadas se acham "a de cima" e um Escape fechava as duas — com o
+   * que a pessoa tinha editado e não salvo. O listener no `window` em captura
+   * roda antes do `document`, onde o Radix escuta, e segura a tecla aqui.
+   */
+  const [pickerOpen, setPickerOpen] = React.useState(false)
+  React.useEffect(() => {
+    if (!pickerOpen) return
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      setPickerOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
+  }, [pickerOpen])
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
@@ -90,7 +111,7 @@ export function StatusComposer({
           className="min-w-0 flex-1"
         />
 
-        <Popover>
+        <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"

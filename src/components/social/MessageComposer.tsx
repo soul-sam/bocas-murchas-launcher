@@ -562,6 +562,29 @@ export function MessageComposer({
     )
   }, [slashQuery, image, file, user?.role])
 
+  // Destaque da lista de comandos, como nas menções: setas andam, Enter/Tab
+  // escolhe. Antes o Enter não olhava a lista e mandava "/enq" pro canal.
+  const [slashIndex, setSlashIndex] = React.useState(0)
+  React.useEffect(() => setSlashIndex(0), [slashQuery])
+
+  /**
+   * Escolher um comando da lista: o que abre alguma coisa abre na hora; o que
+   * precisa de texto ("/perguntar", "/resumo", "/anunciar"…) vai pro campo com
+   * um espaço, pronto pra completar — antes o clique nesses não fazia nada.
+   */
+  const pickSlash = (command: string): void => {
+    if (runSlashCommand(command)) return
+    const value = command + ' '
+    setContent(value)
+    setCaret(value.length)
+    requestAnimationFrame(() => {
+      autoGrow()
+      const el = textareaRef.current
+      el?.focus()
+      el?.setSelectionRange(value.length, value.length)
+    })
+  }
+
   const submit = async (): Promise<void> => {
     const typed = content.trim()
     if ((!typed && !image && !file) || sending) return
@@ -685,6 +708,28 @@ export function MessageComposer({
       if (e.key === 'Escape') {
         e.preventDefault()
         setCaret(content.length)
+        return
+      }
+    }
+
+    // E pra lista de comandos. Comando digitado por inteiro ("/resumo") segue
+    // pro envio normal, que já sabe o que fazer com ele.
+    if (slashSuggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSlashIndex((prev) => (prev + 1) % slashSuggestions.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSlashIndex((prev) => (prev - 1 + slashSuggestions.length) % slashSuggestions.length)
+        return
+      }
+      const exact = slashSuggestions.some((item) => item.command === content.trim())
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey && !ponteiroGrosso && !exact)) {
+        e.preventDefault()
+        const item = slashSuggestions[slashIndex] ?? slashSuggestions[0]
+        pickSlash(item.command)
         return
       }
     }
@@ -839,17 +884,21 @@ export function MessageComposer({
       {slashSuggestions.length > 0 && (
         <div className="mb-1 overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.6)]">
           <p className="border-b border-line px-2 py-1 text-[11px] text-muted-foreground">
-            Comandos — Enter pra abrir
+            Comandos — Enter ou Tab pra escolher
           </p>
-          {slashSuggestions.map((item) => (
+          {slashSuggestions.map((item, index) => (
             <button
               key={item.command}
               type="button"
               onMouseDown={(event) => {
                 event.preventDefault()
-                runSlashCommand(item.command)
+                pickSlash(item.command)
               }}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-foreground transition-colors hover:bg-acid/15 hover:text-foreground"
+              onMouseEnter={() => setSlashIndex(index)}
+              className={cn(
+                'flex w-full items-center gap-2 px-2 py-1.5 text-left text-foreground transition-colors',
+                index === slashIndex ? 'bg-acid/15' : 'hover:bg-acid/15'
+              )}
             >
               <span className="font-mono text-xs text-foreground">{item.command}</span>
               <span className="truncate text-[11px] text-muted-foreground">{item.hint}</span>

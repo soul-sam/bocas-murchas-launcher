@@ -56,7 +56,12 @@ export function ClipPlayer({
           onFirstPlay?.()
         }
       })
-      .catch(() => setBroken(true))
+      // Pausar antes de carregar (clique duplo, rede lenta) rejeita o play()
+      // com AbortError — isso não é clipe quebrado. Falha de verdade já cai
+      // no `onError` do <audio>.
+      .catch((err: unknown) => {
+        if ((err as { name?: string } | null)?.name !== 'AbortError') setBroken(true)
+      })
       .finally(() => setLoading(false))
   }
 

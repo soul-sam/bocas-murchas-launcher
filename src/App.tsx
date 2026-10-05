@@ -80,8 +80,11 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 function LoadingSplash() {
+  // Sessão salva, mas sem falar com a API: o splash conta que está tentando,
+  // senão parece travado (ver auth-context, "Volta da sessão salva").
+  const { retrying } = useAuth()
   return (
-    <div className="flex h-full items-center justify-center">
+    <div className="flex h-full flex-col items-center justify-center gap-1">
       {/* Era mono, caixa-alta e espaçado: o "rótulo terminal" que a
           desintoxicação de set/2026 tirou de 182 lugares e que sobreviveu aqui
           por estar num <div>, fora do alcance do lint. Frase é Inter em caixa
@@ -89,6 +92,9 @@ function LoadingSplash() {
       <p className="text-sm text-muted-foreground">
         Carregando<span className="terminal-cursor" />
       </p>
+      {retrying && (
+        <p className="text-xs text-muted-foreground">Sem conexão com o servidor, tentando de novo</p>
+      )}
     </div>
   )
 }

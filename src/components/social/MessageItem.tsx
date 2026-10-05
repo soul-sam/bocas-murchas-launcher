@@ -164,17 +164,58 @@ export function MessageItem({
     return Array.from(counts.entries())
   }, [message.reactions, user?.id])
 
+  /**
+   * Erro de editar/apagar/reagir/fixar, na própria mensagem.
+   *
+   * As ações do chat lançam quando o servidor recusa (ou a rede cai), e antes
+   * ninguém pegava: o apagar simplesmente não acontecia, e a edição fechava e
+   * voltava o texto antigo — com o novo perdido, sem aviso nenhum.
+   */
+  const [actionError, setActionError] = React.useState<string | null>(null)
+  React.useEffect(() => {
+    if (!actionError) return
+    const timer = setTimeout(() => setActionError(null), 6_000)
+    return () => clearTimeout(timer)
+  }, [actionError])
+
+  const run = (action: () => Promise<void>, fallback: string): void => {
+    setActionError(null)
+    void Promise.resolve()
+      .then(action)
+      .catch((err: unknown) => setActionError(err instanceof Error ? err.message : fallback))
+  }
+
+  // Enter e o blur do campo chamam os dois: sem trava, saía edição em dobro.
+  const savingRef = React.useRef(false)
+
+  /** Fecha só DEPOIS de salvar: falhou, o rascunho fica na caixa com o erro. */
   const saveEdit = async (): Promise<void> => {
+    if (savingRef.current) return
     const next = draft.trim()
-    onStopEdit?.()
-    if (!next || next === message.content) return
-    await onEdit(message.id, next)
+    if (!next || next === message.content) {
+      onStopEdit?.()
+      return
+    }
+    savingRef.current = true
+    setActionError(null)
+    try {
+      await onEdit(message.id, next)
+      onStopEdit?.()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Não deu pra salvar a edição.')
+    } finally {
+      savingRef.current = false
+    }
   }
 
   const cancelEdit = (): void => {
     setDraft(message.content)
+    setActionError(null)
     onStopEdit?.()
   }
+
+  const react = (emoji: string): void =>
+    run(() => onReact(message.id, emoji), 'Não deu pra reagir agora.')
 
   const copyText = (): void => {
     void navigator.clipboard?.writeText(message.content).then(
@@ -359,7 +400,7 @@ export function MessageItem({
               >
               <button
                 type="button"
-                onClick={() => void onReact(message.id, emoji)}
+                onClick={() => react(emoji)}
                 className={cn(
                   'flex items-center gap-1 rounded-brutal border px-1.5 py-0.5 text-xs transition-colors',
                   info.mine
@@ -377,6 +418,12 @@ export function MessageItem({
               </Hint>
             ))}
           </div>
+        )}
+
+        {actionError && (
+          <p role="alert" className="mt-0.5 text-xs text-destructive">
+            {actionError}
+          </p>
         )}
       </div>
 
@@ -406,7 +453,7 @@ export function MessageItem({
                 <button
                   key={emoji}
                   type="button"
-                  onClick={() => void onReact(message.id, emoji)}
+                  onClick={() => react(emoji)}
                   className="rounded-brutal p-1 text-lg transition-transform hover:scale-125"
                 >
                   {emoji}
@@ -427,10 +474,7 @@ export function MessageItem({
               previewConfig={{ showPreview: false }}
               customEmojis={pickerCustomEmojis}
               onEmojiClick={(emoji) =>
-                void onReact(
-                  message.id,
-                  emoji.isCustom ? ':' + emoji.names[0] + ':' : emoji.emoji
-                )
+                react(emoji.isCustom ? ':' + emoji.names[0] + ':' : emoji.emoji)
               }
             />
           </PopoverContent>
@@ -485,7 +529,7 @@ export function MessageItem({
             <button
               type="button"
               aria-label={message.isPinned ? 'Desafixar' : 'Fixar'}
-              onClick={() => void onPin(message.id)}
+              onClick={() => run(() => onPin(message.id), 'Não deu pra fixar agora.')}
               className={actionClass}
             >
               <Pin className={cn('h-3.5 w-3.5', message.isPinned && 'text-burn')} />
@@ -511,7 +555,7 @@ export function MessageItem({
             <button
               type="button"
               aria-label="Apagar"
-              onClick={() => void onDelete(message.id)}
+              onClick={() => run(() => onDelete(message.id), 'Não deu pra apagar agora.')}
               className="rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
             >
               <Trash2 className="h-3.5 w-3.5" />

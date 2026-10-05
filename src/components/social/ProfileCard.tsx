@@ -482,7 +482,16 @@ export function ProfileBody({
           <BadgesSection
             profile={gp}
             modal={modal}
-            onOpen={overlays ? (id?: string) => overlays.openAchievements(id) : undefined}
+            // Fecha o perfil junto: o modal dele (z-perfil) fica acima do de
+            // conquistas (z-dialogo), e as conquistas abriam escondidas atrás.
+            onOpen={
+              overlays
+                ? (id?: string) => {
+                    overlays.openAchievements(id)
+                    onNavigate?.()
+                  }
+                : undefined
+            }
           />
         )}
 

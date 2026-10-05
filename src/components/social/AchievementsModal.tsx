@@ -114,7 +114,8 @@ export function AchievementsModal() {
   React.useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') close()
+      // Esc que já fechou uma camada de dentro (dica, popover) não fecha esta.
+      if (event.key === 'Escape' && !event.defaultPrevented) close()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

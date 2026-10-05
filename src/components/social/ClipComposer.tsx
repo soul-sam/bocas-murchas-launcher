@@ -54,12 +54,16 @@ export function ClipComposer() {
     if (!pending) return
     const handle = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
+      // Salvando, o upload já está a caminho e o card sai no chat de qualquer
+      // jeito: Esc aqui fechava a tela como se tivesse descartado. Mesma regra
+      // do botão "jogar fora", que fica desligado nesse estado.
+      if (saving) return
       event.preventDefault()
       discard()
     }
     window.addEventListener('keydown', handle)
     return () => window.removeEventListener('keydown', handle)
-  }, [pending, discard])
+  }, [pending, discard, saving])
 
   if (!pending) return null
 
@@ -87,7 +91,8 @@ export function ClipComposer() {
           type="button"
           aria-label="Descartar"
           onClick={discard}
-          className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-foreground"
+          disabled={saving}
+          className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
         >
           <X className="h-5 w-5" />
         </button>

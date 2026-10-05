@@ -102,6 +102,9 @@ export function SearchPanel() {
       setResults([])
       setSearched(false)
       setError(null)
+      // A busca que estava no ar foi cancelada e o `finally` dela não zera
+      // mais nada: sem isto o spinner ficava girando ao apagar até uma letra.
+      setLoading(false)
       return
     }
 

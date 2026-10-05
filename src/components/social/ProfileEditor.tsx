@@ -38,8 +38,10 @@ import {
   parseLinks,
   resolveAssetUrl,
   type AuthUser,
-  type ProfileLink
+  type ProfileLink,
+  type ProfilePatch
 } from '@/lib/api'
+import { useMembers } from '@/lib/members-context'
 import {
   RARITY_COLOR,
   RARITY_LABEL,
@@ -104,8 +106,47 @@ const MAX_GAMES = 6
 
 type GifTarget = 'avatar' | 'banner' | null
 
+/** O que o formulário tem, do jeito que vai pro `PUT /users/me`. */
+interface ProfileForm {
+  displayName: string
+  bio: string
+  pronouns: string
+  customStatus: string
+  avatar: string | null
+  banner: string | null
+  links: ProfileLink[]
+  birthMonth: string
+  birthDay: string
+  timezone: string
+  games: string[]
+}
+
+function formToPatch(form: ProfileForm): ProfilePatch {
+  return {
+    displayName: form.displayName.trim(),
+    bio: form.bio.trim() || null,
+    pronouns: form.pronouns.trim() || null,
+    customStatus: form.customStatus.trim() || null,
+    avatar: form.avatar,
+    banner: form.banner,
+    // Link sem nome ou sem url é lixo; o servidor descartaria de qualquer jeito.
+    links: form.links.filter((l) => (l.name ?? '').trim() && (l.url ?? '').trim()),
+    // Mês sem dia (ou dia sem mês) não é data: some como "não informado".
+    birthday: form.birthMonth && form.birthDay ? `${form.birthMonth}-${form.birthDay}` : null,
+    timezone: form.timezone || null,
+    favoriteGames: form.games
+  }
+}
+
+/** Links chegam como string JSON (lista de membros) ou já como array (`/auth/me`). */
+function linksFrom(raw: unknown): ProfileLink[] {
+  if (Array.isArray(raw)) return raw as ProfileLink[]
+  return parseLinks(typeof raw === 'string' ? raw : null)
+}
+
 export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { token, user, applyUser } = useAuth()
+  const { byId } = useMembers()
   const { openShop } = useOverlays()
   const { profile, cosmeticName } = useGamification()
 
@@ -153,6 +194,14 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
    * explicando por quê.
    */
   const hydratedRef = React.useRef(false)
+  /**
+   * O formulário como abriu, já no formato do PUT. Salvar manda SÓ o que
+   * difere disto: o usuário da sessão vem incompleto (o login não traz capa,
+   * bio nem links; o `/auth/me` não traz aniversário, fuso nem jogos), e
+   * mandar o formulário inteiro gravava `null`/`[]` por cima do que a pessoa
+   * tinha — trocar só a bio apagava links, aniversário e jogos.
+   */
+  const initialRef = React.useRef<ProfilePatch>({})
 
   React.useEffect(() => {
     if (!open) {
@@ -162,23 +211,44 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
     if (hydratedRef.current || !user) return
     hydratedRef.current = true
 
-    setDisplayName(user.displayName ?? '')
-    setBio(user.bio ?? '')
-    setPronouns(user.pronouns ?? '')
-    setCustomStatus(user.customStatus ?? '')
-    setAvatar(user.avatar ?? null)
-    setBanner(user.banner ?? null)
-    setLinks(parseLinks(user.links))
-    setGames(parseFavoriteGames(user.favoriteGames))
-    const birthday = parseBirthday(user.birthday)
-    setBirthMonth(birthday?.month ?? '')
-    setBirthDay(birthday?.day ?? '')
-    setTimezone(user.timezone ?? '')
+    // Campo que a sessão não trouxe sai da lista de membros, que vem do
+    // `/users` com o perfil inteiro e acompanha `user:profileUpdated`.
+    const member = byId[user.id]
+    const pick = <K extends keyof AuthUser>(key: K): AuthUser[K] | undefined =>
+      user[key] !== undefined ? user[key] : member?.[key]
+
+    const birthday = parseBirthday(pick('birthday'))
+    const form: ProfileForm = {
+      displayName: user.displayName ?? '',
+      bio: pick('bio') ?? '',
+      pronouns: pick('pronouns') ?? '',
+      customStatus: user.customStatus ?? '',
+      avatar: user.avatar ?? null,
+      banner: pick('banner') ?? null,
+      links: linksFrom(typeof user.links === 'string' ? user.links : (member?.links ?? user.links)),
+      birthMonth: birthday?.month ?? '',
+      birthDay: birthday?.day ?? '',
+      timezone: pick('timezone') ?? '',
+      games: parseFavoriteGames(pick('favoriteGames'))
+    }
+    initialRef.current = formToPatch(form)
+
+    setDisplayName(form.displayName)
+    setBio(form.bio)
+    setPronouns(form.pronouns)
+    setCustomStatus(form.customStatus)
+    setAvatar(form.avatar)
+    setBanner(form.banner)
+    setLinks(form.links)
+    setGames(form.games)
+    setBirthMonth(form.birthMonth)
+    setBirthDay(form.birthDay)
+    setTimezone(form.timezone)
     setGameDraft('')
     setError(null)
     setGifFor(null)
     setTab('identidade')
-  }, [open, user])
+  }, [open, user, byId])
 
   const handleFile = async (kind: 'avatar' | 'banner', file: File | null): Promise<void> => {
     if (!file || !token) return
@@ -222,23 +292,35 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
       return
     }
 
+    // Só o que mudou desde que o editor abriu (ver `initialRef`).
+    const full = formToPatch({
+      displayName,
+      bio,
+      pronouns,
+      customStatus,
+      avatar,
+      banner,
+      links,
+      birthMonth,
+      birthDay,
+      timezone,
+      games
+    })
+    const patch: ProfilePatch = {}
+    for (const key of Object.keys(full) as (keyof ProfilePatch)[]) {
+      if (JSON.stringify(full[key]) !== JSON.stringify(initialRef.current[key])) {
+        ;(patch as Record<string, unknown>)[key] = full[key]
+      }
+    }
+    if (Object.keys(patch).length === 0) {
+      onClose()
+      return
+    }
+
     setBusy(true)
     setError(null)
     try {
-      const updated = await usersApi.updateProfile(token, {
-        displayName: displayName.trim(),
-        bio: bio.trim() || null,
-        pronouns: pronouns.trim() || null,
-        customStatus: customStatus.trim() || null,
-        avatar,
-        banner,
-        // Link sem nome ou sem url é lixo; o servidor descartaria de qualquer jeito.
-        links: links.filter((l) => l.name.trim() && l.url.trim()),
-        // Mês sem dia (ou dia sem mês) não é data: some como "não informado".
-        birthday: birthMonth && birthDay ? `${birthMonth}-${birthDay}` : null,
-        timezone: timezone || null,
-        favoriteGames: games
-      })
+      const updated = await usersApi.updateProfile(token, patch)
       applyUser(updated)
       onClose()
     } catch (err) {
@@ -294,6 +376,13 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
         onOpenAutoFocus={(event) => {
           event.preventDefault()
           nameRef.current?.focus()
+        }}
+        // Com o seletor de GIF na tela, Esc é "voltar" pro formulário, não
+        // fechar o editor com tudo que ainda não foi salvo.
+        onEscapeKeyDown={(event) => {
+          if (!gifFor) return
+          event.preventDefault()
+          setGifFor(null)
         }}
       >
         <DialogHeader>
@@ -853,14 +942,19 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
   const [loading, setLoading] = React.useState(!shop)
   const [busy, setBusy] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+  // `loadShop` devolve null quando falha (não lança): sem isto a aba dizia
+  // "você ainda não tem nada pra vestir" pra quem tem, só porque não carregou.
+  const [failed, setFailed] = React.useState(false)
+  const [attempt, setAttempt] = React.useState(0)
 
   React.useEffect(() => {
     if (shop) return
     let alive = true
     setLoading(true)
+    setFailed(false)
     void loadShop()
-      .catch(() => {
-        // Sem lojinha (rota fora): a aba explica em vez de ficar girando.
+      .then((res) => {
+        if (alive && !res) setFailed(true)
       })
       .finally(() => {
         if (alive) setLoading(false)
@@ -868,7 +962,7 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
     return () => {
       alive = false
     }
-  }, [shop, loadShop])
+  }, [shop, loadShop, attempt])
 
   const items = shop?.items ?? []
   const owned = items.filter((i) => i.owned)
@@ -901,6 +995,17 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
     return (
       <div className="flex h-32 items-center justify-center text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
+      </div>
+    )
+  }
+
+  if (failed && !shop) {
+    return (
+      <div className="flex flex-col items-start gap-2 rounded-brutal border border-dashed border-line px-4 py-5">
+        <p className="text-sm text-destructive">Não deu pra carregar o que você tem da Lojinha.</p>
+        <Button type="button" variant="outline" size="sm" onClick={() => setAttempt((n) => n + 1)}>
+          Tentar de novo
+        </Button>
       </div>
     )
   }

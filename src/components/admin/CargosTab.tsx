@@ -64,7 +64,8 @@ export function CargosTab() {
     }
   }
 
-  const run = async (action: () => Promise<void>): Promise<void> => {
+  /** Devolve se deu certo: o formulário de edição só fecha quando salvou. */
+  const run = async (action: () => Promise<void>): Promise<boolean> => {
     setBusy(true)
     setError(null)
     try {
@@ -74,9 +75,11 @@ export function CargosTab() {
       // acabou de acontecer.
       await refresh()
       cue('self-join')
+      return true
     } catch (err) {
       cue('self-leave')
       setError(errorMessage(err, 'Não deu certo'))
+      return false
     } finally {
       setBusy(false)
     }
@@ -173,8 +176,9 @@ function CargoRow({
   permissions: PermissionDef[]
   busy: boolean
   onToggle: () => void
-  onSave: (patch: Parameters<typeof cargosApi.update>[2]) => Promise<void>
-  onDelete: () => Promise<void>
+  /** `true` quando salvou. */
+  onSave: (patch: Parameters<typeof cargosApi.update>[2]) => Promise<boolean>
+  onDelete: () => Promise<unknown>
 }) {
   const [editing, setEditing] = React.useState(false)
   const [confirming, setConfirming] = React.useState(false)
@@ -262,8 +266,8 @@ function CargoRow({
             busy={busy}
             onCancel={() => setEditing(false)}
             onSubmit={async (values) => {
-              await onSave(values)
-              setEditing(false)
+              // Falhou: o erro aparece em cima e o que foi editado continua aqui.
+              if (await onSave(values)) setEditing(false)
             }}
           />
         </div>
@@ -515,7 +519,7 @@ function MembersOfCargo({
 }: {
   cargo: Cargo
   busy: boolean
-  run: (action: () => Promise<void>) => Promise<void>
+  run: (action: () => Promise<void>) => Promise<unknown>
 }) {
   const { token } = useAuth()
   const { members } = useMembers()

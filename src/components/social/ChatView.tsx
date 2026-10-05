@@ -574,6 +574,9 @@ export function ChatView() {
           jogou, e o servidor recusa mensagem neste canal de qualquer jeito. */}
       {!isLol && (
         <MessageComposer
+          // Um compositor por canal: texto, print colado e anexo subindo não
+          // podem pular junto pra DM aberta em seguida e sair lá no Enter.
+          key={activeChannel.id}
           placeholderTarget={isDm ? activeChannel.name : '#' + activeChannel.name}
           replyTo={replyTo}
           onCancelReply={() => setReplyTo(null)}

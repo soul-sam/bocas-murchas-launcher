@@ -13,6 +13,7 @@ import {
   X
 } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
+import { resolveAssetUrl } from '@/lib/api'
 import { cn, formatClock } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
@@ -378,7 +379,7 @@ function MusicBar({ session }: { session: WatchSession }) {
 
               <UserAvatar
                 userId={session.hostUserId}
-                src={host?.avatar ?? undefined}
+                src={resolveAssetUrl(host?.avatar)}
                 name={host?.displayName ?? 'alguém'}
                 ringColor={host?.profileColor}
                 className="h-6 w-6 shrink-0"

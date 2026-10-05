@@ -4,6 +4,7 @@ import { TvIcon } from '@/lib/bocas-icons'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
+import { resolveAssetUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/lib/chat-context'
 import { useVoice } from '@/lib/voice-context'
@@ -171,7 +172,7 @@ export function WatchCard({ message, metadata, compact }: CardProps<WatchCardMet
           <div className="flex items-center gap-1.5">
             <UserAvatar
               userId={metadata.hostUserId ?? message.author.id}
-              src={host?.avatar ?? message.author.avatar ?? undefined}
+              src={resolveAssetUrl(host?.avatar ?? message.author.avatar)}
               name={hostName}
               ringColor={host?.profileColor}
               className="h-5 w-5"

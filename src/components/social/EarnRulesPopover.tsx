@@ -47,11 +47,22 @@ export function EarnRulesPopover({ className }: { className?: string }) {
   }, [token])
 
   React.useEffect(() => {
-    if (open && !rules && !loading) void load()
-  }, [open, rules, loading, load])
+    // `!error`: sem ele, a falha punha `loading` em false com `rules` ainda
+    // vazio e o efeito buscava de novo, em laço, enquanto o popover estivesse
+    // aberto. Depois de errar, quem tenta de novo é o botão.
+    if (open && !rules && !loading && !error) void load()
+  }, [open, rules, loading, error, load])
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
+    <Popover
+      open={open}
+      // Reabrir depois de uma falha tenta de novo sozinho, uma vez.
+      onOpenChange={(next) => {
+        if (next) setError(false)
+        setOpen(next)
+      }}
+      modal={false}
+    >
       <PopoverTrigger asChild>
         <button
           type="button"

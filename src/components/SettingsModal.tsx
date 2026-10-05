@@ -113,10 +113,14 @@ export function SettingsModal() {
               <Power className="mr-1.5 inline h-3 w-3" />
               Início
             </TabsTrigger>
-            <TabsTrigger value="sobreposicao">
-              <Layers className="mr-1.5 inline h-3 w-3" />
-              Sobreposição
-            </TabsTrigger>
+            {/* So no desktop: a sobreposicao e uma janela por cima do jogo, e
+                no site/celular ela nao existe. */}
+            {!isWeb() && (
+              <TabsTrigger value="sobreposicao">
+                <Layers className="mr-1.5 inline h-3 w-3" />
+                Sobreposição
+              </TabsTrigger>
+            )}
             <TabsTrigger value="lol">
               <Swords className="mr-1.5 inline h-3 w-3" />
               LoL
@@ -149,9 +153,11 @@ export function SettingsModal() {
           <TabsContent value="inicio">
             <StartupTab />
           </TabsContent>
-          <TabsContent value="sobreposicao">
-            <OverlayTab />
-          </TabsContent>
+          {!isWeb() && (
+            <TabsContent value="sobreposicao">
+              <OverlayTab />
+            </TabsContent>
+          )}
           <TabsContent value="lol">
             <LolTab />
           </TabsContent>

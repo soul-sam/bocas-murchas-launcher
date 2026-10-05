@@ -41,13 +41,20 @@ function renderBody(body: string): React.ReactNode {
 }
 
 export function ChangelogModal() {
-  const { settings, update } = useSettings()
+  const { settings, loading, update } = useSettings()
   const [changelog, setChangelog] = React.useState<ModpackChangelog | null>(null)
   const [open, setOpen] = React.useState(false)
   const [dismissed, setDismissed] = React.useState(false)
+  const lastSeenTag = settings.lastSeenModpackTag
 
+  /**
+   * Só o que importa nas dependências: o objeto `settings` inteiro mudava a
+   * cada slider arrastado, e cada mudança era um GET sem cache na API do
+   * GitHub — dois sliders estouravam a cota de 60/h sem login, e o modpack
+   * caía pra "offline" (ou a instalação nova falhava com 403).
+   */
   React.useEffect(() => {
-    if (dismissed || !settings) return
+    if (dismissed || loading) return
 
     void (async () => {
       const [installedTag, cl] = await Promise.all([
@@ -59,12 +66,12 @@ export function ChangelogModal() {
       // installed tag matches the latest published release the user hasn't seen.
       if (!installedTag || !cl) return
       if (cl.tag !== installedTag) return
-      if (settings.lastSeenModpackTag === installedTag) return
+      if (lastSeenTag === installedTag) return
 
       setChangelog(cl)
       setOpen(true)
     })()
-  }, [settings, dismissed])
+  }, [lastSeenTag, loading, dismissed])
 
   const close = React.useCallback(async () => {
     setOpen(false)

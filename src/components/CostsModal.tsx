@@ -36,8 +36,31 @@ import { cn } from '@/lib/utils'
  */
 export function CostsModal() {
   const { costsOpen, closeCosts } = useOverlays()
-  const { summary, markPaid, unmarkPaid } = useCosts()
+  const { summary, refresh, markPaid, unmarkPaid } = useCosts()
   const [busy, setBusy] = React.useState(false)
+
+  /**
+   * Abriu sem a conta carregada (a busca do login falhou): busca agora, e se
+   * falhar de novo FECHA. Antes o `costsOpen` ficava ligado sem nada na tela
+   * — o botão parecia morto e a modal aparecia sozinha no refresh de 1 h.
+   */
+  const [fetched, setFetched] = React.useState(false)
+  const requestedRef = React.useRef(false)
+  React.useEffect(() => {
+    if (!costsOpen) {
+      setFetched(false)
+      requestedRef.current = false
+      return
+    }
+    if (summary) return
+    if (fetched) {
+      closeCosts()
+      return
+    }
+    if (requestedRef.current) return
+    requestedRef.current = true
+    void refresh().finally(() => setFetched(true))
+  }, [costsOpen, summary, fetched, refresh, closeCosts])
 
   React.useEffect(() => {
     if (!costsOpen) return

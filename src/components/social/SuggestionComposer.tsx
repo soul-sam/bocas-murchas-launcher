@@ -70,7 +70,7 @@ const DETAIL_PLACEHOLDER: Record<SuggestionKind, string> = {
 export function SuggestionComposer() {
   const { suggestionComposerOpen: open, closeSuggestionComposer } = useOverlays()
   const { token } = useAuth()
-  const { activeChannelId, textChannels, setActiveChannel } = useChat()
+  const { activeChannelId, feedChannel, setActiveChannel } = useChat()
 
   const [kind, setKind] = React.useState<SuggestionKind>('ideia')
   const [title, setTitle] = React.useState('')
@@ -85,10 +85,14 @@ export function SuggestionComposer() {
    * O canal de sugestões é onde o card vai cair — e ele NÃO é o canal aberto.
    * Alguém que teve uma ideia no meio do #geral não deve ter que trocar de
    * canal antes de escrever: a sugestão vai pro lugar dela sozinha.
+   *
+   * Pela mesma cadeia de feed da API (canal que declarou o feed, depois o
+   * tipo legado): pedido de "Imprimir" vai pro canal da impressora, não pro
+   * de sugestões — e canal configurado por feed também conta.
    */
   const target = React.useMemo(
-    () => textChannels.find((channel) => channel.type === 'suggestions'),
-    [textChannels]
+    () => feedChannel(kind === 'impressao' ? 'impressora' : 'sugestoes') ?? undefined,
+    [feedChannel, kind]
   )
 
   const reset = React.useCallback(() => {

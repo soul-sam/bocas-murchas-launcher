@@ -355,6 +355,9 @@ function InvitesTab() {
 type MemberConfirm =
   | { kind: 'role'; id: string; to: 'admin' | 'member' }
   | { kind: 'remove'; id: string; step: 1 | 2 }
+  // Resetar troca a senha NA HORA: um clique errado ao lado do promover
+  // deixava o membro sem a senha dele.
+  | { kind: 'reset'; id: string }
 
 function MembersTab() {
   const { token, user: me } = useAuth()
@@ -530,7 +533,7 @@ function MembersTab() {
                       <IconButton
                         title="Resetar senha"
                         disabled={busy}
-                        onClick={() => void resetPassword(member)}
+                        onClick={() => setConfirm({ kind: 'reset', id: member.id })}
                       >
                         <KeyRound className="h-4 w-4" />
                       </IconButton>
@@ -557,6 +560,17 @@ function MembersTab() {
                         }
                         busy={busy}
                         onYes={() => void changeRole(member, mine.to)}
+                        onNo={() => setConfirm(null)}
+                      />
+                    </div>
+                  )}
+
+                  {mine?.kind === 'reset' && (
+                    <div className="mt-2 flex justify-end">
+                      <InlineConfirm
+                        question={`Trocar a senha de ${member.displayName} por uma temporária?`}
+                        busy={busy}
+                        onYes={() => void resetPassword(member)}
                         onNo={() => setConfirm(null)}
                       />
                     </div>

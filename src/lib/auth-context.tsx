@@ -55,6 +55,11 @@ interface AuthContextValue extends AuthState {
    * lá do nada.
    */
   expired: boolean
+  /**
+   * Abrindo com sessão salva, mas sem conseguir falar com a API (rede fora,
+   * servidor em deploy): o splash diz que está tentando de novo.
+   */
+  retrying: boolean
   /** Derruba a sessão agora. Idempotente: o 401 costuma vir de várias chamadas juntas. */
   expireSession: () => void
 }
@@ -89,9 +94,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => setUnauthorizedHandler(null)
   }, [expireSession])
 
+  /**
+   * Volta da sessão salva ao abrir.
+   *
+   * SÓ O 401 DERRUBA. Sem rede (o launcher abre com o Windows antes do Wi-Fi)
+   * ou com a API no meio do deploy (o boot dela passa de um minuto), o
+   * `/auth/me` falha por motivo que não tem nada a ver com a sessão — e antes
+   * isso jogava a pessoa na tela de login, com o token bom ainda no cofre, o
+   * socket nem subia e ela ficava offline pra galera até digitar a senha.
+   * Agora fica no splash e tenta de novo, com espera crescente até 30 s, e na
+   * hora em que a rede volta (`online`).
+   */
+  const [retrying, setRetrying] = React.useState(false)
+
   React.useEffect(() => {
     let cancelled = false
-    ;(async () => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let attempt = 0
+
+    const restore = async (): Promise<void> => {
+      timer = null
       try {
         const stored = await window.bocas.auth.loadToken()
         if (!stored) {
@@ -100,19 +122,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         try {
           const user = await auth.me(stored)
-          if (!cancelled) setState({ user, token: stored, loading: false })
+          if (cancelled) return
+          setRetrying(false)
+          setState({ user, token: stored, loading: false })
         } catch (err) {
-          if (err instanceof ApiError && err.status === 401) {
+          if (cancelled) return
+          // Rede fora (fetch lança TypeError, não ApiError) ou servidor caído/
+          // em deploy (5xx, 502/504 do nginx): a sessão continua valendo.
+          const transient = !(err instanceof ApiError) || err.status >= 500
+          if (transient) {
+            setRetrying(true)
+            const delay = Math.min(30_000, 2_000 * 2 ** attempt)
+            attempt += 1
+            timer = setTimeout(() => void restore(), delay)
+            return
+          }
+          if (err.status === 401) {
             await window.bocas.auth.clearToken()
           }
+          setRetrying(false)
           if (!cancelled) setState({ user: null, token: null, loading: false })
         }
       } catch {
         if (!cancelled) setState({ user: null, token: null, loading: false })
       }
-    })()
+    }
+
+    // A rede voltou: não espera o resto da espera crescente.
+    const onOnline = (): void => {
+      if (timer === null) return
+      clearTimeout(timer)
+      attempt = 0
+      void restore()
+    }
+
+    window.addEventListener('online', onOnline)
+    void restore()
     return () => {
       cancelled = true
+      if (timer) clearTimeout(timer)
+      window.removeEventListener('online', onOnline)
     }
   }, [])
 
@@ -197,8 +246,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const value = React.useMemo<AuthContextValue>(
-    () => ({ ...state, expired, login, register, logout, applyUser, expireSession }),
-    [state, expired, login, register, logout, applyUser, expireSession]
+    () => ({ ...state, expired, retrying, login, register, logout, applyUser, expireSession }),
+    [state, expired, retrying, login, register, logout, applyUser, expireSession]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
