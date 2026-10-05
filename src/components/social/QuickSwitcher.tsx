@@ -9,6 +9,7 @@ import {
   Shield
 } from 'lucide-react'
 import { GameIcon, ShopIcon } from '@/lib/bocas-icons'
+import { GameIcon as GameGlyph } from './GameIcon'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/lib/chat-context'
 import { useVoice } from '@/lib/voice-context'
@@ -138,6 +139,24 @@ export function QuickSwitcher() {
         }
       })
     }
+
+    list.push({
+      id: 'cmd:games',
+      label: 'Salão de jogos',
+      hint: 'todos os jogos',
+      icon: <GameIcon className="h-3.5 w-3.5" />,
+      keywords: 'salao jogos games hub minecraft poker lol',
+      run: () => navigate('/jogos')
+    })
+
+    list.push({
+      id: 'cmd:lol',
+      label: 'League of Legends',
+      hint: 'partidas e estatísticas',
+      icon: <GameGlyph game="lol" className="h-3.5 w-3.5" />,
+      keywords: 'lol league legends partidas estatisticas',
+      run: () => navigate('/lol')
+    })
 
     list.push({
       id: 'cmd:game',

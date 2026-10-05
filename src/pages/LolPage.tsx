@@ -1,3 +1,4 @@
+import { BackToHall } from '@/components/games/BackToHall'
 import { GameIcon } from '@/components/social/GameIcon'
 import { LolPanel } from '@/components/social/lol/LolPanel'
 
@@ -20,6 +21,7 @@ export function LolPage() {
             Partidas, campeões e padrões do grupo
           </p>
         </div>
+        <BackToHall />
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col">

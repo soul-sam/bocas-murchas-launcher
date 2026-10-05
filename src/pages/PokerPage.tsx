@@ -6,6 +6,7 @@ import { useLayout } from '@/lib/layout-context'
 import { usePoker } from '@/lib/poker-context'
 import { useCamadaVoltar } from '@/lib/use-camada-voltar'
 import { cn } from '@/lib/utils'
+import { BackToHall } from '@/components/games/BackToHall'
 import { CashPanel } from '@/components/poker/CashPanel'
 import { HandRankings } from '@/components/poker/HandRankings'
 import { PokerIcon } from '@/components/poker/PokerGlyphs'
@@ -108,6 +109,7 @@ export function PokerPage() {
               {rules?.cashEnabled ? ' — ou, na mesa valendo, dinheiro de verdade até R$ 20' : ''}
             </p>
           </div>
+          <BackToHall />
         </header>
       )}
 

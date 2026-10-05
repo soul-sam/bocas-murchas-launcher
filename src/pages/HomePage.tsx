@@ -14,6 +14,7 @@ import { UpdateBanner } from '@/components/UpdateBanner'
 import { ServerStatusCard } from '@/components/ServerStatusCard'
 import { ChangelogModal } from '@/components/ChangelogModal'
 import { isWeb } from '@/lib/platform'
+import { BackToHall } from '@/components/games/BackToHall'
 
 /**
  * NO NAVEGADOR ESTA TELA NÃO TEM O QUE FAZER.
@@ -29,6 +30,7 @@ import { isWeb } from '@/lib/platform'
 function ServidorNaWeb() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 sm:p-8">
+      <BackToHall className="self-start" />
       <header className="flex flex-wrap items-center gap-3">
         <img src="bocas-murchas-transp.png" alt="" aria-hidden className="h-10 w-10" />
         <div className="min-w-0">
@@ -64,6 +66,7 @@ export function HomePage() {
 
   return (
     <div className="flex flex-1 flex-col p-8">
+      <BackToHall className="mb-3 self-start" />
       <header className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img

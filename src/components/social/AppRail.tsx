@@ -13,7 +13,6 @@ import { useLayout } from '@/lib/layout-context'
 import { useCargos } from '@/lib/cargos-context'
 import { useCosts } from '@/lib/costs-context'
 import { toqueLongo } from '@/lib/toque-longo'
-import { isWeb } from '@/lib/platform'
 import { ArenaRail } from './ArenaRail'
 
 /**
@@ -78,6 +77,9 @@ export function AppRail() {
 
   const onSocial = pathname === '/'
   const dmActive = activeChannelId?.startsWith('dm:') === true
+  // O Salão é a casa de todas as telas de jogo: o ícone fica aceso em
+  // qualquer uma delas, não só em `/jogos`.
+  const onGames = ['/jogos', '/jogo', '/poker', '/lol'].includes(pathname)
 
   // Voltar pro servidor tem que cair no canal em que a pessoa estava, não num
   // canal qualquer — por isso guardamos o último canal não-DM visitado.
@@ -132,12 +134,10 @@ export function AppRail() {
         <ChatIcon className="h-5 w-5" variant="regular" />
       </RailLink>
 
-      {/* Na web esta aba não é o launcher: o Minecraft não abre de dentro do
-          navegador, e a tela lá mostra só o estado do servidor. O rótulo e o
-          ícone contam isso antes do toque — antes prometia "Minecraft" e
-          entregava botões que não faziam nada. */}
-      <RailLink to="/jogo" label={isWeb() ? 'Servidor' : 'Minecraft'}>
-        {isWeb() ? <ServerIcon className="h-5 w-5" /> : <GameIcon className="h-5 w-5" />}
+      {/* Um ícone só pra todos os jogos. Minecraft, pôquer e LoL moram atrás
+          dos cards do Salão — ver pages/GameHallPage.tsx. */}
+      <RailLink to="/jogos" label="Salão de jogos" forceActive={onGames}>
+        <GameIcon className="h-5 w-5" />
       </RailLink>
 
       {/* A impressora só existe na barra pra quem tem o cargo "Impressora
@@ -272,6 +272,7 @@ function RailLink({
   badge,
   urgent,
   forceInactive,
+  forceActive,
   onClick,
   children
 }: {
@@ -280,6 +281,7 @@ function RailLink({
   badge?: number
   urgent?: boolean
   forceInactive?: boolean
+  forceActive?: boolean
   onClick?: (event: React.MouseEvent) => void
   children: React.ReactNode
 }) {
@@ -293,7 +295,7 @@ function RailLink({
       className={({ isActive }) =>
         cn(
           'alvo-dedo relative rounded-brutal p-2.5 transition-colors',
-          isActive && !forceInactive
+          (isActive || forceActive) && !forceInactive
             ? 'bg-acid/10 text-acid shadow-[inset_2px_0_0_hsl(var(--acid))]'
             : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
         )
