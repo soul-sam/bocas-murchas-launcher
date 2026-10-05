@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.53.0',
+    headline: 'Tela do LoL: quem está jogando',
+    items: [
+      'A tela do LoL no Salão de jogos agora mostra quem está em partida, há quanto tempo, e se ainda dá pra apostar.',
+      'Embaixo aparece quem está com o LoL aberto, com o mesmo status da Riot: online, ausente ou ocupado.',
+      'Botão Jogar: abre o League of Legends direto do launcher.',
+      'As estatísticas do grupo continuam no canal de LoL do chat.',
+      'O Pôquer saiu da barra lateral e fica só no Salão de jogos.'
+    ],
+    note: 'O status só aparece pra quem está com o launcher aberto e a leitura do LoL ligada nas configurações.'
+  },
+  {
     version: '1.52.0',
     headline: 'Salão de jogos, com xadrez e dama',
     items: [
