@@ -240,9 +240,13 @@
 }
 
 /* A coroa: centrada no topo, por cima da borda. O desenho é máscara e a cor
-   é o fundo — num data URI não dá pra usar variável, e a coroa tem que sair
-   na cor da pessoa. */
+   é o fundo (num data URI não dá pra usar variável, e a coroa tem que sair
+   na cor da pessoa) — por isso a coroa pintada é o ::before. O CONTORNO
+   escuro é o filtro do elemento de fora: quatro sombras secas de 1px em
+   volta do que o ::before desenhou, e o brilho por último. No mesmo elemento
+   não daria: a máscara corta depois do filtro e levaria o contorno junto. */
 .frame-fire-ring {
+  --fx-outline: color-mix(in oklab, var(--fx) 15%, black);
   border: 0 !important; /* o seletor [class*='frame-'] pegaria a coroa */
   position: absolute;
   top: -9px;
@@ -251,11 +255,22 @@
   height: 15px;
   transform: translateX(-50%);
   z-index: 1;
+  filter:
+    drop-shadow(1px 0 0 var(--fx-outline))
+    drop-shadow(-1px 0 0 var(--fx-outline))
+    drop-shadow(0 1px 0 var(--fx-outline))
+    drop-shadow(0 -1px 0 var(--fx-outline))
+    drop-shadow(0 0 3px color-mix(in srgb, var(--fx) 80%, transparent));
+  pointer-events: none;
+}
+
+.frame-fire-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
   background: var(--fx);
   -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5Z'/></svg>") center / contain no-repeat;
   mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5Z'/></svg>") center / contain no-repeat;
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--fx) 80%, transparent));
-  pointer-events: none;
 }
 
 /* ============================================
