@@ -211,6 +211,14 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     socket.emit('activity:set', mine)
   }, [socket, connected, mine])
 
+  // Status da Riot (online/ausente/ocupado): vale com o cliente aberto mesmo
+  // sem jogo nenhum, por isso nao mora dentro da atividade.
+  const riotStatus = settings.lol.enabled && lol?.clientRunning ? lol.riotStatus ?? null : null
+  React.useEffect(() => {
+    if (!socket || !connected) return
+    socket.emit('lol:presence:set', riotStatus)
+  }, [socket, connected, riotStatus])
+
   // --- sessão de partida no servidor (pra recap, apostas e card) ----------
   /**
    * Uma sessão por jogo em andamento. Guardamos quando ela começou pra

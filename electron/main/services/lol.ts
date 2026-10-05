@@ -6,7 +6,8 @@ import type {
   LolLiveScore,
   LolLobbyMember,
   LolPhase,
-  LolStatus
+  LolStatus,
+  RiotStatus
 } from '../../preload/types.js'
 import { loadSettings } from './settings.js'
 import { discoverLcu, type LcuCredentials } from './lol-discovery.js'
@@ -254,7 +255,8 @@ function statusKey(s: LolStatus): string {
     s.score ?? null,
     s.me ?? null,
     s.error ?? null,
-    s.windowMode ?? null
+    s.windowMode ?? null,
+    s.riotStatus ?? null
   ])
 }
 
@@ -525,6 +527,10 @@ async function pollConnected(s: Session): Promise<void> {
     me: s.me,
     updatedAt: now
   }
+  // Em partida o cliente ja marca "ocupado": uma chamada a menos por poll
+  // justo quando a CPU e do jogo.
+  const riotStatus = phase === 'in-progress' ? 'busy' : await fetchRiotStatus(s)
+  if (riotStatus) next.riotStatus = riotStatus
 
   /**
    * O modo de video, relido a cada ENTRADA em partida.
@@ -610,6 +616,29 @@ async function fetchMe(s: Session): Promise<LolLobbyMember | undefined> {
       riotId: `${gameName}#${me.tagLine ?? ''}`,
       puuid: me.puuid || undefined,
       summonerId: me.summonerId || undefined
+    }
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Status do chat da Riot (`availability`): chat, away, dnd, mobile, offline.
+ * "Aparecer offline" e chat ainda conectando ficam sem status — a pessoa nao
+ * aparece como online pra ninguem.
+ */
+async function fetchRiotStatus(s: Session): Promise<RiotStatus | undefined> {
+  try {
+    const me = await lcuGet<{ availability?: string }>(s.creds, '/lol-chat/v1/me')
+    switch (me?.availability) {
+      case 'chat':
+        return 'online'
+      case 'away':
+        return 'away'
+      case 'dnd':
+        return 'busy'
+      default:
+        return undefined
     }
   } catch {
     return undefined

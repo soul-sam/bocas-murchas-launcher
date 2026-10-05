@@ -223,6 +223,7 @@ export type {
   ActivityGame,
   LolPhase,
   LolStatus,
+  RiotStatus,
   LolGameResult
 } from '../../electron/preload/types'
 

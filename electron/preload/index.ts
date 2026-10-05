@@ -89,7 +89,8 @@ const api: BocasAPI = {
     status: () => ipcRenderer.invoke('lol:status'),
     onStatus: (cb) => on('lol:status', cb),
     onGameEnded: (cb) => on('lol:game-ended', cb),
-    refresh: () => ipcRenderer.invoke('lol:refresh')
+    refresh: () => ipcRenderer.invoke('lol:refresh'),
+    launch: () => ipcRenderer.invoke('lol:launch')
   },
   overlay: {
     push: (state) => ipcRenderer.invoke('overlay:push', state),

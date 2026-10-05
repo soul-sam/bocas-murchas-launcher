@@ -313,9 +313,14 @@ export interface LolLiveScore {
  */
 export type LolWindowMode = 'fullscreen' | 'borderless' | 'windowed'
 
+/** Status do chat da Riot, como o cliente mostra: online, ausente, ocupado (em partida). */
+export type RiotStatus = 'online' | 'away' | 'busy'
+
 export interface LolStatus {
   /** Cliente aberto e respondendo? */
   clientRunning: boolean
+  /** Status no chat da Riot. Ausente = deslogado ou "aparecer offline". */
+  riotStatus?: RiotStatus
   phase: LolPhase
   /** Epoch ms de quando a fase atual comecou. */
   phaseSince: number
@@ -1179,6 +1184,8 @@ export interface BocasAPI {
     onGameEnded: (cb: (result: LolGameResult) => void) => () => void
     /** Forca uma releitura agora (botao "testar" nas configuracoes). */
     refresh: () => Promise<LolStatus>
+    /** Abre o cliente do LoL pelo Riot Client (botao "Jogar" do Salao de jogos). */
+    launch: () => Promise<{ ok: boolean; error?: string }>
   }
   /**
    * Sobreposicao em partida. Os dois lados usam o MESMO objeto: a janela

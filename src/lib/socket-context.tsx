@@ -4,6 +4,7 @@ import {
   API_ORIGIN,
   type AuthUser,
   type GameActivity,
+  type RiotStatus,
   type UserStatus,
   type VoiceUser
 } from './api'
@@ -77,6 +78,12 @@ interface SocketContextValue {
    * simplesmente nao esta no mapa.
    */
   activities: Record<string, ActivityEntry>
+  /**
+   * Status da Riot de quem esta com o cliente do LoL aberto (userId ->
+   * online/ausente/ocupado), jogando ou nao. Atualizado por
+   * `lol:presence:changed`.
+   */
+  lolPresence: Record<string, RiotStatus>
 }
 
 /** O que a barra lateral desenha ao lado de quem esta na call. */
@@ -123,6 +130,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [voiceFlags, setVoiceFlags] = React.useState<Record<string, VoiceFlags>>({})
   const [profileUpdates, setProfileUpdates] = React.useState<Record<string, AuthUser>>({})
   const [activities, setActivities] = React.useState<Record<string, ActivityEntry>>({})
+  const [lolPresence, setLolPresence] = React.useState<Record<string, RiotStatus>>({})
 
   React.useEffect(() => {
     if (!token || !user) {
@@ -217,7 +225,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     const handlePresence = (data: {
       onlineUsers?: OnlineUser[]
       activities?: Record<string, ActivityEntry>
+      lolPresence?: Record<string, RiotStatus>
     }): void => {
+      if (data?.lolPresence && typeof data.lolPresence === 'object') {
+        setLolPresence(data.lolPresence)
+      }
       if (Array.isArray(data?.onlineUsers)) {
         const list = data.onlineUsers.filter(Boolean)
         setOnlineUsers(list)
@@ -246,7 +258,18 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       })
     }
 
-    const handleActivityState = (data: { activities?: Record<string, ActivityEntry> }): void => {
+    const handleLolPresenceChanged = (data: { userId: string; status: RiotStatus | null }): void => {
+      if (!data?.userId) return
+      setLolPresence((prev) => {
+        if (prev[data.userId] === (data.status ?? undefined)) return prev
+        const next = { ...prev }
+        if (data.status) next[data.userId] = data.status
+        else delete next[data.userId]
+        return next
+      })
+    }
+
+    const handleActivityState =(data: { activities?: Record<string, ActivityEntry> }): void => {
       if (data?.activities && typeof data.activities === 'object') {
         setActivities(data.activities)
       }
@@ -401,6 +424,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     client.on('user:profileUpdated', handleProfileUpdated)
     client.on('activity:changed', handleActivityChanged)
     client.on('activity:state', handleActivityState)
+    client.on('lol:presence:changed', handleLolPresenceChanged)
 
     setSocket(client)
 
@@ -418,6 +442,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       client.off('user:profileUpdated', handleProfileUpdated)
       client.off('activity:changed', handleActivityChanged)
       client.off('activity:state', handleActivityState)
+      client.off('lol:presence:changed', handleLolPresenceChanged)
       client.disconnect()
       setSocket(null)
       setConnected(false)
@@ -446,7 +471,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       voiceFlags,
       screenShares,
       profileUpdates,
-      activities
+      activities,
+      lolPresence
     }),
     [
       socket,
@@ -458,7 +484,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       voiceFlags,
       screenShares,
       profileUpdates,
-      activities
+      activities,
+      lolPresence
     ]
   )
 

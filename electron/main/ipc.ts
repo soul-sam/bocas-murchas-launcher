@@ -23,6 +23,7 @@ import { listSources, selectSource, cancelSelection } from './services/screen-sh
 import { shakeWindow, type NudgeOptions } from './services/nudge.js'
 import { setVoiceState, setCloseToTray } from './services/tray.js'
 import { getLolStatus, refreshLolNow, startLolWatcher, stopLolWatcher } from './services/lol.js'
+import { launchLolClient } from './services/lol-launch.js'
 import {
   applyOverlaySettings,
   dismissOverlay,
@@ -147,6 +148,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('lol:status', async () => getLolStatus())
 
   ipcMain.handle('lol:refresh', async () => refreshLolNow())
+
+  ipcMain.handle('lol:launch', async () => launchLolClient())
 
   // ============================================
   // SOBREPOSICAO EM PARTIDA

@@ -393,6 +393,7 @@ function criarPonte(): BocasAPI {
       onStatus: semEventos,
       onGameEnded: semEventos,
       refresh: async () => semLol(),
+      launch: async () => ({ ok: false, error: 'Abrir o LoL só funciona no app do PC' }),
     },
 
     // A sobreposição é uma segunda janela transparente, sem moldura e sempre

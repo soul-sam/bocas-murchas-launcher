@@ -13,7 +13,6 @@ import { formatCompact } from '@/lib/api-gamification'
 import { useLayout } from '@/lib/layout-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useGamification } from '@/lib/gamification-context'
-import { usePoker } from '@/lib/poker-context'
 import { cn } from '@/lib/utils'
 import { ARENA_ICON, ARENA_LABEL, LiveCount, useLiveMatchCount, type ArenaItem } from './ArenaChrome'
 
@@ -65,11 +64,9 @@ export function ArenaRail() {
     openRecap
   } = useLayout()
   const { openShop, openAchievements, shopOpen, achievementsOpen } = useOverlays()
-  const { tables: pokerTables, myTurn: pokerTurn, goToPoker } = usePoker()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const onSocial = pathname === '/'
-  const onPoker = pathname === '/poker'
 
   /**
    * Painel da coluna direita: na tela social alterna; de outra aba (Minecraft,
@@ -106,31 +103,6 @@ export function ArenaRail() {
         </Pill>
       ),
       meta: live > 0 && <LiveCount count={live} />
-    },
-    {
-      id: 'poker',
-      // Tela própria (rota /poker), não modal: ativo é estar NELA.
-      active: onPoker,
-      run: () => goToPoker(),
-      hint: "Mesas de Texas Hold'em com murchos — e, com o caixa ligado, valendo até R$ 20 por pessoa.",
-      // Vermelho só quando é a SUA vez com a tela fechada: é a única coisa
-      // do pôquer que tem pressa. Mesas abertas são estado, embaixo.
-      badge: pokerTurn ? (
-        <Pill tone="urgent" corner="top">
-          !
-        </Pill>
-      ) : (
-        pokerTables.length > 0 && <Pill tone="level">{pokerTables.length}</Pill>
-      ),
-      meta: pokerTurn ? (
-        <span className="font-mono text-[11.5px] text-destructive">sua vez</span>
-      ) : (
-        pokerTables.length > 0 && (
-          <span className="font-mono text-[11.5px] text-muted-foreground">
-            {pokerTables.length} {pokerTables.length === 1 ? 'mesa' : 'mesas'}
-          </span>
-        )
-      )
     },
     {
       id: 'achievements',
