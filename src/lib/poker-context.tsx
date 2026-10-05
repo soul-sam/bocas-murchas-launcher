@@ -94,7 +94,7 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
   const openIdRef = React.useRef<string | null>(null)
   openIdRef.current = openTableId
 
-  const sound = React.useCallback((name: 'poker-turn' | 'poker-deal' | 'poker-win') => {
+  const sound = React.useCallback((name: 'poker-turn' | 'poker-deal' | 'poker-chip' | 'poker-win') => {
     const s = settingsRef.current
     playUiSound(name, s.soundEnabled ? s.soundVolume : 0)
   }, [])
@@ -128,6 +128,14 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
             }
           }
           if (next.handId && next.handId !== prev.handId) sound('poker-deal')
+          // Alguém (que não eu) pôs fichas na mesa: aposta, aumento ou pagamento.
+          else if (next.handId === prev.handId && !next.result) {
+            const chips = next.seats.some((s, i) => {
+              const before = prev.seats[i]
+              return !!s && !!before && i !== mySeat && s.userId === before.userId && s.bet > before.bet
+            })
+            if (chips) sound('poker-chip')
+          }
           if (next.result && !prev.result && mySeat !== null && (next.seats[mySeat]?.won ?? 0) > 0) {
             sound('poker-win')
           }

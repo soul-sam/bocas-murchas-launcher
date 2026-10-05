@@ -112,7 +112,9 @@ export function PokerPage() {
       )}
 
       <div className="relative z-conteudo flex min-h-0 flex-1">
-        <div className="flex min-h-0 flex-1 flex-col">
+        {/* `min-w-0`: sem ele a coluna cresce até o min-content da mesa (os
+            três botões de ação em nowrap) e estoura a largura do celular. */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {view === 'cash' ? (
             // O caixa abre também de dentro da mesa (quem quebrou e precisa
             // depositar); "voltar" cai na mesa, se houver, senão no saguão.

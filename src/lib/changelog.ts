@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.48.0',
+    headline: 'A mesa de pôquer de verdade',
+    items: [
+      'A mesa ganhou trilho, feltro com a boca da marca bordada e um baralho no lugar do crupiê: as cartas saem dele, uma por pessoa, e as suas viram ao pousar — nada mais aparece do nada.',
+      'As suas duas cartas agora ficam embaixo, grandes, em cima da sua placa com avatar, nome e pilha. O flop também cresceu.',
+      'Cartas redesenhadas: índice nos dois cantos, figuras com moldura, ás com anel e verso com o medalhão da marca.',
+      'Fichas de verdade na frente de cada lugar (a pilha cresce com a aposta), botão do dealer, placa com a jogada de cada um (CHECK, RAISE 250, ALL-IN) e relógio em volta do avatar de quem está na vez.',
+      'No showdown as cartas dos outros viram na frente deles, a mão vencedora acende em dourado e o pote voa pra quem levou.',
+      'Botões de ação grandes, sempre no mesmo lugar (apagados quando não é a sua vez), com os atalhos F, C, A e Enter à mostra.',
+      'Um estalo de ficha quando alguém aposta.'
+    ]
+  },
+  {
     version: '1.47.3',
     headline: 'Faxina de bugs: chat, call, pôquer e configurações',
     items: [

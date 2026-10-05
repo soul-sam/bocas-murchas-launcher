@@ -7,6 +7,7 @@ import {
   Coins,
   DoorOpen,
   Eye,
+  History,
   Loader2,
   Minus,
   Pause,
@@ -45,12 +46,13 @@ import { usePoker } from '@/lib/poker-context'
 import { useTicker } from '@/lib/use-now'
 import { cn } from '@/lib/utils'
 import { CardRow, PlayingCard } from './PlayingCard'
-import { BetChip, DealerChip } from './PokerGlyphs'
+import { BRAND_MASK_STYLE, ChipStack, DealerChip } from './PokerGlyphs'
 import './poker.css'
 
 /**
- * A MESA — o feltro com os assentos em volta, a mesa comunitária no meio e a
- * barra de ação embaixo.
+ * A MESA — o trilho com o feltro, os assentos em volta no oval, a mesa
+ * comunitária no meio, o SEU lugar embaixo (com as suas duas cartas grandes
+ * em cima da placa) e o rodapé de ação.
  *
  * Tudo que aparece vem da vista que o servidor manda pra MIM (poker-context):
  * minhas cartas viradas, as dos outros não; a lista de jogadas legais já
@@ -61,95 +63,95 @@ import './poker.css'
  * O MEU ASSENTO FICA SEMPRE EMBAIXO, no centro: os outros giram em volta a
  * partir dele, no sentido horário. Quem assiste vê o assento 0 embaixo.
  *
+ * Geometria: os outros assentos ficam numa elipse que acompanha a borda do
+ * trilho (o avatar monta na beirada da mesa); o meu lugar não está na
+ * elipse, está ancorado no pé da área. Tudo em % da área, e cada assento
+ * publica `--seat-x`/`--seat-y` pra que as animações (cartas saindo do
+ * baralho, fichas indo pro pote, pote indo pro vencedor) acertem o destino
+ * sem medir nada.
+ *
  * Valores: `fmt()` escreve na moeda da mesa — 1.250 (murchos) ou R$ 12,50
  * (mesa valendo). Nenhum número bruto chega ao JSX sem passar por ele.
  */
 
-/**
- * Onde cada assento fica em volta do feltro, em coordenadas normalizadas
- * (-1..1 em cada eixo; o meu lugar é sempre (0, 1), embaixo no centro). A
- * margem transforma isso em porcentagem da área da mesa deixando espaço pro
- * cartão do assento não sair do quadro — e é maior no celular, onde 7% de
- * 390px não cabe um nome.
- */
-const TEMPLATE: Record<number, Array<[number, number]>> = {
-  2: [
-    [0, 1],
-    [0, -1]
-  ],
-  3: [
-    [0, 1],
-    [-1, -0.45],
-    [1, -0.45]
-  ],
-  4: [
-    [0, 1],
-    [-1, 0],
-    [0, -1],
-    [1, 0]
-  ],
-  5: [
-    [0, 1],
-    [-1, 0.5],
-    [-0.62, -1],
-    [0.62, -1],
-    [1, 0.5]
-  ],
-  6: [
-    [0, 1],
-    [-1, 0.55],
-    [-0.9, -0.6],
-    [0, -1],
-    [0.9, -0.6],
-    [1, 0.55]
-  ]
+interface Geometry {
+  /** Centro e raios da elipse dos assentos, em % da área. */
+  cx: number
+  cy: number
+  rx: number
+  ry: number
+  /** `inset` do trilho (top right bottom left), em %. */
+  rail: [number, number, number, number]
+  /** Onde fica a mesa comunitária (centro das cartas), o pote e a faixa do resultado. */
+  boardY: number
+  potY: number
+  resultY: number
+  /** Onde o baralho descansa. */
+  deck: [number, number]
+  /** Faixa de x permitida pros assentos (a placa não pode sair da tela). */
+  clampX: [number, number]
+}
+
+const GEOMETRY_DESKTOP: Geometry = {
+  cx: 50,
+  cy: 48,
+  rx: 40.5,
+  ry: 34,
+  rail: [13, 8, 17, 8],
+  boardY: 52,
+  potY: 38,
+  resultY: 65,
+  deck: [39, 27],
+  clampX: [10, 90]
+}
+
+const GEOMETRY_PHONE: Geometry = {
+  cx: 50,
+  cy: 44,
+  rx: 38,
+  ry: 32,
+  rail: [10, 5, 26, 5],
+  boardY: 48,
+  potY: 35,
+  resultY: 59,
+  deck: [37, 24],
+  clampX: [16, 84]
 }
 
 /**
- * No celular a área é alta e estreita e a mesa comunitária fica no meio: os
- * assentos laterais sobem pra não cair em cima das cartas.
+ * Ângulos dos assentos a partir do meu (embaixo, 90°), no sentido horário da
+ * tela. Uma mesa de 6 tem um lugar no topo; a de 4 tem um em cada lado. No
+ * celular os de cima abrem mais pra não cair em cima do cabeçalho.
  */
-const TEMPLATE_PHONE: Record<number, Array<[number, number]>> = {
-  2: [
-    [0, 1],
-    [0, -1]
-  ],
-  3: [
-    [0, 1],
-    [-1, -0.62],
-    [1, -0.62]
-  ],
-  4: [
-    [0, 1],
-    [-1, -0.35],
-    [0, -1],
-    [1, -0.35]
-  ],
-  5: [
-    [0, 1],
-    [-1, 0.12],
-    [-0.72, -1],
-    [0.72, -1],
-    [1, 0.12]
-  ],
-  6: [
-    [0, 1],
-    [-1, 0.2],
-    [-0.85, -0.72],
-    [0, -1],
-    [0.85, -0.72],
-    [1, 0.2]
-  ]
+function seatAngles(count: number, phone: boolean): number[] {
+  if (phone) {
+    const PHONE: Record<number, number[]> = {
+      2: [90, 270],
+      3: [90, 215, 325],
+      4: [90, 170, 270, 10],
+      5: [90, 160, 230, 310, 20],
+      6: [90, 150, 212, 270, 328, 30]
+    }
+    return PHONE[count] ?? PHONE[6]
+  }
+  const n = Math.max(2, count)
+  return Array.from({ length: n }, (_, k) => (90 + (360 / n) * k) % 360)
 }
 
-function seatPositions(count: number, phone: boolean): Array<[number, number]> {
-  const xm = phone ? 22 : 9
-  const ym = phone ? 11 : 13
-  const template = (phone ? TEMPLATE_PHONE : TEMPLATE)[count] ?? TEMPLATE[6]
-  return template.map(([dx, dy]) => [50 + dx * (50 - xm), 50 + dy * (50 - ym)])
+function seatPositions(count: number, geo: Geometry, phone: boolean): Array<[number, number]> {
+  return seatAngles(count, phone).map((deg) => {
+    const rad = (deg * Math.PI) / 180
+    const x = geo.cx + geo.rx * Math.cos(rad)
+    const y = geo.cy + geo.ry * Math.sin(rad)
+    return [Math.min(geo.clampX[1], Math.max(geo.clampX[0], x)), y]
+  })
 }
 
-const CENTER: [number, number] = [50, 50]
+/** Onde a aposta de um assento para: a 40% do caminho até o pote (a minha um pouco mais, pra ficar acima das cartas). */
+function betPositionFor(pos: [number, number], geo: Geometry, hero = false): [number, number] {
+  const k = hero ? 0.55 : 0.42
+  return [pos[0] + (50 - pos[0]) * 0.4, pos[1] + (geo.potY + 6 - pos[1]) * k]
+}
 
 export function PokerTable({
   onOpenRules,
@@ -166,6 +168,7 @@ export function PokerTable({
   const [topUpOpen, setTopUpOpen] = React.useState(false)
   const [confirmStand, setConfirmStand] = React.useState(false)
   const [logOpen, setLogOpen] = React.useState(false)
+  const [logShown, setLogShown] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [busy, setBusy] = React.useState(false)
   /** Mão em que a pessoa mandou o aviso de "quebrou" embora (volta na próxima). */
@@ -184,6 +187,7 @@ export function PokerTable({
 
   if (!table) return null
 
+  const geo = isPhone ? GEOMETRY_PHONE : GEOMETRY_DESKTOP
   const fmt = (v: number): string => formatMoney(v, table.stake.currency)
   const me = table.mySeat !== null ? table.seats[table.mySeat] : null
   const myTurn = me !== null && table.toAct === table.mySeat && !!table.legal
@@ -205,15 +209,19 @@ export function PokerTable({
 
   // Assentos girados: o meu (ou o 0) embaixo, os outros no sentido horário.
   const anchor = table.mySeat ?? 0
-  const positions = seatPositions(table.maxSeats, isPhone)
+  const positions = seatPositions(table.maxSeats, geo, isPhone)
+  // O meu lugar não está na elipse: as cartas ficam logo acima da beirada de
+  // baixo do trilho (é daí que as animações partem e chegam).
+  const heroPos: [number, number] = [50, 100 - geo.rail[2] - 3]
   const rotated = table.seats.map((seat, index) => {
     const slot = (index - anchor + table.maxSeats) % table.maxSeats
-    return { index, seat, pos: positions[slot], slot }
+    const pos: [number, number] = slot === 0 && table.mySeat !== null ? heroPos : positions[slot]
+    return { index, seat, pos, slot }
   })
+  const dealing = table.seats.filter((s) => s?.hasCards).length
 
-  const ghosts = useGhosts(table, rotated)
+  const ghosts = useGhosts(table, rotated, geo)
 
-  const bestLabel = me?.best?.label ?? null
   const myCategory = me?.best?.category ?? null
 
   // QUEBROU: pilha zerada, sem recarga a caminho, e a mão que zerou já
@@ -227,21 +235,23 @@ export function PokerTable({
   const bustKey = table.handId ?? 'sem-mao'
   const showBusted = busted && bustDismissedFor !== bustKey
 
+  const areaStyle = {
+    ['--deck-x' as string]: geo.deck[0],
+    ['--deck-y' as string]: geo.deck[1],
+    ['--pot-y' as string]: geo.potY
+  } as React.CSSProperties
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {/* Cabeçalho da mesa */}
-      <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line/70 bg-void/40 px-3 py-2 backdrop-blur-sm">
-        <button
-          type="button"
-          onClick={leaveTable}
-          className="flex items-center gap-1 rounded-brutal px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
-        >
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* Cabeçalho da mesa: fino e translúcido, a sala continua atrás. */}
+      <header className="relative z-conteudo flex shrink-0 items-center gap-2 border-b border-line/50 bg-void/40 px-2 py-1.5 backdrop-blur-sm sm:px-3">
+        <button type="button" onClick={leaveTable} className="poker-topo-botao">
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
           Saguão
         </button>
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold text-foreground">{table.name}</h3>
-          <p className="truncate text-[11.5px] text-muted-foreground">
+        <div className="min-w-0 flex-1 px-1">
+          <p className="truncate text-sm font-semibold leading-tight text-foreground">{table.name}</p>
+          <p className="truncate text-[11.5px] leading-tight text-muted-foreground">
             {table.stake.currency === 'brl' ? 'Valendo' : 'Murchos'} · blinds{' '}
             <span className="font-mono">{formatMoneyShort(table.stake.smallBlind, table.stake.currency)}</span>/
             <span className="font-mono">{formatMoneyShort(table.stake.bigBlind, table.stake.currency)}</span> ·{' '}
@@ -260,15 +270,23 @@ export function PokerTable({
             )}
           </p>
         </div>
+        {!isPhone && (
+          <Hint label={logShown ? 'Esconder o histórico' : 'Mostrar o histórico'} side="bottom">
+            <button
+              type="button"
+              onClick={() => setLogShown((v) => !v)}
+              aria-pressed={logShown}
+              aria-label="Histórico da mão"
+              className={cn('poker-topo-botao hidden lg:inline-flex', logShown && 'text-foreground')}
+            >
+              <History className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </Hint>
+        )}
         <Hint label="Colinha e regras" description="As combinações, do royal flush à carta alta, e as regras da mesa." side="bottom">
-          <button
-            type="button"
-            onClick={() => onOpenRules(myCategory)}
-            aria-label="Colinha"
-            className="rounded-brutal border border-line px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-acid/60 hover:text-foreground"
-          >
-            <BookOpen className="mr-1 inline h-3.5 w-3.5" aria-hidden />
-            Colinha
+          <button type="button" onClick={() => onOpenRules(myCategory)} aria-label="Colinha" className="poker-topo-botao">
+            <BookOpen className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden sm:inline">Colinha</span>
           </button>
         </Hint>
         {isOwner && (
@@ -278,7 +296,7 @@ export function PokerTable({
               disabled={busy || (table.street !== null && table.street !== 'done')}
               onClick={() => void run(() => closeTable(table.id))}
               aria-label="Fechar a mesa"
-              className="rounded-brutal border border-line p-1.5 text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive disabled:opacity-40"
+              className="poker-topo-botao hover:!border-destructive/60 hover:!text-destructive"
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden />
             </button>
@@ -287,16 +305,68 @@ export function PokerTable({
       </header>
 
       <div className={cn('flex min-h-0 flex-1', isPhone ? 'flex-col' : 'flex-row')}>
-        {/* O feltro */}
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <div className={cn('poker-area relative mx-auto w-full flex-1', isPhone ? 'px-12 py-12' : 'px-24 py-14 xl:px-32 2xl:px-48 2xl:py-20')}>
-            <div className="poker-felt h-full w-full">
-              <Board table={table} fmt={fmt} />
+        {/* A sala */}
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="poker-area relative min-h-0 flex-1 overflow-hidden" style={areaStyle}>
+            {/* A mesa: trilho, filete e feltro */}
+            <div
+              className="poker-mesa"
+              style={{ top: `${geo.rail[0]}%`, right: `${geo.rail[1]}%`, bottom: `${geo.rail[2]}%`, left: `${geo.rail[3]}%` }}
+            >
+              <div className="poker-felt">
+                <span aria-hidden className="poker-marca" style={BRAND_MASK_STYLE} />
+              </div>
             </div>
 
+            <Deck size={isPhone ? 'xs' : 'sm'} />
+
+            <Board table={table} fmt={fmt} geo={geo} phone={isPhone} />
+
             {ghosts.map((g) => (
-              <Ghost key={g.id} ghost={g} table={table} />
+              <Ghost key={g.id} ghost={g} table={table} geo={geo} />
             ))}
+
+            {rotated.map(({ index, seat, pos, slot }) =>
+              index === table.mySeat && seat ? (
+                <HeroSeat
+                  key={index}
+                  table={table}
+                  seat={seat}
+                  pos={pos}
+                  dealOrder={slot}
+                  dealing={dealing}
+                  fmt={fmt}
+                  phone={isPhone}
+                  geo={geo}
+                  myTurn={myTurn}
+                  onOpenRules={onOpenRules}
+                />
+              ) : (
+                <SeatSpot
+                  key={index}
+                  table={table}
+                  index={index}
+                  seat={seat}
+                  pos={pos}
+                  dealOrder={slot}
+                  dealing={dealing}
+                  canSit={canSitHere}
+                  onSit={() => setSitAt(index)}
+                  fmt={fmt}
+                  phone={isPhone}
+                  geo={geo}
+                />
+              )
+            )}
+
+            {error && (
+              <p
+                role="alert"
+                className="poker-aviso absolute left-1/2 top-3 z-flutuante max-w-[90%] -translate-x-1/2 rounded-full border border-destructive/60 bg-void/90 px-4 py-1.5 text-center text-xs text-destructive shadow-[0_8px_24px_rgb(0_0_0/0.5)]"
+              >
+                {error}
+              </p>
+            )}
 
             {showBusted && me && (
               <BustedOverlay
@@ -309,22 +379,6 @@ export function PokerTable({
                 onOpenCash={onOpenCash}
               />
             )}
-
-            {rotated.map(({ index, seat, pos, slot }) => (
-              <SeatSpot
-                key={index}
-                table={table}
-                index={index}
-                seat={seat}
-                pos={pos}
-                dealOrder={slot}
-                isMe={index === table.mySeat}
-                canSit={canSitHere}
-                onSit={() => setSitAt(index)}
-                fmt={fmt}
-                phone={isPhone}
-              />
-            ))}
 
             {sitAt !== null && (
               <SitDialog
@@ -346,68 +400,30 @@ export function PokerTable({
             )}
           </div>
 
-          {error && (
-            <p className="mx-3 mb-1 rounded-brutal border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-center text-xs text-destructive">
-              {error}
-            </p>
-          )}
-
-          {/* Barra de ação / minha linha */}
-          <footer className="shrink-0 border-t border-line bg-depth-2 px-3 py-2">
+          {/* O rodapé de ação */}
+          <footer className={cn('poker-dock shrink-0 px-3 py-2', myTurn && 'poker-dock--vez')}>
             {me ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  {/* As MINHAS cartas moram aqui, não no assento: grandes, e
-                      sem brigar com o feltro nem com os botões. */}
-                  {me.hasCards && (
-                    <HeroCards table={table} seat={me} phone={isPhone} />
-                  )}
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    {table.stake.currency === 'brl' ? <Coins className="h-3.5 w-3.5 text-burn" aria-hidden /> : <MurchosIcon className="h-3.5 w-3.5 text-burn" aria-hidden />}
-                    sua pilha <span className="font-mono text-foreground">{fmt(me.stack)}</span>
-                    {table.pendingTopUp > 0 && (
-                      <span className="text-muted-foreground">
-                        {' '}
-                        (+<span className="font-mono">{fmt(table.pendingTopUp)}</span> na próxima mão)
-                      </span>
-                    )}
-                  </span>
-                  {busted && !showBusted && (
-                    <button
-                      type="button"
-                      onClick={() => setBustDismissedFor(null)}
-                      className="poker-quebrou-chama rounded-full border border-destructive/60 bg-destructive/10 px-2 py-0.5 text-[11.5px] text-destructive transition-colors hover:bg-destructive/20"
-                    >
-                      sem fichas — recarregar
-                    </button>
-                  )}
-                  {bestLabel && inHand && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenRules(myCategory)}
-                      className="rounded-full border border-acid/40 bg-acid/[0.07] px-2 py-0.5 text-[11.5px] text-acid-text transition-colors hover:bg-acid/15"
-                      title="Abrir a colinha nesta mão"
-                    >
-                      você tem: {bestLabel}
-                    </button>
-                  )}
-                  <span className="ml-auto flex flex-wrap items-center gap-1">
+              <div className={cn('flex gap-3', isPhone ? 'flex-col' : 'flex-row items-end')}>
+                {/* Esquerda: a sua mesa — pilha, recarga, levantar; e a linha de estado. */}
+                <div className={cn('flex min-w-0 flex-col gap-1.5', isPhone ? '' : 'w-[300px] shrink-0 xl:w-[340px]')}>
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {table.canShow && (
-                      <SmallButton onClick={() => void run(() => show(table.id))} icon={<Eye className="h-3 w-3" aria-hidden />}>
+                      <button type="button" className="poker-mini" onClick={() => void run(() => show(table.id))}>
+                        <Eye className="h-3 w-3" aria-hidden />
                         Mostrar
-                      </SmallButton>
+                      </button>
                     )}
-                    <SmallButton onClick={() => setTopUpOpen(true)} icon={<Plus className="h-3 w-3" aria-hidden />}>
+                    <button type="button" className="poker-mini" onClick={() => setTopUpOpen(true)}>
+                      <Plus className="h-3 w-3" aria-hidden />
                       Recarregar
-                    </SmallButton>
-                    <SmallButton
-                      onClick={() => void run(() => sitOut(table.id, !me.sittingOut))}
-                      icon={me.sittingOut ? <Play className="h-3 w-3" aria-hidden /> : <Pause className="h-3 w-3" aria-hidden />}
-                    >
+                    </button>
+                    <button type="button" className="poker-mini" onClick={() => void run(() => sitOut(table.id, !me.sittingOut))}>
+                      {me.sittingOut ? <Play className="h-3 w-3" aria-hidden /> : <Pause className="h-3 w-3" aria-hidden />}
                       {me.sittingOut ? 'Voltar' : 'Sentar fora'}
-                    </SmallButton>
-                    <SmallButton
-                      tone={confirmStand ? 'danger' : 'default'}
+                    </button>
+                    <button
+                      type="button"
+                      className={cn('poker-mini', confirmStand && 'poker-mini--perigo')}
                       onClick={() => {
                         if (!confirmStand) {
                           setConfirmStand(true)
@@ -417,27 +433,49 @@ export function PokerTable({
                         setConfirmStand(false)
                         void run(() => stand(table.id))
                       }}
-                      icon={<DoorOpen className="h-3 w-3" aria-hidden />}
                     >
+                      <DoorOpen className="h-3 w-3" aria-hidden />
                       {confirmStand ? (inHand ? 'Desistir e levantar?' : 'Levantar mesmo?') : 'Levantar'}
-                    </SmallButton>
-                  </span>
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      {table.stake.currency === 'brl' ? <Coins className="h-3.5 w-3.5 text-burn" aria-hidden /> : <MurchosIcon className="h-3.5 w-3.5 text-burn" aria-hidden />}
+                      pilha <span className="font-mono text-foreground">{fmt(me.stack)}</span>
+                      {table.pendingTopUp > 0 && (
+                        <span>
+                          {' '}
+                          (+<span className="font-mono">{fmt(table.pendingTopUp)}</span> na próxima)
+                        </span>
+                      )}
+                    </span>
+                    {busted && !showBusted && (
+                      <button
+                        type="button"
+                        onClick={() => setBustDismissedFor(null)}
+                        className="poker-quebrou-chama rounded-full border border-destructive/60 bg-destructive/10 px-2 py-0.5 text-[11.5px] text-destructive transition-colors hover:bg-destructive/20"
+                      >
+                        sem fichas — recarregar
+                      </button>
+                    )}
+                    <WaitingLine table={table} me={me} />
+                  </div>
                 </div>
 
-                {myTurn && table.legal ? (
+                {/* Direita: a aposta. */}
+                <div className="min-w-0 flex-1">
                   <ActionBar
                     table={table}
-                    legal={table.legal}
+                    legal={myTurn ? table.legal : null}
                     busy={busy}
                     fmt={fmt}
+                    phone={isPhone}
                     onAct={(type, amount) => void run(() => act(table.id, type, amount))}
                   />
-                ) : (
-                  <WaitingLine table={table} me={me} />
-                )}
+                </div>
               </div>
             ) : (
-              <p className="text-center text-xs text-muted-foreground">
+              <p className="py-1 text-center text-xs text-muted-foreground">
                 {canSitHere
                   ? table.seats.some((s) => s === null)
                     ? 'Você está assistindo. Clique num lugar vazio pra sentar.'
@@ -453,8 +491,8 @@ export function PokerTable({
         {/* Histórico da mão */}
         <aside
           className={cn(
-            'shrink-0 border-line bg-void',
-            isPhone ? 'border-t' : 'hidden w-64 border-l lg:flex lg:flex-col'
+            'shrink-0 border-line bg-void/80',
+            isPhone ? 'border-t' : cn('hidden w-60 border-l lg:flex-col', logShown && 'lg:flex')
           )}
         >
           {isPhone ? (
@@ -472,7 +510,10 @@ export function PokerTable({
             </>
           ) : (
             <>
-              <h4 className="border-b border-line px-3 py-2 text-xs font-semibold text-foreground">Histórico da mão</h4>
+              <h4 className="flex items-center gap-1.5 border-b border-line px-3 py-2 text-xs font-semibold text-foreground">
+                <History className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                Histórico da mão
+              </h4>
               <HandLog table={table} fmt={fmt} className="min-h-0 flex-1" />
             </>
           )}
@@ -483,11 +524,23 @@ export function PokerTable({
 }
 
 // ---------------------------------------------------------------------------
-// A mesa comunitária, o pote e o resultado
+// O baralho, a mesa comunitária, o pote e o resultado
 // ---------------------------------------------------------------------------
 
-function Board({ table, fmt }: { table: TableView; fmt: (v: number) => string }) {
-  const { isPhone } = useLayout()
+/** O baralho no lugar do crupiê: três cartas viradas, um fio fora do lugar. */
+function Deck({ size }: { size: 'xs' | 'sm' }) {
+  return (
+    <div className="poker-baralho" aria-hidden>
+      <div className="relative" style={{ width: size === 'xs' ? 24 : 42, height: size === 'xs' ? 34 : 59 }}>
+        <PlayingCard faceDown size={size} style={{ transform: 'translate(-2px, 3px) rotate(-4deg)', opacity: 0.85 }} />
+        <PlayingCard faceDown size={size} style={{ transform: 'translate(-1px, 1.5px) rotate(-1.5deg)', opacity: 0.92 }} />
+        <PlayingCard faceDown size={size} />
+      </div>
+    </div>
+  )
+}
+
+function Board({ table, fmt, geo, phone }: { table: TableView; fmt: (v: number) => string; geo: Geometry; phone: boolean }) {
   const result = table.result
   const winningCards = React.useMemo(
     () => (result ? result.pots.flatMap((p) => p.cards ?? []) : null),
@@ -503,8 +556,8 @@ function Board({ table, fmt }: { table: TableView; fmt: (v: number) => string })
 
   const streetLabel = table.street ? STREET_LABEL[table.street] ?? table.street : null
 
-  // Só as cartas NOVAS viram: a partir de quantas já estavam na mesa. Mão nova
-  // zera a conta (o handId muda).
+  // Só as cartas NOVAS saem do baralho e viram: a partir de quantas já
+  // estavam na mesa. Mão nova zera a conta (o handId muda).
   const shownRef = React.useRef({ handId: table.handId, count: 0 })
   if (shownRef.current.handId !== table.handId) shownRef.current = { handId: table.handId, count: 0 }
   const staggerFrom = Math.min(shownRef.current.count, table.board.length)
@@ -512,66 +565,86 @@ function Board({ table, fmt }: { table: TableView; fmt: (v: number) => string })
     shownRef.current = { handId: table.handId, count: table.board.length }
   }, [table.handId, table.board.length])
 
+  // A soma das apostas da rodada ainda não está no pote: mostra "+ 150 na mesa".
+  const onTable = table.seats.reduce((sum, s) => sum + (s?.bet ?? 0), 0)
+
+  const style = {
+    left: '50%',
+    top: `${geo.boardY}%`,
+    ['--seat-x' as string]: 50,
+    ['--seat-y' as string]: geo.boardY
+  } as React.CSSProperties
+
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6">
-      {table.street === null ? (
-        <p className="text-center text-xs text-muted-foreground">
-          {table.status === 'waiting'
-            ? table.seats.filter((s) => s && !s.sittingOut && s.stack > 0).length < 2
-              ? 'Esperando mais alguém sentar.'
-              : 'A mão começa já.'
-            : 'Mesa fechada.'}
-        </p>
-      ) : (
-        <>
-          {streetLabel && !result && (
-            <p className="text-[11.5px] text-muted-foreground">{streetLabel}</p>
-          )}
+    <>
+      {/* O pote */}
+      <div className="absolute left-1/2 z-[6] -translate-x-1/2 -translate-y-1/2" style={{ top: `${geo.potY}%` }}>
+        {table.street === null ? (
+          <p className="whitespace-nowrap rounded-full bg-void/50 px-3 py-1 text-center text-xs text-foreground/80">
+            {table.status === 'waiting'
+              ? table.seats.filter((s) => s && !s.sittingOut && s.stack > 0).length < 2
+                ? 'Esperando mais alguém sentar'
+                : 'A mão começa já'
+              : 'Mesa fechada'}
+          </p>
+        ) : (
+          !result && (
+            <div className="flex flex-col items-center gap-1">
+              {streetLabel && <p className="text-[11.5px] font-medium leading-none text-foreground/60">{streetLabel}</p>}
+              <div key={pulse} className={cn('poker-pote', pulse > 0 && 'poker-pote-pulso')}>
+                <ChipStack amount={Math.max(table.pot, table.stake.bigBlind)} bigBlind={table.stake.bigBlind} size={phone ? 16 : 20} />
+                <span>
+                  <span className="mr-1.5 font-sans text-[11.5px] font-medium text-foreground/70">Pote</span>
+                  {fmt(table.pot)}
+                </span>
+              </div>
+              {onTable > 0 && (
+                <p className="rounded-full bg-void/40 px-2 text-[11px] leading-4 text-foreground/70">
+                  + <span className="font-mono">{fmt(onTable)}</span> na mesa
+                </p>
+              )}
+            </div>
+          )
+        )}
+      </div>
+
+      {/* As cinco cartas */}
+      <div className="absolute z-[6] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5" style={style}>
+        {table.street !== null && (
           <CardRow
             codes={table.board}
-            size={isPhone ? 'sm' : 'md'}
+            size={phone ? 'sm' : 'md'}
             slots={5}
+            gap={phone ? 5 : 8}
             highlightCodes={winningCards}
-            enter="flip"
-            staggerMs={180}
+            enter="fly-flip"
+            staggerMs={170}
             staggerFrom={staggerFrom}
           />
-          {!result && (
-            <div
-              key={pulse}
-              className={cn(
-                'poker-pote-pulso flex items-center gap-1.5 rounded-full border border-burn/60 bg-void/80 px-3 py-1 font-mono text-sm text-burn',
-                pulse === 0 && 'animate-none'
-              )}
-            >
-              <span className="text-[11.5px] text-muted-foreground">pote</span>
-              {fmt(table.pot)}
-            </div>
-          )}
-        </>
-      )}
+        )}
+      </div>
 
-      {result && <ResultBanner table={table} fmt={fmt} />}
-    </div>
+      {result && <ResultBanner table={table} fmt={fmt} geo={geo} />}
+    </>
   )
 }
 
-function ResultBanner({ table, fmt }: { table: TableView; fmt: (v: number) => string }) {
+function ResultBanner({ table, fmt, geo }: { table: TableView; fmt: (v: number) => string; geo: Geometry }) {
   const result = table.result!
   const name = (seat: number): string => table.seats[seat]?.displayName?.split(/\s+/)[0] ?? '?'
   return (
-    <div className="poker-faixa absolute inset-x-12 top-[58%] rounded-brutal border border-burn/60 bg-void/90 px-3 py-2 text-center shadow-[0_10px_30px_rgb(0_0_0/0.5)] md:inset-x-16">
+    <div className="poker-faixa min-w-[220px] max-w-[85%] px-4 py-2 text-center" style={{ top: `${geo.resultY}%` }}>
       {result.pots.map((pot, i) => (
-        <p key={i} className="text-xs text-foreground">
+        <p key={i} className="text-sm leading-snug text-foreground">
           <span className="font-semibold text-burn">{pot.winners.map(name).join(' e ')}</span>{' '}
-          {pot.winners.length > 1 ? 'dividem' : 'leva'} <span className="font-mono text-burn">{fmt(pot.amount)}</span>
-          {pot.label ? <span className="text-muted-foreground"> com {pot.label}</span> : null}
+          {pot.winners.length > 1 ? 'dividem' : 'leva'} <span className="font-mono font-semibold text-burn">{fmt(pot.amount)}</span>
+          {pot.label ? <span className="text-foreground/70"> com {pot.label}</span> : null}
           {result.pots.length > 1 && (
             <span className="text-muted-foreground"> ({i === 0 ? 'pote principal' : `pote lateral ${i}`})</span>
           )}
         </p>
       ))}
-      {!result.showdown && <p className="text-[11px] text-muted-foreground">todo mundo desistiu</p>}
+      {!result.showdown && <p className="text-[11.5px] text-muted-foreground">todo mundo desistiu</p>}
       {result.rake > 0 && (
         <p className="text-[11px] text-muted-foreground">
           rake de <span className="font-mono">{fmt(result.rake)}</span> pro cofre da casa
@@ -598,7 +671,8 @@ let ghostSeq = 0
 
 function useGhosts(
   table: TableView,
-  rotated: Array<{ index: number; seat: SeatView | null; pos: [number, number] }>
+  rotated: Array<{ index: number; seat: SeatView | null; pos: [number, number] }>,
+  geo: Geometry
 ): GhostSpec[] {
   const [ghosts, setGhosts] = React.useState<GhostSpec[]>([])
   const prevRef = React.useRef<TableView | null>(null)
@@ -608,6 +682,8 @@ function useGhosts(
   // "reduzir movimento", que tira a animação que os apagava).
   const rotatedRef = React.useRef(rotated)
   rotatedRef.current = rotated
+  const geoRef = React.useRef(geo)
+  geoRef.current = geo
   /** Timers de remoção: só caem ao desmontar, nunca numa vista nova. */
   const timersRef = React.useRef(new Set<ReturnType<typeof setTimeout>>())
   React.useEffect(() => {
@@ -626,10 +702,6 @@ function useGhosts(
     const born: GhostSpec[] = []
     const posOf = (index: number): [number, number] =>
       rotatedRef.current.find((r) => r.index === index)?.pos ?? [50, 50]
-    const betPosOf = (index: number): [number, number] => {
-      const p = posOf(index)
-      return [p[0] + (50 - p[0]) * 0.42, p[1] + (50 - p[1]) * 0.42]
-    }
 
     for (const seat of table.seats) {
       if (!seat) continue
@@ -637,7 +709,7 @@ function useGhosts(
       if (!before) continue
       // Rodada fechou: o que estava na frente de cada um vai pro meio.
       if (before.bet > 0 && seat.bet === 0 && !prev.result) {
-        born.push({ id: ++ghostSeq, kind: 'bet', pos: betPosOf(seat.index), amount: before.bet })
+        born.push({ id: ++ghostSeq, kind: 'bet', pos: betPositionFor(posOf(seat.index), geoRef.current), amount: before.bet })
       }
       // Desistiu: as cartas vão pro centro.
       if (!before.folded && seat.folded && before.hasCards) {
@@ -662,8 +734,8 @@ function useGhosts(
   return ghosts
 }
 
-function Ghost({ ghost, table }: { ghost: GhostSpec; table: TableView }) {
-  const style = {
+function Ghost({ ghost, table, geo }: { ghost: GhostSpec; table: TableView; geo: Geometry }) {
+  const atSeat = {
     ['--x' as string]: `${ghost.pos[0]}%`,
     ['--y' as string]: `${ghost.pos[1]}%`,
     ['--seat-x' as string]: ghost.pos[0],
@@ -672,30 +744,40 @@ function Ghost({ ghost, table }: { ghost: GhostSpec; table: TableView }) {
 
   if (ghost.kind === 'bet') {
     return (
-      <div className="poker-fantasma poker-fantasma--pote flex items-center gap-1 rounded-full border border-line bg-void/85 py-0.5 pl-1 pr-2 font-mono text-[11.5px] text-foreground" style={style} aria-hidden>
-        <BetChip amount={ghost.amount ?? 0} bigBlind={table.stake.bigBlind} />
+      <div className="poker-fantasma poker-fantasma--pote poker-valor" style={atSeat} aria-hidden>
+        <ChipStack amount={ghost.amount ?? 0} bigBlind={table.stake.bigBlind} size={16} />
         {formatMoneyShort(ghost.amount ?? 0, table.stake.currency)}
       </div>
     )
   }
   if (ghost.kind === 'win') {
+    // Nasce no pote e vai até o assento (que fica em --seat-x/--seat-y).
+    const atPot = { ...atSeat, ['--x' as string]: '50%', ['--y' as string]: `${geo.potY}%` } as React.CSSProperties
     return (
-      <div className="poker-fantasma poker-fantasma--vencedor flex items-center gap-1.5 rounded-full border border-burn/70 bg-void/90 px-2.5 py-1 font-mono text-sm text-burn shadow-[0_0_18px_hsl(var(--burn)/0.35)]" style={style} aria-hidden>
-        <span className="poker-ficha-redonda inline-block h-4 w-4" />
+      <div className="poker-fantasma poker-fantasma--vencedor poker-pote shadow-[0_0_24px_hsl(var(--burn)/0.45)]" style={atPot} aria-hidden>
+        <ChipStack amount={ghost.amount ?? 0} bigBlind={table.stake.bigBlind} size={20} />
         +{formatMoneyShort(ghost.amount ?? 0, table.stake.currency)}
       </div>
     )
   }
   return (
-    <div className="poker-fantasma poker-fantasma--fold" style={style} aria-hidden>
-      <CardRow codes={['?', '?']} size="xs" faceDown overlap dim />
+    <div className="poker-fantasma poker-fantasma--fold" style={atSeat} aria-hidden>
+      <CardRow codes={['?', '?']} size="xs" faceDown fan dim />
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Um assento
+// Um assento (dos outros)
 // ---------------------------------------------------------------------------
+
+function seatVars(pos: [number, number], avatarPx: number): React.CSSProperties {
+  return {
+    ['--seat-x' as string]: pos[0],
+    ['--seat-y' as string]: pos[1],
+    ['--avatar' as string]: `${avatarPx}px`
+  } as React.CSSProperties
+}
 
 function SeatSpot({
   table,
@@ -703,11 +785,12 @@ function SeatSpot({
   seat,
   pos,
   dealOrder,
-  isMe,
+  dealing,
   canSit,
   onSit,
   fmt,
-  phone
+  phone,
+  geo
 }: {
   table: TableView
   index: number
@@ -715,38 +798,28 @@ function SeatSpot({
   pos: [number, number]
   /** Posição na roda a partir de mim: define a ordem (e o atraso) das cartas dadas. */
   dealOrder: number
-  isMe: boolean
+  /** Quantos receberam cartas nesta mão (o ritmo de uma carta por pessoa). */
+  dealing: number
   canSit: boolean
   onSit: () => void
   fmt: (v: number) => string
   phone: boolean
+  geo: Geometry
 }) {
   const { byId } = useMembers()
-  const style = {
-    left: `${pos[0]}%`,
-    top: `${pos[1]}%`,
-    ['--seat-x' as string]: pos[0],
-    ['--seat-y' as string]: pos[1]
-  } as React.CSSProperties
-  const betPos = {
-    left: `${pos[0] + (CENTER[0] - pos[0]) * 0.42}%`,
-    top: `${pos[1] + (CENTER[1] - pos[1]) * 0.42}%`
-  }
+  const avatarPx = phone ? 44 : 56
+  const vars = seatVars(pos, avatarPx)
 
   if (!seat) {
     return (
-      <div className="absolute -translate-x-1/2 -translate-y-1/2" style={style}>
+      <div className="poker-assento" style={vars}>
         {canSit ? (
-          <button
-            type="button"
-            onClick={onSit}
-            className="alvo-dedo flex h-14 w-14 flex-col items-center justify-center rounded-full border-2 border-dashed border-line-strong text-[11px] text-muted-foreground transition-colors hover:border-acid hover:text-acid"
-          >
+          <button type="button" onClick={onSit} className="poker-vazio alvo-dedo">
             <Plus className="h-4 w-4" aria-hidden />
             sentar
           </button>
         ) : (
-          <span aria-hidden className="block h-14 w-14 rounded-full border-2 border-dashed border-line/60" />
+          <span aria-hidden className="poker-vazio poker-vazio--parado" />
         )}
       </div>
     )
@@ -757,130 +830,272 @@ function SeatSpot({
   const won = (seat.won ?? 0) > 0
   const showdownLoser = !!result?.showdown && seat.inHand && !seat.folded && !won
   const cards = seat.cards
-  const myHandCards = result ? result.hands[String(index)]?.cards ?? null : null
-  const highlight = won && myHandCards ? myHandCards : null
+  const handCards = result ? result.hands[String(index)]?.cards ?? null : null
+  const highlight = won && handCards ? handCards : null
   const dim = seat.folded || showdownLoser
-  const label = seat.lastAction ? ACTION_TAG[seat.lastAction.type] ?? seat.lastAction.type : null
+  const away = seat.folded || seat.sittingOut || !seat.connected
+  const action = seat.lastAction && !seat.toAct && !result ? seat.lastAction : null
+  const handLabel = result?.hands[String(index)]?.label ?? null
+  const betPos = betPositionFor(pos, geo)
+  // O botão do dealer fica do lado do assento que olha pro centro.
+  const dealerSide = pos[0] <= 50 ? 'right' : 'left'
 
   return (
     <>
       {/* Aposta na frente do assento, rumo ao pote */}
       {seat.bet > 0 && (
         <div
-          className="poker-ficha absolute z-conteudo flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full border border-line bg-void/85 py-0.5 pl-1 pr-2 font-mono text-[11.5px] text-foreground"
-          style={betPos}
+          className="poker-ficha poker-valor absolute z-[7]"
+          style={{ left: `${betPos[0]}%`, top: `${betPos[1]}%` }}
         >
-          <BetChip amount={seat.bet} bigBlind={table.stake.bigBlind} />
+          <ChipStack amount={seat.bet} bigBlind={table.stake.bigBlind} size={phone ? 14 : 16} />
           {formatMoneyShort(seat.bet, table.stake.currency)}
         </div>
       )}
 
-      <div
-        className={cn('absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center', isMe ? 'z-conteudo' : '')}
-        style={style}
-      >
-        {/* As cartas: atrás do avatar pros outros, grandes e à frente pra mim */}
-        {seat.hasCards && !isMe && (
-          <div className={cn('-mb-3', dim && 'opacity-60')}>
-            <CardRow
-              codes={cards ?? ['?', '?']}
-              size={phone ? 'xs' : 'sm'}
-              faceDown={!cards}
-              dim={dim}
-              highlightCodes={highlight}
-              overlap
-              // Viradas pra baixo: voam do baralho, uma pessoa de cada vez.
-              // Viradas pra cima (showdown): chegam de costas e viram.
-              enter={cards ? 'flip' : 'fly'}
-              staggerMs={cards ? 140 : 90}
-              baseDelayMs={cards ? 0 : dealOrder * 130}
-            />
-          </div>
-        )}
+      <div className={cn('poker-assento', seat.toAct && 'z-[8]')} style={vars}>
+        {/* O avatar com o relógio; as cartas atrás dele */}
+        <div className="relative" style={{ width: avatarPx, height: avatarPx }}>
+          {seat.hasCards && (
+            <div
+              className={cn(
+                'absolute left-1/2 -translate-x-1/2 transition-all duration-300',
+                // Viradas pra baixo espiam atrás do avatar; abertas (showdown)
+                // passam pra frente dele, um pouco mais altas.
+                cards ? 'z-[2]' : 'z-0',
+                dim && !cards && 'opacity-60'
+              )}
+              style={{ bottom: cards ? '44%' : '42%' }}
+            >
+              <CardRow
+                codes={cards ?? ['?', '?']}
+                size={phone ? 'xs' : 'sm'}
+                faceDown={!cards}
+                dim={dim}
+                highlightCodes={highlight}
+                fan
+                // Viradas pra baixo: saem do baralho, uma carta por pessoa,
+                // na ordem da mesa. Viradas pra cima (showdown): viram no lugar.
+                enter={cards ? 'flip' : 'fly'}
+                staggerMs={cards ? 140 : dealing * 110}
+                baseDelayMs={cards ? 0 : dealOrder * 110}
+              />
+            </div>
+          )}
 
-        <div className="relative">
-          {seat.toAct && table.deadline && <TimerRing deadline={table.deadline} total={table.timerMs} />}
-          <UserAvatar
-            userId={seat.userId}
-            src={resolveAssetUrl(member?.avatar ?? seat.avatar)}
-            name={seat.displayName}
-            ringColor={member?.profileColor ?? undefined}
-            frame={member?.avatarFrame}
-            className={cn(
-              'h-12 w-12 border-2 border-void transition-opacity',
-              phone && 'h-10 w-10',
-              seat.toAct && 'poker-vez',
-              won && 'poker-vencedor',
-              (seat.folded || seat.sittingOut || !seat.connected) && 'opacity-50'
-            )}
-          />
-          {seat.isButton && <DealerChip className="absolute -right-1.5 -top-1.5" />}
+          <div className={cn('relative z-[1] h-full w-full rounded-full', seat.toAct && 'poker-vez', won && 'poker-vencedor')}>
+            <UserAvatar
+              userId={seat.userId}
+              src={resolveAssetUrl(member?.avatar ?? seat.avatar)}
+              name={seat.displayName}
+              ringColor={member?.profileColor ?? undefined}
+              frame={member?.avatarFrame}
+              className={cn('poker-avatar h-full w-full border-2 border-void transition-opacity', away && 'opacity-50')}
+              style={{ width: avatarPx, height: avatarPx }}
+            />
+            {seat.toAct && table.deadline && <TimerRing deadline={table.deadline} total={table.timerMs} />}
+          </div>
+
+          {seat.isButton && (
+            <DealerChip className={cn('absolute top-0 z-[3]', dealerSide === 'right' ? '-right-3' : '-left-3')} />
+          )}
           {seat.allIn && !result && (
-            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-destructive px-1.5 font-mono text-[11px] font-bold leading-4 text-destructive-foreground">
+            <span className="absolute -bottom-1.5 left-1/2 z-[3] -translate-x-1/2 whitespace-nowrap rounded-full bg-destructive px-1.5 font-sans text-[11px] font-black leading-4 tracking-wide text-destructive-foreground shadow-[0_2px_6px_rgb(0_0_0/0.5)]">
               ALL-IN
             </span>
           )}
         </div>
 
+        {/* A placa */}
         <div
           className={cn(
-            'mt-1 min-w-[88px] max-w-[140px] rounded-brutal border bg-void/90 px-2 py-1 text-center',
-            seat.toAct ? 'border-acid/60' : won ? 'border-burn/60' : 'border-line'
+            'poker-placa -mt-1.5',
+            phone && 'min-w-[84px] max-w-[110px] px-2',
+            seat.toAct && 'poker-placa--vez',
+            won && 'poker-placa--vencedor',
+            away && !won && 'poker-placa--fora'
           )}
         >
-          <p className="truncate text-[11.5px] leading-tight text-foreground">
-            {seat.displayName}
-            {seat.sittingOut && <span className="text-muted-foreground"> · fora</span>}
-            {!seat.connected && !seat.sittingOut && <span className="text-muted-foreground"> · caiu</span>}
-          </p>
-          <p className={cn('font-mono text-xs leading-tight', won ? 'text-burn' : 'text-foreground')}>
-            {fmt(seat.stack)}
-          </p>
-          {seat.toAct && table.deadline && <Countdown deadline={table.deadline} />}
-          {!seat.toAct && label && !result && (
-            <p className="text-[11px] leading-tight text-muted-foreground">
-              {label}
-              {seat.lastAction && seat.lastAction.amount > 0 && seat.lastAction.type !== 'call' && (
-                <> {formatMoneyShort(seat.lastAction.amount, table.stake.currency)}</>
-              )}
-            </p>
+          <p className="truncate text-[12px] font-semibold leading-tight text-foreground">{seat.displayName}</p>
+          <p className={cn('font-mono text-[13px] leading-tight', won ? 'text-burn' : 'text-foreground/90')}>{fmt(seat.stack)}</p>
+          {seat.toAct && table.deadline ? (
+            <Countdown deadline={table.deadline} />
+          ) : seat.sittingOut ? (
+            <span className="poker-jogada poker-jogada--blind">fora</span>
+          ) : !seat.connected ? (
+            <span className="poker-jogada poker-jogada--blind">caiu</span>
+          ) : action ? (
+            <ActionTag action={action} currency={table.stake.currency} />
+          ) : null}
+          {handLabel && (
+            <p className={cn('mt-0.5 truncate text-[11px] leading-tight', won ? 'text-acid-text' : 'text-muted-foreground')}>{handLabel}</p>
           )}
           {won && (
-            <p className="font-mono text-[11.5px] font-bold leading-tight text-burn">+{fmt(seat.won ?? 0)}</p>
-          )}
-          {result?.hands[String(index)] && !won && (
-            <p className="truncate text-[11px] leading-tight text-muted-foreground">{result.hands[String(index)].label}</p>
-          )}
-          {result?.hands[String(index)] && won && (
-            <p className="truncate text-[11px] leading-tight text-acid-text">{result.hands[String(index)].label}</p>
+            <span aria-hidden className="poker-ganho absolute -top-2 left-1/2 whitespace-nowrap font-mono text-sm font-bold text-burn drop-shadow-[0_2px_6px_rgb(0_0_0/0.8)]">
+              +{formatMoneyShort(seat.won ?? 0, table.stake.currency)}
+            </span>
           )}
         </div>
-
-        {isMe && seat.folded && seat.inHand && (
-          <p className="mt-1 text-[11px] text-muted-foreground">você desistiu</p>
-        )}
       </div>
     </>
   )
 }
 
-/** As duas cartas de quem está olhando, no rodapé. Marca as que entraram na mão vencedora. */
-function HeroCards({ table, seat, phone }: { table: TableView; seat: SeatView; phone: boolean }) {
+/** A faixa da jogada no pé da placa: CHECK, CALL 50, RAISE 250, FOLD, ALL-IN. */
+function ActionTag({ action, currency }: { action: { type: string; amount: number }; currency: TableView['stake']['currency'] }) {
+  const type = action.type
+  const blind = type === 'small blind' || type === 'big blind'
+  const tone = blind ? 'blind' : type
+  const label = ACTION_TAG[type] ?? type
+  const withAmount = action.amount > 0 && type !== 'check' && type !== 'fold'
+  return (
+    <span key={`${type}-${action.amount}`} className={cn('poker-jogada', `poker-jogada--${tone}`)}>
+      {label.toUpperCase()}
+      {withAmount && <span className="ml-1 font-mono font-semibold">{formatMoneyShort(action.amount, currency)}</span>}
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// O meu lugar: as duas cartas grandes em cima da placa, embaixo no centro
+// ---------------------------------------------------------------------------
+
+function HeroSeat({
+  table,
+  seat,
+  pos,
+  dealOrder,
+  dealing,
+  fmt,
+  phone,
+  geo,
+  myTurn,
+  onOpenRules
+}: {
+  table: TableView
+  seat: SeatView
+  pos: [number, number]
+  dealOrder: number
+  dealing: number
+  fmt: (v: number) => string
+  phone: boolean
+  geo: Geometry
+  myTurn: boolean
+  onOpenRules: (category?: HandCategory | null) => void
+}) {
+  const { byId } = useMembers()
+  const member = byId[seat.userId]
   const result = table.result
   const won = (seat.won ?? 0) > 0
   const mine = result ? result.hands[String(seat.index)]?.cards ?? null : null
-  const lost = !!result?.showdown && !won
+  const lost = !!result?.showdown && !won && seat.inHand && !seat.folded
+  const dim = seat.folded || lost
+  const inHand = seat.inHand && !seat.folded
+  const away = seat.sittingOut || !seat.connected
+  const action = seat.lastAction && !seat.toAct && !result ? seat.lastAction : null
+  const best = inHand && !result ? seat.best : null
+  const handLabel = result?.hands[String(seat.index)]?.label ?? null
+  const betPos = betPositionFor(pos, geo, true)
+  const avatarPx = phone ? 44 : 56
+  const vars = seatVars(pos, avatarPx)
+
   return (
-    <CardRow
-      codes={seat.cards ?? []}
-      size={phone ? 'md' : 'lg'}
-      dim={seat.folded || lost}
-      highlightCodes={won ? mine : null}
-      enter="slide"
-      staggerMs={120}
-      baseDelayMs={200}
-      className="-my-1"
-    />
+    <>
+      {seat.bet > 0 && (
+        <div className="poker-ficha poker-valor absolute z-[7]" style={{ left: `${betPos[0]}%`, top: `${betPos[1]}%` }}>
+          <ChipStack amount={seat.bet} bigBlind={table.stake.bigBlind} size={phone ? 14 : 16} />
+          {formatMoneyShort(seat.bet, table.stake.currency)}
+        </div>
+      )}
+
+      <div className="poker-assento z-[9]" style={{ ...vars, bottom: 4, top: 'auto', transform: 'translateX(-50%)' }}>
+        {/* As SUAS cartas: grandes, em leque, saindo do baralho e virando ao pousar. */}
+        {seat.hasCards && seat.cards && (
+          <div className={cn('poker-heroi-cartas relative z-[2] -mb-2', myTurn && inHand && 'poker-heroi-cartas--vez')}>
+            <CardRow
+              codes={seat.cards}
+              size={phone ? 'md' : 'lg'}
+              dim={dim}
+              highlightCodes={won ? mine : null}
+              fan
+              spread
+              enter="fly-flip"
+              staggerMs={dealing * 110}
+              baseDelayMs={dealOrder * 110}
+            />
+            {seat.folded && seat.inHand && (
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-void/85 px-2.5 py-0.5 text-[11.5px] font-medium text-foreground/80">
+                você desistiu
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* A placa do herói: avatar à esquerda, nome e pilha à direita. */}
+        <div
+          className={cn(
+            'poker-placa flex min-w-[220px] max-w-[320px] items-center gap-3 px-3 py-2 text-left',
+            phone && 'min-w-[200px]',
+            seat.toAct && 'poker-placa--vez',
+            won && 'poker-placa--vencedor',
+            away && !won && 'poker-placa--fora'
+          )}
+        >
+          <div className={cn('relative shrink-0 rounded-full', seat.toAct && 'poker-vez', won && 'poker-vencedor')} style={{ width: avatarPx, height: avatarPx }}>
+            <UserAvatar
+              userId={seat.userId}
+              src={resolveAssetUrl(member?.avatar ?? seat.avatar)}
+              name={seat.displayName}
+              ringColor={member?.profileColor ?? undefined}
+              frame={member?.avatarFrame}
+              className={cn('poker-avatar border-2 border-void', away && 'opacity-50')}
+              style={{ width: avatarPx, height: avatarPx }}
+            />
+            {seat.toAct && table.deadline && <TimerRing deadline={table.deadline} total={table.timerMs} />}
+          </div>
+          {seat.isButton && <DealerChip className="absolute -right-2 -top-2 z-[3]" />}
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-2 truncate text-[12.5px] font-semibold leading-tight text-foreground">
+              <span className="truncate">{seat.displayName}</span>
+              {seat.allIn && !result && (
+                <span className="rounded-full bg-destructive px-1.5 font-sans text-[11px] font-black leading-4 tracking-wide text-destructive-foreground">ALL-IN</span>
+              )}
+            </p>
+            <p className={cn('font-mono text-base leading-tight', won ? 'text-burn' : 'text-foreground')}>
+              {fmt(seat.stack)}
+              {seat.toAct && table.deadline && (
+                <span className="ml-2 inline-block align-middle">
+                  <Countdown deadline={table.deadline} inline />
+                </span>
+              )}
+            </p>
+            <div className="mt-0.5 flex min-h-[18px] items-center gap-1.5">
+              {best ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenRules(best.category)}
+                  className="truncate rounded-full border border-acid/40 bg-acid/[0.08] px-2 text-[11px] font-medium leading-4 text-acid-text transition-colors hover:bg-acid/15"
+                  title="Abrir a colinha nesta mão"
+                >
+                  {best.label}
+                </button>
+              ) : handLabel ? (
+                <span className={cn('truncate text-[11px] leading-4', won ? 'text-acid-text' : 'text-muted-foreground')}>{handLabel}</span>
+              ) : seat.sittingOut ? (
+                <span className="poker-jogada poker-jogada--blind !mt-0">fora</span>
+              ) : action ? (
+                <ActionTag action={action} currency={table.stake.currency} />
+              ) : null}
+            </div>
+          </div>
+          {won && (
+            <span aria-hidden className="poker-ganho absolute -top-2 left-1/2 whitespace-nowrap font-mono text-base font-bold text-burn drop-shadow-[0_2px_6px_rgb(0_0_0/0.8)]">
+              +{formatMoneyShort(seat.won ?? 0, table.stake.currency)}
+            </span>
+          )}
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -891,11 +1106,11 @@ function TimerRing({ deadline, total }: { deadline: number; total: number }) {
   return (
     <svg
       key={deadline}
-      className="poker-anel pointer-events-none absolute -inset-1.5 h-[calc(100%+12px)] w-[calc(100%+12px)]"
+      className="poker-anel pointer-events-none absolute -inset-[5px] h-[calc(100%+10px)] w-[calc(100%+10px)]"
       viewBox="0 0 36 36"
       aria-hidden
     >
-      <circle cx="18" cy="18" r="16.5" fill="none" stroke="hsl(var(--border-strong))" strokeWidth="2" />
+      <circle cx="18" cy="18" r="16.5" fill="none" stroke="hsl(var(--background) / 0.7)" strokeWidth="3" />
       <circle
         className="poker-anel-arco"
         cx="18"
@@ -904,7 +1119,7 @@ function TimerRing({ deadline, total }: { deadline: number; total: number }) {
         pathLength={1}
         fill="none"
         stroke={remaining < total * 0.3 ? 'hsl(var(--destructive))' : 'hsl(var(--acid))'}
-        strokeWidth="2.5"
+        strokeWidth="3"
         strokeLinecap="round"
         style={{ animationDuration: `${total}ms`, animationDelay: `-${elapsed}ms` }}
       />
@@ -912,11 +1127,19 @@ function TimerRing({ deadline, total }: { deadline: number; total: number }) {
   )
 }
 
-function Countdown({ deadline }: { deadline: number }) {
+function Countdown({ deadline, inline }: { deadline: number; inline?: boolean }) {
   const now = useTicker(250)
   const secs = Math.max(0, Math.ceil((deadline - now) / 1000))
   return (
-    <p className={cn('font-mono text-[11px] leading-tight', secs <= 5 ? 'text-destructive' : 'text-acid-text')}>{secs}s</p>
+    <span
+      className={cn(
+        'font-mono text-[12px] font-semibold leading-tight',
+        secs <= 5 ? 'text-destructive' : 'text-acid-text',
+        inline ? '' : 'block'
+      )}
+    >
+      {secs}s
+    </span>
   )
 }
 
@@ -934,16 +1157,19 @@ function ActionBar({
   legal,
   busy,
   fmt,
+  phone,
   onAct
 }: {
   table: TableView
-  legal: LegalActions
+  /** As jogadas possíveis AGORA; null quando não é a minha vez (botões apagados, mas no lugar). */
+  legal: LegalActions | null
   busy: boolean
   fmt: (v: number) => string
+  phone: boolean
   onAct: (type: 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin', amount?: number) => void
 }) {
-  const range = legal.raise ?? legal.bet
-  const isBet = !!legal.bet
+  const range = legal ? legal.raise ?? legal.bet : null
+  const isBet = !!legal?.bet
   const step = table.stake.smallBlind
   const [amount, setAmount] = React.useState<number>(range?.min ?? 0)
 
@@ -960,13 +1186,12 @@ function ActionBar({
       // pode não ser múltipla do small blind, e arredondar deixava fichas atrás.
       if (v >= range.max) return range.max
       const r = Math.max(range.min, Math.min(range.max, roundTo(v, step)))
-      // Arredondar pra baixo do mínimo não vale; acima do máximo também não.
       return Math.max(range.min, Math.min(range.max, r))
     },
     [range, step]
   )
 
-  const call = legal.call ?? 0
+  const call = legal?.call ?? 0
   const potAfterCall = table.pot + call
   const presets: Array<{ label: string; value: number }> = React.useMemo(() => {
     if (!range) return []
@@ -981,7 +1206,6 @@ function ActionBar({
       list.push({ label: 'pote', value: table.currentBet + potAfterCall })
     }
     list.push({ label: 'all-in', value: range.max })
-    // Sem repetidos e sem nada fora da faixa (vira o mínimo/máximo).
     const seen = new Set<number>()
     return list
       .map((p) => ({ ...p, value: clamp(p.value) }))
@@ -990,6 +1214,7 @@ function ActionBar({
 
   // Atalhos: F desiste, C passa/paga, A all-in, Enter confirma a aposta.
   React.useEffect(() => {
+    if (!legal) return
     const onKey = (e: KeyboardEvent): void => {
       const target = e.target as HTMLElement | null
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) && target.getAttribute('type') !== 'range') return
@@ -1009,107 +1234,127 @@ function ActionBar({
   }, [legal, range, isBet, amount, busy, onAct])
 
   const allInOnly = !!range && range.min === range.max
+  const off = !legal || busy
+  const myStack = table.seats[table.mySeat ?? -1]?.stack ?? Infinity
+  const callIsAllIn = legal?.call !== null && legal?.call !== undefined && legal.call >= myStack
 
   return (
     <div className="flex flex-col gap-2">
-      {range && (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1">
-            {presets.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => setAmount(p.value)}
-                className={cn(
-                  'rounded-brutal border px-2 py-0.5 font-mono text-[11.5px] transition-colors',
-                  amount === p.value
-                    ? 'border-acid/60 bg-acid/10 text-acid'
-                    : 'border-line text-muted-foreground hover:border-acid/40 hover:text-foreground'
-                )}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex min-w-[220px] flex-1 items-center gap-2">
+      {/* Tamanho da aposta: atalhos + régua. Só aparece quando dá pra apostar. */}
+      <div className={cn('flex flex-wrap items-center gap-2 transition-opacity', !range && 'pointer-events-none opacity-0')}>
+        <div className="flex flex-wrap gap-1">
+          {presets.map((p) => (
             <button
+              key={p.label}
               type="button"
-              aria-label="Menos"
-              disabled={allInOnly || amount <= range.min}
-              onClick={() => setAmount((a) => clamp(a - step))}
-              className="rounded-brutal border border-line p-1 text-muted-foreground hover:text-foreground disabled:opacity-40"
+              onClick={() => setAmount(p.value)}
+              className={cn('poker-preset', amount === p.value && 'poker-preset--ativo')}
             >
-              <Minus className="h-3.5 w-3.5" aria-hidden />
+              {p.label}
             </button>
-            <input
-              type="range"
-              className="poker-regua flex-1"
-              min={range.min}
-              max={range.max}
-              step={step}
-              value={amount}
-              disabled={allInOnly}
-              onChange={(e) => setAmount(clamp(Number(e.target.value)))}
-              aria-label="Valor da aposta"
-            />
-            <button
-              type="button"
-              aria-label="Mais"
-              disabled={allInOnly || amount >= range.max}
-              onClick={() => setAmount((a) => clamp(a + step))}
-              className="rounded-brutal border border-line p-1 text-muted-foreground hover:text-foreground disabled:opacity-40"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-            </button>
-            <span className="w-24 text-right font-mono text-sm text-foreground">{fmt(amount)}</span>
-          </div>
+          ))}
         </div>
-      )}
-
-      <div className="grid grid-cols-3 gap-2">
-        <Button
-          variant="destructive"
-          size="sm"
-          disabled={busy || !legal.fold}
-          onClick={() => onAct('fold')}
-          className="justify-center"
-        >
-          Desistir <kbd className="ml-1.5 hidden rounded border border-destructive/40 px-1 font-mono text-[11px] sm:inline">F</kbd>
-        </Button>
-        {legal.check ? (
-          <Button variant="secondary" size="sm" disabled={busy} onClick={() => onAct('check')} className="justify-center">
-            Passar <kbd className="ml-1.5 hidden rounded border border-line-strong px-1 font-mono text-[11px] sm:inline">C</kbd>
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={busy || legal.call === null}
-            onClick={() => onAct('call')}
-            className="justify-center"
+        <div className="flex min-w-[200px] flex-1 items-center gap-2">
+          <button
+            type="button"
+            aria-label="Menos"
+            disabled={!range || allInOnly || amount <= range.min}
+            onClick={() => setAmount((a) => clamp(a - step))}
+            className="poker-preset flex h-[26px] w-[26px] items-center justify-center !px-0"
           >
-            Pagar <span className="ml-1 font-mono">{fmt(call)}</span>
-            {legal.call !== null && legal.call >= (table.seats[table.mySeat ?? -1]?.stack ?? Infinity) && (
-              <span className="ml-1 text-[11px]">(all-in)</span>
-            )}
-          </Button>
+            <Minus className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          <input
+            type="range"
+            className="poker-regua flex-1"
+            min={range?.min ?? 0}
+            max={range?.max ?? 0}
+            step={step}
+            value={amount}
+            disabled={!range || allInOnly}
+            onChange={(e) => setAmount(clamp(Number(e.target.value)))}
+            aria-label="Valor da aposta"
+          />
+          <button
+            type="button"
+            aria-label="Mais"
+            disabled={!range || allInOnly || amount >= range.max}
+            onClick={() => setAmount((a) => clamp(a + step))}
+            className="poker-preset flex h-[26px] w-[26px] items-center justify-center !px-0"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          <span className="w-24 text-right font-mono text-sm font-semibold text-foreground">{range ? fmt(amount) : ''}</span>
+        </div>
+      </div>
+
+      <div className={cn('grid grid-cols-3', phone ? 'gap-1.5' : 'gap-2')}>
+        <button
+          type="button"
+          className={cn('poker-botao poker-botao--fold', phone && 'poker-botao--compacto')}
+          disabled={off || !legal?.fold}
+          onClick={() => onAct('fold')}
+        >
+          Desistir {!phone && <kbd>F</kbd>}
+        </button>
+        {!legal || legal.check ? (
+          <button
+            type="button"
+            className={cn('poker-botao poker-botao--check', phone && 'poker-botao--compacto')}
+            disabled={off}
+            onClick={() => onAct('check')}
+          >
+            Passar {!phone && <kbd>C</kbd>}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={cn('poker-botao poker-botao--check', phone && 'poker-botao--compacto')}
+            disabled={off || legal.call === null}
+            onClick={() => onAct('call')}
+          >
+            {callIsAllIn ? 'All-in' : 'Pagar'} <span className="font-mono">{fmt(call)}</span>
+            {!phone && <kbd>C</kbd>}
+          </button>
         )}
-        {range ? (
-          <Button size="sm" disabled={busy} onClick={() => onAct(isBet ? 'bet' : 'raise', amount)} className="justify-center">
+        {!legal ? (
+          <button type="button" className={cn('poker-botao poker-botao--raise', phone && 'poker-botao--compacto')} disabled>
+            Apostar
+          </button>
+        ) : range ? (
+          <button
+            type="button"
+            className={cn('poker-botao', amount >= range.max ? 'poker-botao--allin' : 'poker-botao--raise', phone && 'poker-botao--compacto')}
+            disabled={off}
+            onClick={() => onAct(isBet ? 'bet' : 'raise', amount)}
+          >
             {busy ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             ) : amount >= range.max ? (
-              <>All-in <span className="ml-1 font-mono">{fmt(amount)}</span></>
+              <>
+                All-in <span className="font-mono">{fmt(amount)}</span>
+              </>
             ) : isBet ? (
-              <>Apostar <span className="ml-1 font-mono">{fmt(amount)}</span></>
+              <>
+                Apostar <span className="font-mono">{fmt(amount)}</span>
+              </>
             ) : (
-              <>Aumentar p/ <span className="ml-1 font-mono">{fmt(amount)}</span></>
+              <>
+                {phone ? 'Aumentar' : 'Aumentar p/'} <span className="font-mono">{fmt(amount)}</span>
+              </>
             )}
-          </Button>
+            {!phone && <kbd>⏎</kbd>}
+          </button>
         ) : legal.allin !== null ? (
-          <Button size="sm" disabled={busy} onClick={() => onAct('allin')} className="justify-center">
-            All-in <span className="ml-1 font-mono">{fmt(legal.allin)}</span>
-          </Button>
+          <button
+            type="button"
+            className={cn('poker-botao poker-botao--allin', phone && 'poker-botao--compacto')}
+            disabled={off}
+            onClick={() => onAct('allin')}
+          >
+            All-in <span className="font-mono">{fmt(legal.allin)}</span>
+            {!phone && <kbd>A</kbd>}
+          </button>
         ) : (
           <span />
         )}
@@ -1120,15 +1365,17 @@ function ActionBar({
 
 function WaitingLine({ table, me }: { table: TableView; me: SeatView }) {
   const acting = table.toAct !== null ? table.seats[table.toAct] : null
+  const myTurn = table.toAct === me.index && !table.result
   let text: string
-  if (table.result) text = 'Próxima mão daqui a pouco.'
-  else if (me.sittingOut) text = 'Você está sentado fora. "Voltar" entra na próxima mão.'
+  if (myTurn) text = 'Sua vez.'
+  else if (table.result) text = 'Próxima mão daqui a pouco.'
+  else if (me.sittingOut) text = 'Sentado fora. "Voltar" entra na próxima mão.'
   else if (!me.inHand) text = table.street ? 'Você entra na próxima mão.' : 'Esperando a mão começar.'
   else if (me.folded) text = 'Você desistiu desta mão.'
   else if (acting) text = `Vez de ${acting.displayName.split(/\s+/)[0]}…`
   else if (table.street === 'showdown' || table.street === 'done') text = 'Showdown.'
   else text = 'A mesa está correndo…'
-  return <p className="text-center text-xs text-muted-foreground">{text}</p>
+  return <span className={cn(myTurn && 'font-semibold text-acid-text')}>{text}</span>
 }
 
 // ---------------------------------------------------------------------------
@@ -1190,9 +1437,9 @@ function AmountDialog({
   const ok = !short && amount >= min && amount <= cappedMax
 
   return (
-    <div className="absolute inset-0 z-dialogo flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+    <div className="absolute inset-0 z-dialogo flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]" onClick={onClose}>
       <div
-        className="card-gradient w-full max-w-sm rounded-brutal border-2 border-acid-dark p-4"
+        className="card-gradient w-full max-w-sm rounded-brutal border-2 border-acid-dark p-4 shadow-[0_20px_60px_rgb(0_0_0/0.6)]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label={title}
@@ -1341,10 +1588,10 @@ const FALLING_CHIPS: Array<{ x: number; delay: number; dur: number; spin: number
 ]
 
 /**
- * A pilha zerou. Veu por cima do feltro, carimbo "QUEBROU", fichas caindo e
- * — um instante depois — o painel com a saida: recarregar (o quanto cabe no
+ * A pilha zerou. Véu por cima do feltro, carimbo "QUEBROU", fichas caindo e
+ * — um instante depois — o painel com a saída: recarregar (o quanto cabe no
  * teto da mesa e no saldo), levantar, ou ficar olhando. Na mesa valendo sem
- * saldo no caixa, o caminho e depositar.
+ * saldo no caixa, o caminho é depositar.
  */
 function BustedOverlay({
   table,
@@ -1387,7 +1634,6 @@ function BustedOverlay({
       role="dialog"
       aria-label="Suas fichas acabaram"
     >
-      {/* fichas caindo */}
       {FALLING_CHIPS.map((c, i) => (
         <span
           key={i}
@@ -1442,7 +1688,7 @@ function BustedOverlay({
               <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
                 <span>mín {fmt(min)}</span>
                 <span>
-                  saldo <span className={cn('font-mono', currency === 'brl' ? 'text-burn' : 'text-burn')}>{balance === null ? '…' : fmt(balance)}</span>
+                  saldo <span className="font-mono text-burn">{balance === null ? '…' : fmt(balance)}</span>
                 </span>
               </div>
             </>
@@ -1532,7 +1778,7 @@ function renderEvent(
       return (
         <span className="flex items-center gap-1.5">
           <span>{STREET_LABEL[e.street] ?? e.street}:</span>
-          <CardRow codes={e.board} size="xs" />
+          <CardRow codes={e.board} size="xs" gap={3} />
         </span>
       )
     case 'refund':
@@ -1545,7 +1791,7 @@ function renderEvent(
       return (
         <span className="flex flex-wrap items-center gap-1.5">
           <span>{name(e.seat)} mostra</span>
-          <CardRow codes={e.cards} size="xs" />
+          <CardRow codes={e.cards} size="xs" gap={3} />
           <span>— {e.label}</span>
         </span>
       )
@@ -1563,34 +1809,6 @@ function renderEvent(
 }
 
 // ---------------------------------------------------------------------------
-
-function SmallButton({
-  children,
-  icon,
-  onClick,
-  tone = 'default'
-}: {
-  children: React.ReactNode
-  icon?: React.ReactNode
-  onClick: () => void
-  tone?: 'default' | 'danger'
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex items-center gap-1 rounded-brutal border px-2 py-1 text-[11.5px] transition-colors',
-        tone === 'danger'
-          ? 'border-destructive bg-destructive/15 text-destructive'
-          : 'border-line text-muted-foreground hover:border-acid/50 hover:text-foreground'
-      )}
-    >
-      {icon}
-      {children}
-    </button>
-  )
-}
 
 /** Rótulo da categoria, pra quem precisa fora da mesa (saguão). */
 export function categoryLabel(category: HandCategory | null | undefined): string | null {

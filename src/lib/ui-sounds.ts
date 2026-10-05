@@ -38,9 +38,10 @@ export type UiSound =
   | 'xp'
   | 'levelup'
   | 'coins'
-  /** Pôquer: sua vez, cartas dadas, pote levado. */
+  /** Pôquer: sua vez, cartas dadas, fichas na mesa, pote levado. */
   | 'poker-turn'
   | 'poker-deal'
+  | 'poker-chip'
   | 'poker-win'
 
 interface Note {
@@ -262,6 +263,17 @@ const CUES: Record<UiSound, Cue> = {
     cutoff: 1800,
     type: 'sine',
     notes: [{ freq: A4, at: 0, dur: 0.05 }]
+  },
+  // Fichas na mesa (aposta/aumento de alguém): dois estalos secos e graves,
+  // ficha batendo em ficha. Toca a cada aposta dos outros; é quase nada.
+  'poker-chip': {
+    volume: 0.3,
+    cutoff: 2200,
+    type: 'triangle',
+    notes: [
+      { freq: 1046.5, at: 0, dur: 0.03 },
+      { freq: 880, at: 0.045, dur: 0.04, gain: 0.7 }
+    ]
   },
   // Pote levado: arpejo subindo, parente do `levelup` mas mais curto.
   'poker-win': {
