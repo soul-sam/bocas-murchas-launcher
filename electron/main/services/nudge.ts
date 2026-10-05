@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { getMainWindow } from './main-window.js'
 
 /**
  * O "tremer a tela" do MSN, versao janela de verdade.
@@ -46,8 +46,8 @@ export function shakeWindow(options: NudgeOptions = {}): NudgeResult {
     return { shook: false, reason: 'cooldown' }
   }
 
-  const win = BrowserWindow.getAllWindows()[0]
-  if (!win || win.isDestroyed()) {
+  const win = getMainWindow()
+  if (!win) {
     return { shook: false, reason: 'no-window' }
   }
 

@@ -47,6 +47,7 @@ import type {
   OverlayToast
 } from '../preload/types.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
+import { showMainWindow } from './services/main-window.js'
 import { app, powerMonitor } from 'electron'
 
 function serializeError(err: unknown): { message: string; code?: string } {
@@ -115,8 +116,14 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('settings:get', async () => loadSettings())
 
   ipcMain.handle('settings:update', async (_e, patch: Partial<LauncherSettings>) => {
-    const before = await loadSettings()
-    const next = await updateSettings(patch)
+    // O "antes" sai de DENTRO da fila de gravacao: lido fora, dois toques
+    // rapidos no mesmo interruptor viam o mesmo antes e um deles nao aplicava.
+    let before: LauncherSettings | null = null
+    const next = await updateSettings((current) => {
+      before = current
+      return patch
+    })
+    before ??= next
     // O handler de 'close' e sincrono e nao pode ler o arquivo; mantemos o
     // cache do main alinhado a cada salvamento.
     setCloseToTray(next.closeToTray)
@@ -189,17 +196,18 @@ export function registerIpcHandlers(): void {
    * — sem atalho, senao a posicao ficaria na tela e nao no arquivo.
    */
   ipcMain.handle('overlay:set-dock', async (_e, dock: OverlayDock) => {
-    const current = await loadSettings()
-    const next = await updateSettings({ overlay: { ...current.overlay, dock } })
+    // O `current` vem de dentro da fila de gravacao (ver updateSettings).
+    const next = await updateSettings((current) => ({ overlay: { ...current.overlay, dock } }))
     applyOverlaySettings(next)
   })
 
   /** A logo de fora de partida foi arrastada. Mesmo caminho do `set-dock`. */
   ipcMain.handle('overlay:set-idle-offset', async (_e, offset: number) => {
     if (!Number.isFinite(offset)) return
-    const current = await loadSettings()
     const idleOffset = Math.min(0.94, Math.max(0.06, offset))
-    const next = await updateSettings({ overlay: { ...current.overlay, idleOffset } })
+    const next = await updateSettings((current) => ({
+      overlay: { ...current.overlay, idleOffset }
+    }))
     applyOverlaySettings(next)
   })
 
@@ -340,13 +348,7 @@ export function registerIpcHandlers(): void {
         silent: payload.silent ?? false
       })
 
-      notification.on('click', () => {
-        const win = BrowserWindow.getAllWindows()[0]
-        if (!win) return
-        if (win.isMinimized()) win.restore()
-        win.show()
-        win.focus()
-      })
+      notification.on('click', showMainWindow)
 
       notification.show()
     }

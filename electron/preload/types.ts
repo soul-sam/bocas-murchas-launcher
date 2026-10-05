@@ -1125,6 +1125,11 @@ export interface BocasAPI {
   settings: {
     get: () => Promise<LauncherSettings>
     update: (patch: Partial<LauncherSettings>) => Promise<LauncherSettings>
+    /**
+     * Gravou — por esta janela ou por outra (a sobreposicao grava a posicao da
+     * aba; a principal, o tema). Opcional porque a ponte web tem janela uma so.
+     */
+    onChanged?: (cb: (settings: LauncherSettings) => void) => () => void
   }
   appWindow: {
     minimize: () => Promise<void>

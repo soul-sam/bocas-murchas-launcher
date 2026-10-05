@@ -1,5 +1,6 @@
-import { app, BrowserWindow, Menu, Tray, nativeImage } from 'electron'
+import { app, Menu, Tray, nativeImage } from 'electron'
 import path from 'node:path'
+import { getMainWindow, showMainWindow } from './main-window.js'
 
 /**
  * Icone na bandeja para o launcher continuar rodando com a janela fechada.
@@ -56,17 +57,7 @@ export function iconPath(): string {
     : path.join(app.getAppPath(), 'build/icon.ico')
 }
 
-function mainWindow(): BrowserWindow | undefined {
-  return BrowserWindow.getAllWindows()[0]
-}
-
-function showWindow(): void {
-  const win = mainWindow()
-  if (!win) return
-  if (win.isMinimized()) win.restore()
-  win.show()
-  win.focus()
-}
+const showWindow = showMainWindow
 
 /**
  * Recarrega o renderer.
@@ -76,14 +67,14 @@ function showWindow(): void {
  * item existe aqui e nao so dentro do app.
  */
 function reloadWindow(): void {
-  const win = mainWindow()
-  if (!win || win.isDestroyed()) return
+  const win = getMainWindow()
+  if (!win) return
   win.show()
   win.webContents.reloadIgnoringCache()
 }
 
 function send(channel: string, payload?: unknown): void {
-  mainWindow()?.webContents.send(channel, payload)
+  getMainWindow()?.webContents.send(channel, payload)
 }
 
 function buildMenu(): Menu {

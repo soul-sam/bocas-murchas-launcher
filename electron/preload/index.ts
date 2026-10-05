@@ -43,7 +43,8 @@ const api: BocasAPI = {
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
-    update: (patch) => ipcRenderer.invoke('settings:update', patch)
+    update: (patch) => ipcRenderer.invoke('settings:update', patch),
+    onChanged: (cb) => on('settings:changed', cb)
   },
   appWindow: {
     minimize: () => ipcRenderer.invoke('window:minimize'),

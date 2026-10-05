@@ -35,6 +35,8 @@ export interface LcuCredentials {
   source: LcuSource
   /** Caminho do lockfile ou nome do processo — pra log e diagnostico. */
   origin: string
+  /** Pasta de instalacao do LoL, quando deu pra saber. E onde mora o `Config/game.cfg`. */
+  installDir?: string
 }
 
 export interface DiscoveryOutcome {
@@ -83,13 +85,19 @@ export function parseLockfile(content: string): { pid?: number; port: number; pa
 }
 
 /** Linha de comando do LeagueClientUx.exe: `... "--app-port=1234" "--remoting-auth-token=abc" ...` */
-export function parseCommandLine(cmdline: string): { port: number; password: string } | null {
+export function parseCommandLine(
+  cmdline: string
+): { port: number; password: string; installDir?: string } | null {
   const port = /--app-port=(\d+)/.exec(cmdline)?.[1]
   const token = /--remoting-auth-token=([^\s"']+)/.exec(cmdline)?.[1]
   if (!port || !token) return null
   const p = Number(port)
   if (!Number.isInteger(p) || p <= 0 || p > 65535) return null
-  return { port: p, password: token }
+  // `"--install-directory=C:\Riot Games\League of Legends"`: entre aspas
+  // porque o caminho tem espaco; sem aspas, vai ate o proximo espaco.
+  const dir = /"--install-directory=([^"]+)"|--install-directory=(\S+)/.exec(cmdline)
+  const installDir = (dir?.[1] ?? dir?.[2])?.trim()
+  return installDir ? { port: p, password: token, installDir } : { port: p, password: token }
 }
 
 /**
@@ -120,7 +128,7 @@ async function fromLockfile(file: string, source: LcuSource): Promise<LcuCredent
   const parsed = parseLockfile(content)
   if (!parsed) return null
   if (!pidAlive(parsed.pid)) return 'stale'
-  return { ...parsed, source, origin: file }
+  return { ...parsed, source, origin: file, installDir: path.dirname(file) }
 }
 
 /** null = nao deu pra saber (tasklist falhou); segue como se estivesse rodando. */

@@ -21,17 +21,20 @@ import './styles/globals.css'
  */
 
 // O tema mora nas configurações, que a janela principal aplica no <html> dela.
-// Esta é outra janela: precisa aplicar o dela. Lido uma vez na montagem —
-// a sobreposição nasce e morre a cada partida, então nunca fica velho.
+// Esta é outra janela: precisa aplicar o dela. Lido na montagem E a cada
+// gravação — a sobreposição vive o dia inteiro, e o tema trocado na Lojinha
+// só apareceria aqui depois de minimizar ou reiniciar.
+const applyTheme = (settings: { theme: string }): void => {
+  document.documentElement.dataset.theme = settings.theme
+}
 void window.bocas.settings
   .get()
-  .then((settings) => {
-    document.documentElement.dataset.theme = settings.theme
-  })
+  .then(applyTheme)
   .catch(() => {
     // Sem tema aplicado os tokens caem no padrão do :root, que é escuro.
     // Feio num tema claro, mas melhor que uma tela vazia.
   })
+window.bocas.settings.onChanged?.(applyTheme)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

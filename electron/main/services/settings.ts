@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import {
@@ -297,23 +297,75 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
 let cached: { mtimeMs: number; size: number; raw: string } | null = null
 
 export async function loadSettings(): Promise<LauncherSettings> {
+  const file = settingsPath()
+  let raw: string
   try {
-    const file = settingsPath()
     const stat = await fs.stat(file)
     if (!cached || cached.mtimeMs !== stat.mtimeMs || cached.size !== stat.size) {
       cached = { mtimeMs: stat.mtimeMs, size: stat.size, raw: await fs.readFile(file, 'utf-8') }
     }
-    return normalize(JSON.parse(cached.raw) as Partial<LauncherSettings>)
+    raw = cached.raw
   } catch {
     cached = null
     // normalize({}) em vez de espalhar DEFAULTS: um spread raso devolveria
     // voice/hotkeys por referencia, compartilhados com o objeto de defaults.
     return normalize({})
   }
+
+  try {
+    return normalize(JSON.parse(raw) as Partial<LauncherSettings>)
+  } catch {
+    // Arquivo existe e nao presta: vale o padrao, mas o conteudo vai pro
+    // `.bad` ANTES — o proximo salvamento grava por cima, e sem copia a
+    // pessoa perderia atalhos, dispositivos e tema sem rastro nenhum.
+    await quarantine(file, raw)
+    return normalize({})
+  }
 }
 
-export async function updateSettings(patch: Partial<LauncherSettings>): Promise<LauncherSettings> {
+/** Ultimo conteudo invalido ja copiado: o load roda em timers, a copia e uma so. */
+let quarantined: string | null = null
+
+async function quarantine(file: string, raw: string): Promise<void> {
+  if (quarantined === raw) return
+  quarantined = raw
+  try {
+    await fs.writeFile(`${file}.bad`, raw)
+    console.warn(`[settings] ${FILE} invalido; copia em ${FILE}.bad, valendo o padrao`)
+  } catch {
+    // Sem disco pra copia: segue com o padrao do mesmo jeito.
+  }
+}
+
+/**
+ * Patch pronto, ou montado a partir do arquivo ATUAL — dentro da fila, pra
+ * quem precisa espalhar o valor de agora (`{ ...current.overlay, dock }`).
+ */
+type SettingsPatch =
+  | Partial<LauncherSettings>
+  | ((current: LauncherSettings) => Partial<LauncherSettings>)
+
+/**
+ * UMA GRAVACAO POR VEZ.
+ *
+ * Um slider das configuracoes manda um `update` por pixel, e cada um e
+ * ler-mesclar-gravar. Em paralelo, um gravava por cima do outro (o valor
+ * final nao era o ultimo), o segundo `rename` do mesmo `.tmp` falhava, e no
+ * Windows dois `writeFile` truncando o mesmo arquivo se intercalavam — JSON
+ * quebrado, e o boot seguinte voltava TUDO pro padrao. A fila resolve as tres.
+ */
+let writeQueue: Promise<unknown> = Promise.resolve()
+let tmpSeq = 0
+
+export function updateSettings(patch: SettingsPatch): Promise<LauncherSettings> {
+  const run = writeQueue.then(() => writeSettings(patch))
+  writeQueue = run.catch(() => undefined)
+  return run
+}
+
+async function writeSettings(input: SettingsPatch): Promise<LauncherSettings> {
   const current = await loadSettings()
+  const patch = typeof input === 'function' ? input(current) : input
 
   // Merge raso perderia o resto de voice/hotkeys a cada patch parcial.
   const merged: Partial<LauncherSettings> = {
@@ -342,9 +394,21 @@ export async function updateSettings(patch: Partial<LauncherSettings>): Promise<
   // Escrita atomica: gravar direto e cair no meio deixava um JSON truncado, e
   // o boot seguinte voltava tudo pro padrao.
   const file = settingsPath()
-  const tmp = `${file}.tmp`
-  await fs.writeFile(tmp, JSON.stringify(next, null, 2))
-  await fs.rename(tmp, file)
+  const tmp = `${file}.${process.pid}-${++tmpSeq}.tmp`
+  try {
+    await fs.writeFile(tmp, JSON.stringify(next, null, 2))
+    await fs.rename(tmp, file)
+  } catch (err) {
+    await fs.unlink(tmp).catch(() => undefined)
+    throw err
+  }
   cached = null
+
+  // Todas as janelas, e nao so quem pediu: a sobreposicao grava a posicao da
+  // aba e a principal seguia com a velha (e a devolvia no proximo ajuste); a
+  // principal troca o tema e a sobreposicao, que vive o dia inteiro, nao via.
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send('settings:changed', next)
+  }
   return next
 }

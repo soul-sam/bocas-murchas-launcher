@@ -165,6 +165,8 @@ interface PendingGame {
   champion?: string
   startedAt: number
   lastScore?: LolLiveScore
+  /** `gameTime` do jogo na ultima leitura da Live Client API, em segundos. */
+  clockSec?: number
   /** Quem do lobby estava junto (sem eu) — pro resultado 'unknown', que nao tem time. */
   teammates?: LolLobbyMember[]
 }
@@ -350,7 +352,7 @@ let discoveryMisses = 0
  * `null` = li e nao deu pra saber (arquivo ausente ou valor estranho).
  */
 let windowModeCache: 'fullscreen' | 'borderless' | 'windowed' | null | undefined
-/** Caminho do lockfile que a descoberta usou — o `game.cfg` mora ao lado. */
+/** Lockfile (ou pasta de instalacao) que a descoberta usou — o `game.cfg` mora ao lado. */
 let lastLockfilePath: string | undefined
 
 function discoveryInterval(): number {
@@ -393,8 +395,6 @@ async function discover(): Promise<void> {
   await loadLastEmitted()
 
   const outcome = await discoverLcu(settings.lol.lockfilePath)
-  // Guardado pra achar o `game.cfg` de quem instalou fora do padrao.
-  if (settings.lol.lockfilePath) lastLockfilePath = settings.lol.lockfilePath
   const creds = outcome.credentials
   if (!creds) {
     discoveryMisses += 1
@@ -402,6 +402,10 @@ async function discover(): Promise<void> {
     return
   }
   discoveryMisses = 0
+  // Guardado pra achar o `game.cfg` de quem instalou fora do padrao. A pasta
+  // que a DESCOBERTA achou vale mais que a configurada: so a configurada
+  // deixava sem aviso de tela cheia quem tem o LoL em outro disco.
+  lastLockfilePath = creds.installDir ?? (settings.lol.lockfilePath || lastLockfilePath)
 
   // Valida de verdade: lockfile pode apontar pra uma porta que ninguem escuta.
   let rawPhase: unknown
@@ -484,9 +488,15 @@ async function pollConnected(s: Session): Promise<void> {
 
   // Partida orfa de um cliente que caiu: se ele voltou pro jogo, e a mesma
   // partida; se voltou pra qualquer outra fase, ela terminou sem nos.
+  let resumedSince: number | undefined
   if (orphanGame) {
-    if (phase === 'in-progress') s.game = orphanGame
-    else startEogResolution(s, orphanGame)
+    if (phase === 'in-progress') {
+      s.game = orphanGame
+      // A MESMA partida continua com o comeco DELA. Com o `now` daqui, a volta
+      // do cliente parecia partida nova: a sobreposicao desminimizava e abria
+      // o painel no meio da luta, e o relogio da partida zerava.
+      resumedSince = orphanGame.startedAt
+    } else startEogResolution(s, orphanGame)
     orphanGame = null
   }
 
@@ -506,10 +516,12 @@ async function pollConnected(s: Session): Promise<void> {
     })
   }
 
+  /** Primeira leitura desta fase: o `phaseSince` nasce agora (salvo os casos abaixo). */
+  const firstLook = !(current.clientRunning && current.phase === phase)
   const next: LolStatus = {
     clientRunning: true,
     phase,
-    phaseSince: current.clientRunning && current.phase === phase ? current.phaseSince : now,
+    phaseSince: resumedSince ?? (firstLook ? now : current.phaseSince),
     me: s.me,
     updatedAt: now
   }
@@ -550,6 +562,19 @@ async function pollConnected(s: Session): Promise<void> {
       if (now - s.lastLiveAt >= LIVE_INTERVAL_MS) {
         s.lastLiveAt = now
         await pollLive(s, s.game)
+      }
+      /**
+       * Launcher aberto com a partida JA rolando: o `phaseSince` seria a hora
+       * em que o launcher VIU a partida, e e dele que sai o `startedAt` da
+       * sessao no servidor — a janela de 5 min de aposta reabria no meio do
+       * jogo. Se o jogo ja responde na primeira leitura, o relogio dele diz
+       * quando ela comecou de verdade. Quem viu o carregamento nao cai aqui:
+       * na tela de carregamento a porta 2999 ainda recusa.
+       */
+      if (firstLook && resumedSince === undefined && s.game.clockSec) {
+        const since = now - s.game.clockSec * 1000
+        s.game.startedAt = since
+        next.phaseSince = since
       }
       next.lobby = s.lastLobby
       next.queue = s.game.queue
@@ -735,6 +760,9 @@ async function pollLive(s: Session, game: PendingGame): Promise<void> {
     liveGet<LiveActivePlayer>('/liveclientdata/activeplayer'),
     liveGet<LiveGameStats>('/liveclientdata/gamestats')
   ])
+  if (statsResult.status === 'fulfilled' && typeof statsResult.value?.gameTime === 'number') {
+    game.clockSec = Math.max(0, Math.round(statsResult.value.gameTime))
+  }
   if (activeResult.status !== 'fulfilled' || !activeResult.value) return
   const active = activeResult.value
 

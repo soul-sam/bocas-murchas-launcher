@@ -14,6 +14,7 @@ import type {
 } from '../../preload/types.js'
 import { anyMouseButtonDown } from './mouse-buttons.js'
 import { ensureNoActivate } from './no-activate.js'
+import { getMainWindow, showMainWindow } from './main-window.js'
 
 /**
  * A SOBREPOSICAO — a janela que aparece por cima do jogo.
@@ -382,11 +383,9 @@ function stopCursorWatch(): void {
  */
 let currentPhaseSince = 0
 
-/** Todas as janelas menos a propria sobreposicao. Na pratica, a principal. */
+/** A principal — e nao "qualquer outra", que no boot pode ser a de abertura. */
 function mainWindow(): BrowserWindow | null {
-  return (
-    BrowserWindow.getAllWindows().find((win) => win !== overlayWindow && !win.isDestroyed()) ?? null
-  )
+  return getMainWindow()
 }
 
 /**
@@ -499,6 +498,21 @@ function createOverlayWindow(): BrowserWindow {
   // Um link na sobreposicao nao pode virar uma segunda janela sem moldura por
   // cima do jogo. Quem quiser abrir algo pede pra janela principal.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+
+  // Renderer morto deixava a janela de pe o dia inteiro: invisivel, com os
+  // retangulos velhos ainda capturando o clique em cima do jogo, e com o
+  // `pushOverlayToast` jurando que mostrou — as notificacoes do Windows
+  // sumiam junto. Solta o mouse e recarrega, como a principal faz.
+  win.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[overlay] renderer caiu:', details.reason)
+    if (details.reason === 'clean-exit' || overlayWindow !== win || win.isDestroyed()) return
+    hitAreas = []
+    pointerOn = false
+    forcedInteractive = false
+    panelOpen = false
+    applyInteractive(false)
+    win.webContents.reload()
+  })
 
   win.webContents.on('did-finish-load', () => {
     // O modo vai ANTES do retrato: e ele que decide o que desenhar. Sem isso o
@@ -702,7 +716,11 @@ export function syncOverlayWithLol(status: LolStatus): void {
   const playing = status.clientRunning && status.phase === 'in-progress'
 
   if (!playing) {
-    currentPhaseSince = 0
+    // Cliente que CAIU no meio da partida nao e partida acabando: o jogo
+    // segue, e quando o cliente volta a mesma partida volta com o mesmo
+    // `phaseSince` (ver a orfa em lol.ts). Zerar aqui fazia a volta parecer
+    // partida nova — desminimizando e abrindo o painel no meio da luta.
+    if (status.clientRunning) currentPhaseSince = 0
     if (inGame) {
       inGame = false
       applyMode()
@@ -771,17 +789,12 @@ export function getOverlayState(): OverlayState | null {
 
 /** Sobreposicao -> janela principal. */
 export function relayOverlayAction(action: OverlayAction): void {
-  const win = mainWindow()
-  if (!win) return
-
   if (action.type === 'open-app') {
-    if (win.isMinimized()) win.restore()
-    win.show()
-    win.focus()
+    showMainWindow()
     return
   }
 
-  win.webContents.send('overlay:action', action)
+  mainWindow()?.webContents.send('overlay:action', action)
 }
 
 /** Sobreposicao pediu dados frescos; quem tem token e a principal. */

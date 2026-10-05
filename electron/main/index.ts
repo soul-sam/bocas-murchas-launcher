@@ -14,8 +14,15 @@ import {
   destroyTray,
   shouldCloseToTray,
   setCloseToTray,
+  setVoiceState,
   iconPath
 } from './services/tray.js'
+import {
+  getMainWindow,
+  setMainWindow,
+  setMainWindowFactory,
+  showMainWindow
+} from './services/main-window.js'
 import { loadSettings } from './services/settings.js'
 import { startLolWatcher, stopLolWatcher } from './services/lol.js'
 import { applyOverlaySettings, destroyOverlay } from './services/overlay.js'
@@ -108,6 +115,7 @@ function createWindow(): BrowserWindow {
       autoplayPolicy: 'no-user-gesture-required'
     }
   })
+  setMainWindow(win)
 
   win.once('ready-to-show', () => {
     // Na bandeja o app continua conectando: presenca, call e notificacoes
@@ -121,9 +129,25 @@ function createWindow(): BrowserWindow {
 
   // Fechar a janela nao pode derrubar a chamada de voz: esconde na bandeja.
   win.on('close', (event) => {
-    if (isQuitting() || !shouldCloseToTray()) return
+    if (isQuitting()) return
+    // Sem bandeja, fechar e SAIR. So deixar a janela fechar nao encerrava
+    // nada: o `window-all-closed` so sai com `isQuitting()`, e com a
+    // sobreposicao de pe ele nem dispara — sobrava um processo sem janela,
+    // dono da trava de instancia unica, e o launcher nao abria mais.
+    if (!shouldCloseToTray()) {
+      beginQuit()
+      setImmediate(() => app.quit())
+      return
+    }
     event.preventDefault()
     win.hide()
+  })
+
+  // Recarregou (botao, bandeja, renderer que caiu): a call ficou na pagina
+  // velha. Sem isto a bandeja seguia "na call" e o updater nunca instalava
+  // sozinho, achando que derrubaria uma chamada que ja nao existe.
+  win.webContents.on('did-navigate', () => {
+    setVoiceState({ inVoice: false, micMuted: false })
   })
 
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -181,20 +205,13 @@ function createWindow(): BrowserWindow {
   return win
 }
 
-function focusExistingWindow(): void {
-  const win = BrowserWindow.getAllWindows()[0]
-  if (!win) return
-  if (win.isMinimized()) win.restore()
-  win.show()
-  win.focus()
-}
-
 if (!gotTheLock) {
   app.quit()
 } else {
-  app.on('second-instance', focusExistingWindow)
+  app.on('second-instance', showMainWindow)
 
   app.whenReady().then(async () => {
+    setMainWindowFactory(createWindow)
     registerIpcHandlers()
     initScreenShare()
     // Antes da janela existir: mexe na sessao default, que e a que a janela vai
@@ -207,9 +224,9 @@ if (!gotTheLock) {
     setCloseToTray(settings.closeToTray)
     startHidden = launchedAtLogin() && settings.startMinimized
 
-    // A principal nasce PRIMEIRO: bandeja, ipc e nudge acham "a janela" por
-    // `getAllWindows()[0]`, e a de abertura nao pode roubar esse lugar. Como o
-    // `ready-to-show` e assincrono, a abertura sempre existe antes dele.
+    // A principal nasce PRIMEIRO; bandeja, ipc e nudge a acham pela referencia
+    // de services/main-window.ts. Como o `ready-to-show` e assincrono, a
+    // abertura sempre existe antes dele.
     createWindow()
     if (!startHidden) showSplash()
     initTray()
@@ -226,8 +243,8 @@ if (!gotTheLock) {
     if (settings.lol.enabled) startLolWatcher()
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow()
-      else focusExistingWindow()
+      if (!getMainWindow()) createWindow()
+      else showMainWindow()
     })
   })
 }

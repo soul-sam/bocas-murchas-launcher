@@ -30,6 +30,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  // Gravacao feita por OUTRA janela (a sobreposicao arrastada grava a posicao
+  // da aba). Sem isto o estado daqui ficava velho e o proximo ajuste nas
+  // configuracoes devolvia a aba pro lugar antigo.
+  React.useEffect(() => window.bocas.settings.onChanged?.(setSettings), [])
+
   // O tema e um atributo do <html>: as cinco folhas de token em globals.css
   // escolhem os valores por `data-theme`, e nenhum componente precisa saber
   // qual esta ativo. Aplicado aqui (e nao no App) pra valer tambem nas telas

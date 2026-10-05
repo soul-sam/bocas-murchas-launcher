@@ -5,6 +5,7 @@ import pkg from 'electron-updater'
 import { isInVoice } from './tray.js'
 import { getLaunchStatus } from './launcher.js'
 import { getLolStatus } from './lol.js'
+import { getMainWindow } from './main-window.js'
 
 const { autoUpdater } = pkg
 
@@ -353,8 +354,10 @@ function releaseDeferredDownload(why: string): void {
 }
 
 function windowVisible(): boolean {
-  const win = BrowserWindow.getAllWindows()[0]
-  return Boolean(win && !win.isDestroyed() && win.isVisible() && !win.isMinimized())
+  // A PRINCIPAL, e nao a primeira da lista: a sobreposicao fica visivel o dia
+  // inteiro e faria toda instalacao esperar a contagem de quem nao esta olhando.
+  const win = getMainWindow()
+  return Boolean(win && win.isVisible() && !win.isMinimized())
 }
 
 function cancelCountdown(): void {

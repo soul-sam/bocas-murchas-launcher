@@ -61,8 +61,10 @@ function candidatos(lockfilePath?: string): string[] {
   lista.push('C:\\Riot Games\\League of Legends\\Config\\game.cfg')
   lista.push('D:\\Riot Games\\League of Legends\\Config\\game.cfg')
 
-  const programFiles = process.env['ProgramFiles(x86)'] ?? process.env['ProgramFiles']
-  if (programFiles) {
+  // As DUAS: a descoberta (lol-discovery) procura o lockfile em `ProgramFiles`,
+  // e so a de 32 bits aqui deixava sem aviso quem a descoberta achou la.
+  for (const programFiles of [process.env['ProgramFiles'], process.env['ProgramFiles(x86)']]) {
+    if (!programFiles) continue
     lista.push(path.join(programFiles, 'Riot Games', 'League of Legends', 'Config', 'game.cfg'))
   }
 
