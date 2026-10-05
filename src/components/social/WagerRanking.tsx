@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { cn } from '@/lib/utils'
 import { NameEffect } from './NameEffect'
+import { MEDAL_COLOR } from './LeaderboardPanel'
 import { NameEmoji } from './NameEmoji'
 
 /**
@@ -218,7 +219,12 @@ function RankRow({ row, rank, mode }: { row: Row; rank: number; mode: Mode }) {
     >
       <Hint label={name} description={detail} side="left">
         <div className="flex cursor-help items-center gap-2">
-          <span className="w-5 shrink-0 text-center font-mono text-[11.5px] text-muted-foreground">{rank}</span>
+          <span
+            className={cn('w-5 shrink-0 text-center font-mono text-[11.5px]', rank > 3 && 'text-muted-foreground', rank <= 3 && 'font-bold')}
+            style={rank <= 3 ? { color: MEDAL_COLOR[rank - 1] } : undefined}
+          >
+            {rank}
+          </span>
           <UserAvatar
             userId={entry.userId}
             src={resolveAssetUrl(member?.avatar ?? entry.avatar)}

@@ -82,10 +82,11 @@ const TOP = 50
 /**
  * Pódio. Cor em vez de emoji de medalha: 🥇🥈🥉 saem com desenho diferente em
  * cada versão do Windows e desalinham a coluna, porque cada um tem largura
- * própria. Ouro/prata/bronze são cores de medalha, não da marca: iguais em
- * todo tema.
+ * própria. Ouro/prata/bronze são as cores PADRÃO de medalha, não da marca:
+ * iguais em todo tema, e pintam o card inteiro do pódio (borda, fundo,
+ * valor e degrau) — é a posição que manda ali, não quem é você.
  */
-const MEDAL_COLOR = ['#FFC53D', '#C9C9C9', '#B87333']
+export const MEDAL_COLOR = ['#FFD700', '#C0C0C0', '#CD7F32']
 
 export function LeaderboardPanel() {
   const { closeLeaderboard: close } = useLayout()
@@ -344,11 +345,12 @@ function PodiumSlot({ entry, metric, tall }: { entry: LeaderboardEntry; metric: 
 
   return (
     <li
-      className={cn(
-        'flex min-w-0 flex-col items-center rounded-brutal border border-line bg-void/60 px-1 pt-2 text-center',
-        isMe && 'border-acid/40 bg-acid/[0.06]'
-      )}
-      title={`${entry.rank}º · ${name} · ${formatMetricValue(metric, entry.value)}`}
+      className="flex min-w-0 flex-col items-center rounded-brutal border px-1 pt-2 text-center"
+      style={{
+        borderColor: `${medal}99`,
+        background: `linear-gradient(180deg, ${medal}26, ${medal}08)`
+      }}
+      title={`${entry.rank}º · ${name}${isMe ? ' (você)' : ''} · ${formatMetricValue(metric, entry.value)}`}
     >
       <UserAvatar
         userId={entry.userId}
@@ -368,14 +370,16 @@ function PodiumSlot({ entry, metric, tall }: { entry: LeaderboardEntry; metric: 
         </NameEffect>
         <NameEmoji id={member?.emoji} />
       </span>
-      <span className="font-mono text-[11.5px] text-burn">{formatMetricValue(metric, entry.value)}</span>
+      <span className="font-mono text-[11.5px] font-bold" style={{ color: medal }}>
+        {formatMetricValue(metric, entry.value)}
+      </span>
       {/* O degrau: altura é posição. */}
       <span
         className={cn(
-          'mt-1.5 flex w-full items-center justify-center gap-1 rounded-t-[4px] bg-surface-raised font-mono text-[11.5px] font-bold',
+          'mt-1.5 flex w-full items-center justify-center gap-1 rounded-t-[4px] font-mono text-[11.5px] font-bold',
           tall ? 'h-7' : 'h-5'
         )}
-        style={{ color: medal }}
+        style={{ color: medal, background: `${medal}2e` }}
       >
         <MedalIcon className="h-3 w-3" aria-hidden />
         {entry.rank}
