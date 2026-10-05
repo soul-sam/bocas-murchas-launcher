@@ -203,6 +203,9 @@ export function AppRail() {
                 <UserAvatar
                   src={resolveAssetUrl(peer?.avatar)}
                   memberId={peer?.id}
+                  // Atalho de conversa, não a pessoa em destaque: moldura aqui
+                  // só polui a coluna de ícones.
+                  frame={null}
                   name={peer?.displayName ?? channel.name}
                   status={statusOf(peer ? memberById[peer.id] : undefined)}
                   className={cn('h-9 w-9', active && 'ring-1 ring-acid')}

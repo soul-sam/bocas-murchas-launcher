@@ -46,6 +46,7 @@ import { useActivity } from '@/lib/activity-context'
 import { useMembers } from '@/lib/members-context'
 import { AFK_AUTO_NOTE } from '@/lib/afk-context'
 import { NameEmoji } from './NameEmoji'
+import { NameEffect } from './NameEffect'
 import { ChannelGlyph } from './ChannelGlyph'
 import { ActivityLine } from './ActivityLine'
 import { OpenPartiesStrip } from './OpenPartiesStrip'
@@ -477,10 +478,22 @@ export function ChannelSidebar({
                               src={resolveAssetUrl(occupant.avatar)}
                               name={occupant.displayName}
                               speaking={isSpeaking}
+                              // Na call a moldura é o "está falando": parada
+                              // o tempo todo, ela não dizia nada.
+                              frame={isSpeaking ? undefined : null}
                               className="h-8 w-8 shrink-0 rounded-full"
                             />
-                            <span className={cn('truncate', away && 'opacity-60')}>
-                              {occupant.displayName}
+                            <span
+                              className={cn('truncate', away && 'opacity-60')}
+                              style={nameStyle(member?.profileColor)}
+                            >
+                              <NameEffect
+                                effect={member?.nameEffect}
+                                color={member?.profileColor}
+                                className="truncate"
+                              >
+                                {occupant.displayName}
+                              </NameEffect>
                             </span>
                             <NameEmoji id={memberById[occupant.id]?.emoji} id2={memberById[occupant.id]?.emoji2} />
                             {away && (

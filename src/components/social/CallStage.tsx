@@ -176,7 +176,7 @@ function useTileGrid(count: number): {
  * A moldura é o realce de "quem está falando" de quem comprou cosmético; quem
  * não tem cai na borda verde-ácido. Antes a moldura ficava fixa no card e aí
  * não dava pra ver quando essa pessoa falava (só uma sombra discreta). O avatar
- * dentro do card continua exibindo a moldura o tempo todo.
+ * dentro do card segue a mesma regra: na call, moldura = está falando.
  */
 function Framed({
   frame,
@@ -184,9 +184,12 @@ function Framed({
   speaking,
   className,
   wrapperClassName,
+  large,
   children
 }: {
   frame?: string | null
+  /** Card grande da grade: o fogo da lendária usa a faixa fixa (ver effects.css). */
+  large?: boolean
   /** Cor comprada da pessoa: a moldura sai nela (branca sem cor). */
   frameColor?: string | null
   speaking?: boolean
@@ -215,6 +218,7 @@ function Framed({
         className={cn(
           'relative overflow-hidden rounded-brutal border-2 bg-black transition-colors',
           style ?? (speaking ? 'border-acid' : 'border-line'),
+          style && large && 'frame-fire-lg',
           className
         )}
       >
@@ -378,6 +382,7 @@ function CameraTile({
         frameColor={member?.profileColor}
         speaking={participant.isSpeaking}
         wrapperClassName="h-full w-full"
+        large
         className={cn(
           'h-full w-full transition-shadow',
           // Sem medida ainda (primeiro quadro): a proporção segura o layout
@@ -452,9 +457,10 @@ function AvatarTile({
       className="group relative min-w-0 shrink-0"
       style={width && height ? { width, height } : undefined}
     >
+      {/* Sem câmera a moldura é do AVATAR (só falando): no card também
+          seriam duas molduras e duas coroas. O card fica com a borda verde. */}
       <Framed
-        frame={member?.avatarFrame}
-        frameColor={member?.profileColor}
+        frame={null}
         speaking={participant.isSpeaking}
         wrapperClassName="h-full w-full"
         className={cn(
@@ -469,9 +475,9 @@ function AvatarTile({
           name={member?.displayName ?? participant.name}
           ringColor={member?.profileColor}
           speaking={participant.isSpeaking}
-          frame={member?.avatarFrame}
+          frame={participant.isSpeaking ? member?.avatarFrame : null}
           frameColor={member?.profileColor}
-          className="border-2"
+          className="frame-fire-lg border-2"
           style={
             avatarPx
               ? { width: avatarPx, height: avatarPx }
@@ -618,7 +624,7 @@ export function ParticipantChip({
           name={member?.displayName ?? participant.name}
           ringColor={member?.profileColor}
           speaking={participant.isSpeaking}
-          frame={member?.avatarFrame}
+          frame={participant.isSpeaking ? member?.avatarFrame : null}
           frameColor={member?.profileColor}
           className="h-6 w-6"
         />

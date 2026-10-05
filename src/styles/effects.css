@@ -260,6 +260,25 @@
   to { background-position: 0 0, 50% 0%; }
 }
 
+/* Caixa GRANDE (card e avatar grande da call). O degradê acima mede 220% da
+   altura da caixa: num card de 500px uma volta do fogo ocupa mais de 1000px,
+   e a borda parecia parada. Aqui o fogo é uma faixa de tamanho fixo que se
+   repete e sobe pela borda, então o movimento é o mesmo em qualquer tamanho. */
+.frame-fire.frame-fire-lg {
+  background-image:
+    linear-gradient(var(--fx-gap), var(--fx-gap)),
+    linear-gradient(0deg, var(--fx-dd) 0%, var(--fx) 30%, var(--fx-lt) 45%, var(--fx-hi) 50%, var(--fx-lt) 55%, var(--fx) 70%, var(--fx-dd) 100%) !important;
+  background-size: 100% 100%, 100% 96px !important;
+  background-repeat: no-repeat, repeat-y !important;
+  box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 16px 4px color-mix(in srgb, var(--fx) 50%, transparent);
+  animation: frame-fire-lg 1.1s linear infinite;
+}
+
+@keyframes frame-fire-lg {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 0 0, 0 -96px; }
+}
+
 /* A coroa: centrada no topo, por cima da borda. O desenho é máscara e a cor
    é o fundo (num data URI não dá pra usar variável, e a coroa tem que sair
    na cor da pessoa) — por isso a coroa pintada é o ::before. O CONTORNO
@@ -325,6 +344,7 @@
 @media (prefers-reduced-motion: reduce) {
   .fx-fire,
   .frame-fire,
+  .frame-fire.frame-fire-lg,
   .frame-fire-ring::before,
   .toast-in {
     animation: none;
