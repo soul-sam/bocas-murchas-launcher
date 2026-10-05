@@ -225,18 +225,35 @@
 }
 
 /* --- lendária: Lenda Murcha (animada) --- */
-/* Anel duplo com o halo respirando devagar. A coroa em cima é um irmão
-   (`frame-fire-ring`) que o UserAvatar desenha — a classe da borda continua
-   servindo pra webcam na call. */
+/* O MESMO fogo do efeito de nome "Rei dos Bocas" (`.fx-fire`): degradê
+   vertical escuro → cor → quase branco, subindo e descendo em 1,1s, com a
+   tremida de 0,35s — aqui no halo, não na opacidade, que piscaria a foto.
+
+   A borda é FUNDO: duas camadas, o vão por baixo da foto (padding-box) e o
+   fogo na caixa toda (border-box), com a borda transparente deixando o fogo
+   aparecer só no anel. `border-image` faria o degradê mas perde o canto
+   arredondado. A coroa em cima é um irmão (`frame-fire-ring`) que o
+   UserAvatar desenha — a classe da borda continua servindo pra webcam na
+   call. */
 .frame-fire {
-  border-color: var(--fx) !important;
+  --fx-flame: linear-gradient(0deg, var(--fx-dd) 0%, var(--fx) 45%, var(--fx-lt) 80%, var(--fx-hi) 100%);
+  border-color: transparent !important;
+  background:
+    linear-gradient(var(--fx-gap), var(--fx-gap)) padding-box,
+    var(--fx-flame) border-box !important;
+  background-size: 100% 100%, 100% 220% !important;
   box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 8px 3px color-mix(in srgb, var(--fx) 50%, transparent);
-  animation: frame-fire-glow 3s ease-in-out infinite;
+  animation: frame-fire 1.1s ease-in-out infinite alternate, frame-fire-flicker 0.35s steps(2, end) infinite;
 }
 
-@keyframes frame-fire-glow {
-  0%, 100% { box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 6px 3px color-mix(in srgb, var(--fx) 40%, transparent); }
-  50%      { box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 14px 3px color-mix(in srgb, var(--fx) 85%, transparent); }
+@keyframes frame-fire {
+  from { background-position: 0 0, 50% 100%; }
+  to { background-position: 0 0, 50% 0%; }
+}
+
+@keyframes frame-fire-flicker {
+  0%, 100% { box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 10px 3px color-mix(in srgb, var(--fx) 70%, transparent); }
+  50%      { box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 6px 3px color-mix(in srgb, var(--fx) 40%, transparent); }
 }
 
 /* A coroa: centrada no topo, por cima da borda. O desenho é máscara e a cor
@@ -268,7 +285,10 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--fx);
+  /* Mesmo fogo da borda e do "Rei dos Bocas", no mesmo compasso. */
+  background: linear-gradient(0deg, var(--fx-dd) 0%, var(--fx) 45%, var(--fx-lt) 80%, var(--fx-hi) 100%);
+  background-size: 100% 220%;
+  animation: fx-fire 1.1s ease-in-out infinite alternate;
   -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5Z'/></svg>") center / contain no-repeat;
   mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5Z'/></svg>") center / contain no-repeat;
 }
@@ -301,6 +321,7 @@
 @media (prefers-reduced-motion: reduce) {
   .fx-fire,
   .frame-fire,
+  .frame-fire-ring::before,
   .toast-in {
     animation: none;
   }
