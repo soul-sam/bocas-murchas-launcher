@@ -48,7 +48,9 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       'O antigo "Mês Murcho" virou "Murcho logado" (rara): continua sendo 30 dias seguidos abrindo o launcher. Quem já tinha, continua com ela.',
       'Nova "Murcho em call" (épica): 30 dias seguidos entrando na call.',
       'Nova "Murcha à toa" (lendária): 180 dias seguidos entrando na call.',
-      'Quem já tinha feito essas sequências em call ganha as conquistas novas na hora.'
+      'Quem já tinha feito essas sequências em call ganha as conquistas novas na hora.',
+      'A moldura Lenda Murcha ganhou o fogo animado do Rei dos Bocas, e a coroa voltou a ter contorno.',
+      'O ranking de murchos agora é o lucro de verdade: aposta conta só o que você lucrou (pela odd), mão de pôquer perdida e aposta errada descontam, e sentar e levantar da mesa não conta mais como ganho. Compras não descontam.'
     ]
   },
   {

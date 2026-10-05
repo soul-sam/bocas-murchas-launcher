@@ -55,13 +55,13 @@ const METRIC_ICON: Record<LeaderboardMetric, IconComponent> = {
 
 /**
  * O que cada métrica conta. Espelha `leaderboardValues` da API
- * (routes/gamification.routes.ts): murchos são os GANHOS no período, não o
+ * (routes/gamification.routes.ts): murchos são o LUCRO no período, não o
  * saldo; streak é o de agora na semana e o recorde no geral; mensagem de card
  * não conta.
  */
 const METRIC_HINT: Record<LeaderboardMetric, string> = {
   xp: 'Tudo que rende XP: mensagem, reação, call, partida, check-in, missão.',
-  coins: 'Murchos ganhos no período. Compra, aposta perdida e presente não entram.',
+  coins: 'Lucro no período: ganhos mais o resultado de apostas e mãos de pôquer, perdas descontadas. Compras não descontam.',
   streak: 'Dias seguidos entrando na call. Pulou um dia sem call, zera e sai da lista.',
   wins: 'Partidas ganhas de LoL e Minecraft que o launcher registrou.',
   voice: 'Tempo em call.',
