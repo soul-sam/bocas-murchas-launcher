@@ -9,6 +9,7 @@ import {
   Ghost,
   Pickaxe,
   Radiation,
+  Spade,
   Swords,
   Target,
   UtensilsCrossed
@@ -30,6 +31,7 @@ import type { IconComponent } from '@/lib/icon-component'
 const GAME_ICON: Record<string, IconComponent> = {
   lol: Swords,
   minecraft: Pickaxe,
+  poker: Spade,
   valorant: Crosshair,
   cs2: Target,
   'arc-raiders': Radiation,
