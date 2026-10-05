@@ -6,6 +6,8 @@ import { resolveAssetUrl } from '@/lib/api'
 import {
   boardGameLabel,
   boardReasonLabel,
+  sideIsLight,
+  sideLabel,
   type BoardAck,
   type BoardPerson,
   type BoardTableView,
@@ -42,12 +44,22 @@ const NO_MOVES: string[] = []
 const fmtMurchos = (n: number): string => `${n.toLocaleString('pt-BR')} murchos`
 
 const other = (side: Side): Side => (side === 'white' ? 'black' : 'white')
-const sideLabel = (side: Side): string => (side === 'white' ? 'brancas' : 'pretas')
+/** Quanto o servidor espera pelo primeiro lance antes de cancelar a mesa. */
+const FIRST_MOVE_MS = 30_000
+/** Quanto tempo "Analisando…" fica na tela depois do resultado. */
+const ANALYSIS_WAIT_MS = 90_000
+/** Análise só roda no xadrez e em partida com pelo menos isto de lances (plies). */
+const ANALYSIS_MIN_PLIES = 10
+
+/** Bolinha de cor do lado: a clara é a das peças claras (na dama americana, quem abre é a escura). */
+const dotClass = (table: BoardTableView, side: Side): string =>
+  sideIsLight(table.game, table.variant, side) ? 'board-lado--branca' : 'board-lado--preta'
 
 /** "Fulano venceu por xeque-mate" / "Empate por acordo". */
 function resultHeadline(table: BoardTableView): string {
   const result = table.result
   if (!result) return ''
+  if (result.reason === 'settle-error') return 'Erro no acerto da partida'
   if (result.winner) {
     const name = table[result.winner]?.displayName ?? 'Alguém'
     return `${name} venceu por ${boardReasonLabel(result.reason)}`
@@ -56,7 +68,7 @@ function resultHeadline(table: BoardTableView): string {
 }
 
 export function BoardTable({ children }: { children?: React.ReactNode }) {
-  const { table, leaveTable, setReady, move, resign, offerDraw, answerDraw } = useBoard()
+  const { table, closeTable, cancelTable, setReady, move, resign, offerDraw, answerDraw } = useBoard()
   const { user } = useAuth()
   const { isPhone } = useLayout()
   const [error, setError] = React.useState<string | null>(null)
@@ -122,7 +134,12 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
           {table.stake > 0 ? ` · valendo ${fmtMurchos(table.stake)}` : ' · sem valor'}
         </p>
         {error && <ErrorLine message={error} />}
-        <Button variant="secondary" size="sm" onClick={leaveTable}>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={busy}
+          onClick={() => (isHost ? void run(() => cancelTable(table.id)) : closeTable())}
+        >
           {isHost ? 'Cancelar' : 'Voltar ao saguão'}
         </Button>
       </div>
@@ -137,13 +154,17 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
   const drawFromOpponent = !!mySide && table.drawOfferBy !== null && table.drawOfferBy !== mySide
   const drawFromMe = !!mySide && table.drawOfferBy === mySide
 
+  const secsToFirstMove =
+    playing && !table.result && table.moves.length === 0
+      ? Math.max(0, Math.ceil((table.clockAt + FIRST_MOVE_MS - now) / 1000))
+      : null
   const secsToStart = table.startsAt ? Math.max(0, Math.ceil((table.startsAt - now) / 1000)) : null
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <header className="relative z-conteudo flex shrink-0 items-center gap-2 border-b border-line/50 bg-void/40 px-2 py-1.5 backdrop-blur-sm sm:px-3">
         {(playing || finished || !iAmPlayer) && (
-          <Button variant="ghost" size="sm" onClick={leaveTable}>
+          <Button variant="ghost" size="sm" onClick={closeTable}>
             <ArrowLeft className="mr-1 h-3.5 w-3.5" aria-hidden />
             Saguão
           </Button>
@@ -175,6 +196,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
           <div className={cn('board-area', isPhone && 'board-area--fone')}>
             <Board
               game={table.game}
+              variant={table.variant}
               position={table.position}
               orientation={bottom}
               legalMoves={myTurn ? table.legalMoves : NO_MOVES}
@@ -189,6 +211,12 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
             clocks={clocks}
             showClock={playing || finished}
           />
+          {secsToFirstMove !== null && (
+            <p className="text-center text-[11.5px] text-muted-foreground">
+              Primeiro lance em <span className="font-mono text-foreground">{secsToFirstMove}s</span> ou a partida é
+              cancelada
+            </p>
+          )}
         </div>
 
         {/* Coluna lateral: situação, lances e o que a tela de cima quiser pôr */}
@@ -214,9 +242,9 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
               <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
                 {(['white', 'black'] as const).map((side) => (
                   <li key={side} className="flex items-center gap-2">
-                    <span className={cn('board-lado', side === 'white' ? 'board-lado--branca' : 'board-lado--preta')} aria-hidden />
+                    <span className={cn('board-lado', dotClass(table, side))} aria-hidden />
                     <span className="truncate text-foreground">{table[side]?.displayName ?? '—'}</span>
-                    <span>({sideLabel(side)})</span>
+                    <span>({sideLabel(table.game, table.variant, side)})</span>
                     <span className={cn('ml-auto', table.ready[side] && 'text-acid-text')}>
                       {table.ready[side] ? 'pronto' : 'não está pronto'}
                     </span>
@@ -242,7 +270,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
                     onClick={() => {
                       if (confirm !== 'leave') return setConfirm('leave')
                       setConfirm(null)
-                      leaveTable()
+                      void run(() => cancelTable(table.id))
                     }}
                   >
                     {confirm === 'leave' ? 'Sair cancela a partida. Confirmar?' : 'Sair'}
@@ -255,7 +283,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
           {playing && iAmPlayer && !table.result && (
             <div className="flex flex-col gap-2">
               <p className={cn('text-sm font-semibold', myTurn ? 'text-acid-text' : 'text-muted-foreground')}>
-                {myTurn ? 'Sua vez' : `Vez de ${table[table.turn]?.displayName ?? sideLabel(table.turn)}`}
+                {myTurn ? 'Sua vez' : `Vez de ${table[table.turn]?.displayName ?? sideLabel(table.game, table.variant, table.turn)}`}
               </p>
               {drawFromOpponent && (
                 <div className="flex flex-col gap-1.5 rounded-brutal border border-line-strong p-2">
@@ -295,7 +323,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
             <p className="text-xs text-muted-foreground">Você está assistindo.</p>
           )}
 
-          {finished && <FinishedPanel table={table} onLeave={leaveTable} />}
+          {finished && <FinishedPanel table={table} onLeave={closeTable} />}
 
           <div className="flex min-h-[8rem] flex-col rounded-brutal border border-line">
             <h4 className="border-b border-line px-3 py-1.5 text-xs font-semibold text-foreground">Lances</h4>
@@ -340,10 +368,10 @@ function PlayerBar({
       ) : (
         <span className="h-8 w-8 shrink-0 rounded-brutal border border-line" aria-hidden />
       )}
-      <span className={cn('board-lado', side === 'white' ? 'board-lado--branca' : 'board-lado--preta')} aria-hidden />
+      <span className={cn('board-lado', dotClass(table, side))} aria-hidden />
       <span className="board-nome min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
         {person?.displayName ?? 'Vaga'}
-        <span className="sr-only"> ({sideLabel(side)})</span>
+        <span className="sr-only"> ({sideLabel(table.game, table.variant, side)})</span>
       </span>
       {showClock && <Clock ms={clocks[side]} active={active && table.clockRunning} low={clocks[side] < LOW_MS} />}
     </div>
@@ -355,6 +383,30 @@ function FinishedPanel({ table, onLeave }: { table: BoardTableView; onLeave: () 
   const result = table.result
   const analysis = table.analysis
   const winnerName = result?.winner ? table[result.winner]?.displayName : null
+  const settleError = result?.reason === 'settle-error'
+  // A análise só roda no xadrez com lances suficientes; sem resposta em 90 s, desiste da espera.
+  const mayAnalyse = table.game === 'chess' && table.moves.length >= ANALYSIS_MIN_PLIES && !settleError
+  const [waiting, setWaiting] = React.useState(true)
+  React.useEffect(() => {
+    if (!mayAnalyse || analysis) return
+    const t = setTimeout(() => setWaiting(false), ANALYSIS_WAIT_MS)
+    return () => clearTimeout(t)
+  }, [mayAnalyse, analysis])
+
+  if (settleError) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="board-resultado px-3 py-2">
+          <p className="text-sm font-semibold text-burn">{resultHeadline(table)}</p>
+          <p className="mt-0.5 text-xs text-foreground/80">Os valores foram devolvidos.</p>
+        </div>
+        <Button size="sm" onClick={onLeave}>
+          Voltar ao saguão
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <div className="board-resultado px-3 py-2">
@@ -375,7 +427,7 @@ function FinishedPanel({ table, onLeave }: { table: BoardTableView; onLeave: () 
       <ul className="flex flex-col gap-1 text-xs">
         {(['white', 'black'] as const).map((side) => (
           <li key={side} className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
-            <span className={cn('board-lado', side === 'white' ? 'board-lado--branca' : 'board-lado--preta')} aria-hidden />
+            <span className={cn('board-lado', dotClass(table, side))} aria-hidden />
             <span className="truncate text-foreground">{table[side]?.displayName ?? '—'}</span>
             <span className="font-mono text-acid-text">+{result?.xp[side] ?? 0} XP</span>
             {analysis && (
@@ -392,7 +444,7 @@ function FinishedPanel({ table, onLeave }: { table: BoardTableView; onLeave: () 
           </li>
         ))}
       </ul>
-      {!analysis && table.game === 'chess' && <p className="text-xs text-muted-foreground">Analisando a partida…</p>}
+      {!analysis && mayAnalyse && waiting && <p className="text-xs text-muted-foreground">Analisando a partida…</p>}
 
       <Button size="sm" onClick={onLeave}>
         Voltar ao saguão

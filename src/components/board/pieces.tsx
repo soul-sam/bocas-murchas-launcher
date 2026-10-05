@@ -5,7 +5,7 @@ import type { Piece } from '@/lib/board-position'
  * As peças: um conjunto próprio e simples, em SVG inline (grade 45×45). A cor
  * vem do CSS (`--peca-fundo` / `--peca-linha` em board.css, derivadas dos
  * tokens do tema), então as peças acompanham o tema e nada aqui é hex.
- * Brancas = claras com contorno escuro; pretas = escuras com contorno claro.
+ * Claras com contorno escuro; escuras com contorno claro.
  *
  * Xadrez: seis silhuetas. Dama: pedra (disco) e dama (pedra com anel interno).
  */
@@ -73,12 +73,14 @@ function ChessShape({ kind }: { kind: Piece['kind'] }) {
   }
 }
 
-export function PieceGlyph({ piece, className }: { piece: Piece; className?: string }) {
+/** `light` força a cor (dama americana: o lado que abre tem as peças escuras); sem ele vale `piece.side`. */
+export function PieceGlyph({ piece, className, light }: { piece: Piece; className?: string; light?: boolean }) {
+  const isLight = light ?? piece.side === 'white'
   const draughts = piece.kind === 'man' || piece.kind === 'king'
   return (
     <svg
       viewBox="0 0 45 45"
-      className={cn('board-peca', piece.side === 'white' ? 'board-peca--branca' : 'board-peca--preta', className)}
+      className={cn('board-peca', isLight ? 'board-peca--branca' : 'board-peca--preta', className)}
       aria-hidden
       focusable="false"
     >

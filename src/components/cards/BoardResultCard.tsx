@@ -1,6 +1,6 @@
 import { Crown } from 'lucide-react'
 import { MurchosIcon, XpIcon } from '@/lib/bocas-icons'
-import { boardGameLabel, boardReasonLabel, type BoardCardMeta, type BoardPerson, type Side } from '@/lib/api-board'
+import { boardGameLabel, boardReasonLabel, sideLabel, type BoardCardMeta, type BoardPerson, type Side } from '@/lib/api-board'
 import { GameIcon } from '@/components/social/GameIcon'
 import { cn } from '@/lib/utils'
 import type { CardProps } from './index'
@@ -17,8 +17,6 @@ import { CardFrame } from './index'
  * O metadata é JSON guardado: pode vir incompleto ou de versão antiga. Tudo é
  * normalizado no topo, porque um throw aqui derruba a linha inteira do chat.
  */
-
-const SIDE_LABEL: Record<Side, string> = { white: 'brancas', black: 'pretas' }
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const num = (v: unknown): number => (isNum(v) ? v : 0)
@@ -125,7 +123,7 @@ export function BoardResultCard({ metadata, compact }: CardProps<BoardCardMeta>)
             <span className={cn('min-w-0 truncate', n.winner === s ? 'text-foreground' : 'text-muted-foreground')}>
               {n.players[s].displayName}
             </span>
-            <span className="text-muted-foreground">({SIDE_LABEL[s]})</span>
+            <span className="text-muted-foreground">({sideLabel(n.game, n.variant, s).toLowerCase()})</span>
             {a && (
               <span className="ml-auto shrink-0 text-muted-foreground">
                 {a.accuracy[s].toFixed(1)}%

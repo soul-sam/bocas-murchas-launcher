@@ -110,6 +110,9 @@ export interface BoardCardMeta {
 /** Os relógios aceitos pelo servidor, do mais curto pro mais longo. */
 export const BOARD_CLOCKS: readonly ClockId[] = ['1+0', '1+1', '3+0', '3+2', '5+0', '10+0']
 
+// Cores: `white` é "quem joga primeiro"; na dama americana isso é o lado escuro.
+export { sideIsLight, sideLabel } from './board-sides'
+
 export const BOARD_ROUTE: Record<BoardGame, string> = { chess: '/xadrez', draughts: '/dama' }
 
 export function boardGameLabel(game: BoardGame, variant: DraughtsVariant | null): string {
@@ -127,7 +130,8 @@ const REASON_LABEL: Record<string, string> = {
   'kings-20': '20 lances de dama',
   timeout: 'tempo',
   resign: 'desistência',
-  agreement: 'acordo'
+  agreement: 'acordo',
+  'settle-error': 'erro no acerto'
 }
 
 export function boardReasonLabel(reason: string): string {

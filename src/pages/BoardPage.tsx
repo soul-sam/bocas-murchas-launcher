@@ -1,6 +1,7 @@
 import * as React from 'react'
 import type { BoardGame } from '@/lib/api-board'
-import { useBoard } from '@/lib/board-context'
+import { useAuth } from '@/lib/auth-context'
+import { amPlayer, useBoard } from '@/lib/board-context'
 import { BackToHall } from '@/components/games/BackToHall'
 import { BoardLobby } from '@/components/board/BoardLobby'
 import { BoardTable } from '@/components/board/BoardTable'
@@ -19,7 +20,8 @@ import { GameIcon } from '@/components/social/GameIcon'
 const TITLE: Record<BoardGame, string> = { chess: 'Xadrez', draughts: 'Dama' }
 
 export function BoardPage({ game }: { game: BoardGame }) {
-  const { table, myTable, openTable, leaveTable } = useBoard()
+  const { table, myTable, openTable, closeTable } = useBoard()
+  const { user } = useAuth()
 
   const here = !!table && table.game === game
 
@@ -31,15 +33,20 @@ export function BoardPage({ game }: { game: BoardGame }) {
   }, [myTable?.id, game])
 
   // Saindo da tela (ou trocando de jogo, que reaproveita esta instância):
-  // quem só assistia sai da sala; jogador fica.
+  // quem só assistia sai da sala; jogador e host ficam (sair cancelaria a
+  // mesa). Resultado antigo também fecha, pra não reaparecer na volta.
+  // "Assistia" é `!amPlayer`: o host de mesa aberta/convite tem mySide null.
   const tableRef = React.useRef(table)
   tableRef.current = table
-  const leaveRef = React.useRef(leaveTable)
-  leaveRef.current = leaveTable
+  const userIdRef = React.useRef(user?.id)
+  userIdRef.current = user?.id
+  const closeRef = React.useRef(closeTable)
+  closeRef.current = closeTable
   React.useEffect(
     () => () => {
       const t = tableRef.current
-      if (t && t.mySide === null) leaveRef.current()
+      if (!t) return
+      if (!amPlayer(t, userIdRef.current) || t.phase === 'finished') closeRef.current()
     },
     [game]
   )

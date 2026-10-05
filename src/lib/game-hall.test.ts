@@ -68,6 +68,12 @@ test('tabuleiro: host que também é brancas não conta duas vezes; espectadores
   assert.equal(countBoardPeople([mesa('chess', 'a', 'a', 'b', 3)], 'chess'), 5)
 })
 
+test('tabuleiro: mesa encerrada não conta', () => {
+  const done = { ...mesa('chess', 'a', 'a', 'b', 2), phase: 'finished' }
+  const live = { ...mesa('chess', 'c', 'c', 'd'), phase: 'playing' }
+  assert.equal(countBoardPeople([done, live], 'chess'), 2)
+})
+
 test('tabuleiro: jogo sem mesa conta 0', () => {
   assert.equal(countBoardPeople([mesa('chess', 'a', 'a', 'b')], 'draughts'), 0)
   assert.equal(countBoardPeople([], 'chess'), 0)

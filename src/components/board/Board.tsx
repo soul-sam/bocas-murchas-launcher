@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { BoardGame, Side } from '@/lib/api-board'
+import { sideIsLight, type BoardGame, type DraughtsVariant, type Side } from '@/lib/api-board'
 import {
   movableSquares,
   moveEnds,
@@ -38,10 +38,10 @@ const CHESS_NAME: Record<string, string> = {
 /** Gênero da cor concorda com a peça: torre/dama/pedra são femininas. */
 const FEMININE = new Set(['r', 'q', 'man', 'king'])
 
-function pieceLabel(piece: Piece): string {
+function pieceLabel(piece: Piece, light: boolean): string {
   const name =
     piece.kind === 'man' ? 'pedra' : piece.kind === 'king' ? 'dama' : (CHESS_NAME[piece.kind] ?? piece.kind)
-  const color = piece.side === 'white' ? 'branc' : 'pret'
+  const color = light ? 'branc' : 'pret'
   return `${name} ${color}${FEMININE.has(piece.kind) ? 'a' : 'o'}`
 }
 
@@ -58,6 +58,7 @@ interface Choice {
 
 export function Board({
   game,
+  variant = null,
   position,
   orientation,
   legalMoves,
@@ -65,6 +66,8 @@ export function Board({
   onMove
 }: {
   game: BoardGame
+  /** Na dama americana quem abre (white) tem as peças escuras. */
+  variant?: DraughtsVariant | null
   position: string
   /** De que lado se vê: pretas embaixo quando 'black'. */
   orientation: Side
@@ -85,11 +88,13 @@ export function Board({
   const targetSet = React.useMemo(() => new Set(targets.map((t) => t.to)), [targets])
   const last = React.useMemo(() => (lastMove ? moveEnds(lastMove) : null), [lastMove])
 
-  // Posição ou lances novos: a seleção antiga não vale mais.
+  // Posição ou lances novos: a seleção antiga não vale mais. A chave é o
+  // CONTEÚDO dos lances: um array novo com os mesmos lances não derruba a seleção.
+  const legalKey = legalMoves.join(',')
   React.useEffect(() => {
     setSelected(null)
     setChoice(null)
-  }, [position, legalMoves])
+  }, [position, legalKey])
 
   const interactive = !!onMove
 
@@ -145,7 +150,11 @@ export function Board({
     const col = shown % 8
     choiceStyle = {
       // Promoção: coluna de 4 casas, descendo da casa (ou subindo, se ela é de baixo).
-      top: `${(choice.kind === 'promotion' && row > 3 ? row - 3 : row) * 12.5}%`,
+      // Caminhos da dama: sobem a partir da casa quando ela está na metade de baixo
+      // (a grade corta o que passa da borda).
+      ...(choice.kind === 'path' && row > 3
+        ? { bottom: `${(7 - row) * 12.5}%` }
+        : { top: `${(choice.kind === 'promotion' && row > 3 ? row - 3 : row) * 12.5}%` }),
       ...(col >= 4 ? { right: `${(7 - col) * 12.5}%` } : { left: `${col * 12.5}%` })
     }
   }
@@ -160,7 +169,8 @@ export function Board({
         const dark = (row + col) % 2 === 1
         const isTarget = targetSet.has(name)
         const clickable = interactive && (isTarget || (movable.has(name) && !!piece))
-        const label = piece ? `${name}, ${pieceLabel(piece)}` : `${name}, vazia`
+        const light = piece ? sideIsLight(game, variant, piece.side) : true
+        const label = piece ? `${name}, ${pieceLabel(piece, light)}` : `${name}, vazia`
         return (
           <button
             key={index}
@@ -190,7 +200,7 @@ export function Board({
                 {name[1]}
               </span>
             )}
-            {piece && <PieceGlyph piece={piece} />}
+            {piece && <PieceGlyph piece={piece} light={light} />}
           </button>
         )
       })}
@@ -215,7 +225,7 @@ export function Board({
                     aria-label={`Promover para ${CHESS_NAME[kind]}`}
                     onClick={() => play(m.move)}
                   >
-                    <PieceGlyph piece={{ side: choice.side, kind }} />
+                    <PieceGlyph piece={{ side: choice.side, kind }} light={sideIsLight(game, variant, choice.side)} />
                   </button>
                 )
               })

@@ -1,13 +1,42 @@
 /* ==================================================================
    XADREZ E DAMA — o tabuleiro, as peças, o relógio e a lista de lances.
    ==================================================================
-   O cromo vem dos tokens do tema (como o feltro do pôquer): casa escura é a
-   cor do tema bem apagada, casa clara é o texto principal bem diluído. As
-   PEÇAS acompanham o tema: brancas claras com contorno escuro, pretas escuras
-   com contorno claro.
+   O cromo vem das variáveis --board-* (no topo): nos temas escuros derivam dos
+   tokens do tema, nos claros são neutras, pra peça clara ser sempre a mais
+   clara e a casa escura sempre a mais escura. Peças claras têm contorno
+   escuro, escuras têm contorno claro.
 
    Geometria: `.board-area` é um container de tamanho; a grade vale o MENOR
    entre largura e altura disponíveis, então é sempre quadrada e cabe. */
+
+/* Cores do tabuleiro, separadas dos tokens do tema. Os temas claros trocam o
+   sentido de --foreground/--background/--depth-*, e daí peças e casas
+   inverteriam; aqui a regra vale em qualquer tema: peça clara é sempre a mais
+   clara, casa escura é sempre mais escura que a clara. Padrão = temas escuros. */
+:root {
+  --board-peca-clara: hsl(var(--foreground));
+  --board-peca-escura: hsl(var(--depth-2));
+  --board-peca-contorno-clara: hsl(var(--background));
+  --board-peca-contorno-escura: hsl(var(--foreground) / 0.85);
+  --board-casa-clara: color-mix(in oklab, hsl(var(--foreground)) 24%, hsl(var(--depth-3)));
+  --board-casa-escura: color-mix(in oklab, rgb(var(--neon-rgb)) 16%, hsl(var(--background)));
+}
+/* Temas claros: papel, acido-claro, cafe, lavanda. */
+:root[data-theme='papel'],
+:root[data-theme='acido-claro'],
+:root[data-theme='cafe'],
+:root[data-theme='lavanda'],
+[data-theme='papel'],
+[data-theme='acido-claro'],
+[data-theme='cafe'],
+[data-theme='lavanda'] {
+  --board-peca-clara: hsl(0 0% 98%);
+  --board-peca-escura: hsl(0 0% 16%);
+  --board-peca-contorno-clara: hsl(0 0% 14%);
+  --board-peca-contorno-escura: hsl(0 0% 94%);
+  --board-casa-clara: color-mix(in oklab, hsl(var(--background)) 80%, hsl(0 0% 62%));
+  --board-casa-escura: color-mix(in oklab, rgb(var(--neon-rgb)) 22%, hsl(0 0% 50%));
+}
 
 .board-area {
   container-type: size;
@@ -25,8 +54,8 @@
 }
 
 .board-grade {
-  --casa-clara: color-mix(in oklab, hsl(var(--foreground)) 24%, hsl(var(--depth-3)));
-  --casa-escura: color-mix(in oklab, rgb(var(--neon-rgb)) 16%, hsl(var(--background)));
+  --casa-clara: var(--board-casa-clara);
+  --casa-escura: var(--board-casa-escura);
   position: relative;
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -125,12 +154,12 @@
   pointer-events: none;
 }
 .board-peca--branca {
-  --peca-fundo: hsl(var(--foreground));
-  --peca-linha: hsl(var(--background));
+  --peca-fundo: var(--board-peca-clara);
+  --peca-linha: var(--board-peca-contorno-clara);
 }
 .board-peca--preta {
-  --peca-fundo: hsl(var(--depth-2));
-  --peca-linha: hsl(var(--foreground) / 0.85);
+  --peca-fundo: var(--board-peca-escura);
+  --peca-linha: var(--board-peca-contorno-escura);
 }
 .board-peca * {
   fill: var(--peca-fundo);
@@ -241,10 +270,10 @@
   border: 1px solid hsl(var(--foreground) / 0.6);
 }
 .board-lado--branca {
-  background: hsl(var(--foreground));
+  background: var(--board-peca-clara);
 }
 .board-lado--preta {
-  background: hsl(var(--depth-2));
+  background: var(--board-peca-escura);
 }
 
 /* ---------- lista de lances ---------- */

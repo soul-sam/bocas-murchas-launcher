@@ -52,6 +52,12 @@ export function CreateDialog({
 
   useCamadaVoltar(true, onClose)
 
+  // Ao abrir, o foco vai pro primeiro controle (não pro X de fechar).
+  const dialogRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    dialogRef.current?.querySelector<HTMLElement>('button:not([aria-label="Fechar"]), input')?.focus()
+  }, [])
+
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -102,6 +108,7 @@ export function CreateDialog({
       className="fixed inset-0 z-sobretela flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}

@@ -1,12 +1,12 @@
 import * as React from 'react'
-import { Eye, Loader2, Plus, Radio, Send, Timer, Users } from 'lucide-react'
+import { Eye, Loader2, Plus, Radio, Send, Timer, Users, X } from 'lucide-react'
 import { MurchosIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { resolveAssetUrl } from '@/lib/api'
 import { boardGameLabel, type BoardGame, type BoardPerson, type LobbyBoardTable } from '@/lib/api-board'
 import { useAuth } from '@/lib/auth-context'
-import { useBoard } from '@/lib/board-context'
+import { amPlayer, useBoard } from '@/lib/board-context'
 import { useGamification } from '@/lib/gamification-context'
 import { useMembers } from '@/lib/members-context'
 import { cn } from '@/lib/utils'
@@ -22,7 +22,7 @@ import { CreateDialog } from './CreateDialog'
  */
 
 export function BoardLobby({ game }: { game: BoardGame }) {
-  const { tables, ready, myTable, openTable, cancelTable, sit } = useBoard()
+  const { tables, ready, myTable, notice, dismissNotice, openTable, cancelTable, sit } = useBoard()
   const { profile } = useGamification()
   const { user } = useAuth()
   const [dialog, setDialog] = React.useState<'open' | 'invite' | null>(null)
@@ -56,7 +56,7 @@ export function BoardLobby({ game }: { game: BoardGame }) {
   }
 
   const isMine = (t: LobbyBoardTable): boolean =>
-    !!user && (t.host.userId === user.id || t.white?.userId === user.id || t.black?.userId === user.id)
+    amPlayer(t, user?.id)
 
   return (
     <div className="scroll-stable flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
@@ -78,6 +78,23 @@ export function BoardLobby({ game }: { game: BoardGame }) {
           </Button>
         </div>
       </div>
+
+      {notice && (
+        <p
+          role="status"
+          className="flex items-start gap-2 rounded-brutal border border-line-strong bg-muted/40 px-3 py-1.5 text-xs text-foreground"
+        >
+          <span className="min-w-0 flex-1">{notice}</span>
+          <button
+            type="button"
+            onClick={dismissNotice}
+            aria-label="Fechar aviso"
+            className="shrink-0 rounded-brutal p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </p>
+      )}
 
       {error && (
         <p className="rounded-brutal border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs text-destructive">{error}</p>

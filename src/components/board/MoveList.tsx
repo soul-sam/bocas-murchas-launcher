@@ -7,10 +7,13 @@ import './board.css'
  * linha: brancas e pretas. Acompanha o fim da lista conforme a partida anda.
  */
 export function MoveList({ moves }: { moves: string[] }) {
-  const endRef = React.useRef<HTMLDivElement>(null)
+  const listRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'nearest' })
+    // Só a rolagem da própria lista: scrollIntoView rolaria a página inteira (celular).
+    // (A própria lista e o contêiner dela: qual dos dois rola depende da altura.)
+    const list = listRef.current
+    for (const el of [list, list?.parentElement]) if (el) el.scrollTop = el.scrollHeight
   }, [moves.length])
 
   if (moves.length === 0) {
@@ -24,7 +27,7 @@ export function MoveList({ moves }: { moves: string[] }) {
   const last = moves.length - 1
 
   return (
-    <div className="board-lances min-h-0 flex-1">
+    <div ref={listRef} className="board-lances min-h-0 flex-1">
       {rows.map((row) => (
         <React.Fragment key={row.n}>
           <span className="board-lances-n">{row.n}.</span>
@@ -34,7 +37,6 @@ export function MoveList({ moves }: { moves: string[] }) {
           </span>
         </React.Fragment>
       ))}
-      <div ref={endRef} className="col-span-3" />
     </div>
   )
 }

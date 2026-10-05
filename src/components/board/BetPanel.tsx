@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { MurchosIcon } from '@/lib/bocas-icons'
-import type { BoardBetView, Side } from '@/lib/api-board'
+import { sideLabel, type BoardBetView, type Side } from '@/lib/api-board'
 import { parseBetAmount } from '@/lib/board-bet'
 import { useBoard } from '@/lib/board-context'
 import { useGamification } from '@/lib/gamification-context'
@@ -15,7 +15,6 @@ import { cn } from '@/lib/utils'
  */
 
 const MIN_BET = 10
-const SIDE_LABEL: Record<Side, string> = { white: 'brancas', black: 'pretas' }
 
 function sumBySide(bets: BoardBetView[], side: Side): number {
   return bets.filter((b) => b.side === side).reduce((sum, b) => sum + b.amount, 0)
@@ -41,7 +40,7 @@ export function BetPanel() {
   if (bets.length === 0 && phase !== 'pending') return null
 
   const finished = phase === 'finished'
-  const nameOf = (s: Side): string => (s === 'white' ? white : black)?.displayName ?? SIDE_LABEL[s]
+  const nameOf = (s: Side): string => (s === 'white' ? white : black)?.displayName ?? sideLabel(table.game, table.variant, s)
   const coins = profile?.coins ?? 0
   const max = Math.min(table.betLimit, coins)
   const value = parseBetAmount(amount, MIN_BET, max)
@@ -92,7 +91,7 @@ export function BetPanel() {
                   )}
                 >
                   <span className="w-full truncate font-semibold">{nameOf(s)}</span>
-                  <span className="text-[11.5px] text-muted-foreground">{SIDE_LABEL[s]}</span>
+                  <span className="text-[11.5px] text-muted-foreground">{sideLabel(table.game, table.variant, s)}</span>
                 </button>
               ))}
             </div>
@@ -100,6 +99,7 @@ export function BetPanel() {
               <MurchosIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
               <input
                 type="number"
+                aria-label="Valor da aposta em murchos"
                 inputMode="numeric"
                 min={MIN_BET}
                 max={max}

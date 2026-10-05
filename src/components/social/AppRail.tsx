@@ -144,6 +144,7 @@ export function AppRail() {
           {/* Sua vez numa partida de xadrez ou dama. */}
           {myTurn && (
             <span
+              role="status"
               aria-label="Sua vez"
               className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-void bg-burn"
             />

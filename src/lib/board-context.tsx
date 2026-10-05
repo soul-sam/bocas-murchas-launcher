@@ -27,9 +27,21 @@ import {
  * Nenhuma ação muda o estado local por conta própria: o ack só traz erro e,
  * quando traz a mesa, ela é gravada.
  *
- * Fechar a tela (`leaveTable`) sai da sala; jogador que sai antes do início
- * cancela a mesa, isso é com o servidor.
+ * Dois jeitos de sair, que NÃO são a mesma coisa. `closeTable` só fecha a
+ * tela (quem assistia sai da sala; jogador e host ficam, a mesa continua).
+ * `cancelTable` é o botão Sair/Cancelar: antes do início o servidor cancela a
+ * mesa e devolve os valores. Cor (`mySide`) só existe com os dois sentados,
+ * então "não sou jogador" nunca se deduz de `mySide === null`: use `amPlayer`.
  */
+
+/** Sou o host, as brancas ou as pretas desta mesa (vale pra vista e pro saguão). */
+export function amPlayer(
+  table: { host: { userId: string }; white: { userId: string } | null; black: { userId: string } | null } | null | undefined,
+  userId: string | null | undefined
+): boolean {
+  if (!table || !userId) return false
+  return table.host.userId === userId || table.white?.userId === userId || table.black?.userId === userId
+}
 
 interface BoardContextValue {
   tables: LobbyBoardTable[]
@@ -43,8 +55,12 @@ interface BoardContextValue {
   myTable: LobbyBoardTable | null
   /** É a minha vez em alguma partida. */
   myTurn: boolean
+  /** Aviso de mesa cancelada pelo servidor (30 s sem lance etc.). */
+  notice: string | null
+  dismissNotice: () => void
   openTable: (tableId: string) => Promise<BoardAck>
-  leaveTable: () => void
+  /** Fecha a tela da mesa. Nunca cancela: só quem assistia sai da sala. */
+  closeTable: () => void
   /** Cancela a minha mesa pelo id, sem abrir a sala (e fecha a aberta se for ela). */
   cancelTable: (tableId: string) => Promise<BoardAck>
   /** Vai pra tela do jogo e, se vier `tableId`, abre essa mesa nela. */
@@ -98,6 +114,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   const [openTableId, setOpenTableId] = React.useState<string | null>(null)
   const [table, setTable] = React.useState<BoardTableView | null>(null)
   const [invite, setInvite] = React.useState<BoardInvite | null>(null)
+  const [notice, setNotice] = React.useState<string | null>(null)
 
   const settingsRef = React.useRef(settings)
   settingsRef.current = settings
@@ -105,6 +122,12 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   openIdRef.current = openTableId
   const inviteRef = React.useRef<BoardInvite | null>(null)
   inviteRef.current = invite
+  const tablesRef = React.useRef<LobbyBoardTable[]>([])
+  tablesRef.current = tables
+  const userIdRef = React.useRef<string | undefined>(user?.id)
+  userIdRef.current = user?.id
+  /** Mesas que eu mesmo cancelei: o sumiço delas não é novidade. */
+  const cancelledRef = React.useRef<Set<string>>(new Set())
 
   // Última mesa gravada, pra comparar a transição fora do updater do setState.
   const tableRef = React.useRef<BoardTableView | null>(null)
@@ -196,8 +219,26 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       seenRef.current.seen = true
       return
     }
-    if (seenRef.current.seen && !table?.result) clearOpen()
+    if (seenRef.current.seen && !table?.result) {
+      // Se eu era jogador, o sumiço vira aviso (o servidor devolveu os valores).
+      if (table && table.id === openTableId && !cancelledRef.current.has(openTableId) && amPlayer(table, userIdRef.current)) {
+        setNotice(
+          table.phase === 'playing' && table.moves.length === 0
+            ? 'Partida cancelada: o primeiro lance não saiu em 30 segundos. Os valores voltaram.'
+            : 'A partida foi cancelada. Os valores voltaram.'
+        )
+      }
+      clearOpen()
+    }
   }, [tables, ready, openTableId, table, clearOpen])
+
+  const dismissNotice = React.useCallback((): void => setNotice(null), [])
+
+  /** Eu era jogador (ou host) nessa mesa? Sem dados dela, assume que sim: sair por engano cancelaria. */
+  const wasPlayerAt = React.useCallback((id: string): boolean => {
+    const known = tableRef.current?.id === id ? tableRef.current : tablesRef.current.find((t) => t.id === id)
+    return known ? amPlayer(known, userIdRef.current) : true
+  }, [])
 
   // --- ações ---------------------------------------------------------------------
   /** Emite uma ação da mesa aberta e grava a mesa que voltar no ack. */
@@ -215,7 +256,10 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   const openTable = React.useCallback(
     async (tableId: string): Promise<BoardAck> => {
       const previous = openIdRef.current
-      if (previous && previous !== tableId && socket) socket.emit('board:leave', { tableId: previous })
+      // Só quem assistia sai da sala; host/jogador sair aqui cancelaria a mesa.
+      if (previous && previous !== tableId && socket && !wasPlayerAt(previous)) {
+        socket.emit('board:leave', { tableId: previous })
+      }
       setOpenTableId(tableId)
       openIdRef.current = tableId
       const ack = await emitWithAck(socket, 'board:open', { tableId })
@@ -223,7 +267,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       else clearOpen()
       return ack
     },
-    [socket, applyTable, clearOpen]
+    [socket, applyTable, clearOpen, wasPlayerAt]
   )
 
   const goToBoard = React.useCallback(
@@ -234,16 +278,18 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     [navigate, openTable]
   )
 
-  const leaveTable = React.useCallback((): void => {
+  const closeTable = React.useCallback((): void => {
     const id = openIdRef.current
-    if (id && socket) socket.emit('board:leave', { tableId: id })
+    if (id && socket && !wasPlayerAt(id)) socket.emit('board:leave', { tableId: id })
     clearOpen()
-  }, [socket, clearOpen])
+  }, [socket, clearOpen, wasPlayerAt])
 
   const cancelTable = React.useCallback(
     async (tableId: string): Promise<BoardAck> => {
+      cancelledRef.current.add(tableId)
       const ack = await emitWithAck(socket, 'board:leave', { tableId })
       if (ack.ok && openIdRef.current === tableId) clearOpen()
+      if (!ack.ok) cancelledRef.current.delete(tableId)
       return ack
     },
     [socket, clearOpen]
@@ -272,6 +318,10 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       const ack = await emitWithAck(socket, 'board:invite:answer', { tableId: current.tableId, accept })
       if (accept && ack.ok && inviteRef.current?.tableId === current.tableId) setInvite(null)
       if (ack.ok && accept && ack.table) {
+        const previous = openIdRef.current
+        if (previous && previous !== ack.table.id && socket && !wasPlayerAt(previous)) {
+          socket.emit('board:leave', { tableId: previous })
+        }
         setOpenTableId(ack.table.id)
         openIdRef.current = ack.table.id
         applyTable(ack.table)
@@ -279,7 +329,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       }
       return ack
     },
-    [socket, applyTable, navigate]
+    [socket, applyTable, navigate, wasPlayerAt]
   )
 
   const sit = React.useCallback(
@@ -302,9 +352,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     if (!me) return null
     return (
       tables.find(
-        (t) =>
-          LIVE_PHASES.includes(t.phase) &&
-          (t.host.userId === me || t.white?.userId === me || t.black?.userId === me)
+        (t) => LIVE_PHASES.includes(t.phase) && amPlayer(t, me)
       ) ?? null
     )
   }, [tables, user?.id])
@@ -320,8 +368,10 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       invite,
       myTable,
       myTurn,
+      notice,
+      dismissNotice,
       openTable,
-      leaveTable,
+      closeTable,
       cancelTable,
       goToBoard,
       create,
@@ -335,7 +385,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       bet
     }),
     [
-      tables, ready, table, openTableId, invite, myTable, myTurn, openTable, leaveTable, cancelTable, goToBoard,
+      tables, ready, table, openTableId, invite, myTable, myTurn, notice, dismissNotice, openTable, closeTable, cancelTable, goToBoard,
       create, answerInvite, sit, setReadyAction, move, resign, offerDraw, answerDraw, bet
     ]
   )

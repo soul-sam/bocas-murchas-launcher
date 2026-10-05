@@ -46,12 +46,14 @@ export function countBoardPeople(
     black: { userId: string } | null
     host: { userId: string }
     spectators: number
+    phase?: string
   }>,
   game: string
 ): number {
   let count = 0
   for (const table of tables) {
-    if (table.game !== game) continue
+    // Mesa encerrada ainda pode estar na lista por um instante: ninguém joga nela.
+    if (table.game !== game || table.phase === 'finished') continue
     const seated = new Set<string>([table.host.userId])
     if (table.white) seated.add(table.white.userId)
     if (table.black) seated.add(table.black.userId)
