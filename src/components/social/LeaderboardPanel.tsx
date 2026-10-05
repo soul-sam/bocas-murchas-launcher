@@ -61,7 +61,7 @@ const METRIC_ICON: Record<LeaderboardMetric, IconComponent> = {
 const METRIC_HINT: Record<LeaderboardMetric, string> = {
   xp: 'Tudo que rende XP: mensagem, reação, call, partida, check-in, missão.',
   coins: 'Murchos ganhos no período. Compra, aposta perdida e presente não entram.',
-  streak: 'Dias seguidos abrindo o launcher. É o streak de agora, em qualquer período.',
+  streak: 'Dias seguidos entrando na call. Pulou um dia sem call, zera e sai da lista.',
   wins: 'Partidas ganhas de LoL e Minecraft que o launcher registrou.',
   voice: 'Tempo em call.',
   sounds: 'Sons do soundboard tocados.',

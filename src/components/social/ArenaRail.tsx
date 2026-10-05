@@ -259,12 +259,12 @@ function Pill({
   )
 }
 
-/** Streak só a partir de 2: "1" é qualquer um que abriu o app hoje. */
+/** Streak só a partir de 2: "1" é qualquer um que entrou na call hoje. */
 function StreakFlame({ streak }: { streak: number }) {
   if (streak < 2) return null
   return (
     <span
-      title={`Streak de check-in: ${streak} dias seguidos`}
+      title={`Streak: ${streak} dias seguidos em call`}
       className="flex items-center gap-0.5 rounded-brutal px-1 font-mono text-[11.5px] font-bold text-burn"
     >
       <StreakIcon className="h-3 w-3" aria-hidden />

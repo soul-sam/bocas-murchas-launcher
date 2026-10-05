@@ -127,7 +127,7 @@ function RulesList({ rules }: { rules: EarnRules }) {
           consegue planejar o dia com ele. No resto depende do jogo, do
           resultado e do nível — número solto ali viraria promessa quebrada. */}
       <Section title="Todo dia">
-        <Row Icon={CalendarCheck} label="Check-in" value={`+${actions.checkinBase}`}>
+        <Row Icon={CalendarCheck} label="Check-in (entrar na call)" value={`+${actions.checkinBase}`}>
           mais {actions.checkinPerStreak} por dia de sequência, até {actions.checkinStreakMax}
         </Row>
         <Row Icon={Mic} label="Meia hora em call" value={`+${actions.voicePer30Min}`} />
