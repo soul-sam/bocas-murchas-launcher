@@ -42,8 +42,9 @@ export function AuthorName({
     // shrink-0 no conjunto: o nome nunca encolhia pra dar espaço ao texto
     // (nem no modo compacto), e o título não pode mudar isso.
     <span onContextMenu={onContextMenu} className="inline-flex shrink-0 items-baseline gap-1.5">
+      {/* Animado também no chat (out/2026, pedido do grupo): o efeito
+          lendário é raro, e congelado ele parecia não ter sido comprado. */}
       <NameEffect
-        animated={false}
         effect={member?.nameEffect}
         className={cn(className)}
         color={color}
