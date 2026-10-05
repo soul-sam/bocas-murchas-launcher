@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.51.1',
+    headline: 'Moldura na call só quando fala',
+    items: [
+      'Na call a moldura aparece só enquanto a pessoa fala, e numa foto só (sem moldura dobrada no card).',
+      'O fogo da Lenda Murcha agora anda também no card grande da call.',
+      'Quem está num canal de voz aparece na barra lateral com a cor e o efeito do nome.',
+      'As conversas na coluna de ícones ficaram sem moldura.'
+    ]
+  },
+  {
     version: '1.51.0',
     headline: 'Dois emojis no nome',
     items: [
