@@ -42,6 +42,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.47.3',
+    headline: 'Faxina de bugs: chat, call, pôquer e configurações',
+    items: [
+      'Caiu a internet ou o notebook dormiu? As mensagens que chegaram nesse meio-tempo agora aparecem quando a conexão volta — antes elas simplesmente sumiam.',
+      'Depois de uma atualização do servidor, ninguém mais fica falando na call sem aparecer na barra lateral, nem com o chat parado.',
+      'Abrir o site no celular não tira mais você da call do PC.',
+      'Os botões de Reagir, o "+" do campo de mensagem e a gorjeta voltaram a abrir — só mostravam a dica.',
+      'Salvar o perfil não apaga mais links, aniversário e jogos que você não tinha mexido.',
+      'Abrir o launcher sem internet (ou com o servidor reiniciando) espera e entra sozinho, em vez de pedir a senha de novo.',
+      'Na call: voltar a ouvir devolve o seu microfone, trocar de sala mantém o mudo, trocar o mic ou o fone vale na hora, e o soundboard não toca com você ensurdecido.',
+      'Pôquer: levantar ou recarregar durante a virada das cartas no all-in não mexe mais nas fichas de ninguém, e o all-in curto segue a regra.',
+      'Configurações: arrastar os controles não corrompe mais o arquivo, e com "fechar pra bandeja" desligado o X fecha o launcher de verdade.'
+    ]
+  },
+  {
     version: '1.47.2',
     headline: 'Pôquer sem rake',
     items: [
