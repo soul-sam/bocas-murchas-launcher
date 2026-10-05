@@ -147,6 +147,11 @@ interface ChatContextValue {
   activeChannelId: string | null
   activeChannel: Channel | null
   setActiveChannel: (channelId: string) => void
+  /**
+   * A tela de chat está mostrando o canal ativo. Fora dela (palco da call,
+   * outras páginas) mensagem nova conta como não lida.
+   */
+  setChatOnScreen: (visible: boolean) => void
   /** Abre (criando se preciso) a conversa com alguem e vai pra ela. */
   openDm: (userId: string) => Promise<void>
   /**
@@ -238,6 +243,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Handlers de socket precisam do canal ativo sem virar dependencia do effect.
   const activeRef = React.useRef<string | null>(null)
   activeRef.current = activeChannelId
+
+  /**
+   * A lista de mensagens está NA TELA? Quem diz é a SocialPage (setChatOnScreen):
+   * no palco da call, no pôquer ou na impressão o canal aberto continua "ativo",
+   * mas ninguém está lendo — e contava como lido, sem número, sem som e sem a
+   * linha de "novas mensagens".
+   */
+  const onScreenRef = React.useRef(false)
 
   const lastTypingSentRef = React.useRef(0)
 
@@ -452,6 +465,65 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  /**
+   * Fechar o buraco de mensagens de uma queda do socket.
+   *
+   * O que foi escrito enquanto a conexao estava fora nunca chega por evento, e
+   * o carregamento de mensagens pula canal que ja tem cache: o notebook que
+   * dormia 10 minutos voltava com o #geral mostrando o antes e o depois, sem o
+   * meio e sem buraco visivel. Canal fechado so perde o cache (abrir de novo
+   * busca do servidor); o aberto busca a ultima pagina e costura por id.
+   */
+  const resyncAfterGap = React.useCallback(async () => {
+    if (!token) return
+    const open = activeRef.current
+    const stale = Object.keys(cacheRef.current).filter((id) => id !== open)
+    if (stale.length > 0) {
+      const drop = <T,>(prev: Record<string, T>): Record<string, T> => {
+        const next = { ...prev }
+        for (const id of stale) delete next[id]
+        return next
+      }
+      setByChannel(drop)
+      setExhausted(drop)
+    }
+    if (!open || !cacheRef.current[open]) return
+
+    try {
+      const fresh = isDmId(open)
+        ? await dmApi.messages(token, conversationIdOf(open), { limit: PAGE_SIZE })
+        : await messagesApi.list(token, open, { limit: PAGE_SIZE })
+      // Sem encostar no que eu tinha: o buraco passou de uma pagina, e o que
+      // estava na tela volta por "carregar mais antigas".
+      const gapTooBig =
+        fresh.length >= PAGE_SIZE &&
+        !(cacheRef.current[open] ?? []).some((m) => m.id === fresh[0].id)
+      setByChannel((prev) => {
+        const old = prev[open]
+        if (!old) return prev
+        if (fresh.length === 0) return { ...prev, [open]: [] }
+        const freshIds = new Set(fresh.map((m) => m.id))
+        const at = gapTooBig ? -1 : old.findIndex((m) => m.id === fresh[0].id)
+        const before = at >= 0 ? old.slice(0, at) : []
+        // O que chegou por evento enquanto esta busca voava.
+        const lastAt = new Date(fresh[fresh.length - 1].createdAt).getTime()
+        const after = old.filter(
+          (m) => !freshIds.has(m.id) && new Date(m.createdAt).getTime() > lastAt
+        )
+        return { ...prev, [open]: [...before, ...fresh, ...after] }
+      })
+      if (gapTooBig) {
+        setExhausted((prev) => {
+          const next = { ...prev }
+          delete next[open]
+          return next
+        })
+      }
+    } catch {
+      // Sem rede ainda: o proximo `connect` tenta de novo.
+    }
+  }, [token])
+
   // --- eventos de mensagem ------------------------------------------------
   React.useEffect(() => {
     if (!socket) return
@@ -538,7 +610,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       // que estao falando comigo".
       if (muted && !mentionsMe) return
 
-      const looking = bucket === activeRef.current && document.hasFocus()
+      const looking =
+        bucket === activeRef.current && onScreenRef.current && document.hasFocus()
 
       if (!looking) {
         setUnread((prev) => ({ ...prev, [bucket]: (prev[bucket] ?? 0) + 1 }))
@@ -765,6 +838,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const handleReconnect = (): void => {
       void refreshChannels()
       void refreshConversations()
+      void resyncAfterGap()
     }
 
     socket.on('messageCreated', handleCreated)
@@ -795,7 +869,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       socket.off('channelsChanged', handleChannelsChanged)
       socket.off('connect', handleReconnect)
     }
-  }, [socket, isForMe, channels, refreshChannels, refreshConversations])
+  }, [socket, isForMe, channels, refreshChannels, refreshConversations, resyncAfterGap])
 
   // "Fulano esta digitando" sem evento de parada nunca sumiria da tela.
   React.useEffect(() => {
@@ -850,21 +924,31 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
    * Sem isso, quem deixa o launcher aberto num canto da tela acumulava
    * nao-lidas de um canal que estava vendo o tempo todo.
    */
-  React.useEffect(() => {
-    const handleFocus = (): void => {
-      const id = activeRef.current
-      if (!id) return
-      setUnread((prev) => (prev[id] ? { ...prev, [id]: 0 } : prev))
-      setMentions((prev) => (prev[id] ? { ...prev, [id]: 0 } : prev))
+  const markActiveRead = React.useCallback(() => {
+    const id = activeRef.current
+    // Janela em foco no palco da call não é estar lendo o canal.
+    if (!id || !onScreenRef.current) return
+    setUnread((prev) => (prev[id] ? { ...prev, [id]: 0 } : prev))
+    setMentions((prev) => (prev[id] ? { ...prev, [id]: 0 } : prev))
 
-      if (token && isDmId(id)) {
-        void dmApi.markRead(token, conversationIdOf(id)).catch(() => {})
-      }
+    if (token && isDmId(id)) {
+      void dmApi.markRead(token, conversationIdOf(id)).catch(() => {})
     }
-
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
   }, [token])
+
+  React.useEffect(() => {
+    window.addEventListener('focus', markActiveRead)
+    return () => window.removeEventListener('focus', markActiveRead)
+  }, [markActiveRead])
+
+  /** Voltar pro chat é ler o canal aberto — como voltar pra janela. */
+  const setChatOnScreen = React.useCallback(
+    (visible: boolean) => {
+      onScreenRef.current = visible
+      if (visible && document.hasFocus()) markActiveRead()
+    },
+    [markActiveRead]
+  )
 
   // --- aparar o cache dos canais fechados ---------------------------------
   // Rolar pra cima carrega 50 por vez e nada era descartado: uma noite
@@ -1272,6 +1356,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       activeChannelId,
       activeChannel,
       setActiveChannel,
+      setChatOnScreen,
       openDm,
       closeDm,
       messages: activeChannelId ? (byChannel[activeChannelId] ?? []) : [],
@@ -1311,6 +1396,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       activeChannelId,
       activeChannel,
       setActiveChannel,
+      setChatOnScreen,
       openDm,
       closeDm,
       byChannel,

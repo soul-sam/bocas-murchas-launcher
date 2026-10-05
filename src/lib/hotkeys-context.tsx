@@ -191,6 +191,10 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('keydown', handleDown)
       window.removeEventListener('keyup', handleUp)
       window.removeEventListener('blur', handleBlur)
+      // Refazer o efeito com a tecla apertada (trocou a tecla, o modo, ou a
+      // call caiu) perderia o keyup, e o mic ficaria aberto pra sempre — o
+      // mesmo caso do blur acima.
+      if (held) void actionsRef.current.voice.setMic(false, { transient: true })
     }
   }, [pttMode, pttKey, inVoice])
 

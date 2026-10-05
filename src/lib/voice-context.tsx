@@ -320,6 +320,24 @@ function setParticipantVolume(participant: RemoteParticipant, volume: number): v
   participant.setVolume(volume, Track.Source.ScreenShareAudio)
 }
 
+/**
+ * O que só vale reabrindo o mic: dispositivo e filtros do Chromium. Ganho,
+ * limiar e corte de grave não entram — esses o processador muda ao vivo.
+ */
+function micConfigKey(voice: {
+  inputDeviceId: string
+  echoCancellation: boolean
+  noiseSuppression: boolean
+  autoGainControl: boolean
+}): string {
+  return [
+    voice.inputDeviceId,
+    voice.echoCancellation,
+    voice.noiseSuppression,
+    voice.autoGainControl
+  ].join('|')
+}
+
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuth()
   const { socket } = useSocket()
@@ -374,7 +392,23 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
    * frase de quem fala com tecla.
    */
   const selfMutedRef = React.useRef(false)
-  const leavingRef = React.useRef(false)
+
+  /**
+   * O mudo POR ESCOLHA de antes de ensurdecer — é o que "Voltar a ouvir"
+   * devolve. Sem isso voltar a ouvir deixava a pessoa muda (e, no
+   * push-to-talk, marcada como muda pra sala e com o mic sendo solto a cada
+   * aperto da tecla, comendo o começo de toda frase).
+   */
+  const beforeDeafenRef = React.useRef<{ selfMuted: boolean } | null>(null)
+
+  /**
+   * ENTRADA CANCELÁVEL. Cada `join` pega um número; quem chegar ao fim com um
+   * número velho (outra entrada começou, ou a pessoa saiu) desconecta a sala
+   * que abriu em vez de assumir. Sem isso, clicar na Sala B com a A ainda
+   * conectando deixava as DUAS conectadas no LiveKit — a A virava um card
+   * fantasma no palco de quem estava lá.
+   */
+  const joinSeqRef = React.useRef(0)
 
   /**
    * Processamento do microfone (ganho + noise gate), ver lib/audio-processor.
@@ -394,6 +428,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   micInUseRef.current = monitorHolds > 0 || micTestActive
   /** O processador da call soltou o mic (ver releaseMicIfIdle). */
   const micReleasedRef = React.useRef(false)
+  /** Mic e filtros com que o processador da call nasceu (ver a troca de mic). */
+  const callProcessorKeyRef = React.useRef<string | null>(null)
 
   /**
    * AudioContext da mistura do LiveKit (`webAudioMix`). É nosso, e não o que
@@ -742,6 +778,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const syncParticipants = React.useCallback((current: Room) => {
+    // Uma sala abandonada (ver joinSeqRef) ainda dispara eventos ao se
+    // desconectar; ela não pode reescrever a lista da call que ganhou.
+    if (roomForSyncRef.current && roomForSyncRef.current !== current) return
+
     const all: Participant[] = [
       current.localParticipant,
       ...Array.from(current.remoteParticipants.values())
@@ -811,11 +851,24 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   )
 
   const leave = React.useCallback(async () => {
+    // Sair cancela também uma entrada que ainda está conectando (ver join).
+    joinSeqRef.current++
     const current = roomRef.current
 
-    // disconnect() dispara RoomEvent.Disconnected, que chama leave() de novo.
-    // Sem essa guarda o servidor recebe leaveVoice duas vezes por saida.
-    if (!current && !leavingRef.current) return
+    // Sem sala, no máximo uma entrada pela metade: ela desconecta o que abriu
+    // ao perceber que foi cancelada, e aqui só a tela volta pro "fora da
+    // call". O RoomEvent.Disconnected da sala que está saindo não chega aqui
+    // (o handler confere se ela ainda é a atual), então não há leaveVoice
+    // dobrado por saída.
+    if (!current) {
+      setChannel(null)
+      setConnected(false)
+      setConnecting(false)
+      setDeafened(false)
+      deafenedRef.current = false
+      selfMutedRef.current = false
+      return
+    }
 
     roomRef.current = null
     roomForSyncRef.current = null
@@ -825,12 +878,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     // desmontar isso deixaria o grafo vivo e medindo silêncio pra sempre.
     speakingRef.current?.destroy()
     speakingRef.current = null
-    leavingRef.current = true
 
-    if (current) {
-      voiceCue('leave')
-      await current.disconnect().catch(() => {})
-    }
+    voiceCue('leave')
+    await current.disconnect().catch(() => {})
 
     // O disconnect para a faixa publicada, mas o grafo de áudio e o mic cru
     // por baixo dela são nossos: sem isso o LED do mic fica aceso e o timer
@@ -872,31 +922,62 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     selfMutedRef.current = false
 
     void window.bocas.tray.setVoiceState({ inVoice: false, micMuted: false })
-    leavingRef.current = false
   }, [cue, dropCaptureGate])
 
   const join = React.useCallback(
     async (target: Channel) => {
       if (!token) return
 
+      /**
+       * Trocar de sala leva o mudo e o ensurdecido junto. Antes o `leave` da
+       * troca zerava os dois: quem estava mudo na Sala 1 caía na Sala 2 com o
+       * mic aberto (e ouvindo todo mundo), sem ter pedido. Lido das refs, que
+       * fora da call são falso/falso (o leave zera) e numa entrada ainda
+       * conectando já guardam o que ela trouxe. Ensurdecido entra mudo, como
+       * no botão.
+       */
+      const carry = {
+        muted: selfMutedRef.current || deafenedRef.current,
+        deafened: deafenedRef.current
+      }
+
       // Trocar de canal: sai do atual antes de entrar no novo.
       if (roomRef.current) await leave()
 
+      // Ver joinSeqRef. Depois do leave, que também conta como cancelamento.
+      const seq = ++joinSeqRef.current
+      const stale = (): boolean => seq !== joinSeqRef.current
+
+      /**
+       * O que esta entrada abriu e ainda não entregou pra call. Só vira estado
+       * compartilhado (roomRef, callProcessorRef, mixContextRef) no fim, ao
+       * assumir; até lá, uma entrada abandonada desfaz só o que é dela.
+       */
+      let created: Room | null = null
+      let pendingProcessor: MicProcessor | null = null
+      let mixContext: AudioContext | null = null
+      let committed = false
+
+      // O leave da troca zerou; volta o que a pessoa tinha.
+      selfMutedRef.current = carry.muted
+      deafenedRef.current = carry.deafened
+      setDeafened(carry.deafened)
+
       setConnecting(true)
+      // Uma entrada anterior ainda conectando pode ter dito "conectado".
+      setConnected(false)
       setError(null)
       setChannel(target)
 
       try {
         const credentials = await livekit.token(token, `voice-${target.id}`)
+        if (stale()) return
 
-        let mixContext: AudioContext | null = null
         try {
           mixContext = new AudioContext()
         } catch {
           // Sem contexto nosso, o SDK cria o dele. Só não dá pra suspender.
         }
-        void mixContextRef.current?.close().catch(() => {})
-        mixContextRef.current = mixContext
 
         const next = new Room({
           adaptiveStream: true,
@@ -925,6 +1006,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
             audioPreset: { maxBitrate: 48_000 }
           }
         })
+        created = next
 
         next.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
           // So dispara pra quem chega DEPOIS de voce; quem ja estava na sala
@@ -1213,7 +1295,22 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         )
 
         next.on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
-          setConnected(state === ConnectionState.Connected)
+          // Sala abandonada desconectando não fala pela call que ganhou.
+          if (stale()) return
+          /**
+           * RECONECTANDO AINDA É ESTAR NA CALL.
+           *
+           * Uma oscilação de rede (até só do sinal, com o áudio correndo) virava
+           * "fora da call" pro app inteiro: a tela pulava do palco pro chat, o
+           * palco desmontado soltava a transmissão que a pessoa assistia, e o
+           * push-to-talk apertado nessa hora ficava aberto. A barra de conexão
+           * já mostra que a coisa está ruim; sair, só no Disconnected.
+           */
+          setConnected(
+            state === ConnectionState.Connected ||
+              state === ConnectionState.Reconnecting ||
+              state === ConnectionState.SignalReconnecting
+          )
         })
 
         /**
@@ -1235,8 +1332,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           publishFlags()
         })
 
+        // Só a sala ATUAL derruba a call. A que está saindo (o leave já tirou
+        // ela do roomRef) chamava leave() de novo — leaveVoice dobrado — e uma
+        // sala abandonada que caísse depois derrubaria a call que ganhou.
         next.on(RoomEvent.Disconnected, () => {
-          void leave()
+          if (roomRef.current === next) void leave()
         })
 
         // autoSubscribe DESLIGADO: e a raiz do lag de quem nao estava nem
@@ -1245,6 +1345,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         // e cada cliente decodificava — no meio de uma partida. O que assinar
         // e decidido por publicacao em lib/screen-share-policy.
         await next.connect(credentials.url, credentials.token, { autoSubscribe: false })
+        // Não abre o mic (nem lista ninguém) numa sala que já perdeu.
+        if (stale()) return
 
         // Quem ja estava na sala nao dispara TrackPublished: assinar o
         // microfone deles (e listar as telas no ar) e por aqui.
@@ -1255,8 +1357,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Push-to-talk comeca mudo; voz ativa comeca aberto.
-        const startMuted = settings.voice.mode === 'push-to-talk'
+        // Push-to-talk comeca mudo; voz ativa comeca aberto — a nao ser que a
+        // pessoa ja estivesse muda na sala de onde veio.
+        const startMuted = settings.voice.mode === 'push-to-talk' || carry.muted
 
         /**
          * O microfone NÃO é o setMicrophoneEnabled(true) do LiveKit: a faixa
@@ -1283,14 +1386,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
             noiseGateThreshold: settings.voice.noiseGateThreshold,
             rumbleFilter: settings.voice.rumbleFilter
           })
-          callProcessorRef.current?.destroy()
-          callProcessorRef.current = processor
-          setProcessorEpoch((epoch) => epoch + 1)
-
-          // O SEU anel sai da faixa processada — a que sai daqui depois do
-          // ganho e do portão. Portão fechado é silêncio pros outros, então
-          // tem que ser silêncio no seu anel também.
-          speakingDetector().watch(next.localParticipant.identity, processor.processedStream)
+          // Vira o processador DA CALL só ao assumir a sala, lá embaixo: uma
+          // entrada abandonada no meio não pode derrubar o da que ganhou.
+          pendingProcessor = processor
 
           const micTrack = new LocalAudioTrack(processor.processedTrack, undefined, true)
           if (startMuted) await micTrack.mute()
@@ -1309,16 +1407,37 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           // Sem permissão, sem mic, AudioContext falhou… a call ainda tem que
           // acontecer: cai pro mic cru do LiveKit, sem ganho e sem gate.
           console.warn('[voice] processamento do mic falhou, publicando o mic cru', err)
-          callProcessorRef.current?.destroy()
-          callProcessorRef.current = null
+          pendingProcessor?.destroy()
+          pendingProcessor = null
           await next.localParticipant.setMicrophoneEnabled(!startMuted)
         }
 
-        if (settings.voice.outputDeviceId !== 'default') {
-          await next.switchActiveDevice('audiooutput', settings.voice.outputDeviceId).catch(
-            () => {}
+        // Outra entrada (ou um "sair") passou na frente enquanto esta abria o
+        // mic: o finally desconecta esta sala.
+        if (stale()) return
+
+        // A saída de som escolhida é aplicada pelo efeito que vigia `room` e a
+        // configuração — o mesmo que vale pra troca com a call aberta.
+        committed = true
+        void mixContextRef.current?.close().catch(() => {})
+        mixContextRef.current = mixContext
+        // Veio ensurdecido da sala anterior: a mistura nasce suspensa.
+        if (deafenedRef.current) void mixContext?.suspend().catch(() => {})
+        if (pendingProcessor) {
+          callProcessorRef.current?.destroy()
+          callProcessorRef.current = pendingProcessor
+          micReleasedRef.current = false
+          setProcessorEpoch((epoch) => epoch + 1)
+
+          // O SEU anel sai da faixa processada — a que sai daqui depois do
+          // ganho e do portão. Portão fechado é silêncio pros outros, então
+          // tem que ser silêncio no seu anel também.
+          speakingDetector().watch(
+            next.localParticipant.identity,
+            pendingProcessor.processedStream
           )
         }
+        callProcessorKeyRef.current = micConfigKey(settings.voice)
 
         roomRef.current = next
         roomForSyncRef.current = next
@@ -1330,20 +1449,38 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
         // Só agora o servidor sabe em que sala mandar soundboard e nudge.
         socketRef.current?.emit('joinVoice', target.id)
-        // Entrar mudo (push-to-talk ou nao) so conta como ESCOLHA fora do PTT.
-        selfMutedRef.current = startMuted && settings.voice.mode !== 'push-to-talk'
+        // Entrar mudo pelo push-to-talk nao e ESCOLHA; vir mudo da sala
+        // anterior e. (Mudo por escolha solta a captura — ver o efeito do
+        // releaseMicIfIdle, que roda quando `room` muda.)
+        selfMutedRef.current = carry.muted
         publishFlags()
 
         void window.bocas.tray.setVoiceState({ inVoice: true, micMuted: startMuted })
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao entrar na call')
-        setChannel(null)
-        if (!roomRef.current) {
-          void mixContextRef.current?.close().catch(() => {})
-          mixContextRef.current = null
+        // Uma entrada mais nova é dona da tela agora; esta só se desfaz.
+        if (!stale()) {
+          setError(err instanceof Error ? err.message : 'Erro ao entrar na call')
+          setChannel(null)
+          // Uma entrada abandonada antes desta pode ter deixado "conectado".
+          setConnected(false)
+          // Fora da call de novo: como o leave, mudo e ensurdecido zeram.
+          setDeafened(false)
+          deafenedRef.current = false
+          selfMutedRef.current = false
         }
       } finally {
-        setConnecting(false)
+        /**
+         * Não assumiu (falhou ou foi cancelada): desfaz o que abriu. Antes a
+         * sala que falhava DEPOIS de conectar (mic bloqueado em voz ativa, por
+         * exemplo) ficava conectada no LiveKit — card fantasma no palco dos
+         * outros, com a tela dizendo "Erro ao entrar na call".
+         */
+        if (!committed) {
+          pendingProcessor?.destroy()
+          void mixContext?.close().catch(() => {})
+          await created?.disconnect().catch(() => {})
+        }
+        if (!stale()) setConnecting(false)
       }
     },
     [
@@ -1420,9 +1557,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         // Antes de ligar a faixa: senão a primeira sílaba sai no silêncio do
         // mic ainda abrindo.
         if (enabled) await ensureMicCaptured()
+        // O aviso só quando muda de fato: "Voltar a ouvir" já religa o mic, e o
+        // "Voltei!" do AFK pede o mesmo logo depois — eram dois bipes.
+        const changed = current.localParticipant.isMicrophoneEnabled !== enabled
         await current.localParticipant.setMicrophoneEnabled(enabled)
         setMicEnabled(enabled)
-        cue(enabled ? 'unmute' : 'mute')
+        if (changed) cue(enabled ? 'unmute' : 'mute')
         void window.bocas.tray.setVoiceState({ inVoice: true, micMuted: !enabled })
 
         if (!opts?.transient) {
@@ -1439,12 +1579,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   )
 
   // Abriu o medidor ou o teste com o mic solto: pega de volta. Fechou: solta
-  // de novo se ainda estiver mudo por escolha.
+  // de novo se ainda estiver mudo por escolha. `room` na lista: quem troca de
+  // sala já mudo entra com a captura solta.
   React.useEffect(() => {
     if (!connected) return
     if (monitorHolds > 0 || micTestActive) void ensureMicCaptured()
     else releaseMicIfIdle()
-  }, [connected, monitorHolds, micTestActive, ensureMicCaptured, releaseMicIfIdle])
+  }, [connected, room, monitorHolds, micTestActive, ensureMicCaptured, releaseMicIfIdle])
 
   const toggleMic = React.useCallback(async () => {
     const current = roomRef.current
@@ -1461,18 +1602,39 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
    */
   const setDeafen = React.useCallback(
     (value: boolean) => {
-      setDeafened((prev) => {
-        if (prev === value) return prev
-        applyDeafen(value)
-        cue(value ? 'deafen' : 'undeafen')
-        // Ensurdecer sem mutar o proprio mic e o comportamento errado: quem nao
-        // ouve ninguem tambem nao deveria estar falando.
-        if (value) void setMic(false)
-        else publishFlags()
-        return value
-      })
+      // Pela ref, e não dentro do updater do estado: updater é pra ser puro (o
+      // StrictMode roda duas vezes), e daqui saem som, mic e aviso pro servidor.
+      if (deafenedRef.current === value) return
+      if (value) beforeDeafenRef.current = { selfMuted: selfMutedRef.current }
+      setDeafened(value)
+      applyDeafen(value)
+      cue(value ? 'deafen' : 'undeafen')
+
+      // Ensurdecer sem mutar o proprio mic e o comportamento errado: quem nao
+      // ouve ninguem tambem nao deveria estar falando.
+      if (value) {
+        void setMic(false)
+        return
+      }
+
+      // Voltar a ouvir devolve o mudo de ANTES (é o que o botão promete).
+      const before = beforeDeafenRef.current
+      beforeDeafenRef.current = null
+      if (!before || before.selfMuted) {
+        publishFlags()
+        return
+      }
+      if (voiceSettingsRef.current.mode === 'push-to-talk') {
+        // A tecla é que abre o mic; aqui ele só deixa de ser "mudo por
+        // escolha" — e a captura volta já, pro primeiro aperto não comer sílaba.
+        selfMutedRef.current = false
+        publishFlags()
+        void ensureMicCaptured()
+      } else {
+        void setMic(true)
+      }
     },
-    [applyDeafen, setMic, cue, publishFlags]
+    [applyDeafen, setMic, cue, publishFlags, ensureMicCaptured]
   )
 
   const toggleDeafen = React.useCallback(() => {
@@ -1862,8 +2024,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
   // Ganho, limiar e corte de grave valem NA HORA, na call e no avulso: é o
   // único jeito de ajustar olhando o medidor. Dispositivo e filtros do
-  // Chromium continuam valendo só na próxima entrada — trocar exige readquirir
-  // o mic.
+  // Chromium exigem readquirir o mic — na call, é o efeito logo abaixo.
   React.useEffect(() => {
     const patch = {
       inputGain: settings.voice.inputGain,
@@ -1877,6 +2038,96 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     settings.voice.noiseGateThreshold,
     settings.voice.rumbleFilter
   ])
+
+  /**
+   * TROCAR DE MIC (OU DE FILTRO DO CHROMIUM) COM A CALL ABERTA.
+   *
+   * Antes só valia na próxima entrada, e a tela não dizia isso: a pessoa
+   * escolhia o headset e seguia falando pelo mic do notebook. Agora nasce um
+   * processador no dispositivo novo e a faixa publicada troca por baixo
+   * (`replaceTrack`): pro LiveKit e pra sala é o mesmo microfone, com o mudo
+   * de antes. Sem processador (o mic cru da reserva), o próprio SDK troca o
+   * dispositivo — os filtros, nesse caso, só na próxima entrada.
+   */
+  const micKey = micConfigKey(settings.voice)
+  /** Só a troca mais nova aplica — duas seguidas não chegam fora de ordem. */
+  const micSwapSeqRef = React.useRef(0)
+
+  React.useEffect(() => {
+    if (!room || callProcessorKeyRef.current === micKey) return
+    callProcessorKeyRef.current = micKey
+
+    const voiceNow = voiceSettingsRef.current
+    const track = room.localParticipant.getTrackPublication(Track.Source.Microphone)?.audioTrack
+
+    if (!callProcessorRef.current || !track) {
+      void room.switchActiveDevice('audioinput', voiceNow.inputDeviceId, false).catch(() => {})
+      return
+    }
+
+    const mine = ++micSwapSeqRef.current
+    void createMicProcessor({
+      deviceId: voiceNow.inputDeviceId !== 'default' ? voiceNow.inputDeviceId : undefined,
+      echoCancellation: voiceNow.echoCancellation,
+      noiseSuppression: voiceNow.noiseSuppression,
+      autoGainControl: voiceNow.autoGainControl,
+      inputGain: voiceNow.inputGain,
+      noiseGateThreshold: voiceNow.noiseGateThreshold,
+      rumbleFilter: voiceNow.rumbleFilter
+    })
+      .then(async (fresh) => {
+        // Trocou de novo (a mais nova aplica) ou a call acabou enquanto abria.
+        if (
+          mine !== micSwapSeqRef.current ||
+          roomRef.current !== room ||
+          !callProcessorRef.current
+        ) {
+          fresh.destroy()
+          return
+        }
+        try {
+          await track.replaceTrack(fresh.processedTrack, true)
+        } catch (err) {
+          fresh.destroy()
+          throw err
+        }
+        const old = callProcessorRef.current
+        if (roomRef.current !== room || !old) {
+          fresh.destroy()
+          return
+        }
+        callProcessorRef.current = fresh
+        micReleasedRef.current = false
+        old.destroy()
+        setProcessorEpoch((epoch) => epoch + 1)
+        speakingDetector().watch(room.localParticipant.identity, fresh.processedStream)
+        // Mudo por escolha volta a soltar a captura, agora no mic novo.
+        releaseMicIfIdle()
+      })
+      .catch((err) => {
+        // Mic novo ocupado ou sumiu: segue no de antes.
+        console.warn('[voice] não consegui trocar de microfone na call', err)
+      })
+  }, [room, micKey, speakingDetector, releaseMicIfIdle])
+
+  /**
+   * SAÍDA DE SOM, também na hora. Antes só a entrada na call aplicava: trocar
+   * pro headset com a call aberta mudava o teste de mic e mais nada.
+   *
+   * "Padrão" numa sala recém-aberta não chama nada, como sempre: assim a
+   * mistura acompanha o padrão do Windows. Voltar pro padrão no meio da call
+   * chama, senão ficaria presa no dispositivo anterior.
+   */
+  const outputAppliedRef = React.useRef<Room | null>(null)
+
+  React.useEffect(() => {
+    if (!room) return
+    const output = settings.voice.outputDeviceId
+    const fresh = outputAppliedRef.current !== room
+    outputAppliedRef.current = room
+    if (fresh && output === 'default') return
+    void room.switchActiveDevice('audiooutput', output).catch(() => {})
+  }, [room, settings.voice.outputDeviceId])
 
   /**
    * Processador avulso: existe enquanto alguém segura o monitor (ou o teste

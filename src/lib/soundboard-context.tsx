@@ -98,7 +98,18 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
   const { token, user } = useAuth()
   const { socket } = useSocket()
   const { settings } = useSettings()
-  const { connected: inVoice } = useVoice()
+  const { connected: inVoice, deafened } = useVoice()
+
+  /**
+   * Ensurdecido não ouve o soundboard dos outros: "corta o som de todo mundo"
+   * valia pra voz e deixava os sons da sala tocando no fone. Ref porque o
+   * handler do socket é registrado uma vez.
+   */
+  const deafenedRef = React.useRef(deafened)
+  deafenedRef.current = deafened
+  /** Os sons saem onde sai a call, não na saída padrão do Windows. */
+  const outputDeviceRef = React.useRef(settings.voice.outputDeviceId)
+  outputDeviceRef.current = settings.voice.outputDeviceId
 
   /**
    * Admin ve os sons bloqueados (esmaecidos) pra poder desbloquear; membro nem
@@ -162,7 +173,14 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
       activeAudioRef.current = activeAudioRef.current.filter((a) => a !== audio)
     })
 
-    void audio.play().catch(() => {
+    // Antes do play: trocar a saída com o som já tocando dá um estalo.
+    const output = outputDeviceRef.current
+    const route =
+      output && output !== 'default' && typeof audio.setSinkId === 'function'
+        ? audio.setSinkId(output).catch(() => {})
+        : Promise.resolve()
+
+    void route.then(() => audio.play()).catch(() => {
       // Autoplay bloqueado ou arquivo sumiu: nao vale derrubar nada por isso.
       activeAudioRef.current = activeAudioRef.current.filter((a) => a !== audio)
     })
@@ -180,7 +198,8 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
       const url = resolveAssetUrl(data?.sound?.url)
       if (!url) return
 
-      playFile(url, data.sound.volume ?? 1)
+      // O "quem tocou" continua na lista; só não sai som.
+      if (!deafenedRef.current) playFile(url, data.sound.volume ?? 1)
 
       setRecent((prev) =>
         [

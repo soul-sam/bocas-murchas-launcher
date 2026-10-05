@@ -33,7 +33,7 @@ import { FolhaDePainel } from '@/components/ui/folha'
  * gaveta de canais em janela estreita.
  */
 export function SocialPage() {
-  const { setActiveChannel, activeChannelId } = useChat()
+  const { setActiveChannel, activeChannelId, setChatOnScreen } = useChat()
   const voice = useVoice()
   // O editor de perfil vive na casca autenticada, não aqui: esta página some ao
   // trocar pra aba do Minecraft, e desmontar uma modal aberta trava o app
@@ -77,6 +77,13 @@ export function SocialPage() {
     },
     [voice, setView]
   )
+
+  // O chat só está sendo lido quando aparece: no palco da call (ou com esta
+  // página fora, no pôquer e na impressão) mensagem nova é não lida.
+  React.useEffect(() => {
+    setChatOnScreen(view !== 'voice')
+    return () => setChatOnScreen(false)
+  }, [view, setChatOnScreen])
 
   // Sair da call (por qualquer caminho) não pode deixar a tela num palco vazio.
   React.useEffect(() => {
