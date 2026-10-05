@@ -260,7 +260,7 @@ export function ShopModal() {
           />
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 font-display text-base leading-tight" style={{ color: previewColor }}>
-              <NameEffect effect={previewEffect} className="truncate">
+              <NameEffect effect={previewEffect} color={previewColor} className="truncate">
                 {me.displayName}
               </NameEffect>
               <NameEmoji glyph={previewEmoji} size="md" />
@@ -501,11 +501,11 @@ function ItemTile({
         )}
         {item.type === 'nameEffect' && (
           <span className="truncate font-display text-base" style={{ color: me.color }}>
-            <NameEffect effect={item.id}>{me.name}</NameEffect>
+            <NameEffect effect={item.id} color={me.color}>{me.name}</NameEffect>
           </span>
         )}
         {item.type === 'avatarFrame' && (
-          <UserAvatar src={me.avatar} name={me.name} frame={item.id} className="h-9 w-9 border-2" />
+          <UserAvatar src={me.avatar} name={me.name} frame={item.id} frameColor={me.color} className="h-9 w-9 border-2" />
         )}
         {item.type === 'emoji' && (
           <span className="flex items-center gap-1.5 truncate font-display text-sm" style={{ color: me.color }}>

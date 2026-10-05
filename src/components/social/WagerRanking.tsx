@@ -225,11 +225,12 @@ function RankRow({ row, rank, mode }: { row: Row; rank: number; mode: Mode }) {
             name={name}
             ringColor={color}
             frame={member?.avatarFrame}
+            frameColor={member?.profileColor}
             className="h-6 w-6"
           />
           <div className="min-w-0 flex-1">
             <span className="flex min-w-0 items-center gap-1 text-sm leading-tight" style={color ? { color } : undefined}>
-              <NameEffect effect={member?.nameEffect} className="truncate">
+              <NameEffect effect={member?.nameEffect} color={color} className="truncate">
                 {name}
               </NameEffect>
               <NameEmoji id={member?.emoji} />

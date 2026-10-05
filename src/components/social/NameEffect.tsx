@@ -1,12 +1,13 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { cosmeticKey } from '@/lib/api-gamification'
+import { cosmeticKey, tintStyle } from '@/lib/api-gamification'
 import '@/styles/effects.css'
 
 /**
- * Efeito cosmético no nome de alguém. Raros são azuis, épicos roxos, e o
- * lendário (`fire`, "Rei dos Bocas") é o ÚNICO animado — o resto é estático
- * por definição, não só quando `animated={false}`.
+ * Efeito cosmético no nome de alguém. O efeito traz o DESENHO; a cor é a que
+ * a pessoa comprou (`color`), e sem cor comprada é branco. O lendário
+ * (`fire`, "Rei dos Bocas") é o ÚNICO animado — o resto é estático por
+ * definição, não só quando `animated={false}`.
  *
  * Recebe o id do cosmético como vem do servidor (`effect:glow`) ou só a chave
  * (`glow`). Sem efeito (ou efeito desconhecido) devolve os filhos num span
@@ -17,13 +18,13 @@ import '@/styles/effects.css'
  */
 
 const EFFECT_CLASS: Record<string, string> = {
-  // raros (azul)
+  // raros
   glow: 'fx-glow',
   ice: 'fx-ice',
   neon: 'fx-neon',
   electric: 'fx-electric',
   crystal: 'fx-crystal',
-  // épicos (roxo)
+  // épicos
   glitch: 'fx-glitch',
   arcane: 'fx-arcane',
   shadow: 'fx-shadow',
@@ -39,9 +40,17 @@ export function NameEffect({
   className,
   style,
   title,
-  animated = true
+  animated = true,
+  color
 }: {
   effect: string | null | undefined
+  /**
+   * Cor do nome da pessoa (`profileColor`). O efeito roda na paleta DESSA
+   * cor — fogo de quem é verde queima em tons de verde. Sem cor (ou com a
+   * padrão) o efeito é branco. Só tinge o efeito: a cor do texto sem efeito
+   * continua vindo de quem chama.
+   */
+  color?: string | null
   children: React.ReactNode
   className?: string
   style?: React.CSSProperties
@@ -58,11 +67,12 @@ export function NameEffect({
   const key = cosmeticKey(effect)
   const effectClass = key ? EFFECT_CLASS[key] : undefined
   const text = typeof children === 'string' ? children : undefined
+  const tint = effectClass ? tintStyle(color) : undefined
 
   return (
     <span
       className={cn(effectClass, effectClass && !animated && 'fx-static', className)}
-      style={style}
+      style={tint ? { ...style, ...tint } : style}
       title={title}
       data-text={effectClass === 'fx-glow' ? text : undefined}
     >

@@ -264,6 +264,7 @@ function MatchCard({ game }: { game: LiveWagerGame }) {
                 name={member?.displayName ?? p.displayName}
                 ringColor={member?.profileColor ?? undefined}
                 frame={member?.avatarFrame}
+                frameColor={member?.profileColor}
                 className="h-7 w-7 border-2 border-void"
               />
             )

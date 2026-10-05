@@ -890,6 +890,7 @@ function SeatSpot({
               name={seat.displayName}
               ringColor={member?.profileColor ?? undefined}
               frame={member?.avatarFrame}
+              frameColor={member?.profileColor}
               className={cn('poker-avatar h-full w-full border-2 border-void transition-opacity', away && 'opacity-50')}
               style={{ width: avatarPx, height: avatarPx }}
             />
@@ -1048,6 +1049,7 @@ function HeroSeat({
               name={seat.displayName}
               ringColor={member?.profileColor ?? undefined}
               frame={member?.avatarFrame}
+              frameColor={member?.profileColor}
               className={cn('poker-avatar border-2 border-void', away && 'opacity-50')}
               style={{ width: avatarPx, height: avatarPx }}
             />

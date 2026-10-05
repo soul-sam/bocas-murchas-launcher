@@ -6,13 +6,32 @@
    porque roda em DEZENAS de elementos ao mesmo tempo (cada nome da lista de
    membros, cada autor de mensagem) — então as animações só mexem em
    transform, opacity e background-position, que o compositor resolve sem
-   repintar a árvore. Nada de animar text-shadow, filter ou box-shadow. */
+   repintar a árvore. Nada de animar text-shadow, filter ou box-shadow (a
+   exceção é a moldura lendária, que é uma por tela). */
 
-/* --- PALETA POR RARIDADE ----------------------------------------------------
-   Raro = azul (#3FC1FF), épico = roxo (#D0A2FF), lendário = fogo. É a mesma
-   escala de RARITY_COLOR no launcher: o efeito e a moldura contam a raridade
-   sozinhos, sem etiqueta. SÓ O LENDÁRIO ANIMA (`.fx-fire`, `.frame-fire-ring`);
-   todo o resto é estático por definição. */
+/* --- A COR É DA PESSOA -------------------------------------------------------
+   Efeito e moldura NÃO têm cor própria (out/2026): o desenho é do item, a cor
+   é a que a pessoa comprou. Fogo de quem é verde queima em tons de verde.
+   Quem chama põe a cor em `--fx-c` (NameEffect no nome; UserAvatar e o
+   Framed da call no invólucro da moldura — herda pra coroa e pra borda). Sem
+   cor comprada vale o branco do tema (`--foreground`), que no tema claro vira
+   escuro e continua legível.
+
+   Os tons saem por `color-mix`: `--fx-hi`/`--fx-lt` são a cor clareada,
+   `--fx-dk`/`--fx-dd` escurecida. A raridade se lê pelo DESENHO (só o
+   lendário anima e tem coroa), não mais pela cor. */
+.fx-glow, .fx-ice, .fx-neon, .fx-electric, .fx-crystal,
+.fx-glitch, .fx-arcane, .fx-shadow, .fx-fire,
+.frame-pixel, .frame-ice, .frame-steel, .frame-dashed, .frame-wave,
+.frame-arcane, .frame-amethyst, .frame-violet-neon, .frame-fire, .frame-fire-ring {
+  --fx: var(--fx-c, hsl(var(--foreground)));
+  --fx-hi: color-mix(in oklab, var(--fx) 30%, white);
+  --fx-lt: color-mix(in oklab, var(--fx) 60%, white);
+  --fx-dk: color-mix(in oklab, var(--fx) 70%, black);
+  --fx-dd: color-mix(in oklab, var(--fx) 45%, black);
+  /* O vão entre anéis da moldura: o fundo do tema, não preto fixo. */
+  --fx-gap: hsl(var(--background));
+}
 
 /* --- DEGRADÊ PINTADO PELO FUNDO ---------------------------------------------
    Os efeitos com `background-clip: text` só pintam a letra DENTRO da caixa do
@@ -27,80 +46,85 @@
 .fx-fire {
   padding-block: 0.2em;
   margin-block: -0.2em;
-}
-
-/* --- raros (azul) ------------------------------------------------------ */
-
-/* glow: brilho azul fixo em volta do texto. */
-.fx-glow {
-  color: #7fd4ff;
-  text-shadow: 0 0 6px rgba(63, 193, 255, 0.85), 0 0 14px rgba(63, 193, 255, 0.45);
-}
-
-/* ice: degradê vertical branco-gelo → azul-claro, como vidro congelado. */
-.fx-ice {
-  background-image: linear-gradient(180deg, #f2fbff 0%, #a8e6ff 55%, #3fc1ff 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-/* neon: letreiro azul — texto claro com halo forte e tubo escuro atrás. */
+/* --- efeitos raros ------------------------------------------------------ */
+
+/* glow: brilho fixo em volta do texto. */
+.fx-glow {
+  color: var(--fx-lt);
+  text-shadow:
+    0 0 6px color-mix(in srgb, var(--fx) 85%, transparent),
+    0 0 14px color-mix(in srgb, var(--fx) 45%, transparent);
+}
+
+/* ice: degradê vertical, quase branco em cima, a cor embaixo — vidro congelado. */
+.fx-ice {
+  background-image: linear-gradient(180deg, var(--fx-hi) 0%, var(--fx-lt) 55%, var(--fx) 100%);
+}
+
+/* neon: letreiro — texto claro com halo forte e tubo escuro atrás. */
 .fx-neon {
-  color: #dff5ff;
-  text-shadow: 0 0 2px #fff, 0 0 8px #3fc1ff, 0 0 18px #1b8fd6, 0 0 28px rgba(27, 143, 214, 0.6);
+  color: var(--fx-hi);
+  text-shadow:
+    0 0 2px #fff,
+    0 0 8px var(--fx),
+    0 0 18px var(--fx-dk),
+    0 0 28px color-mix(in srgb, var(--fx-dk) 60%, transparent);
 }
 
-/* electric: azul elétrico com uma faísca ciana deslocada (sombra dupla). */
+/* electric: a cor com uma faísca clara e uma escura deslocadas. */
 .fx-electric {
-  color: #4fd0ff;
-  text-shadow: 1px -1px 0 rgba(0, 229, 255, 0.9), -1px 1px 0 rgba(0, 72, 255, 0.7), 0 0 10px rgba(63, 193, 255, 0.55);
+  color: var(--fx);
+  text-shadow:
+    1px -1px 0 color-mix(in srgb, var(--fx-lt) 90%, transparent),
+    -1px 1px 0 color-mix(in srgb, var(--fx-dd) 70%, transparent),
+    0 0 10px color-mix(in srgb, var(--fx) 55%, transparent);
 }
 
-/* crystal: facetas — degradê diagonal em faixas azul/branco. */
+/* crystal: facetas — degradê diagonal em faixas da cor e do claro dela. */
 .fx-crystal {
   background-image: linear-gradient(
     135deg,
-    #3fc1ff 0%, #bfefff 20%, #3fc1ff 40%, #e8f9ff 55%, #3fc1ff 75%, #9fe2ff 100%
+    var(--fx) 0%, var(--fx-lt) 20%, var(--fx) 40%, var(--fx-hi) 55%, var(--fx) 75%, var(--fx-lt) 100%
   );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
-/* --- épicos (roxo) ----------------------------------------------------- */
+/* --- efeitos épicos ----------------------------------------------------- */
 
-/* glitch: falha de sinal PARADA — sombras roxa/magenta deslocadas. */
+/* glitch: falha de sinal PARADA — sombras deslocadas pros dois lados. */
 .fx-glitch {
   display: inline-block;
-  color: #e4ccff;
-  text-shadow: 2px 0 rgba(255, 0, 229, 0.55), -2px 0 rgba(140, 80, 255, 0.7);
+  color: var(--fx-hi);
+  text-shadow:
+    2px 0 color-mix(in srgb, var(--fx-lt) 55%, transparent),
+    -2px 0 color-mix(in srgb, var(--fx-dk) 70%, transparent);
 }
 
-/* arcane: degradê roxo místico, escuro embaixo, lilás em cima. */
+/* arcane: degradê místico, escuro embaixo, claro em cima. */
 .fx-arcane {
-  background-image: linear-gradient(0deg, #6a1fd6 0%, #b07cff 55%, #ead9ff 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(0deg, var(--fx-dd) 0%, var(--fx) 55%, var(--fx-hi) 100%);
 }
 
-/* shadow: lilás claro com sombra roxa profunda e deslocada. */
+/* shadow: claro com sombra profunda e deslocada. */
 .fx-shadow {
-  color: #e6d6ff;
-  text-shadow: 0 2px 0 #5a2a9e, 0 4px 10px rgba(90, 42, 158, 0.9), 0 0 18px rgba(176, 124, 255, 0.35);
+  color: var(--fx-hi);
+  text-shadow:
+    0 2px 0 var(--fx-dd),
+    0 4px 10px color-mix(in srgb, var(--fx-dd) 90%, transparent),
+    0 0 18px color-mix(in srgb, var(--fx) 35%, transparent);
 }
 
 /* --- lendário: Rei dos Bocas (fogo) ----------------------------------------
-   O ÚNICO com gradiente animado. Gradiente vertical de fogo (amarelo em
-   cima, vermelho embaixo) que sobe e desce, com uma tremida de opacidade.
-   Só background-position e opacity: o compositor resolve sem repintar. */
+   O ÚNICO com gradiente animado: escuro embaixo, a cor no meio, quase branco
+   na ponta da chama; sobe e desce com uma tremida de opacidade. Só
+   background-position e opacity: o compositor resolve sem repintar. */
 .fx-fire {
-  background-image: linear-gradient(0deg, #ff2d00 0%, #ff8a00 45%, #ffd000 80%, #fff3a0 100%);
+  background-image: linear-gradient(0deg, var(--fx-dd) 0%, var(--fx) 45%, var(--fx-lt) 80%, var(--fx-hi) 100%);
   background-size: 100% 220%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
   animation: fx-fire 1.1s ease-in-out infinite alternate, fx-flicker 0.35s steps(2, end) infinite;
 }
 
@@ -122,8 +146,19 @@
 /* ============================================
    MOLDURAS DE AVATAR
    ============================================
-   Aplicadas no <Avatar> (que já tem border e overflow hidden). Raras azuis,
-   épicas roxas, e a lendária é a ÚNICA animada.
+   Aplicadas no <Avatar> (que já tem border e overflow hidden). Como todas
+   usam a mesma cor, cada uma tem um DESENHO próprio — dá pra dizer qual é
+   qual de olho, em qualquer cor:
+
+     pixel       borda cheia + sombra dura deslocada (8 bits)
+     ice         borda clara + geada por DENTRO da foto
+     steel       chanfro de metal: luz em cima/esquerda, sombra embaixo/direita
+     dashed      tracejado, sem brilho
+     wave        dois anéis finos afastados, como onda na água
+     arcane      aura de duas cores, clara num canto e escura no oposto
+     amethyst    faixa grossa por fora, separada por um vão
+     violet-neon tubo de neon: núcleo branco e halo em três camadas
+     fire        anel duplo que respira + coroa (lendária, a única animada)
 
    REGRA DE TAMANHO: toda moldura tem border-width 2px. A borda entra no
    box-sizing, então 4px de borda encolhia a foto — na prateleira as fotos
@@ -135,66 +170,78 @@
   border-style: solid !important;
 }
 
-/* --- raras (azul) --- */
+/* --- raras --- */
 .frame-pixel {
-  border-style: dashed !important;
-  border-color: #3fc1ff !important;
+  border-color: var(--fx) !important;
+  box-shadow: 3px 3px 0 0 var(--fx-dd);
 }
 
 .frame-ice {
-  border-color: #a8e6ff !important;
-  box-shadow: 0 0 8px rgba(168, 230, 255, 0.6), inset 0 0 0 1px rgba(63, 193, 255, 0.45);
+  border-color: var(--fx-hi) !important;
+  box-shadow:
+    inset 0 0 8px 1px color-mix(in srgb, var(--fx-lt) 75%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--fx) 40%, transparent);
 }
 
 .frame-steel {
-  border-color: #7fa6c2 !important;
-  box-shadow: 0 0 0 1px #3f6b8f, inset 0 0 0 1px rgba(200, 225, 240, 0.5);
+  border-color: var(--fx-hi) var(--fx-dd) var(--fx-dd) var(--fx-hi) !important;
+  box-shadow: 0 0 0 1px var(--fx-dk);
 }
 
 .frame-dashed {
   border-style: dashed !important;
-  border-color: #3fc1ff !important;
-  box-shadow: 0 0 0 1px rgba(63, 193, 255, 0.35), 0 0 6px rgba(63, 193, 255, 0.35);
+  border-color: var(--fx) !important;
 }
 
 .frame-wave {
-  border-color: #1b5e8f !important;
-  box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 4px #3fc1ff;
+  border-color: var(--fx-dd) !important;
+  box-shadow:
+    0 0 0 2px var(--fx-gap),
+    0 0 0 3px var(--fx),
+    0 0 0 5px var(--fx-gap),
+    0 0 0 6px var(--fx-dk);
 }
 
-/* --- épicas (roxo) --- */
+/* --- épicas --- */
 .frame-arcane {
-  border-color: #b07cff !important;
-  box-shadow: 0 0 10px rgba(176, 124, 255, 0.65), inset 0 0 0 1px rgba(208, 162, 255, 0.5);
+  border-color: var(--fx) !important;
+  box-shadow:
+    -3px -3px 10px color-mix(in srgb, var(--fx-lt) 70%, transparent),
+    3px 3px 10px var(--fx-dd);
 }
 
-/* "Dupla": a segunda linha é um anel de box-shadow com um vão escuro. */
 .frame-amethyst {
-  border-color: #8b4dff !important;
-  box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 3px #8b4dff, 0 0 8px 3px rgba(139, 77, 255, 0.5);
+  border-color: var(--fx-lt) !important;
+  box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 5px var(--fx), 0 0 6px 5px color-mix(in srgb, var(--fx) 35%, transparent);
 }
 
 .frame-violet-neon {
-  border-color: #d0a2ff !important;
-  box-shadow: 0 0 2px #fff, 0 0 8px #d0a2ff, 0 0 16px rgba(176, 124, 255, 0.7);
+  border-color: var(--fx-hi) !important;
+  box-shadow:
+    0 0 2px #fff,
+    0 0 8px var(--fx),
+    0 0 16px color-mix(in srgb, var(--fx) 70%, transparent),
+    inset 0 0 6px color-mix(in srgb, var(--fx) 60%, transparent);
 }
 
 /* --- lendária: Lenda Murcha (animada) --- */
-/* Mesmo desenho da Ametista, em dourado, com o halo respirando devagar. A
-   coroa em cima é um irmão (`frame-fire-ring`) que o UserAvatar desenha — a
-   classe da borda continua servindo pra webcam na call. */
+/* Anel duplo com o halo respirando devagar. A coroa em cima é um irmão
+   (`frame-fire-ring`) que o UserAvatar desenha — a classe da borda continua
+   servindo pra webcam na call. */
 .frame-fire {
-  border-color: #ffd000 !important;
-  box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 3px #ffd000, 0 0 8px 3px rgba(255, 208, 0, 0.5);
+  border-color: var(--fx) !important;
+  box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 8px 3px color-mix(in srgb, var(--fx) 50%, transparent);
   animation: frame-fire-glow 3s ease-in-out infinite;
 }
 
 @keyframes frame-fire-glow {
-  0%, 100% { box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 3px #ffd000, 0 0 6px 3px rgba(255, 208, 0, 0.4); }
-  50%      { box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 3px #ffd000, 0 0 14px 3px rgba(255, 208, 0, 0.85); }
+  0%, 100% { box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 6px 3px color-mix(in srgb, var(--fx) 40%, transparent); }
+  50%      { box-shadow: 0 0 0 2px var(--fx-gap), 0 0 0 3px var(--fx-lt), 0 0 14px 3px color-mix(in srgb, var(--fx) 85%, transparent); }
 }
 
-/* A coroa: centrada no topo, por cima da borda. */
+/* A coroa: centrada no topo, por cima da borda. O desenho é máscara e a cor
+   é o fundo — num data URI não dá pra usar variável, e a coroa tem que sair
+   na cor da pessoa. */
 .frame-fire-ring {
   border: 0 !important; /* o seletor [class*='frame-'] pegaria a coroa */
   position: absolute;
@@ -204,8 +251,10 @@
   height: 15px;
   transform: translateX(-50%);
   z-index: 1;
-  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffd000' stroke='%23120c00' stroke-width='1.2' stroke-linejoin='round'><path d='M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5Z'/></svg>") center / contain no-repeat;
-  filter: drop-shadow(0 0 3px rgba(255, 208, 0, 0.8));
+  background: var(--fx);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5Z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5Z'/></svg>") center / contain no-repeat;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--fx) 80%, transparent));
   pointer-events: none;
 }
 

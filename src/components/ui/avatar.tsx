@@ -1,7 +1,7 @@
 import * as React from 'react'
 import * as AvatarPrimitive from '@radix-ui/react-avatar'
 import { cn } from '@/lib/utils'
-import { cosmeticKey } from '@/lib/api-gamification'
+import { cosmeticKey, tintStyle } from '@/lib/api-gamification'
 import { useOverlaysOptional } from '@/lib/overlay-context'
 import '@/styles/effects.css'
 
@@ -56,17 +56,17 @@ const STATUS_STYLES: Record<string, string> = {
 
 /**
  * Molduras compradas na lojinha (ids `frame:*`). As classes estão em
- * styles/effects.css. Moldura ganha da cor do perfil na borda: quem pagou por
- * ela quer que apareça.
+ * styles/effects.css. A moldura traz o DESENHO; a cor é a que a pessoa
+ * comprou, e sem cor comprada é branca (ver `frameColor`).
  */
 const FRAME_STYLES: Record<string, string> = {
-  // raras (azul)
+  // raras
   pixel: 'frame-pixel',
   ice: 'frame-ice',
   steel: 'frame-steel',
   dashed: 'frame-dashed',
   wave: 'frame-wave',
-  // épicas (roxo)
+  // épicas
   arcane: 'frame-arcane',
   amethyst: 'frame-amethyst',
   'violet-neon': 'frame-violet-neon',
@@ -120,7 +120,8 @@ export function UserAvatar({
   frame,
   style,
   userId,
-  fallbackClassName
+  fallbackClassName,
+  frameColor
 }: {
   src?: string
   name: string
@@ -132,6 +133,11 @@ export function UserAvatar({
   speaking?: boolean
   /** Id do cosmético de moldura (`frame:gold`) ou só a chave (`gold`). */
   frame?: string | null
+  /**
+   * Cor em que a moldura é pintada: a cor comprada da pessoa (`profileColor`).
+   * Sem ela vale `ringColor`; sem as duas, a moldura sai branca.
+   */
+  frameColor?: string | null
   /**
    * Estilo extra no avatar. Existe pro tamanho vindo de MEDIÇÃO, e não de
    * classe: na call o avatar acompanha o tamanho do card, que é calculado em
@@ -156,6 +162,8 @@ export function UserAvatar({
         'relative shrink-0',
         abrirPerfil && 'cursor-pointer transition-opacity hover:opacity-80'
       )}
+      // A cor fica no invólucro: herda pra borda e pra coroa, que é irmã.
+      style={frameStyle ? tintStyle(frameColor ?? ringColor) : undefined}
       {...(abrirPerfil
         ? {
             role: 'button' as const,

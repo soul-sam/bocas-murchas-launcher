@@ -203,6 +203,7 @@ function Group({
                     status={member.isOnline ? (member.status ?? 'online') : 'offline'}
                     ringColor={member.profileColor}
                     frame={member.avatarFrame}
+                    frameColor={member.profileColor}
                     className="h-7 w-7"
                   />
 
@@ -211,7 +212,7 @@ function Group({
                       className="flex items-center gap-1 truncate text-sm"
                       style={member.profileColor ? { color: member.profileColor } : undefined}
                     >
-                      <NameEffect animated={false} effect={member.nameEffect} className="truncate">
+                      <NameEffect animated={false} effect={member.nameEffect} color={member.profileColor} className="truncate">
                         {member.displayName}
                       </NameEffect>
                       <NameEmoji id={member.emoji} />

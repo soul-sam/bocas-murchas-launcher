@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.49.0',
+    headline: 'Efeito e moldura na sua cor',
+    items: [
+      'O efeito do nome agora usa a cor que você comprou: fogo de quem é verde queima em tons de verde, gelo de quem é rosa congela em rosa.',
+      'A moldura também: borda, brilho e até a coroa da Lenda Murcha saem na sua cor.',
+      'Sem cor comprada, efeito e moldura são brancos.',
+      'Cada moldura ganhou um desenho próprio — pixel com sombra dura, aço chanfrado, onda com dois anéis, tubo de neon… — pra dar pra diferenciar de olho em qualquer cor.'
+    ],
+    note: 'O Branco Gelo saiu da lojinha (branco agora é o padrão). Quem tinha comprado recebeu os murchos de volta.'
+  },
+  {
     version: '1.48.0',
     headline: 'A mesa de pôquer de verdade',
     items: [

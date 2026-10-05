@@ -581,6 +581,7 @@ function BadgeDetail({
                     name={name}
                     ringColor={member?.profileColor ?? DEFAULT_NAME_COLOR}
                     frame={member?.avatarFrame}
+                    frameColor={member?.profileColor}
                     className="h-6 w-6 border"
                   />
                   <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{name}</span>
@@ -694,6 +695,7 @@ function Collectors({ board, meId }: { board: AchievementsBoard; meId: string })
                   name={name}
                   ringColor={color}
                   frame={member?.avatarFrame}
+                  frameColor={member?.profileColor}
                   className="h-8 w-8 border-2"
                 />
                 <div className="min-w-0 flex-1">

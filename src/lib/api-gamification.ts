@@ -1,3 +1,4 @@
+import type * as React from 'react'
 import { request, type GameSessionSummary } from './api'
 import { isShopThemeId, type ShopThemeId } from '../../electron/preload/types'
 
@@ -45,6 +46,22 @@ export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji' | 'j
  * um na paleta da própria raridade.
  */
 export const DEFAULT_NAME_COLOR = '#EAEAEA'
+
+/**
+ * A cor em que efeito de nome e moldura são pintados (`--fx-c`, ver
+ * styles/effects.css): a cor comprada, ou null quando a pessoa não tem cor
+ * (ou está na padrão) — aí o CSS cai no branco do tema.
+ */
+export function cosmeticTint(color: string | null | undefined): string | null {
+  if (!color || !/^#[0-9a-f]{6}$/i.test(color)) return null
+  return color.toLowerCase() === DEFAULT_NAME_COLOR.toLowerCase() ? null : color
+}
+
+/** `style` com a cor dos cosméticos, pra espalhar num elemento (ou nada). */
+export function tintStyle(color: string | null | undefined): React.CSSProperties | undefined {
+  const tint = cosmeticTint(color)
+  return tint ? ({ '--fx-c': tint } as React.CSSProperties) : undefined
+}
 
 /**
  * Raridade de cada título, espelho do catálogo da API (`rules.ts`). O

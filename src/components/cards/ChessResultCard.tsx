@@ -77,6 +77,7 @@ export function ChessResultCard({ metadata, compact }: CardProps<ChessCardMeta>)
             name={member.displayName}
             ringColor={member.profileColor}
             frame={member.avatarFrame}
+            frameColor={member.profileColor}
             className="h-8 w-8"
           />
         )}

@@ -106,6 +106,7 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                       name={name}
                       ringColor={color}
                       frame={who?.avatarFrame}
+                      frameColor={who?.profileColor}
                       className="h-6 w-6"
                     />
                     <span className="min-w-0 flex-1">

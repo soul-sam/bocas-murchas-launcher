@@ -348,13 +348,14 @@ function PodiumSlot({ entry, metric, tall }: { entry: LeaderboardEntry; metric: 
         name={name}
         ringColor={medal}
         frame={member?.avatarFrame}
+        frameColor={member?.profileColor}
         className={cn('border-2', tall ? 'h-12 w-12' : 'h-10 w-10')}
       />
       <span
         className="mt-1.5 flex w-full min-w-0 items-center justify-center gap-0.5 text-xs leading-tight"
         style={color ? { color } : undefined}
       >
-        <NameEffect effect={member?.nameEffect} className="truncate">
+        <NameEffect effect={member?.nameEffect} color={color} className="truncate">
           {name}
         </NameEffect>
         <NameEmoji id={member?.emoji} />
@@ -403,10 +404,11 @@ function Rows({ entries, metric }: { entries: LeaderboardEntry[]; metric: Leader
               name={name}
               ringColor={color}
               frame={member?.avatarFrame}
+              frameColor={member?.profileColor}
               className="h-6 w-6"
             />
             <span className="flex min-w-0 flex-1 items-center gap-1 text-sm" style={color ? { color } : undefined}>
-              <NameEffect effect={member?.nameEffect} className="truncate">
+              <NameEffect effect={member?.nameEffect} color={color} className="truncate">
                 {name}
               </NameEffect>
               <NameEmoji id={member?.emoji} />

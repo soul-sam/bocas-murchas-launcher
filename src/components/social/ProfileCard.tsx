@@ -624,7 +624,7 @@ export function ProfileIdentity({
             caixa, e a Anton desenha acima da linha. Nos efeitos de degradê
             (texto pintado pelo fundo) a parte de fora da caixa nem é
             pintada — o topo das letras sumia. */}
-        <NameEffect effect={nameEffect} className="-my-[0.2em] min-w-0 truncate py-[0.2em]">
+        <NameEffect effect={nameEffect} color={color} className="-my-[0.2em] min-w-0 truncate py-[0.2em]">
           {name}
         </NameEffect>
         <NameEmoji id={emoji} size="md" />

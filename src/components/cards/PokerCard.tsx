@@ -84,6 +84,7 @@ export function PokerCard({ metadata }: CardProps<PokerCardMetadata>) {
               name={m?.displayName ?? s.displayName}
               ringColor={m?.profileColor}
               frame={m?.avatarFrame}
+              frameColor={m?.profileColor}
               className="h-7 w-7"
             />
           )

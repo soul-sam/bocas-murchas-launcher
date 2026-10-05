@@ -46,6 +46,7 @@ export function AuthorName({
         animated={false}
         effect={member?.nameEffect}
         className={cn(className)}
+        color={color}
         style={{ ...(color ? { color } : {}), ...style }}
       >
         {displayName}

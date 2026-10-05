@@ -249,6 +249,7 @@ function TableRow({ table, mine, onOpen }: { table: LobbyTable; mine: boolean; o
               name={m?.displayName ?? p.displayName}
               ringColor={m?.profileColor ?? undefined}
               frame={m?.avatarFrame}
+              frameColor={m?.profileColor}
               className="h-7 w-7 border-2 border-void"
             />
           )
@@ -572,6 +573,7 @@ function Scoreboard({ currency }: { currency: TableCurrency }) {
                       name={m?.displayName ?? e.user?.displayName ?? '?'}
                       ringColor={m?.profileColor ?? e.user?.profileColor ?? undefined}
                       frame={m?.avatarFrame}
+                      frameColor={m?.profileColor}
                       className="h-6 w-6"
                     />
                     <span className="min-w-0 flex-1 truncate text-foreground">{m?.displayName ?? e.user?.displayName ?? '?'}</span>

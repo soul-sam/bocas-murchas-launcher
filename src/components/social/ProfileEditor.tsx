@@ -1160,12 +1160,12 @@ function StyleTile({
               className="truncate font-display text-base leading-none"
               style={me.color ? { color: me.color } : undefined}
             >
-              <NameEffect effect={item.id}>{me.name}</NameEffect>
+              <NameEffect effect={item.id} color={me.color}>{me.name}</NameEffect>
             </span>
           )}
           {item.type === 'avatarFrame' && (
             <>
-              <UserAvatar src={me.avatar} name={me.name} frame={item.id} className="h-8 w-8 border-2" />
+              <UserAvatar src={me.avatar} name={me.name} frame={item.id} frameColor={me.color} className="h-8 w-8 border-2" />
               <span className="truncate text-sm">{item.name}</span>
             </>
           )}

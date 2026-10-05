@@ -177,6 +177,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
           name={name}
           ringColor={color}
           frame={player?.avatarFrame}
+          frameColor={player?.profileColor}
           className="h-8 w-8"
         />
         <div className="min-w-0 flex-1">

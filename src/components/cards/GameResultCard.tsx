@@ -158,6 +158,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
           name={playerName}
           ringColor={playerColor}
           frame={player?.avatarFrame}
+          frameColor={player?.profileColor}
           className="h-10 w-10"
         />
 
