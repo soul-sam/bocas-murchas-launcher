@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { MurchosIcon } from '@/lib/bocas-icons'
 import type { BoardBetView, Side } from '@/lib/api-board'
+import { parseBetAmount } from '@/lib/board-bet'
 import { useBoard } from '@/lib/board-context'
 import { useGamification } from '@/lib/gamification-context'
 import { cn } from '@/lib/utils'
@@ -28,6 +29,13 @@ export function BetPanel() {
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  const tableId = table?.id
+  React.useEffect(() => {
+    setSide(null)
+    setAmount(String(MIN_BET))
+    setError(null)
+  }, [tableId])
+
   if (!table) return null
   const { phase, bets, white, black } = table
   if (bets.length === 0 && phase !== 'pending') return null
@@ -36,17 +44,21 @@ export function BetPanel() {
   const nameOf = (s: Side): string => (s === 'white' ? white : black)?.displayName ?? SIDE_LABEL[s]
   const coins = profile?.coins ?? 0
   const max = Math.min(table.betLimit, coins)
-  const value = Math.floor(Number(amount))
-  const valid = side !== null && Number.isFinite(value) && value >= MIN_BET && value <= max
+  const value = parseBetAmount(amount, MIN_BET, max)
+  const valid = side !== null && value !== null
 
-  const place = (): void => {
-    if (!side || !valid || busy) return
+  const place = async (): Promise<void> => {
+    if (!side || value === null || busy) return
     setBusy(true)
     setError(null)
-    void bet(side, value).then((ack) => {
-      setBusy(false)
+    try {
+      const ack = await bet(side, value)
       if (!ack.ok) setError(ack.error ?? 'Não deu certo.')
-    })
+    } catch {
+      setError('Deu ruim. Tente de novo.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const canBet = phase === 'pending' && table.mySide === null && !table.myBet
@@ -97,12 +109,14 @@ export function BetPanel() {
               />
             </label>
             <p className="text-[11.5px] text-muted-foreground">
-              De {MIN_BET} até {Math.max(max, 0)} (teto da mesa {table.betLimit}, seu saldo {coins.toLocaleString('pt-BR')}).
+              {max < MIN_BET
+                ? `Saldo insuficiente (mínimo ${MIN_BET})`
+                : `De ${MIN_BET} até ${max} (teto da mesa ${table.betLimit}, seu saldo ${coins.toLocaleString('pt-BR')}).`}
             </p>
             <button
               type="button"
               disabled={!valid || busy}
-              onClick={place}
+              onClick={() => void place()}
               className="rounded-brutal border border-acid px-3 py-1.5 text-xs font-semibold text-acid transition-colors hover:bg-acid/10 disabled:opacity-40"
             >
               {busy ? 'Apostando…' : 'Apostar'}
