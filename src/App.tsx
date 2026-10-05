@@ -24,6 +24,7 @@ import { LayoutProvider, useLayout } from '@/lib/layout-context'
 import { ActivityProvider } from '@/lib/activity-context'
 import { PartyProvider } from '@/lib/party-context'
 import { PokerProvider } from '@/lib/poker-context'
+import { BoardProvider } from '@/lib/board-context'
 import { SmokeProvider } from '@/lib/smoke-context'
 import { ClipProvider } from '@/lib/clip-context'
 import { GamificationProvider } from '@/lib/gamification-context'
@@ -354,6 +355,7 @@ function AuthedLayout() {
                                 AuthedShell porque a barra de ícones mostra "sua
                                 vez" e o card do chat lê o saguão. */}
                             <PokerProvider>
+                              <BoardProvider>
                               <SmokeProvider>
                               <WatchProvider>
                                 {/* Índices de @pessoa e #canal montados uma
@@ -371,6 +373,7 @@ function AuthedLayout() {
                                 </RichTextProvider>
                               </WatchProvider>
                               </SmokeProvider>
+                              </BoardProvider>
                             </PokerProvider>
                             </PartyProvider>
                             </CostsProvider>
