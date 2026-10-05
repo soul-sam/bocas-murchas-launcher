@@ -36,6 +36,8 @@ import './board.css'
  */
 
 const LOW_MS = 10_000
+/** Referência estável: um [] novo a cada tick refazia os memos do tabuleiro. */
+const NO_MOVES: string[] = []
 
 const fmtMurchos = (n: number): string => `${n.toLocaleString('pt-BR')} murchos`
 
@@ -90,9 +92,14 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
   const run = async (fn: () => Promise<BoardAck>): Promise<void> => {
     if (busy) return
     setBusy(true)
-    const ack = await fn()
-    setBusy(false)
-    if (!ack.ok) setError(ack.error ?? 'Deu ruim.')
+    try {
+      const ack = await fn()
+      if (!ack.ok) setError(ack.error ?? 'Deu ruim.')
+    } catch {
+      setError('Deu ruim. Tente de novo.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const label = boardGameLabel(table.game, table.variant)
@@ -170,7 +177,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
               game={table.game}
               position={table.position}
               orientation={bottom}
-              legalMoves={myTurn ? table.legalMoves : []}
+              legalMoves={myTurn ? table.legalMoves : NO_MOVES}
               lastMove={table.lastMove}
               onMove={myTurn ? (m) => void run(() => move(m)) : undefined}
             />

@@ -93,6 +93,20 @@ export function Board({
 
   const interactive = !!onMove
 
+  // Seletor aberto: o foco vai pra primeira opção e Esc fecha tudo.
+  const choiceRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    if (!choice) return
+    choiceRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape') return
+      setChoice(null)
+      setSelected(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [choice])
+
   const play = (move: string): void => {
     setSelected(null)
     setChoice(null)
@@ -183,6 +197,7 @@ export function Board({
 
       {choice && choiceStyle && (
         <div
+          ref={choiceRef}
           className={cn('board-escolha', choice.kind === 'promotion' ? 'board-escolha--promocao' : 'board-escolha--caminho')}
           style={choiceStyle}
           role="group"
