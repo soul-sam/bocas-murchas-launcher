@@ -118,16 +118,16 @@ export function boardGameLabel(game: BoardGame, variant: DraughtsVariant | null)
 }
 
 const REASON_LABEL: Record<string, string> = {
-  checkmate: 'xeque-mate',
+  checkmate: 'mate',
   stalemate: 'afogamento',
-  repetition: 'repetição de posição',
-  fifty: 'regra dos 50 lances',
+  repetition: 'repetição',
+  fifty: '50 lances',
   insufficient: 'material insuficiente',
   'no-moves': 'sem lances',
-  'kings-20': '20 lances só com damas',
-  timeout: 'tempo esgotado',
+  'kings-20': '20 lances de dama',
+  timeout: 'tempo',
   resign: 'desistência',
-  agreement: 'empate por acordo'
+  agreement: 'acordo'
 }
 
 export function boardReasonLabel(reason: string): string {

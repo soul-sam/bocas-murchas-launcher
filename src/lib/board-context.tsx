@@ -104,18 +104,22 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   const inviteRef = React.useRef<BoardInvite | null>(null)
   inviteRef.current = invite
 
+  // Última mesa gravada, pra comparar a transição fora do updater do setState.
+  const tableRef = React.useRef<BoardTableView | null>(null)
+
   // Grava a mesa; se virou a minha vez, um toque (só na transição).
   const applyTable = React.useCallback((next: BoardTableView): void => {
-    setTable((prev) => {
-      if (prev && prev.id === next.id && !isMyTurn(prev) && isMyTurn(next)) {
-        const s = settingsRef.current
-        playUiSound('poker-turn', s.soundEnabled ? s.soundVolume : 0)
-      }
-      return next
-    })
+    const prev = tableRef.current
+    tableRef.current = next
+    if (prev && prev.id === next.id && !isMyTurn(prev) && isMyTurn(next)) {
+      const s = settingsRef.current
+      playUiSound('poker-turn', s.soundEnabled ? s.soundVolume : 0)
+    }
+    setTable(next)
   }, [])
 
   const clearOpen = React.useCallback((): void => {
+    tableRef.current = null
     setOpenTableId(null)
     setTable(null)
   }, [])
@@ -178,11 +182,20 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer)
   }, [invite])
 
-  // Mesa aberta sumiu da lista (cancelada/encerrada): volta pro saguão.
+  // Mesa aberta sumiu da lista (cancelada): volta pro saguão. Só vale depois
+  // que ela já apareceu numa lista desde que foi aberta (o `board:lobby` chega
+  // depois do ack), e nunca com o resultado na tela: mesa encerrada fica até
+  // a pessoa sair.
+  const seenRef = React.useRef<{ id: string | null; seen: boolean }>({ id: null, seen: false })
   React.useEffect(() => {
+    if (seenRef.current.id !== openTableId) seenRef.current = { id: openTableId, seen: false }
     if (!ready || !openTableId) return
-    if (!tables.some((t) => t.id === openTableId)) clearOpen()
-  }, [tables, ready, openTableId, clearOpen])
+    if (tables.some((t) => t.id === openTableId)) {
+      seenRef.current.seen = true
+      return
+    }
+    if (seenRef.current.seen && !table?.result) clearOpen()
+  }, [tables, ready, openTableId, table, clearOpen])
 
   // --- ações ---------------------------------------------------------------------
   /** Emite uma ação da mesa aberta e grava a mesa que voltar no ack. */
