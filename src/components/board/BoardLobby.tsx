@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Eye, Loader2, Plus, Radio, Send, Timer, Users, X } from 'lucide-react'
+import { Dumbbell, Eye, Loader2, Plus, Radio, Send, Timer, Users, X } from 'lucide-react'
 import { MurchosIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,7 @@ const NO_MOVES: string[] = []
  * contexto; a tela troca sozinha pro tabuleiro.
  */
 
-export function BoardLobby({ game }: { game: BoardGame }) {
+export function BoardLobby({ game, onPractice }: { game: BoardGame; onPractice: () => void }) {
   const { tables, ready, myTable, notice, dismissNotice, openTable, cancelTable, sit } = useBoard()
   const { profile } = useGamification()
   const { user } = useAuth()
@@ -74,6 +74,10 @@ export function BoardLobby({ game }: { game: BoardGame }) {
           <span className="text-[11.5px] opacity-70">murchos</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={onPractice}>
+            <Dumbbell className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            Modo treino
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => setDialog('invite')}>
             <Send className="mr-1.5 h-3.5 w-3.5" aria-hidden />
             Convidar

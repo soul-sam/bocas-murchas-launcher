@@ -104,6 +104,22 @@ export function parsePoolPosition(position: string): PoolPosition | null {
 
 export interface BoardAck { ok: boolean; error?: string; table?: BoardTableView }
 
+/** Modo treino: partida sozinha, sem relógio; a pessoa joga os dois lados. */
+export interface PracticeView {
+  game: BoardGame
+  variant: DraughtsVariant | null
+  /** Mesmo formato de `BoardTableView.position`. */
+  position: string
+  turn: Side
+  /** Lances de quem está na vez; [] quando a partida acabou. */
+  legalMoves: string[]
+  moves: string[]
+  lastMove: string | null
+  result: { winner: Side | null; reason: string } | null
+}
+
+export interface PracticeAck { ok: boolean; error?: string; practice?: PracticeView }
+
 export interface BoardInvite {
   tableId: string
   from: BoardPerson

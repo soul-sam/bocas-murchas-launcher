@@ -6,6 +6,7 @@ import { BackToHall } from '@/components/games/BackToHall'
 import { BoardLobby } from '@/components/board/BoardLobby'
 import { BoardTable } from '@/components/board/BoardTable'
 import { BetPanel } from '@/components/board/BetPanel'
+import { PracticeTable } from '@/components/board/PracticeTable'
 import { GameIcon } from '@/components/social/GameIcon'
 import '@/components/board/board.css'
 
@@ -25,6 +26,13 @@ export function BoardPage({ game }: { game: BoardGame }) {
   const { user } = useAuth()
 
   const here = !!table && table.game === game
+  // Modo treino: estado só desta tela. Mesa de verdade aberta ganha dele.
+  const [practiceOn, setPracticeOn] = React.useState(false)
+  const practicing = practiceOn && !here
+  React.useEffect(() => {
+    if (here) setPracticeOn(false)
+  }, [here])
+  React.useEffect(() => setPracticeOn(false), [game])
 
   // Tenho mesa deste jogo e nada aberto na tela: cai nela (voltar pra aba é
   // voltar pra partida, não pro saguão).
@@ -57,7 +65,7 @@ export function BoardPage({ game }: { game: BoardGame }) {
       <div aria-hidden className="board-sala" />
 
       {/* Cabeçalho só fora da mesa. */}
-      {!here && (
+      {!here && !practicing && (
         <header className="relative z-conteudo flex shrink-0 items-center gap-3 border-b border-line/70 px-4 py-3 sm:px-6">
           <GameIcon game={game} className="h-8 w-8 text-acid" />
           <div className="min-w-0 flex-1">
@@ -74,8 +82,10 @@ export function BoardPage({ game }: { game: BoardGame }) {
           <BoardTable>
             <BetPanel />
           </BoardTable>
+        ) : practicing ? (
+          <PracticeTable game={game} onExit={() => setPracticeOn(false)} />
         ) : (
-          <BoardLobby game={game} />
+          <BoardLobby game={game} onPractice={() => setPracticeOn(true)} />
         )}
       </div>
     </div>
