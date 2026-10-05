@@ -38,6 +38,7 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { HomePage } from '@/pages/HomePage'
 import { SocialPage } from '@/pages/SocialPage'
 import { PokerPage } from '@/pages/PokerPage'
+import { BoardPage } from '@/pages/BoardPage'
 import { GameHallPage } from '@/pages/GameHallPage'
 import { LolPage } from '@/pages/LolPage'
 import { PrintPage } from '@/pages/PrintPage'
@@ -68,6 +69,7 @@ import { ShopModal } from '@/components/social/ShopModal'
 import { AchievementsModal } from '@/components/social/AchievementsModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
+import { BoardInvitePrompt } from '@/components/board/BoardInvitePrompt'
 import { OverlayBridge } from '@/lib/overlay-bridge'
 import { OverlayFeed } from '@/lib/overlay-feed'
 import { MusicHost } from '@/components/social/MusicHost'
@@ -244,6 +246,8 @@ function GlobalOverlays() {
       {/* Banners: drops de admin e "tem gente do grupo no seu lobby". */}
       <DropHost />
       <PartyCallPrompt />
+      {/* Convite pra uma partida de xadrez ou dama. */}
+      <BoardInvitePrompt />
       {/* Quanto custa manter isto de pé, e quanto cabe a cada um. A faixa
           some sozinha pra quem já marcou "paguei" no mês. */}
       <CostShareBanner />
@@ -459,6 +463,8 @@ export function App() {
                             <Route path="/chat" element={<SocialPage />} />
                             <Route path="/jogos" element={<GameHallPage />} />
                             <Route path="/lol" element={<LolPage />} />
+                            <Route path="/xadrez" element={<BoardPage game="chess" />} />
+                            <Route path="/dama" element={<BoardPage game="draughts" />} />
                             {/* O pôquer é uma TELA, não um modal: mesa de
                                 cartas dentro de janelinha não dá imersão.
                                 O estado mora no PokerProvider, acima das
