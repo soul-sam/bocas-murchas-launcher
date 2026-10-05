@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { X } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -18,10 +19,19 @@ import { GameIcon } from '@/components/social/GameIcon'
  * (o contexto grava a vista do ack) e leva pra tela do jogo.
  */
 export function BoardInvitePrompt() {
-  const { invite, answerInvite, goToBoard } = useBoard()
+  const { invite, answerInvite } = useBoard()
+  const [busy, setBusy] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
   const { byId } = useMembers()
   // O relógio compartilhado só anda enquanto há convite na tela.
   const now = useTicker(1000, !!invite)
+
+  // Erro de um convite não vale pro próximo.
+  const inviteId = invite?.tableId
+  React.useEffect(() => {
+    setError(null)
+    setBusy(false)
+  }, [inviteId])
 
   if (!invite) return null
 
@@ -31,9 +41,15 @@ export function BoardInvitePrompt() {
   const left = Math.max(0, Math.ceil((invite.expiresAt - now) / 1000))
   const worth = invite.stake > 0 ? `valendo ${invite.stake.toLocaleString('pt-BR')} murchos` : 'amistosa'
 
+  // O contexto já grava a mesa e leva pra tela do jogo no aceite: chamar
+  // `goToBoard` aqui abriria a mesa de novo (segundo `board:open`).
   const accept = async (): Promise<void> => {
+    if (busy) return
+    setBusy(true)
+    setError(null)
     const ack = await answerInvite(true)
-    if (ack.ok) goToBoard(invite.game, invite.tableId)
+    setBusy(false)
+    if (!ack.ok) setError(ack.error ?? 'Não deu pra aceitar o convite.')
   }
   const decline = (): void => {
     void answerInvite(false)
@@ -80,11 +96,20 @@ export function BoardInvitePrompt() {
           </p>
         </div>
 
+        {error && (
+          <p
+            role="alert"
+            className="mx-3 mb-2 rounded-brutal border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs text-destructive"
+          >
+            {error}
+          </p>
+        )}
+
         <div className="flex gap-1.5 px-3 pb-2.5">
-          <Button size="sm" className="flex-1" onClick={() => void accept()}>
+          <Button size="sm" className="flex-1" disabled={busy} onClick={() => void accept()}>
             Aceitar
           </Button>
-          <Button size="sm" variant="secondary" onClick={decline}>
+          <Button size="sm" variant="secondary" disabled={busy} onClick={decline}>
             Recusar
           </Button>
         </div>

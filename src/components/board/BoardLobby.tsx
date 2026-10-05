@@ -22,7 +22,7 @@ import { CreateDialog } from './CreateDialog'
  */
 
 export function BoardLobby({ game }: { game: BoardGame }) {
-  const { tables, ready, myTable, openTable, leaveTable, sit } = useBoard()
+  const { tables, ready, myTable, openTable, cancelTable, sit } = useBoard()
   const { profile } = useGamification()
   const { user } = useAuth()
   const [dialog, setDialog] = React.useState<'open' | 'invite' | null>(null)
@@ -49,14 +49,10 @@ export function BoardLobby({ game }: { game: BoardGame }) {
       return openTable(id).then(fail)
     })
   }
-  // Cancelar a minha: abre a sala e sai dela (jogador que sai antes do início
-  // cancela a mesa, isso é com o servidor).
+  // Cancelar a minha: jogador que sai antes do início cancela a mesa (servidor).
   const onCancel = (id: string): void => {
     setError(null)
-    void openTable(id).then((ack) => {
-      if (ack.ok) leaveTable()
-      else fail(ack)
-    })
+    void cancelTable(id).then(fail)
   }
 
   const isMine = (t: LobbyBoardTable): boolean =>

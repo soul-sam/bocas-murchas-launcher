@@ -45,6 +45,8 @@ interface BoardContextValue {
   myTurn: boolean
   openTable: (tableId: string) => Promise<BoardAck>
   leaveTable: () => void
+  /** Cancela a minha mesa pelo id, sem abrir a sala (e fecha a aberta se for ela). */
+  cancelTable: (tableId: string) => Promise<BoardAck>
   /** Vai pra tela do jogo e, se vier `tableId`, abre essa mesa nela. */
   goToBoard: (game: BoardGame, tableId?: string) => void
   create: (input: {
@@ -238,6 +240,15 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     clearOpen()
   }, [socket, clearOpen])
 
+  const cancelTable = React.useCallback(
+    async (tableId: string): Promise<BoardAck> => {
+      const ack = await emitWithAck(socket, 'board:leave', { tableId })
+      if (ack.ok && openIdRef.current === tableId) clearOpen()
+      return ack
+    },
+    [socket, clearOpen]
+  )
+
   const create = React.useCallback<BoardContextValue['create']>(
     async (input) => {
       const ack = await emitWithAck(socket, 'board:create', input)
@@ -255,8 +266,11 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     async (accept: boolean): Promise<BoardAck> => {
       const current = inviteRef.current
       if (!current) return { ok: false, error: 'Convite não encontrado.' }
-      setInvite(null)
+      // Recusar some na hora; aceitar espera o ack, pra o erro (saldo, mesa
+      // cancelada) poder ser mostrado no próprio banner.
+      if (!accept) setInvite(null)
       const ack = await emitWithAck(socket, 'board:invite:answer', { tableId: current.tableId, accept })
+      if (accept && ack.ok && inviteRef.current?.tableId === current.tableId) setInvite(null)
       if (ack.ok && accept && ack.table) {
         setOpenTableId(ack.table.id)
         openIdRef.current = ack.table.id
@@ -308,6 +322,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       myTurn,
       openTable,
       leaveTable,
+      cancelTable,
       goToBoard,
       create,
       answerInvite,
@@ -320,7 +335,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       bet
     }),
     [
-      tables, ready, table, openTableId, invite, myTable, myTurn, openTable, leaveTable, goToBoard,
+      tables, ready, table, openTableId, invite, myTable, myTurn, openTable, leaveTable, cancelTable, goToBoard,
       create, answerInvite, sit, setReadyAction, move, resign, offerDraw, answerDraw, bet
     ]
   )
