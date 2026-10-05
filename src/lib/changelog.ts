@@ -42,6 +42,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.52.0',
+    headline: 'Salão de jogos, com xadrez e dama',
+    items: [
+      'O ícone do Minecraft na barra virou o Salão de jogos: um card por jogo, com quantos estão nele agora e o botão Entrar. Minecraft, Pôquer e LoL continuam onde estavam, atrás dos cards.',
+      'O painel do LoL ganhou tela própria. O do canal de chat continua lá.',
+      'Xadrez e dama (brasileira ou americana), um contra o outro, dentro do launcher. Relógios: 1+0, 1+1, 3+0, 3+2, 5+0 e 10+0.',
+      'Dá pra jogar valendo murchos: quem cria escolhe o valor, os dois põem igual e quem vence leva o dobro. Empate devolve.',
+      'Botão Convidar: você escolhe a pessoa, o relógio e o valor, e ela aceita já sabendo de tudo.',
+      'Quem assiste pode apostar em quem ganha, só antes de a partida começar. Com aposta nos dois lados, quem acerta divide o bolo. Sem ninguém do outro lado, acertar paga o dobro.',
+      'Cada partida dá XP pela mesma tabela do Chess.com: vitória vale o dobro, empate vale como derrota.',
+      'No fim sai um card no chat com o resultado. No xadrez ele mostra também a precisão de cada um e um rating estimado da partida.'
+    ],
+    note: 'Com os dois sentados, a partida começa quando ambos marcam Pronto, ou sozinha em 1 minuto. O primeiro lance tem 30 segundos: se não sair, a partida é cancelada e todo mundo recebe de volta.'
+  },
+  {
     version: '1.51.1',
     headline: 'Moldura na call só quando fala',
     items: [
