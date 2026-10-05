@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.49.1',
+    headline: 'Streak agora é de call',
+    items: [
+      'O streak conta dias seguidos entrando na call — abrir o launcher não vale mais.',
+      'Passou um dia inteiro sem call, o streak zera e você sai do ranking da semana até voltar.',
+      'No ranking "Desde sempre" aparece o recorde de cada um, que nunca zera.'
+    ]
+  },
+  {
     version: '1.49.0',
     headline: 'Efeito e moldura na sua cor',
     items: [
