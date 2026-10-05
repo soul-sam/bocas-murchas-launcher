@@ -42,6 +42,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.47.2',
+    headline: 'Pôquer sem rake',
+    items: [
+      'A casa não tira mais nada do pote nas mesas de murchos: quem ganha a mão leva tudo. Antes, mão que via o flop deixava 2,5% no cofre.'
+    ]
+  },
+  {
     version: '1.47.1',
     headline: 'Aposta até o seu teto, e a sobreposição de volta ao clique',
     items: [
