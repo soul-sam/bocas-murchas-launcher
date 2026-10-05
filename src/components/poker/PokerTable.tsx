@@ -602,6 +602,21 @@ function useGhosts(
 ): GhostSpec[] {
   const [ghosts, setGhosts] = React.useState<GhostSpec[]>([])
   const prevRef = React.useRef<TableView | null>(null)
+  // `rotated` nasce novo a cada render: como dependência, o efeito rodava de
+  // novo a cada pintura (o próprio `setGhosts` pinta) e a limpeza cancelava
+  // o timer que tira os fantasmas — eles ficavam pra sempre (visíveis com
+  // "reduzir movimento", que tira a animação que os apagava).
+  const rotatedRef = React.useRef(rotated)
+  rotatedRef.current = rotated
+  /** Timers de remoção: só caem ao desmontar, nunca numa vista nova. */
+  const timersRef = React.useRef(new Set<ReturnType<typeof setTimeout>>())
+  React.useEffect(() => {
+    const timers = timersRef.current
+    return () => {
+      for (const timer of timers) clearTimeout(timer)
+      timers.clear()
+    }
+  }, [])
 
   React.useEffect(() => {
     const prev = prevRef.current
@@ -609,7 +624,8 @@ function useGhosts(
     if (!prev || prev.id !== table.id || prev.handId !== table.handId) return
 
     const born: GhostSpec[] = []
-    const posOf = (index: number): [number, number] => rotated.find((r) => r.index === index)?.pos ?? [50, 50]
+    const posOf = (index: number): [number, number] =>
+      rotatedRef.current.find((r) => r.index === index)?.pos ?? [50, 50]
     const betPosOf = (index: number): [number, number] => {
       const p = posOf(index)
       return [p[0] + (50 - p[0]) * 0.42, p[1] + (50 - p[1]) * 0.42]
@@ -636,11 +652,12 @@ function useGhosts(
     if (born.length === 0) return
     setGhosts((g) => [...g, ...born])
     const timer = setTimeout(() => {
+      timersRef.current.delete(timer)
       const ids = new Set(born.map((b) => b.id))
       setGhosts((g) => g.filter((x) => !ids.has(x.id)))
     }, 1_300)
-    return () => clearTimeout(timer)
-  }, [table, rotated])
+    timersRef.current.add(timer)
+  }, [table])
 
   return ghosts
 }
@@ -939,6 +956,9 @@ function ActionBar({
   const clamp = React.useCallback(
     (v: number): number => {
       if (!range) return 0
+      // O teto é o all-in e vale EXATO: depois de um pote dividido a pilha
+      // pode não ser múltipla do small blind, e arredondar deixava fichas atrás.
+      if (v >= range.max) return range.max
       const r = Math.max(range.min, Math.min(range.max, roundTo(v, step)))
       // Arredondar pra baixo do mínimo não vale; acima do máximo também não.
       return Math.max(range.min, Math.min(range.max, r))
