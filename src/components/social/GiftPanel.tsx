@@ -125,6 +125,7 @@ export function GiftPanel({
                   >
                     <UserAvatar
                       src={resolveAssetUrl(m.avatar)}
+                      memberId={m.id}
                       name={m.displayName}
                       ringColor={m.profileColor ?? DEFAULT_NAME_COLOR}
                       className="h-7 w-7 border"

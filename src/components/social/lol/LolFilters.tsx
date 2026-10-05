@@ -140,6 +140,7 @@ export function LolFilters({
               >
                 <UserAvatar
                   src={resolveAssetUrl(player.avatar)}
+                  memberId={player.id}
                   name={player.displayName}
                   ringColor={player.profileColor ?? undefined}
                   className="h-3.5 w-3.5"

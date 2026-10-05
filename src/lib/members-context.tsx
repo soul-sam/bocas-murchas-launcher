@@ -167,3 +167,8 @@ export function useMembers(): MembersContextValue {
   if (!ctx) throw new Error('useMembers must be used within a MembersProvider')
   return ctx
 }
+
+/** Pra componente de `ui/` que pode ser desenhado fora da árvore logada. */
+export function useMembersOptional(): MembersContextValue | null {
+  return React.useContext(MembersContext)
+}

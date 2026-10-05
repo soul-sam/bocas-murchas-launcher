@@ -3,6 +3,7 @@ import * as AvatarPrimitive from '@radix-ui/react-avatar'
 import { cn } from '@/lib/utils'
 import { cosmeticKey, tintStyle } from '@/lib/api-gamification'
 import { useOverlaysOptional } from '@/lib/overlay-context'
+import { useMembersOptional } from '@/lib/members-context'
 import '@/styles/effects.css'
 
 export const Avatar = React.forwardRef<
@@ -120,6 +121,7 @@ export function UserAvatar({
   frame,
   style,
   userId,
+  memberId,
   fallbackClassName,
   frameColor
 }: {
@@ -131,7 +133,12 @@ export function UserAvatar({
   fallbackClassName?: string
   ringColor?: string | null
   speaking?: boolean
-  /** Id do cosmético de moldura (`frame:gold`) ou só a chave (`gold`). */
+  /**
+   * Id do cosmético de moldura (`frame:gold`) ou só a chave (`gold`). Sem
+   * esta prop, com `userId`, vale a moldura que a pessoa veste (lista de
+   * membros) — a foto de alguém mostra a moldura em TODO lugar, sem cada tela
+   * lembrar de passar. `null` explícito desliga.
+   */
   frame?: string | null
   /**
    * Cor em que a moldura é pintada: a cor comprada da pessoa (`profileColor`).
@@ -146,8 +153,17 @@ export function UserAvatar({
   style?: React.CSSProperties
   /** De quem é esta foto. Quando vem, clicar abre o perfil em modal. */
   userId?: string
+  /**
+   * De quem é esta foto, SEM virar botão: só pra moldura e a cor da pessoa
+   * aparecerem onde o avatar não abre perfil (a sua foto no rodapé, a busca,
+   * as fixadas...). `userId` já faz isso sozinho.
+   */
+  memberId?: string
 }) {
-  const frameStyle = frameClass(frame)
+  // Opcional pelo mesmo motivo do useOverlaysOptional, logo abaixo.
+  const member = useMembersOptional()?.byId[userId ?? memberId ?? '']
+  const wornFrame = frame !== undefined ? frame : member?.avatarFrame
+  const frameStyle = frameClass(wornFrame)
   /**
    * Opcional de propósito: este componente é de `ui/` e pode ser desenhado
    * fora da árvore autenticada (onde o OverlayProvider não existe). Ver
@@ -163,7 +179,7 @@ export function UserAvatar({
         abrirPerfil && 'cursor-pointer transition-opacity hover:opacity-80'
       )}
       // A cor fica no invólucro: herda pra borda e pra coroa, que é irmã.
-      style={frameStyle ? tintStyle(frameColor ?? ringColor) : undefined}
+      style={frameStyle ? tintStyle(frameColor ?? ringColor ?? member?.profileColor) : undefined}
       {...(abrirPerfil
         ? {
             role: 'button' as const,
@@ -186,7 +202,7 @@ export function UserAvatar({
         : {})}
     >
       {/* Coroa da moldura lendária, por cima da borda (z-index no CSS). */}
-      {frameNeedsRing(frame) && <span aria-hidden className="frame-fire-ring" />}
+      {frameNeedsRing(wornFrame) && <span aria-hidden className="frame-fire-ring" />}
 
       <Avatar
         className={cn(className, frameStyle, speaking && 'ring-2 ring-acid')}

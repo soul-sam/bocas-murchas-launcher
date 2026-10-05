@@ -151,6 +151,7 @@ export function ApprovalOwner({ approval }: { approval: PrintApproval }) {
     <div className="flex min-w-0 items-center gap-2">
       <UserAvatar
         src={resolveAssetUrl(owner.avatar)}
+        memberId={owner.id}
         name={owner.displayName}
         ringColor={owner.profileColor ?? DEFAULT_NAME_COLOR}
         className="h-8 w-8 border"

@@ -668,6 +668,7 @@ export function ChannelSidebar({
             >
               <UserAvatar
                 src={resolveAssetUrl(user?.avatar)}
+                memberId={user?.id}
                 name={user?.displayName ?? '??'}
                 status={user?.status ?? 'online'}
                 ringColor={user?.profileColor}

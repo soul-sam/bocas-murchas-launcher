@@ -268,6 +268,7 @@ export function ChatView() {
         {isDm ? (
           <UserAvatar
             src={resolveAssetUrl(peer?.avatar)}
+            memberId={peer?.id}
             name={peer?.displayName ?? activeChannel.name}
             status={peerStatus}
             ringColor={peer?.profileColor}
@@ -462,6 +463,7 @@ export function ChatView() {
             {isDm && (
               <UserAvatar
                 src={resolveAssetUrl(peer?.avatar)}
+                memberId={peer?.id}
                 name={peer?.displayName ?? activeChannel.name}
                 ringColor={peer?.profileColor}
                 className="mb-2 h-16 w-16"

@@ -240,6 +240,7 @@ function useSlides(
         <div className="text-center">
           <UserAvatar
             src={resolveAssetUrl(me.avatar)}
+            memberId={me.id}
             name={me.displayName}
             className="mx-auto h-20 w-20"
           />
@@ -300,12 +301,14 @@ function useSlides(
             <div className="my-5 flex items-center justify-center gap-3">
               <UserAvatar
                 src={resolveAssetUrl(me.avatar)}
+                memberId={me.id}
                 name={me.displayName}
                 className="h-14 w-14"
               />
               <span className="text-2xl text-muted-foreground">+</span>
               <UserAvatar
                 src={resolveAssetUrl(duo.avatar)}
+                memberId={duo.id}
                 name={duo.displayName}
                 className="h-14 w-14"
               />
@@ -574,6 +577,7 @@ function useSlides(
                       </span>
                       <UserAvatar
                         src={resolveAssetUrl(known.avatar)}
+                        memberId={known.id}
                         name={known.displayName}
                         className="h-6 w-6 shrink-0"
                       />

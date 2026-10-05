@@ -566,6 +566,7 @@ function MembersOfCargo({
             <li key={member.id} className="flex items-center gap-2 px-3 py-1.5">
               <UserAvatar
                 src={resolveAssetUrl(member.avatar)}
+                memberId={member.id}
                 name={member.displayName}
                 className="h-6 w-6"
               />

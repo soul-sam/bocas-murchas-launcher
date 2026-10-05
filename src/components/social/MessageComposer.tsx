@@ -838,6 +838,7 @@ export function MessageComposer({
                 <>
                   <UserAvatar
                     src={resolveAssetUrl(item.member.avatar)}
+                    memberId={item.member.id}
                     name={item.member.displayName}
                     status={item.member.isOnline ? (item.member.status ?? 'online') : 'offline'}
                     className="h-5 w-5"

@@ -388,6 +388,7 @@ function Person({ person }: { person: MarketPerson }) {
     <span className="flex min-w-0 items-center gap-2">
       <UserAvatar
         src={resolveAssetUrl(person.avatar)}
+        memberId={person.id}
         name={person.displayName}
         ringColor={person.profileColor ?? DEFAULT_NAME_COLOR}
         className="h-7 w-7 border"

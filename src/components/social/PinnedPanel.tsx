@@ -86,6 +86,7 @@ export function PinnedPanel() {
                   <span className="mb-1 flex items-center gap-1.5">
                     <UserAvatar
                       src={resolveAssetUrl(message.author.avatar)}
+                      memberId={message.author.id}
                       name={message.author.displayName}
                       className="h-4 w-4"
                     />

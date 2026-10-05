@@ -202,6 +202,7 @@ export function AppRail() {
               >
                 <UserAvatar
                   src={resolveAssetUrl(peer?.avatar)}
+                  memberId={peer?.id}
                   name={peer?.displayName ?? channel.name}
                   status={statusOf(peer ? memberById[peer.id] : undefined)}
                   className={cn('h-9 w-9', active && 'ring-1 ring-acid')}

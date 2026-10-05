@@ -469,6 +469,7 @@ function MembersTab() {
                   <div className="flex items-center gap-3">
                     <UserAvatar
                       src={resolveAssetUrl(member.avatar)}
+                      memberId={member.id}
                       name={member.displayName}
                       status={member.status}
                       className="h-9 w-9"
