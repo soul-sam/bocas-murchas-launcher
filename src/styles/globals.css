@@ -172,6 +172,15 @@
      PNG (barra de titulo, home, canais, medalha da sobreposicao...) e o
      ThemeSwatch da Lojinha seguem o tema sem saber que ele existe. Tema claro
      novo entra nesta lista. */
+  /* Cor de nome comprada foi pensada pro escuro: no claro, sombra escura em
+     volta da letra (ver `nameStyle`). A cor em si não muda. */
+  :root {
+    --name-shadow: none;
+  }
+  :is([data-theme='papel'], [data-theme='acido-claro'], [data-theme='cafe'], [data-theme='lavanda']) {
+    --name-shadow: 0 0 1px rgb(0 0 0), 0 0 2px rgb(0 0 0 / 0.8), 0 1px 3px rgb(0 0 0 / 0.6);
+  }
+
   :is([data-theme='papel'], [data-theme='acido-claro'], [data-theme='cafe'], [data-theme='lavanda'])
     img[src$='bocas-murchas-transp.png'] {
     content: url('../assets/bocas-murchas-claro.svg');

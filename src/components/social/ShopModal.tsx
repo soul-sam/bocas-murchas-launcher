@@ -15,7 +15,9 @@ import {
   type CosmeticType,
   type Rarity,
   type ShopItem,
-  DEFAULT_NAME_COLOR
+  DEFAULT_NAME_COLOR,
+  EMOJI_SLOT_2,
+  nameStyle
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
@@ -146,14 +148,21 @@ export function ShopModal() {
   const previewVolume = settings.soundEnabled && settings.voiceCueVolume > 0 ? settings.voiceCueVolume : 0.4
   const coins = profile?.coins ?? shop?.coins ?? 0
 
+  // O segundo slot de emoji mora na aba Emojis, na frente da prateleira.
   const items = (shop?.items ?? [])
-    .filter((item) => item.type === tab)
+    .filter((item) => item.type === tab || (tab === 'emoji' && item.type === 'emojiSlot'))
     // Tema: o servidor não sabe qual está vestido (é configuração desta
     // máquina), então a marca de equipado sai daqui.
     .map((item) =>
       item.type === 'theme' ? { ...item, equipped: cosmeticTheme(item) === settings.theme } : item
     )
-    .sort((a, b) => (RARITY_ORDER[a.rarity] ?? 0) - (RARITY_ORDER[b.rarity] ?? 0) || a.price - b.price)
+    .sort(
+      (a, b) =>
+        Number(b.type === 'emojiSlot') - Number(a.type === 'emojiSlot') ||
+        (RARITY_ORDER[a.rarity] ?? 0) - (RARITY_ORDER[b.rarity] ?? 0) ||
+        a.price - b.price
+    )
+  const hasSecondEmoji = !!shop?.items.some((item) => item.id === EMOJI_SLOT_2 && item.owned)
 
   // Prévia: item sob o mouse ganha do equipado, mas só no slot dele.
   const previewTitle =
@@ -166,6 +175,7 @@ export function ShopModal() {
   const previewFrame = hovered?.type === 'avatarFrame' ? hovered.id : me.avatarFrame
   const previewEmoji =
     hovered?.type === 'emoji' ? cosmeticEmoji(hovered) : cosmeticEmoji(catalog[me.emoji ?? ''])
+  const previewEmoji2 = cosmeticEmoji(catalog[me.emoji2 ?? ''])
 
   const handleBuy = async (item: ShopItem): Promise<void> => {
     setBusy(item.id)
@@ -188,7 +198,7 @@ export function ShopModal() {
     }
   }
 
-  const handleEquip = async (item: ShopItem, unequip: boolean): Promise<void> => {
+  const handleEquip = async (item: ShopItem, unequip: boolean, slot?: 1 | 2): Promise<void> => {
     setBusy(item.id)
     setError(null)
     try {
@@ -199,7 +209,7 @@ export function ShopModal() {
         if (!theme) throw new Error('Esse tema é de uma versão mais nova do launcher. Atualiza ele.')
         await updateSettings({ theme: unequip ? DEFAULT_SETTINGS.theme : theme })
       } else {
-        await equip(item.type, unequip ? null : item.id)
+        await equip(item.type, unequip ? null : item.id, slot)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não deu pra equipar agora.')
@@ -259,11 +269,11 @@ export function ShopModal() {
             className="h-11 w-11 border-2"
           />
           <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-1.5 font-display text-base leading-tight" style={{ color: previewColor }}>
+            <p className="flex items-center gap-1.5 font-display text-base leading-tight" style={nameStyle(previewColor)}>
               <NameEffect effect={previewEffect} color={previewColor} className="truncate">
                 {me.displayName}
               </NameEffect>
-              <NameEmoji glyph={previewEmoji} size="md" />
+              <NameEmoji glyph={previewEmoji} glyph2={previewEmoji2} size="md" />
               {/* Mesma classe da prateleira: a prévia tem que ser IGUAL ao
                   item que a pessoa está olhando, senão parece outro título. */}
               {previewTitle && (
@@ -376,6 +386,16 @@ export function ShopModal() {
                   }}
                   onEquip={() => void handleEquip(item, false)}
                   onUnequip={() => void handleEquip(item, true)}
+                  emojiSlots={
+                    item.type === 'emoji' && hasSecondEmoji
+                      ? {
+                          on1: me.emoji === item.id,
+                          on2: me.emoji2 === item.id,
+                          onToggle: (slot) =>
+                            void handleEquip(item, (slot === 2 ? me.emoji2 : me.emoji) === item.id, slot)
+                        }
+                      : undefined
+                  }
                   onPreview={
                     item.type === 'joinSound'
                       ? (phase) => playJoinSound(cosmeticSound(item), phase, previewVolume)
@@ -425,7 +445,8 @@ function ItemTile({
   onAskGift,
   onEquip,
   onUnequip,
-  onPreview
+  onPreview,
+  emojiSlots
 }: {
   item: ShopItem
   me: { name: string; avatar?: string; color: string }
@@ -442,6 +463,8 @@ function ItemTile({
   onUnequip: () => void
   /** Só nos sons: toca o par entrar/sair pra ouvir antes de comprar. */
   onPreview?: (phase: 'join' | 'leave') => void
+  /** Emoji de quem tem o segundo slot: um botão por slot em vez de "Equipar". */
+  emojiSlots?: { on1: boolean; on2: boolean; onToggle: (slot: 1 | 2) => void }
 }) {
   const tier = (item.rarity as Rarity) ?? 'common'
   const rarity = RARITY_COLOR[tier] ?? RARITY_COLOR.common
@@ -486,7 +509,7 @@ function ItemTile({
               className="h-5 w-5 shrink-0 rounded-full border border-line-strong"
               style={{ background: colorOf(item) ?? undefined }}
             />
-            <span className="truncate font-display text-base" style={{ color: colorOf(item) ?? undefined }}>
+            <span className="truncate font-display text-base" style={nameStyle(colorOf(item))}>
               {me.name}
             </span>
           </span>
@@ -500,7 +523,7 @@ function ItemTile({
           />
         )}
         {item.type === 'nameEffect' && (
-          <span className="truncate font-display text-base" style={{ color: me.color }}>
+          <span className="truncate font-display text-base" style={nameStyle(me.color)}>
             <NameEffect effect={item.id} color={me.color}>{me.name}</NameEffect>
           </span>
         )}
@@ -508,9 +531,15 @@ function ItemTile({
           <UserAvatar src={me.avatar} name={me.name} frame={item.id} frameColor={me.color} className="h-9 w-9 border-2" />
         )}
         {item.type === 'emoji' && (
-          <span className="flex items-center gap-1.5 truncate font-display text-sm" style={{ color: me.color }}>
+          <span className="flex items-center gap-1.5 truncate font-display text-sm" style={nameStyle(me.color)}>
             <span className="truncate">{me.name}</span>
             <NameEmoji glyph={cosmeticEmoji(item)} className="text-xl" />
+          </span>
+        )}
+        {item.type === 'emojiSlot' && (
+          <span className="flex items-center gap-1.5 truncate font-display text-sm" style={nameStyle(me.color)}>
+            <span className="truncate">{me.name}</span>
+            <NameEmoji glyph="😀" glyph2="🎉" className="text-xl" />
           </span>
         )}
         {item.type === 'joinSound' && onPreview && (
@@ -570,7 +599,38 @@ function ItemTile({
       </div>
 
       <div className="mt-auto flex gap-1">
-        {item.owned ? (
+        {item.owned && item.type === 'emojiSlot' ? (
+          // O slot não se veste: comprou, liberou. Os emojis ganham "1"/"2".
+          <span className="flex flex-1 items-center justify-center gap-1.5 rounded-brutal border border-acid/60 bg-acid/10 px-2 py-1.5 text-xs font-semibold text-acid">
+            <Check className="h-3 w-3" />
+            Liberado
+          </span>
+        ) : item.owned && emojiSlots ? (
+          <div className="flex flex-1 gap-1">
+            {([1, 2] as const).map((slot) => {
+              const on = slot === 1 ? emojiSlots.on1 : emojiSlots.on2
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => emojiSlots.onToggle(slot)}
+                  aria-pressed={on}
+                  title={on ? `Tirar do slot ${slot}` : `Vestir no slot ${slot}`}
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-1 rounded-brutal border px-2 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50',
+                    on
+                      ? 'border-acid bg-acid/15 text-acid hover:bg-destructive/15 hover:text-destructive hover:border-destructive/60'
+                      : 'border-acid-dark text-acid hover:bg-acid/15'
+                  )}
+                >
+                  {on && <Check className="h-3 w-3" />}
+                  Slot {slot}
+                </button>
+              )
+            })}
+          </div>
+        ) : item.owned ? (
           <button
             type="button"
             disabled={busy}

@@ -3,7 +3,7 @@ import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
-import { formatCompact } from '@/lib/api-gamification'
+import { formatCompact, nameStyle } from '@/lib/api-gamification'
 import { formatDayKey, formatMinutes, type DayRecap } from '@/lib/api-retro'
 import { useMembers } from '@/lib/members-context'
 import { NameEmoji } from '@/components/social/NameEmoji'
@@ -105,10 +105,10 @@ export function DayRecapCard({ message, metadata }: CardProps<DayRecap>) {
                   </span>
                   <span
                     className="flex items-center gap-1 text-sm leading-tight"
-                    style={color ? { color } : undefined}
+                    style={nameStyle(color)}
                   >
                     <span className="truncate">{name}</span>
-                    <NameEmoji id={who?.emoji} />
+                    <NameEmoji id={who?.emoji} id2={who?.emoji2} />
                   </span>
                 </span>
                 <span className="shrink-0 text-[11.5px] text-muted-foreground">{h.label}</span>

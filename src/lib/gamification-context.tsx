@@ -83,7 +83,8 @@ interface GamificationContextValue {
   buy: (cosmeticId: string) => Promise<ShopItem>
   /** Presente: debita meu saldo, o item vai pra `toUserId`. */
   gift: (cosmeticId: string, toUserId: string, message?: string) => Promise<GiftResult>
-  equip: (type: CosmeticType, cosmeticId: string | null) => Promise<void>
+  /** `slot` 2 só vale pra emoji (precisa do item `emojiSlot:2`). */
+  equip: (type: CosmeticType, cosmeticId: string | null, slot?: 1 | 2) => Promise<void>
   /** Texto de um cosmético (título) pelo id; cai no id "limpo" se o catálogo não chegou. */
   cosmeticName: (id: string | null | undefined) => string | null
   /** Glifo de um cosmético de emoji pelo id (`emoji:oculos` → 😎); null sem catálogo. */
@@ -335,10 +336,35 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   )
 
   const equip = React.useCallback(
-    async (type: CosmeticType, cosmeticId: string | null) => {
+    async (type: CosmeticType, cosmeticId: string | null, slot?: 1 | 2) => {
       if (!token) throw new ApiError(401, 'Sem sessão')
-      const res = await api.equip(token, type, cosmeticId)
+      const res = await api.equip(token, type, cosmeticId, slot)
       if (res.user) applyUser(res.user)
+
+      // Emoji tem dois slots e vestir num pode tirar do outro: a verdade é o
+      // user que a API devolveu.
+      if (type === 'emoji') {
+        const worn = [res.user?.emoji, res.user?.emoji2].filter(Boolean)
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                equipped: { ...prev.equipped, emoji: res.user?.emoji ?? null, emoji2: res.user?.emoji2 ?? null }
+              }
+            : prev
+        )
+        setShop((prev) =>
+          prev
+            ? {
+                ...prev,
+                items: prev.items.map((item) =>
+                  item.type === 'emoji' ? { ...item, equipped: worn.includes(item.id) } : item
+                )
+              }
+            : prev
+        )
+        return
+      }
 
       setProfile((prev) =>
         prev ? { ...prev, equipped: { ...prev.equipped, [type]: cosmeticId } } : prev

@@ -4,7 +4,7 @@ import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
-import { formatCompact, type GameCardMeta } from '@/lib/api-gamification'
+import { formatCompact, type GameCardMeta, nameStyle } from '@/lib/api-gamification'
 import { useMembers } from '@/lib/members-context'
 import { queueLabel } from '@/lib/activity-context'
 import { cn } from '@/lib/utils'
@@ -128,11 +128,11 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
                       <li key={`${wager.userId}-${index}`} className="flex items-center gap-1.5 normal-case">
                         <span
                           className="truncate"
-                          style={who?.profileColor ? { color: who.profileColor } : undefined}
+                          style={nameStyle(who?.profileColor)}
                         >
                           {who?.displayName ?? 'alguém'}
                         </span>
-                        <NameEmoji id={who?.emoji} />
+                        <NameEmoji id={who?.emoji} id2={who?.emoji2} />
                         <span className="text-muted-foreground">
                           {wager.amount} em {wager.prediction === 'win' ? 'vitória' : 'derrota'}
                         </span>
@@ -164,10 +164,10 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
 
         <div className="min-w-0 flex-1">
           <p className="flex items-baseline gap-1.5">
-            <span className="truncate font-display text-sm" style={playerColor ? { color: playerColor } : undefined}>
+            <span className="truncate font-display text-sm" style={nameStyle(playerColor)}>
               {playerName}
             </span>
-            <NameEmoji id={player?.emoji} />
+            <NameEmoji id={player?.emoji} id2={player?.emoji2} />
             {metadata.champion && (
               <span className="truncate text-[11.5px] text-muted-foreground">
                 de {metadata.champion}

@@ -3,6 +3,7 @@ import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { DASH, fmtNumber, fmtPercent, type LolPlayerRef } from '@/lib/api-lol'
+import { nameStyle } from '@/lib/api-gamification'
 
 /**
  * AS PEÇAS DO PAINEL DO LOL.
@@ -361,7 +362,7 @@ export function PlayerChip({
       />
       <span
         className="truncate text-[11.5px]"
-        style={player?.profileColor ? { color: player.profileColor } : undefined}
+        style={nameStyle(player?.profileColor)}
       >
         {name}
       </span>

@@ -3,7 +3,7 @@ import { ArrowLeft, Loader2, Search } from 'lucide-react'
 import { GiftIcon, MurchosIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
-import { DEFAULT_NAME_COLOR, type ShopItem } from '@/lib/api-gamification'
+import { DEFAULT_NAME_COLOR, type ShopItem, nameStyle } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useGamification } from '@/lib/gamification-context'
 import { useMembers, type Member } from '@/lib/members-context'
@@ -130,7 +130,7 @@ export function GiftPanel({
                       ringColor={m.profileColor ?? DEFAULT_NAME_COLOR}
                       className="h-7 w-7 border"
                     />
-                    <span className="truncate text-sm" style={{ color: m.profileColor ?? undefined }}>
+                    <span className="truncate text-sm" style={nameStyle(m.profileColor)}>
                       {m.displayName}
                     </span>
                     <span

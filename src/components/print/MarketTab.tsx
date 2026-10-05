@@ -4,7 +4,7 @@ import { GiftIcon, WalletIcon } from '@/lib/bocas-icons'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
-import { DEFAULT_NAME_COLOR } from '@/lib/api-gamification'
+import { DEFAULT_NAME_COLOR, nameStyle } from '@/lib/api-gamification'
 import { formatSeconds, printApi, type HourListing, type MarketPerson, type PrintQuota } from '@/lib/api-print'
 import { useAuth } from '@/lib/auth-context'
 import { useGamification } from '@/lib/gamification-context'
@@ -393,7 +393,7 @@ function Person({ person }: { person: MarketPerson }) {
         ringColor={person.profileColor ?? DEFAULT_NAME_COLOR}
         className="h-7 w-7 border"
       />
-      <span className="truncate text-sm" style={{ color: person.profileColor ?? undefined }}>
+      <span className="truncate text-sm" style={nameStyle(person.profileColor)}>
         {person.displayName}
       </span>
     </span>

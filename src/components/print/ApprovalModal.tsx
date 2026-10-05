@@ -3,7 +3,7 @@ import { CalendarClock, Check, Clock, Loader2, ShieldQuestion, X } from 'lucide-
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
-import { DEFAULT_NAME_COLOR } from '@/lib/api-gamification'
+import { DEFAULT_NAME_COLOR, nameStyle } from '@/lib/api-gamification'
 import { formatSeconds, printApi, type ApprovalAction, type PrintApproval } from '@/lib/api-print'
 import { useAuth } from '@/lib/auth-context'
 import { usePrint } from '@/lib/print-context'
@@ -157,7 +157,7 @@ export function ApprovalOwner({ approval }: { approval: PrintApproval }) {
         className="h-8 w-8 border"
       />
       <div className="min-w-0">
-        <p className="truncate text-sm" style={{ color: owner.profileColor ?? undefined }}>
+        <p className="truncate text-sm" style={nameStyle(owner.profileColor)}>
           {owner.displayName}
         </p>
         <p className="truncate font-mono text-[11px] text-muted-foreground">

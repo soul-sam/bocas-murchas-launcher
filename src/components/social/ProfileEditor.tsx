@@ -42,15 +42,18 @@ import {
   type ProfilePatch
 } from '@/lib/api'
 import { useMembers } from '@/lib/members-context'
+import { hasEmoji } from '@/lib/display-name'
 import {
   RARITY_COLOR,
   RARITY_LABEL,
   cosmeticEmoji,
+  EMOJI_SLOT_2,
   cosmeticSound,
   cosmeticTheme,
   type CosmeticType,
   type Rarity,
-  type ShopItem
+  type ShopItem,
+  nameStyle
 } from '@/lib/api-gamification'
 import { ThemeSwatch } from '@/components/ThemeSwatch'
 import { DEFAULT_SETTINGS, type ThemeId } from '../../../electron/preload/types'
@@ -291,6 +294,10 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
       setError('O nome de exibição não pode ficar vazio')
       return
     }
+    if (hasEmoji(displayName)) {
+      setError('Emoji no nome não pode: emoji é item da Lojinha')
+      return
+    }
 
     // Só o que mudou desde que o editor abriu (ver `initialRef`).
     const full = formToPatch({
@@ -448,6 +455,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                   color={color}
                   nameEffect={user?.nameEffect}
                   emoji={user?.emoji}
+                  emoji2={user?.emoji2}
                   titleId={user?.title}
                   titleName={cosmeticName(user?.title)}
                   role={user?.role}
@@ -892,12 +900,14 @@ function MediaControls({
 // ESTILO (o que a pessoa tem da Lojinha)
 // ============================================
 
-const SLOTS: { type: CosmeticType; label: string; hint: string }[] = [
+// `slot: 2` = segundo emoji; só aparece pra quem comprou `emojiSlot:2`.
+const SLOTS: { type: CosmeticType; label: string; hint: string; slot?: 2 }[] = [
   { type: 'nameColor', label: 'Cor do nome', hint: 'pinta seu nome e a capa sem imagem' },
   { type: 'title', label: 'Título', hint: 'a etiqueta do lado do seu nome' },
   { type: 'nameEffect', label: 'Efeito do nome', hint: 'brilho, gelo, fogo…' },
   { type: 'avatarFrame', label: 'Moldura', hint: 'em volta da sua foto, também na call' },
   { type: 'emoji', label: 'Emoji', hint: 'do lado do nome, em todo canto' },
+  { type: 'emoji', slot: 2, label: 'Segundo emoji', hint: 'vem logo depois do primeiro' },
   { type: 'joinSound', label: 'Som de entrada', hint: 'todo mundo ouve quando você entra na call' },
   // Tema por último: é o único que só VOCÊ vê — os outros são pros outros.
   { type: 'theme', label: 'Tema do launcher', hint: 'as cores do app inteiro, só nesta máquina' }
@@ -914,8 +924,15 @@ function colorOf(item: Pick<ShopItem, 'type' | 'data'>): string | null {
  * O id equipado num slot, lido do usuário (que é a verdade; a lojinha só
  * espelha). Tema é a exceção: a verdade é `settings.theme`, desta máquina.
  */
-function equippedOf(user: AuthUser | null, type: CosmeticType, items: ShopItem[], theme: ThemeId): string | null {
+function equippedOf(
+  user: AuthUser | null,
+  type: CosmeticType,
+  items: ShopItem[],
+  theme: ThemeId,
+  slot?: 2
+): string | null {
   if (!user) return null
+  if (type === 'emoji' && slot === 2) return user.emoji2 ?? null
   switch (type) {
     case 'title':
       return user.title ?? null
@@ -933,6 +950,8 @@ function equippedOf(user: AuthUser | null, type: CosmeticType, items: ShopItem[]
     }
     case 'theme':
       return items.find((i) => cosmeticTheme(i) === theme)?.id ?? null
+    case 'emojiSlot':
+      return null
   }
 }
 
@@ -984,12 +1003,13 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
   }
 
   // Tema é configuração local, não slot no servidor; "tirar" volta pro padrão.
-  const setSlot = (type: CosmeticType, item: ShopItem | null): Promise<void> =>
-    run(item?.id ?? `${type}:none`, () =>
+  const setSlot = (type: CosmeticType, item: ShopItem | null, slot?: 2): Promise<void> =>
+    run(`${item?.id ?? `${type}:none`}${slot ? ':2' : ''}`, () =>
       type === 'theme'
         ? updateSettings({ theme: (item && cosmeticTheme(item)) ?? DEFAULT_SETTINGS.theme })
-        : equip(type, item?.id ?? null)
+        : equip(type, item?.id ?? null, slot)
     )
+  const hasSecondEmoji = owned.some((i) => i.id === EMOJI_SLOT_2)
 
   if (loading && !shop) {
     return (
@@ -1035,9 +1055,11 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
       {SLOTS.map((slot) => {
         const mine = owned.filter((i) => i.type === slot.type)
         if (mine.length === 0) return null
-        const equippedId = equippedOf(me, slot.type, mine, settings.theme)
+        if (slot.slot === 2 && !hasSecondEmoji) return null
+        const equippedId = equippedOf(me, slot.type, mine, settings.theme, slot.slot)
+        const busyKey = (id: string): string => `${id}${slot.slot ? ':2' : ''}`
         return (
-          <section key={slot.type} className="flex flex-col gap-2">
+          <section key={`${slot.type}${slot.slot ?? ''}`} className="flex flex-col gap-2">
             <div className="flex items-end justify-between gap-2">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -1049,7 +1071,7 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
                 <button
                   type="button"
                   disabled={busy !== null}
-                  onClick={() => void setSlot(slot.type, null)}
+                  onClick={() => void setSlot(slot.type, null, slot.slot)}
                   className="text-xs text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
                 >
                   tirar
@@ -1063,14 +1085,14 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
                   key={item.id}
                   item={item}
                   on={item.id === equippedId}
-                  busy={busy === item.id}
+                  busy={busy === busyKey(item.id)}
                   disabled={busy !== null}
                   me={{
                     name: me?.displayName ?? '??',
                     avatar: resolveAssetUrl(me?.avatar),
                     color: me?.profileColor ?? null
                   }}
-                  onToggle={() => void setSlot(slot.type, item.id === equippedId ? null : item)}
+                  onToggle={() => void setSlot(slot.type, item.id === equippedId ? null : item, slot.slot)}
                   onPreviewSound={
                     item.type === 'joinSound'
                       ? (phase) => playJoinSound(cosmeticSound(item), phase, previewVolume)
@@ -1147,7 +1169,7 @@ function StyleTile({
                 className="h-5 w-5 shrink-0 rounded-full border border-line-strong"
                 style={{ background: hex }}
               />
-              <span className="truncate text-sm font-medium" style={{ color: hex }}>
+              <span className="truncate text-sm font-medium" style={nameStyle(hex)}>
                 {item.name}
               </span>
             </>
@@ -1158,7 +1180,7 @@ function StyleTile({
           {item.type === 'nameEffect' && (
             <span
               className="truncate font-display text-base leading-none"
-              style={me.color ? { color: me.color } : undefined}
+              style={nameStyle(me.color)}
             >
               <NameEffect effect={item.id} color={me.color}>{me.name}</NameEffect>
             </span>

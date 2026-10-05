@@ -5,7 +5,8 @@ import {
   gamification as api,
   formatCompact,
   type RecapCardMeta,
-  type WeeklyRecap
+  type WeeklyRecap,
+  nameStyle
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useLayout } from '@/lib/layout-context'
@@ -161,7 +162,7 @@ function RecapBody({ recap }: { recap: WeeklyRecap }) {
                     <span className="block truncate text-[11px] text-muted-foreground">{award.title}</span>
                     <span
                       className="block truncate text-sm leading-tight"
-                      style={person?.profileColor ? { color: person.profileColor } : undefined}
+                      style={nameStyle(person?.profileColor)}
                     >
                       {person?.displayName ?? award.displayName}
                     </span>
@@ -217,7 +218,7 @@ function RecapBody({ recap }: { recap: WeeklyRecap }) {
                     <span className="min-w-0 flex-1 truncate text-xs text-foreground">{b.name}</span>
                     <span
                       className="shrink-0 truncate text-[11px] text-muted-foreground"
-                      style={person?.profileColor ? { color: person.profileColor } : undefined}
+                      style={nameStyle(person?.profileColor)}
                     >
                       {person?.displayName ?? '?'}
                     </span>

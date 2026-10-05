@@ -8,7 +8,8 @@ import {
   gamification as api,
   formatCompact,
   type LeaderboardPeriod,
-  type WagerRankingEntry
+  type WagerRankingEntry,
+  nameStyle
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
@@ -235,11 +236,11 @@ function RankRow({ row, rank, mode }: { row: Row; rank: number; mode: Mode }) {
             className="h-6 w-6"
           />
           <div className="min-w-0 flex-1">
-            <span className="flex min-w-0 items-center gap-1 text-sm leading-tight" style={color ? { color } : undefined}>
+            <span className="flex min-w-0 items-center gap-1 text-sm leading-tight" style={nameStyle(color)}>
               <NameEffect effect={member?.nameEffect} color={color} className="truncate">
                 {name}
               </NameEffect>
-              <NameEmoji id={member?.emoji} />
+              <NameEmoji id={member?.emoji} id2={member?.emoji2} />
             </span>
             {/* Vitórias × derrotas numa barra só: devolução fica de fora. */}
             {row.decided > 0 && (

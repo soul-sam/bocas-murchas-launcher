@@ -20,6 +20,7 @@ import { BetPopover } from './BetPopover'
 import { AwayBadge, StatusText } from './AwayBadge'
 import { toqueLongo } from '@/lib/toque-longo'
 import { BotBadge } from './BotBadge'
+import { nameStyle } from '@/lib/api-gamification'
 
 /**
  * Lista de membros.
@@ -210,12 +211,12 @@ function Group({
                   <span className="min-w-0 flex-1">
                     <span
                       className="flex items-center gap-1 truncate text-sm"
-                      style={member.profileColor ? { color: member.profileColor } : undefined}
+                      style={nameStyle(member.profileColor)}
                     >
                       <NameEffect animated={false} effect={member.nameEffect} color={member.profileColor} className="truncate">
                         {member.displayName}
                       </NameEffect>
-                      <NameEmoji id={member.emoji} />
+                      <NameEmoji id={member.emoji} id2={member.emoji2} />
                       {member.role === 'admin' && (
                         <Shield className="h-3 w-3 shrink-0 text-burn" aria-label="admin" />
                       )}

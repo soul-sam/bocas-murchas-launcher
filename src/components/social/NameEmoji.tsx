@@ -11,21 +11,27 @@ import { useGamification } from '@/lib/gamification-context'
  *
  * `glyph` serve pra prévia na própria loja, quando o item ainda não está
  * equipado e não faz sentido passar pelo catálogo.
+ *
+ * `id2`/`glyph2` é o segundo slot (item `emojiSlot:2`): "Nome 😀 🎉".
  */
 export function NameEmoji({
   id,
   glyph,
+  id2,
+  glyph2,
   className,
   size = 'sm'
 }: {
   id?: string | null
   glyph?: string | null
+  id2?: string | null
+  glyph2?: string | null
   className?: string
   /** sm = linha de chat/lista; md = cabeçalhos (perfil, voz). */
   size?: 'sm' | 'md'
 }) {
   const { cosmeticEmoji } = useGamification()
-  const emoji = glyph ?? cosmeticEmoji(id)
+  const emoji = [glyph ?? cosmeticEmoji(id), glyph2 ?? cosmeticEmoji(id2)].filter(Boolean).join(' ')
   if (!emoji) return null
 
   return (

@@ -3,7 +3,7 @@ import type { CardProps } from './index'
 import { CardFrame } from './index'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
-import { formatCompact, type RecapCardMeta } from '@/lib/api-gamification'
+import { formatCompact, type RecapCardMeta, nameStyle } from '@/lib/api-gamification'
 import { useMembers } from '@/lib/members-context'
 import { NameEmoji } from '@/components/social/NameEmoji'
 import { AwardIcon, BadgeIcon } from '@/lib/cosmetic-icons'
@@ -73,10 +73,10 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                     <BadgeIcon badgeId={grant.badgeId} className="h-3 w-3 shrink-0 text-burn" />
                     <span className="text-foreground">{grant.name}</span>
                     <span className="text-muted-foreground">→</span>
-                    <span style={who?.profileColor ? { color: who.profileColor } : undefined}>
+                    <span style={nameStyle(who?.profileColor)}>
                       {who?.displayName ?? 'alguém'}
                     </span>
-                    <NameEmoji id={who?.emoji} />
+                    <NameEmoji id={who?.emoji} id2={who?.emoji2} />
                   </li>
                 )
               })}
@@ -113,9 +113,9 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                       <span className="block truncate text-[11px] text-muted-foreground">
                         {award.title}
                       </span>
-                      <span className="flex items-center gap-1 font-display text-sm leading-tight" style={color ? { color } : undefined}>
+                      <span className="flex items-center gap-1 font-display text-sm leading-tight" style={nameStyle(color)}>
                         <span className="truncate">{name}</span>
-                        <NameEmoji id={who?.emoji} />
+                        <NameEmoji id={who?.emoji} id2={who?.emoji2} />
                       </span>
                     </span>
                     {/* Só o `label`: ele JÁ traz o número formatado pelo

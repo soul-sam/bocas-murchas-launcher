@@ -330,3 +330,11 @@
     animation: none;
   }
 }
+
+/* A sombra de contraste do nome (`--name-shadow`, temas claros) é herdada.
+   Efeito sem text-shadow próprio corta a herança aqui: nos de degradê o texto
+   é transparente e a sombra apareceria como borrão por baixo. Especificidade
+   zero, então quem tem text-shadow próprio continua mandando. */
+:where([class*='fx-']) {
+  text-shadow: none;
+}

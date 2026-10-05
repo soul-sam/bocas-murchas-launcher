@@ -42,6 +42,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.51.0',
+    headline: 'Dois emojis no nome',
+    items: [
+      'Novo na Lojinha: "Segundo Emoji" (5.000 murchos), na aba Emojis. Com ele seu nome fica "Nome 😀 🎉".',
+      'Quem tem o segundo slot escolhe "Slot 1" ou "Slot 2" em cada emoji, na Lojinha ou no editor de perfil.',
+      'Emojis novos por 500: 🥭 🫴 🫳 🎉 🐶 🐴.',
+      'Cores novas: Verde Murcho (épica, o verde do fone do ícone) e Marrom (comum).',
+      'O Vermelho Sangue virou Vermelho Murcho, o vermelho da boca do ícone. O Verde Ácido ficou mais claro e o Azul Elétrico mais escuro. Quem já usava continua usando, na cor nova.',
+      'A Turquesa agora é comum (500). Quem pagou 5.000 recebeu a diferença de volta.',
+      'Nos temas claros, nome colorido ganhou uma sombra escura em volta pra dar pra ler. A cor continua a mesma.'
+    ],
+    note: 'Emoji no nome de exibição não pode mais: emoji agora é só da Lojinha. Quem tinha emoji no nome ficou com o nome sem ele.'
+  },
+  {
     version: '1.50.0',
     headline: 'Conquistas de streak novas',
     items: [

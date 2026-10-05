@@ -12,7 +12,8 @@ import {
   RARITY_STYLE,
   type AchievementBadge,
   type AchievementsBoard,
-  type Rarity
+  type Rarity,
+  nameStyle
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
@@ -700,7 +701,7 @@ function Collectors({ board, meId }: { board: AchievementsBoard; meId: string })
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="truncate text-[13px] font-semibold" style={{ color }}>
+                    <span className="truncate text-[13px] font-semibold" style={nameStyle(color)}>
                       {name}
                     </span>
                     <span className="ml-auto shrink-0 font-mono text-[12px] text-foreground">{row.points} pts</span>

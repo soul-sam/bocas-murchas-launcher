@@ -10,7 +10,8 @@ import {
   WAGER_WINDOW_MS,
   type WagerBet,
   type WagerCardMeta,
-  type WagerPool
+  type WagerPool,
+  nameStyle
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
@@ -141,10 +142,10 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
               const bonus = paid?.bonus ?? 0
               return (
                 <li key={`${bet.userId}-${index}`} className="flex items-center gap-1">
-                  <span style={who?.profileColor ? { color: who.profileColor } : undefined}>
+                  <span style={nameStyle(who?.profileColor)}>
                     {who?.displayName ?? 'alguém'}
                   </span>
-                  <NameEmoji id={who?.emoji} />
+                  <NameEmoji id={who?.emoji} id2={who?.emoji2} />
                   <span
                     className={bet.prediction === 'win' ? 'text-acid' : 'text-destructive'}
                     title={bet.self ? 'apostou na própria vitória' : undefined}
@@ -181,9 +182,9 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
           className="h-8 w-8"
         />
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1 font-display text-sm leading-tight" style={color ? { color } : undefined}>
+          <p className="flex items-center gap-1 font-display text-sm leading-tight" style={nameStyle(color)}>
             <span className="truncate">{name}</span>
-            <NameEmoji id={player?.emoji} />
+            <NameEmoji id={player?.emoji} id2={player?.emoji2} />
           </p>
           <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
             <GameIcon className="h-2.5 w-2.5 shrink-0" />

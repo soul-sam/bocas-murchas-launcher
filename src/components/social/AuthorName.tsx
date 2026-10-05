@@ -5,6 +5,7 @@ import { useGamification } from '@/lib/gamification-context'
 import { TitleTag } from '@/lib/cosmetic-icons'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
+import { nameStyle } from '@/lib/api-gamification'
 
 /**
  * Nome de quem escreveu, como aparece no cabeçalho da mensagem.
@@ -48,7 +49,7 @@ export function AuthorName({
         effect={member?.nameEffect}
         className={cn(className)}
         color={color}
-        style={{ ...(color ? { color } : {}), ...style }}
+        style={{ ...nameStyle(color), ...style }}
       >
         {displayName}
       </NameEffect>
@@ -56,7 +57,7 @@ export function AuthorName({
       {/* O emoji ao lado do nome e cosmetico COMPRADO: e conteudo que a
           pessoa escolheu, nao enfeite da interface — por isso continua emoji
           mesmo com os icones no resto. */}
-      <NameEmoji id={member?.emoji} />
+      <NameEmoji id={member?.emoji} id2={member?.emoji2} />
 
       {title && <TitleTag titleId={member?.title} name={title} />}
     </span>

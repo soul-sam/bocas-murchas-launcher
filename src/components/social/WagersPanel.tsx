@@ -19,7 +19,8 @@ import {
   JACKPOT_MIN_BETTORS,
   WAGER_PAYOUT_MULTIPLIER,
   WAGER_WINDOW_MS,
-  type LiveWagerGame
+  type LiveWagerGame,
+  nameStyle
 } from '@/lib/api-gamification'
 import { useLayout } from '@/lib/layout-context'
 import { useMembers } from '@/lib/members-context'
@@ -277,7 +278,7 @@ function MatchCard({ game }: { game: LiveWagerGame }) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm leading-tight" style={leadColor ? { color: leadColor } : undefined}>
+          <p className="truncate text-sm leading-tight" style={nameStyle(leadColor)}>
             {leadName}
             {others.length > 0 && (
               <span className="text-muted-foreground">

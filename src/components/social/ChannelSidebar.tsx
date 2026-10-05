@@ -55,6 +55,7 @@ import { ConnectionBars } from './ConnectionBars'
 import { AlcaDeLargura } from '@/components/ui/alca'
 import { toqueLongo } from '@/lib/toque-longo'
 import { podeCompartilharTela } from '@/lib/platform'
+import { nameStyle } from '@/lib/api-gamification'
 
 /**
  * Sem "Invisível". O servidor nunca honrou essa escolha: quem tem socket
@@ -481,7 +482,7 @@ export function ChannelSidebar({
                             <span className={cn('truncate', away && 'opacity-60')}>
                               {occupant.displayName}
                             </span>
-                            <NameEmoji id={memberById[occupant.id]?.emoji} />
+                            <NameEmoji id={memberById[occupant.id]?.emoji} id2={memberById[occupant.id]?.emoji2} />
                             {away && (
                               <Coffee
                                 className="h-3 w-3 shrink-0 text-burn"
@@ -677,10 +678,10 @@ export function ChannelSidebar({
               <span className="min-w-0 flex-1">
                 <span
                   className="flex items-center gap-1 text-xs font-medium"
-                  style={user?.profileColor ? { color: user.profileColor } : undefined}
+                  style={nameStyle(user?.profileColor)}
                 >
                   <span className="truncate">{user?.displayName}</span>
-                  <NameEmoji id={user?.emoji} />
+                  <NameEmoji id={user?.emoji} id2={user?.emoji2} />
                 </span>
                 {myActivity ? (
                   <ActivityLine activity={myActivity} />

@@ -15,7 +15,8 @@ import {
   type GamificationProfile,
   type LeaderboardEntry,
   type LeaderboardMetric,
-  type LeaderboardPeriod
+  type LeaderboardPeriod,
+  nameStyle
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useLayout } from '@/lib/layout-context'
@@ -364,12 +365,12 @@ function PodiumSlot({ entry, metric, tall }: { entry: LeaderboardEntry; metric: 
       />
       <span
         className="mt-1.5 flex w-full min-w-0 items-center justify-center gap-0.5 text-xs leading-tight"
-        style={color ? { color } : undefined}
+        style={nameStyle(color)}
       >
         <NameEffect effect={member?.nameEffect} color={color} className="truncate">
           {name}
         </NameEffect>
-        <NameEmoji id={member?.emoji} />
+        <NameEmoji id={member?.emoji} id2={member?.emoji2} />
       </span>
       <span className="font-mono text-[11.5px] font-bold" style={{ color: medal }}>
         {formatMetricValue(metric, entry.value)}
@@ -420,11 +421,11 @@ function Rows({ entries, metric }: { entries: LeaderboardEntry[]; metric: Leader
               frameColor={member?.profileColor}
               className="h-6 w-6"
             />
-            <span className="flex min-w-0 flex-1 items-center gap-1 text-sm" style={color ? { color } : undefined}>
+            <span className="flex min-w-0 flex-1 items-center gap-1 text-sm" style={nameStyle(color)}>
               <NameEffect effect={member?.nameEffect} color={color} className="truncate">
                 {name}
               </NameEffect>
-              <NameEmoji id={member?.emoji} />
+              <NameEmoji id={member?.emoji} id2={member?.emoji2} />
             </span>
             <span className="shrink-0 font-mono text-[11.5px] text-burn">
               {formatMetricValue(metric, entry.value)}

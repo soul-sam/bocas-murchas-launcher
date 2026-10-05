@@ -16,6 +16,7 @@ import { useCargos, type Cargo } from '@/lib/cargos-context'
 import { CargoIcon } from '@/lib/cargo-icons'
 import { CustomEmojiImg } from './CustomEmojiImg'
 import { toqueLongo } from '@/lib/toque-longo'
+import { nameStyle } from '@/lib/api-gamification'
 
 /**
  * Desenha a arvore que o lib/rich-text.ts produz.
@@ -235,7 +236,7 @@ function InlineNodes({ nodes }: { nodes: InlineNode[] }) {
                 className="rounded-[3px] bg-acid/15 px-1 font-medium text-acid transition-colors hover:bg-acid/25"
                 style={
                   hit?.color
-                    ? { color: hit.color, backgroundColor: `${hit.color}22` }
+                    ? { ...nameStyle(hit.color), backgroundColor: `${hit.color}22` }
                     : undefined
                 }
               >

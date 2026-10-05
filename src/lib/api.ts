@@ -200,6 +200,8 @@ export interface AuthUser {
   nameEffect?: string | null
   avatarFrame?: string | null
   emoji?: string | null
+  /** Segundo emoji ("Nome 😀 🎉"); só quem comprou o slot `emojiSlot:2`. */
+  emoji2?: string | null
   /** Som de entrar/sair do canal de voz (id `sound:*`); todo mundo no canal ouve. */
   joinSound?: string | null
   /** Riot ID lido do cliente do LoL. */

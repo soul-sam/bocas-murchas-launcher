@@ -2,7 +2,7 @@ import * as React from 'react'
 import type { Track } from 'livekit-client'
 import { Maximize2, MicOff, Minimize2, MonitorUp, Video, Volume2, VolumeX } from 'lucide-react'
 import { UserAvatar, frameClass, frameNeedsRing } from '@/components/ui/avatar'
-import { tintStyle } from '@/lib/api-gamification'
+import { tintStyle, nameStyle } from '@/lib/api-gamification'
 import { cn } from '@/lib/utils'
 import { resolveAssetUrl } from '@/lib/api'
 import type { VoiceParticipant } from '@/lib/voice-context'
@@ -249,14 +249,14 @@ function ParticipantName({
         effect={member?.nameEffect}
         color={member?.profileColor}
         className="truncate"
-        style={member?.profileColor ? { color: member.profileColor } : undefined}
+        style={nameStyle(member?.profileColor)}
       >
         {member?.displayName ?? participant.name}
       </NameEffect>
       {/* Ordem combinada em todo canto que mostra alguém: Nome · emoji ·
           Título. O emoji é cosmético COMPRADO — conteúdo que a pessoa
           escolheu, não enfeite da interface — por isso continua emoji. */}
-      <NameEmoji id={member?.emoji} size={emojiSize} />
+      <NameEmoji id={member?.emoji} id2={member?.emoji2} size={emojiSize} />
 
       {participant.isLocal && (
         <span className="shrink-0 text-[11.5px] text-muted-foreground">(você)</span>

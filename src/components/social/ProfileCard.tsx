@@ -13,7 +13,7 @@ import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Hint } from '@/components/ui/tooltip'
 import { parseFavoriteGames, parseLinks, resolveAssetUrl } from '@/lib/api'
-import { formatCompact, type GamificationProfile } from '@/lib/api-gamification'
+import { formatCompact, type GamificationProfile, nameStyle } from '@/lib/api-gamification'
 import { BadgeChip, TitleTag } from '@/lib/cosmetic-icons'
 import { useOverlaysOptional } from '@/lib/overlay-context'
 import { CargoChip } from '@/lib/cargo-icons'
@@ -442,6 +442,7 @@ export function ProfileBody({
           color={color}
           nameEffect={member.nameEffect}
           emoji={member.emoji}
+          emoji2={member.emoji2}
           titleId={member.title}
           titleName={title}
           role={member.role}
@@ -587,6 +588,7 @@ export function ProfileIdentity({
   color,
   nameEffect,
   emoji,
+  emoji2,
   titleId,
   titleName,
   role,
@@ -601,6 +603,7 @@ export function ProfileIdentity({
   color: string | null
   nameEffect?: string | null
   emoji?: string | null
+  emoji2?: string | null
   titleId?: string | null
   titleName?: string | null
   role?: string
@@ -618,7 +621,7 @@ export function ProfileIdentity({
           'flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-display leading-[1.2]',
           size === 'modal' ? 'text-[32px]' : size === 'phone' ? 'text-[28px]' : 'text-xl'
         )}
-        style={color ? { color } : undefined}
+        style={nameStyle(color)}
       >
         {/* Folga vertical no próprio nome: o `truncate` corta no limite da
             caixa, e a Anton desenha acima da linha. Nos efeitos de degradê
@@ -627,7 +630,7 @@ export function ProfileIdentity({
         <NameEffect effect={nameEffect} color={color} className="-my-[0.2em] min-w-0 truncate py-[0.2em]">
           {name}
         </NameEffect>
-        <NameEmoji id={emoji} size="md" />
+        <NameEmoji id={emoji} id2={emoji2} size="md" />
         {role === 'admin' && (
           <Hint label="Admin do servidor">
             <Shield

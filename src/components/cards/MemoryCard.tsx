@@ -9,6 +9,7 @@ import { useLayout } from '@/lib/layout-context'
 import { useMembers } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { cn } from '@/lib/utils'
+import { nameStyle } from '@/lib/api-gamification'
 
 /**
  * CARTÃO "NAQUELE DIA".
@@ -114,7 +115,7 @@ function OldMessage({
           ringColor={color}
           className="h-5 w-5"
         />
-        <span className="truncate text-xs" style={color ? { color } : undefined}>
+        <span className="truncate text-xs" style={nameStyle(color)}>
           {name}
         </span>
         <span className="shrink-0 text-[11px] text-muted-foreground">{hora}</span>

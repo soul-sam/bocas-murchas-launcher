@@ -14,7 +14,7 @@ import { isShopThemeId, type ShopThemeId } from '../../electron/preload/types'
  *   GET  /gamification/shop                     -> { coins, items }
  *   GET  /gamification/earn-rules               -> tabela de ganho de murcho
  *   POST /gamification/shop/buy { cosmeticId }  -> { profile, item }   402 sem saldo, 409 já tem
- *   POST /gamification/equip { type, cosmeticId|null } -> { user }
+ *   POST /gamification/equip { type, cosmeticId|null, slot? } -> { user }   slot 2 só p/ emoji
  *   POST /gamification/checkin                  -> { profile, awarded|null }
  *   GET  /gamification/wagers/live              -> { games }
  *   GET  /gamification/wagers/ranking?period&weekStart -> { period, entries }  saldo e aproveitamento
@@ -37,8 +37,22 @@ export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
  * `settings.theme`, local, por máquina — o /equip recusa esse tipo e o /shop
  * devolve `equipped: false` sempre; a Lojinha marca sozinha o que está em
  * uso. `data.theme` é o ThemeId (electron/preload/types.ts).
+ *
+ * `emojiSlot` não se veste: ter `emojiSlot:2` libera o segundo emoji
+ * (`/equip { type: 'emoji', slot: 2 }` grava `emoji2`).
  */
-export type CosmeticType = 'title' | 'nameEffect' | 'avatarFrame' | 'emoji' | 'joinSound' | 'nameColor' | 'theme'
+export type CosmeticType =
+  | 'title'
+  | 'nameEffect'
+  | 'avatarFrame'
+  | 'emoji'
+  | 'emojiSlot'
+  | 'joinSound'
+  | 'nameColor'
+  | 'theme'
+
+/** Item que libera o segundo emoji do lado do nome. */
+export const EMOJI_SLOT_2 = 'emojiSlot:2'
 
 /**
  * Cor do nome: a cor de texto padrão. A cor comprada saiu da lojinha
@@ -55,6 +69,17 @@ export const DEFAULT_NAME_COLOR = '#EAEAEA'
 export function cosmeticTint(color: string | null | undefined): string | null {
   if (!color || !/^#[0-9a-f]{6}$/i.test(color)) return null
   return color.toLowerCase() === DEFAULT_NAME_COLOR.toLowerCase() ? null : color
+}
+
+/**
+ * `style` do NOME de alguém pintado na cor comprada. Nos temas claros as cores
+ * (feitas pra ler no escuro) somem no fundo claro; a sombra de
+ * `--name-shadow` (globals.css, só nos claros) dá contorno sem mudar a cor.
+ * Sem cor comprada devolve undefined: o nome herda a cor de texto do tema.
+ */
+export function nameStyle(color: string | null | undefined): React.CSSProperties | undefined {
+  const tint = cosmeticTint(color)
+  return tint ? { color: tint, textShadow: 'var(--name-shadow)' } : undefined
 }
 
 /** `style` com a cor dos cosméticos, pra espalhar num elemento (ou nada). */
@@ -109,6 +134,7 @@ export interface EquippedCosmetics {
   nameEffect: string | null
   avatarFrame: string | null
   emoji: string | null
+  emoji2?: string | null
   joinSound: string | null
 }
 
@@ -833,16 +859,17 @@ export const gamification = {
     })
   },
 
-  /** `cosmeticId` null desequipa o que estiver naquele slot. */
+  /** `cosmeticId` null desequipa o que estiver naquele slot. `slot` 2 = segundo emoji. */
   async equip(
     token: string,
     type: CosmeticType,
-    cosmeticId: string | null
+    cosmeticId: string | null,
+    slot?: 1 | 2
   ): Promise<{ user: import('./api').AuthUser }> {
     return request('/gamification/equip', {
       method: 'POST',
       token,
-      body: JSON.stringify({ type, cosmeticId })
+      body: JSON.stringify({ type, cosmeticId, slot })
     })
   },
 
