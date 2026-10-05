@@ -367,9 +367,13 @@ function PrinterCard({
                   : 'ponte nunca conectou'
                 : running
                   ? (PHASE_LABEL[running.printerPhase ?? ''] ?? running.status)
-                  : printer.bedClear
-                    ? 'livre'
-                    : 'esperando alguém tirar a peça'}
+                  : !printer.bedClear
+                    ? 'esperando alguém tirar a peça'
+                    : printer.state === 'busy'
+                      ? // Sem peça da fila e a máquina trabalhando: alguém mandou
+                        // direto. A fila espera, e "livre" aqui seria mentira.
+                        'imprimindo peça de fora da fila'
+                      : 'livre'}
             </p>
           </div>
         </div>
@@ -443,7 +447,11 @@ function PrinterCard({
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">
-          {printer.bedClear ? 'Nada imprimindo agora.' : 'Peça pronta na mesa, esperando alguém tirar.'}
+          {!printer.bedClear
+            ? 'Peça pronta na mesa, esperando alguém tirar.'
+            : printer.state === 'busy'
+              ? 'A máquina está com uma peça que não saiu da fila. A fila anda quando ela terminar e alguém tirar da mesa.'
+              : 'Nada imprimindo agora.'}
         </p>
       )}
 
@@ -796,6 +804,8 @@ function NewJobCard() {
   const [scheduledFor, setScheduledFor] = React.useState<Date | null>(null)
   const [dragging, setDragging] = React.useState(false)
   const [sending, setSending] = React.useState(false)
+  /** Quanto do envio já subiu: arquivo de 80 MB é minuto de internet de casa. */
+  const [progress, setProgress] = React.useState<number | null>(null)
   const [result, setResult] = React.useState<{ ok: boolean; text: string } | null>(null)
   /** A peça que acabou de subir e o filamento dela contra a máquina. */
   const [sent, setSent] = React.useState<{ jobId: string; title: string; checks: ToolCheck[] } | null>(null)
@@ -817,7 +827,8 @@ function NewJobCard() {
     try {
       const res = await printApi.enqueue(token, file, {
         title: title.trim() || undefined,
-        scheduledFor: scheduledFor?.toISOString() ?? null
+        scheduledFor: scheduledFor?.toISOString() ?? null,
+        onProgress: setProgress
       })
       setResult({ ok: true, text: res.message })
       // Filamento diferente do que está na máquina: a pessoa fica sabendo
@@ -836,6 +847,7 @@ function NewJobCard() {
       setResult({ ok: false, text: err instanceof Error ? err.message : 'Não deu pra enfileirar' })
     } finally {
       setSending(false)
+      setProgress(null)
     }
   }
 
@@ -908,7 +920,15 @@ function NewJobCard() {
           />
           <div className="flex items-center gap-2">
             <Button size="sm" className="btn-acid" onClick={() => void send()} disabled={sending}>
-              {sending ? 'Mandando…' : scheduledFor ? 'Agendar' : 'Botar na fila'}
+              {sending
+                ? progress !== null && progress < 100
+                  ? `Mandando… ${progress}%`
+                  : progress === 100
+                    ? 'Conferindo o arquivo…'
+                    : 'Mandando…'
+                : scheduledFor
+                  ? 'Agendar'
+                  : 'Botar na fila'}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => pick(null)} disabled={sending}>
               cancelar
@@ -1124,25 +1144,33 @@ function QueueCard({
     }
   }
 
-  async function cancel(job: PrintQueueItem): Promise<void> {
+  /**
+   * Ação da linha que pode falhar (409 = o despachante pegou a peça no meio):
+   * o motivo aparece na linha e a fila recarrega com o que o servidor tem.
+   */
+  async function rowAction(job: PrintQueueItem, action: () => Promise<unknown>, fallback: string): Promise<void> {
     setBusy(job.id)
+    setRowNote(null)
     try {
-      await printApi.cancel(token, job.id)
-      await refresh()
+      await action()
+    } catch (err) {
+      setRowNote({ id: job.id, ok: false, text: err instanceof Error ? err.message : fallback })
     } finally {
-      setBusy(null)
+      try {
+        await refresh()
+      } finally {
+        setBusy(null)
+      }
     }
   }
 
+  function cancel(job: PrintQueueItem): Promise<void> {
+    return rowAction(job, () => printApi.cancel(token, job.id), 'Não deu pra tirar da fila')
+  }
+
   /** "Tanto faz a cor": manda com o filamento que está carregado. */
-  async function filamentOk(job: PrintQueueItem): Promise<void> {
-    setBusy(job.id)
-    try {
-      await printApi.filamentOk(token, job.id)
-      await refresh()
-    } finally {
-      setBusy(null)
-    }
+  function filamentOk(job: PrintQueueItem): Promise<void> {
+    return rowAction(job, () => printApi.filamentOk(token, job.id), 'Não deu pra liberar a cor')
   }
 
   // ---------- Ordem manual (topo fixado) ----------
@@ -1283,6 +1311,11 @@ function QueueCard({
       </div>
 
       {orderError && <p className="mb-2 text-[11.5px] text-destructive">{orderError}</p>}
+      {/* A peça saiu da fila no meio da ação (o despachante pegou): a nota não
+          tem mais linha onde aparecer, então fica aqui em cima. */}
+      {rowNote && !rowNote.ok && !queue.some((job) => job.id === rowNote.id) && (
+        <p className="mb-2 text-[11.5px] text-destructive">{rowNote.text}</p>
+      )}
 
       {queue.length === 0 ? (
         <p className="text-xs text-muted-foreground">

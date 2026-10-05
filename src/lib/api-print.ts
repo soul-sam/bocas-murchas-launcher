@@ -1,4 +1,18 @@
-import { request, upload } from './api'
+import { request, upload, uploadWithProgress } from './api'
+
+/**
+ * G-code é texto e comprime ~6× — a API conta com isso (o teto de upload é do
+ * envelope) e descomprime antes do hash e do parse. Só `.gcode`: o `.gcode.3mf`
+ * já é zip. Sem `CompressionStream` (ou se falhar), vai cru, como antes.
+ */
+async function gzipGcode(file: File): Promise<Blob | null> {
+  if (!/\.gcode$/i.test(file.name) || typeof CompressionStream === 'undefined') return null
+  try {
+    return await new Response(file.stream().pipeThrough(new CompressionStream('gzip'))).blob()
+  } catch {
+    return null
+  }
+}
 
 /**
  * Fila de impressão 3D — a Kobra S1 que o grupo comprou em rateio.
@@ -558,17 +572,29 @@ export const printApi = {
    * Sobe um arquivo já fatiado. O `title` é só o nome que aparece na fila; o
    * tempo e as gramas o servidor tira do próprio arquivo.
    */
-  enqueue: (
+  enqueue: async (
     token: string | null,
     file: File,
-    options: { title?: string; note?: string; scheduledFor?: string | null } = {}
+    options: {
+      title?: string
+      note?: string
+      scheduledFor?: string | null
+      /** 0–100 do ENVIO (o arquivo já comprimido). */
+      onProgress?: (percent: number) => void
+    } = {}
   ) => {
     const form = new FormData()
-    form.append('file', file)
+    const packed = await gzipGcode(file)
+    if (packed) {
+      form.append('file', packed, `${file.name}.gz`)
+      form.append('gzipped', '1')
+    } else {
+      form.append('file', file)
+    }
     if (options.title) form.append('title', options.title)
     if (options.note) form.append('note', options.note)
     if (options.scheduledFor) form.append('scheduledFor', options.scheduledFor)
-    return upload<EnqueueResult>('/print/jobs', form, token)
+    return uploadWithProgress<EnqueueResult>('/print/jobs', form, token, options.onProgress)
   },
 
   /** Muda o "começar a partir de" de uma peça na fila. `null` tira. */
