@@ -356,7 +356,8 @@ function PodiumSlot({ entry, metric, tall }: { entry: LeaderboardEntry; metric: 
         userId={entry.userId}
         src={avatar}
         name={name}
-        ringColor={medal}
+        // A foto é da pessoa: anel e moldura na cor dela. A medalha fica no card.
+        ringColor={color}
         frame={member?.avatarFrame}
         frameColor={member?.profileColor}
         className={cn('border-2', tall ? 'h-12 w-12' : 'h-10 w-10')}
