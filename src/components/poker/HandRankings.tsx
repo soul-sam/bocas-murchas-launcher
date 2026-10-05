@@ -301,7 +301,7 @@ function Pots() {
 function OurTable({ rules }: { rules: PokerRules | null }) {
   const normal = rules ? Math.round(rules.timers.normal / 1000) : 60
   const turbo = rules ? Math.round(rules.timers.turbo / 1000) : 20
-  const rakePct = rules?.rake.percent ?? 2.5
+  const rakePct = rules?.rake.percent ?? 0
   const rakeCap = rules?.rake.capBb ?? 3
   const missed = rules?.missedTurnsToSitOut ?? 2
   const kick = rules?.sitOutKickMinutes ?? 10
@@ -342,13 +342,21 @@ function OurTable({ rules }: { rules: PokerRules | null }) {
           quando é a sua vez.
         </p>
       </Section>
-      <Section title="Rake pro cofre da casa">
-        <p>
-          Mão que viu o flop deixa <Key>{rakePct}% do pote, até {rakeCap} big blinds</Key>, no cofre da casa — o
-          mesmo que banca o bônus de grupo e o pote das apostas. Mão que acaba no pré-flop não paga nada ("sem
-          flop, sem rake").
-        </p>
-      </Section>
+      {rakePct > 0 ? (
+        <Section title="Rake pro cofre da casa">
+          <p>
+            Mão que viu o flop deixa <Key>{rakePct}% do pote, até {rakeCap} big blinds</Key>, no cofre da casa — o
+            mesmo que banca o bônus de grupo e o pote das apostas. Mão que acaba no pré-flop não paga nada ("sem
+            flop, sem rake").
+          </p>
+        </Section>
+      ) : (
+        <Section title="Sem rake">
+          <p>
+            A casa <Key>não tira nada do pote</Key>: quem ganha a mão leva tudo.
+          </p>
+        </Section>
+      )}
       <Section title="Mesa, chat e badges">
         <p>
           Abrir uma mesa posta um card no canal de jogos, com quem está sentado; fecha quando a mesa fecha. Toda
