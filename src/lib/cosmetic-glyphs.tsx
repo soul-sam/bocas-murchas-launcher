@@ -38,6 +38,10 @@ export const BADGE_GLYPH: Record<string, ReactNode> = {
   'streak-7': <path d="M12 3.5v6l4-3 4 7v4l-4 3H8l-4-3v-5l4-5v5Z" />,
   // calendário murcho
   'streak-30': <path d="M4.5 6.5h15v14h-15ZM8.5 3.5v3M15.5 3.5v3M5 10.5h14M8 16.5q4-3 8 0" />,
+  // microfone com a marquinha do mês
+  'streak-call-30': <path d="M9.5 3.5h5v9h-5ZM6.5 10.5q0 5.5 5.5 5.5t5.5-5.5M12 16v4.5M8.5 20.5h7M17.5 3.5h3M17.5 6.5h3" />,
+  // microfone coroado
+  'streak-call-180': <path d="M6.5 7.5V3.5l2.5 2 3-2.5 3 2.5 2.5-2v4ZM9.5 9.5h5v5h-5ZM7 12.5q0 4.5 5 4.5t5-4.5M12 17v3.5M8.5 20.5h7" />,
   // coruja sonolenta
   coruja: <path d="M4 3.5 8 6h8l4-2.5V15l-4 5H8l-4-5ZM7.5 10.5h2M14.5 10.5h2M10.5 15l1.5 1.5 1.5-1.5" />,
   // vinil e agulha

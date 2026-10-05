@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.50.0',
+    headline: 'Conquistas de streak novas',
+    items: [
+      'O antigo "Mês Murcho" virou "Murcho logado" (rara): continua sendo 30 dias seguidos abrindo o launcher. Quem já tinha, continua com ela.',
+      'Nova "Murcho em call" (épica): 30 dias seguidos entrando na call.',
+      'Nova "Murcha à toa" (lendária): 180 dias seguidos entrando na call.',
+      'Quem já tinha feito essas sequências em call ganha as conquistas novas na hora.'
+    ]
+  },
+  {
     version: '1.49.1',
     headline: 'Streak agora é de call',
     items: [
