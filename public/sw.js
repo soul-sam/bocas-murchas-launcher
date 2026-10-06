@@ -52,6 +52,9 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.mode !== 'navigate') return
   if (request.method !== 'GET') return
+  // /download é uma página estática à parte, não o SPA: se passasse por aqui,
+  // a resposta dela seria guardada como shell e o app offline abriria nela.
+  if (new URL(request.url).pathname.startsWith('/download')) return
 
   event.respondWith(
     (async () => {

@@ -1,0 +1,269 @@
+<!doctype html>
+<!--
+  PÁGINA DE DOWNLOAD — bocasmurchas.com.br/download
+
+  Estática de propósito: HTML e CSS puros, sem React e sem login, pra quem
+  ainda não tem conta conseguir baixar o instalador do Windows.
+
+  O botão nunca aponta pra uma versão escrita à mão: o script pergunta ao
+  GitHub qual é a última release e pega o .exe dela. Release nova = página
+  atualizada sozinha. Se o GitHub não responder (limite de requisições, sem
+  rede), o botão continua valendo: o href de fábrica abre a página da última
+  release.
+
+  As cores são as do tema Roxo Murcho (globals.css), copiadas aqui porque a
+  página não carrega a folha do app.
+-->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline'; connect-src https://api.github.com"
+    />
+    <meta name="description" content="Baixe o launcher do Bocas Murchas para Windows." />
+    <meta name="theme-color" content="#110919" />
+    <title>Baixar o Bocas Murchas para Windows</title>
+    <link rel="icon" href="/icons/icon-192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Anton&display=swap"
+    />
+    <style>
+      :root {
+        --bg: hsl(268 51% 7%);
+        --card: hsl(266 44% 11%);
+        --text: hsl(265 52% 94%);
+        --muted: hsl(263 22% 68%);
+        --edge: hsl(268 39% 19%);
+        --edge-strong: hsl(266 31% 27%);
+        --acid: hsl(97 100% 50%);
+        --acid-light: hsl(96 100% 63%);
+        --on-acid: hsl(0 0% 4%);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+      body {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px 16px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        position: relative;
+        width: 100%;
+        max-width: 440px;
+        padding: 40px 28px 28px;
+        border-radius: 16px;
+        background: var(--card);
+        border: 1px solid var(--edge);
+        text-align: center;
+        overflow: hidden;
+      }
+      .glow {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        width: 260px;
+        height: 260px;
+        margin-left: -130px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgb(106 255 0 / 0.16), rgb(106 255 0 / 0) 68%);
+        pointer-events: none;
+      }
+      .logo {
+        position: relative;
+        width: 136px;
+        height: 136px;
+        object-fit: contain;
+      }
+      h1 {
+        position: relative;
+        margin: 18px 0 0;
+        font-family: Anton, Impact, sans-serif;
+        font-weight: 400;
+        font-size: 36px;
+        line-height: 1.15;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+      .lead {
+        margin: 10px 0 0;
+        font-size: 15px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 26px;
+        padding: 15px 20px;
+        border-radius: 10px;
+        background: var(--acid);
+        color: var(--on-acid);
+        font-size: 16px;
+        font-weight: 700;
+        text-decoration: none;
+        transition:
+          background 120ms ease,
+          transform 120ms ease;
+      }
+      .btn:hover {
+        background: var(--acid-light);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--acid);
+        outline-offset: 3px;
+      }
+      .btn svg {
+        width: 18px;
+        height: 18px;
+        flex: none;
+      }
+      .meta {
+        margin: 10px 0 0;
+        min-height: 18px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .mobile {
+        display: none;
+        margin: 14px 0 0;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--edge-strong);
+        font-size: 13px;
+        line-height: 1.45;
+        color: var(--text);
+      }
+      .mobile.show {
+        display: block;
+      }
+      .steps {
+        margin: 26px 0 0;
+        padding: 18px 0 0;
+        border-top: 1px solid var(--edge);
+        text-align: left;
+      }
+      .steps h2 {
+        margin: 0 0 8px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .steps ol {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+      .steps strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .foot {
+        margin: 22px 0 0;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .foot a {
+        color: var(--text);
+        text-underline-offset: 3px;
+      }
+      .foot a:hover {
+        color: var(--acid);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="glow"></div>
+      <img class="logo" src="/bocas-murchas-transp.png" alt="" width="136" height="136" />
+      <h1>Bocas Murchas</h1>
+      <p class="lead">O launcher do grupo, pra Windows.</p>
+
+      <a
+        id="baixar"
+        class="btn"
+        href="https://github.com/soul-sam/bocas-murchas-launcher/releases/latest"
+        rel="noopener"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M3 5.5 10.5 4.4v7.1H3zM11.5 4.3 21 3v8.5h-9.5zM3 12.5h7.5v7.1L3 18.5zM11.5 12.5H21V21l-9.5-1.3z" />
+        </svg>
+        Baixar para Windows
+      </a>
+      <p id="meta" class="meta">Windows 10 ou 11 · 64 bits</p>
+      <p id="mobile" class="mobile">
+        O instalador é pra PC com Windows. No celular, dá pra usar direto pelo navegador.
+      </p>
+
+      <section class="steps">
+        <h2>Como instalar</h2>
+        <ol>
+          <li>Abra o arquivo baixado.</li>
+          <li>
+            Se o Windows mostrar “O Windows protegeu o computador”, clique em
+            <strong>Mais informações</strong> e depois em <strong>Executar assim mesmo</strong>.
+          </li>
+          <li>Pronto. Daí em diante o launcher se atualiza sozinho.</li>
+        </ol>
+      </section>
+
+      <p class="foot">Prefere não instalar? <a href="/">Use pelo navegador</a>.</p>
+    </main>
+
+    <script>
+      ;(function () {
+        var botao = document.getElementById('baixar')
+        var meta = document.getElementById('meta')
+
+        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          document.getElementById('mobile').classList.add('show')
+        }
+
+        fetch('https://api.github.com/repos/soul-sam/bocas-murchas-launcher/releases/latest', {
+          headers: { Accept: 'application/vnd.github+json' }
+        })
+          .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status)
+            return r.json()
+          })
+          .then(function (release) {
+            var exe = (release.assets || []).find(function (a) {
+              return /\.exe$/i.test(a.name)
+            })
+            if (!exe) return
+            botao.href = exe.browser_download_url
+            var versao = String(release.tag_name || '').replace(/^v/, '')
+            var mb = Math.round(exe.size / 1048576)
+            meta.textContent = 'Versão ' + versao + ' · ' + mb + ' MB · Windows 10 ou 11'
+          })
+          .catch(function () {
+            // Sem resposta do GitHub: o href de fábrica (página da última
+            // release) continua servindo.
+          })
+      })()
+    </script>
+  </body>
+</html>
