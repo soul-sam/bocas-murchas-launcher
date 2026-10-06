@@ -49,9 +49,9 @@ export const AvatarFallback = React.forwardRef<
 AvatarFallback.displayName = 'AvatarFallback'
 
 const STATUS_STYLES: Record<string, string> = {
-  online: 'bg-acid shadow-neon-2',
-  away: 'bg-burn',
-  dnd: 'bg-destructive',
+  online: 'bg-presence-online',
+  away: 'bg-presence-away',
+  dnd: 'bg-presence-dnd',
   offline: 'bg-surface-strong'
 }
 

@@ -76,6 +76,12 @@ export default {
           DEFAULT: 'hsl(var(--burn))',
           dark: 'hsl(var(--burn-dark))'
         },
+        // Presenca: fixa em todo tema (ver globals.css).
+        presence: {
+          online: 'hsl(var(--presence-online))',
+          away: 'hsl(var(--presence-away))',
+          dnd: 'hsl(var(--presence-dnd))'
+        },
         // Profundidade: depth-1 e' o proprio bg-void; 2 e 3 sao degraus mais
         // claros (coluna de canais/composer e area do chat).
         depth: {

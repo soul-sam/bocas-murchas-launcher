@@ -69,9 +69,9 @@ import { nameStyle } from '@/lib/api-gamification'
  * o que não se faz.
  */
 const STATUS_OPTIONS: Array<{ value: UserStatus; label: string; color: string }> = [
-  { value: 'online', label: 'Online', color: 'hsl(var(--acid))' },
-  { value: 'away', label: 'Ausente', color: 'hsl(var(--burn))' },
-  { value: 'dnd', label: 'Não perturbe', color: '#B33' }
+  { value: 'online', label: 'Online', color: 'hsl(var(--presence-online))' },
+  { value: 'away', label: 'Ausente', color: 'hsl(var(--presence-away))' },
+  { value: 'dnd', label: 'Não perturbe', color: 'hsl(var(--presence-dnd))' }
 ]
 
 interface ChannelSidebarProps {

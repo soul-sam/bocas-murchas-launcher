@@ -176,6 +176,12 @@
      volta da letra (ver `nameStyle`). A cor em si não muda. */
   :root {
     --name-shadow: none;
+    /* Presença (online / ausente / não perturbe) é SINAL, não cromo: verde,
+       amarelo e vermelho significam a mesma coisa em todo tema, como no
+       Discord. Fora dos blocos de tema de propósito — nenhum tema redefine. */
+    --presence-online: 145 65% 39%;   /* #23A55A */
+    --presence-away: 40 86% 57%;      /* #F0B232 */
+    --presence-dnd: 359 87% 60%;      /* #F23F43 */
   }
   :is([data-theme='papel'], [data-theme='acido-claro'], [data-theme='cafe'], [data-theme='lavanda']) {
     --name-shadow: 0 0 1px rgb(0 0 0), 0 0 2px rgb(0 0 0 / 0.8), 0 1px 3px rgb(0 0 0 / 0.6);

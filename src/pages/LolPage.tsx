@@ -163,9 +163,9 @@ export function LolPage() {
 
 /** Mesmas cores do cliente da Riot: verde, amarelo, vermelho. */
 const RIOT_STATUS: Record<RiotStatus, { label: string; dot: string; order: number }> = {
-  online: { label: 'Online', dot: 'bg-emerald-500', order: 0 },
-  away: { label: 'Ausente', dot: 'bg-amber-400', order: 1 },
-  busy: { label: 'Ocupado', dot: 'bg-red-500', order: 2 }
+  online: { label: 'Online', dot: 'bg-presence-online', order: 0 },
+  away: { label: 'Ausente', dot: 'bg-presence-away', order: 1 },
+  busy: { label: 'Ocupado', dot: 'bg-presence-dnd', order: 2 }
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
