@@ -78,9 +78,9 @@ const STATUS_LABEL: Record<string, string> = {
 
 /** Mesmas cores da bolinha do UserAvatar — a do perfil e so maior. */
 const STATUS_DOT: Record<string, string> = {
-  online: 'bg-acid shadow-neon-2',
-  away: 'bg-burn',
-  dnd: 'bg-destructive',
+  online: 'bg-presence-online',
+  away: 'bg-presence-away',
+  dnd: 'bg-presence-dnd',
   offline: 'bg-surface-strong'
 }
 

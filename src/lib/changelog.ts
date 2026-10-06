@@ -42,7 +42,7 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
-    version: '1.53.1',
+    version: '1.53.2',
     headline: 'Bolinha de status sempre na mesma cor',
     items: [
       'Online, ausente e não perturbe agora são verde, amarelo e vermelho em todos os temas. Antes a bolinha pegava a cor do tema, e em alguns dava pra confundir online com ausente.'

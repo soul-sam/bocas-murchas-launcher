@@ -136,7 +136,7 @@ export function GiftPanel({
                     <span
                       className={cn(
                         'ml-auto h-1.5 w-1.5 shrink-0 rounded-full',
-                        m.isOnline ? 'bg-acid' : 'bg-line-strong'
+                        m.isOnline ? 'bg-presence-online' : 'bg-line-strong'
                       )}
                       title={m.isOnline ? 'online' : 'offline'}
                     />
