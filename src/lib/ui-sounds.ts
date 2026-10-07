@@ -43,6 +43,9 @@ export type UiSound =
   | 'poker-deal'
   | 'poker-chip'
   | 'poker-win'
+  /** Xadrez e dama: a peça pousando na casa, a captura. */
+  | 'board-move'
+  | 'board-capture'
 
 interface Note {
   /** Frequência em Hz. */
@@ -284,6 +287,27 @@ const CUES: Record<UiSound, Cue> = {
       { freq: E5, at: 0.07, dur: 0.08 },
       { freq: G5, at: 0.14, dur: 0.1 },
       { freq: C6, at: 0.21, dur: 0.2 }
+    ]
+  },
+  // Xadrez e dama: a peça pousando na casa — um toque curto e grave, madeira
+  // em madeira. Toca a cada lance dos dois lados; é quase nada.
+  'board-move': {
+    volume: 0.4,
+    cutoff: 1500,
+    type: 'sine',
+    notes: [
+      { freq: 196, at: 0, dur: 0.05 },
+      { freq: 392, at: 0, dur: 0.025, gain: 0.35 }
+    ]
+  },
+  // Captura: a peça que sai e a que chega, dois toques.
+  'board-capture': {
+    volume: 0.45,
+    cutoff: 1700,
+    type: 'triangle',
+    notes: [
+      { freq: 261.6, at: 0, dur: 0.04 },
+      { freq: 174.6, at: 0.075, dur: 0.065 }
     ]
   }
 }

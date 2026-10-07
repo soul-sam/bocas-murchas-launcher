@@ -5,6 +5,7 @@ import { parseBetAmount } from '@/lib/board-bet'
 import { useBoard } from '@/lib/board-context'
 import { useGamification } from '@/lib/gamification-context'
 import { cn } from '@/lib/utils'
+import './board.css'
 
 /**
  * APOSTAS DE ESPECTADOR — o bolo da mesa, ao lado do tabuleiro.
@@ -63,8 +64,12 @@ export function BetPanel() {
   const canBet = phase === 'pending' && table.mySide === null && !table.myBet
 
   return (
-    <div className="flex flex-col gap-2 rounded-brutal border border-line">
-      <h4 className="border-b border-line px-3 py-1.5 text-xs font-semibold text-foreground">Apostas</h4>
+    <div className="board-secao gap-2">
+      <h4 className="board-secao-cabeca">
+        <MurchosIcon className="h-3.5 w-3.5" aria-hidden />
+        Apostas
+        {bets.length > 0 && <span className="board-secao-n">{bets.length}</span>}
+      </h4>
       <div className="flex flex-col gap-2 px-3 pb-3">
         {phase === 'pending' && table.mySide !== null && (
           <p className="text-xs text-muted-foreground">Quem joga não aposta no bolo.</p>

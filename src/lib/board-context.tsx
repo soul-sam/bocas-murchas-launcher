@@ -5,6 +5,7 @@ import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
+import { parsePosition } from './board-position'
 import {
   BOARD_ROUTE,
   type BoardAck,
@@ -99,6 +100,11 @@ function emitWithAck(socket: Socket | null, event: string, payload: unknown): Pr
   })
 }
 
+/** Quantas peças há no tabuleiro: menos que antes do lance = captura. */
+function pieceCount(t: BoardTableView): number {
+  return parsePosition(t.game, t.position).filter(Boolean).length
+}
+
 function isMyTurn(t: BoardTableView | null): boolean {
   return !!t && t.phase === 'playing' && !t.result && t.mySide !== null && t.turn === t.mySide
 }
@@ -132,13 +138,23 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   // Última mesa gravada, pra comparar a transição fora do updater do setState.
   const tableRef = React.useRef<BoardTableView | null>(null)
 
-  // Grava a mesa; se virou a minha vez, um toque (só na transição).
+  // Grava a mesa e toca o que mudou (só na transição entre dois retratos
+  // da MESMA mesa): a peça pousando a cada lance (ou a captura), o aviso de
+  // "sua vez", e a vitória.
   const applyTable = React.useCallback((next: BoardTableView): void => {
     const prev = tableRef.current
     tableRef.current = next
-    if (prev && prev.id === next.id && !isMyTurn(prev) && isMyTurn(next)) {
+    if (prev && prev.id === next.id) {
       const s = settingsRef.current
-      playUiSound('poker-turn', s.soundEnabled ? s.soundVolume : 0)
+      const volume = s.soundEnabled ? s.soundVolume : 0
+      const moved = next.phase === 'playing' && next.moves.length > prev.moves.length
+      if (moved) playUiSound(pieceCount(next) < pieceCount(prev) ? 'board-capture' : 'board-move', volume)
+      // O aviso de vez só quando o som do lance não bastou: no começo da
+      // partida (ninguém jogou ainda) ou com a janela escondida.
+      if (!isMyTurn(prev) && isMyTurn(next) && (!moved || document.hidden)) playUiSound('poker-turn', volume)
+      if (prev.phase !== 'finished' && next.phase === 'finished' && next.result?.winner && next.result.winner === next.mySide) {
+        playUiSound('poker-win', volume)
+      }
     }
     setTable(next)
   }, [])

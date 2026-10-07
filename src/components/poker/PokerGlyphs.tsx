@@ -21,16 +21,10 @@ const SUIT_PATH: Record<Suit, string> = {
 }
 
 /**
- * A boca da marca como MÁSCARA (feltro, verso da carta). Inline, e não na
- * folha: `url()` de arquivo do public/ dentro de um .css o Vite reescreve
- * pra /assets/ sem copiar o arquivo — a máscara falha e o elemento some.
- * Caminho relativo, como todo `<img src="bocas-murchas-transp.png">` do app:
- * vale no site e no file:// do Electron.
+ * A boca da marca como máscara (feltro, verso da carta): mora em
+ * lib/brand-mask.ts porque o xadrez usa a mesma; fica reexportada aqui.
  */
-export const BRAND_MASK_STYLE: React.CSSProperties = {
-  WebkitMaskImage: 'url(bocas-murchas-transp.png)',
-  maskImage: 'url(bocas-murchas-transp.png)'
-}
+export { BRAND_MASK_STYLE } from '@/lib/brand-mask'
 
 export function SuitGlyph({ suit, className, style }: { suit: Suit; className?: string; style?: React.CSSProperties }) {
   return (

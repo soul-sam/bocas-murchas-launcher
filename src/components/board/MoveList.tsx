@@ -1,12 +1,15 @@
 import * as React from 'react'
+import type { BoardGame } from '@/lib/api-board'
+import { formatMove } from '@/lib/board-position'
 import { cn } from '@/lib/utils'
 import './board.css'
 
 /**
- * Os lances na notação do servidor (UCI no xadrez, casas na dama), dois por
- * linha: brancas e pretas. Acompanha o fim da lista conforme a partida anda.
+ * Os lances, dois por linha: brancas e pretas. No xadrez o UCI do servidor
+ * vira "e2–e4" (e "e7–e8=D" na promoção); na dama a notação já é legível.
+ * Acompanha o fim da lista conforme a partida anda.
  */
-export function MoveList({ moves }: { moves: string[] }) {
+export function MoveList({ game, moves }: { game: BoardGame; moves: string[] }) {
   const listRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
@@ -31,9 +34,11 @@ export function MoveList({ moves }: { moves: string[] }) {
       {rows.map((row) => (
         <React.Fragment key={row.n}>
           <span className="board-lances-n">{row.n}.</span>
-          <span className={cn('board-lance', row.n * 2 - 2 === last && 'board-lance--ultimo')}>{row.white}</span>
+          <span className={cn('board-lance', row.n * 2 - 2 === last && 'board-lance--ultimo')}>
+            {formatMove(game, row.white)}
+          </span>
           <span className={cn('board-lance', row.black !== null && row.n * 2 - 1 === last && 'board-lance--ultimo')}>
-            {row.black ?? ''}
+            {row.black === null ? '' : formatMove(game, row.black)}
           </span>
         </React.Fragment>
       ))}

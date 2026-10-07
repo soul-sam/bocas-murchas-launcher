@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.54.0',
+    headline: 'O xadrez ganhou mesa de verdade',
+    items: [
+      'Tabuleiro novo: moldura com as coordenadas gravadas, casas na cor do seu tema e peças redesenhadas.',
+      'A peça desliza até a casa a cada lance, com o toque da madeira — e um estalo na captura.',
+      'Placa de cada jogador com avatar, relógio grande, as peças capturadas e a vantagem de material.',
+      'Fim de partida com a faixa do resultado sobre o tabuleiro: quem venceu, por quê, murchos, XP e precisão.',
+      'Esperar adversário e a contagem pra começar acontecem sobre a mesa posta, não numa tela vazia.',
+      'A dama ganhou o mesmo visual.'
+    ]
+  },
+  {
     version: '1.53.2',
     headline: 'Bolinha de status sempre na mesma cor',
     items: [
