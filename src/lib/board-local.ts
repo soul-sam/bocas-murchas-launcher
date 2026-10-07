@@ -133,11 +133,15 @@ export const PROMOTION_ORDER = ['q', 'n', 'r', 'b'] as const
 
 /**
  * Pré-lances de uma peça: as casas que ela alcança pela GEOMETRIA, como no
- * chess.com. Peça do adversário no caminho não barra (ela pode sair); peça
- * MINHA barra e não pode ser destino (ela não sai antes do meu lance).
- * Peão: uma e duas casas pra frente e as duas diagonais. Rei: vizinhas e o
- * roque, se o direito ainda existe e a torre está no canto. Peão chegando na
- * última fileira volta um lance por peça de promoção.
+ * chess.com. Peça do adversário no caminho não barra (ela pode sair). Peça
+ * MINHA pode ser destino — é a RECAPTURA: o adversário toma ali e eu tomo de
+ * volta na hora — mas barra o que vem depois (ela não sai antes do meu lance;
+ * se for capturada, fica uma peça dele no lugar, e a linha continua fechada).
+ * Peão: uma e duas casas pra frente (nunca em cima de peça minha) e as duas
+ * diagonais. Rei: vizinhas e o roque, se o direito ainda existe e a torre
+ * está no canto. Peão chegando na última fileira volta um lance por peça de
+ * promoção. Se a recaptura não acontecer, o pré-lance sai ilegal na vez e a
+ * fila cai, como no chess.com.
  */
 export function premoveMoves(board: ChessBoard, from: string, side: Side): Array<{ move: string; to: string }> {
   if (!validSquare(from)) return []
@@ -149,7 +153,7 @@ export function premoveMoves(board: ChessBoard, from: string, side: Side): Array
   const mine = (r: number, c: number): boolean => board.squares[r * 8 + c]?.side === side
   const targets: number[] = []
   const add = (r: number, c: number): void => {
-    if (inside(r, c) && !mine(r, c)) targets.push(r * 8 + c)
+    if (inside(r, c)) targets.push(r * 8 + c)
   }
 
   switch (piece.kind) {
@@ -193,8 +197,10 @@ export function premoveMoves(board: ChessBoard, from: string, side: Side): Array
       for (const [dr, dc] of lines) {
         let r = row + dr
         let c = col + dc
-        while (inside(r, c) && !mine(r, c)) {
+        while (inside(r, c)) {
           targets.push(r * 8 + c)
+          // Peça minha: entra como recaptura e fecha a linha.
+          if (mine(r, c)) break
           r += dr
           c += dc
         }

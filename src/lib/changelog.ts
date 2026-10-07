@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.56.0',
+    headline: 'Peças novas e tabuleiro de madeira',
+    items: [
+      'As peças de xadrez ganharam o desenho do chess.com: brancas brancas, pretas em chumbo, base em dois degraus.',
+      'Em Configurações › Tabuleiro dá pra escolher a cor das casas: a do tema ou a madeira clássica (bege e marrom).',
+      'Pré-lance de recaptura: dá pra marcar um lance em cima de uma peça sua. Se o outro tomar ali, você toma de volta na hora; se não tomar, o pré-lance cai.',
+      'Na dama, comer ganhou animação: a pedra pula casa por casa e cada peça comida some na hora em que ela passa por cima.'
+    ],
+    note: 'Pra recapturar, arraste a peça até a sua peça (clicar nela só troca a peça escolhida, como no chess.com).'
+  },
+  {
     version: '1.55.0',
     headline: 'Xadrez com a mecânica do chess.com',
     items: [

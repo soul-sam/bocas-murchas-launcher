@@ -14,7 +14,7 @@ import {
   type OverlayDock,
   type ScreenShareSettings,
   type VoiceSettings,
-  type VoiceMode, isOverlayCorner, isOverlaySide, isScreenShareQuality, isScreenShareContent, isThemeId } from '../../preload/types.js'
+  type VoiceMode, isOverlayCorner, isOverlaySide, isScreenShareQuality, isScreenShareContent, isThemeId, isBoardSkin } from '../../preload/types.js'
 
 export type { ChatSettings, HotkeySettings, LauncherSettings, LolSettings, MusicSettings, OverlaySettings, ScreenShareSettings, VoiceSettings, VoiceMode }
 
@@ -269,6 +269,7 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
   return {
     settingsRevision: SETTINGS_REVISION,
     theme,
+    boardSkin: isBoardSkin(raw.boardSkin) ? raw.boardSkin : DEFAULTS.boardSkin,
     maxRamMb,
     minRamMb,
     notifyOnJoinLeave: raw.notifyOnJoinLeave ?? DEFAULTS.notifyOnJoinLeave,

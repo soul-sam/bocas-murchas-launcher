@@ -787,6 +787,21 @@ export function isShopThemeId(value: unknown): value is ShopThemeId {
   return typeof value === 'string' && (SHOP_THEME_IDS as readonly string[]).includes(value)
 }
 
+/**
+ * Cor das casas do tabuleiro (salão de jogos). `tema` deriva do tema ativo;
+ * `marrom` é a madeira clássica do chess.com (#EDD6B0 / #B58863), igual em
+ * todo tema. Aplicado como `data-board-skin` no <html>, como o tema.
+ */
+export type BoardSkin = 'tema' | 'marrom'
+export const BOARD_SKIN_IDS: readonly BoardSkin[] = ['tema', 'marrom']
+export const BOARD_SKIN_LABEL: Record<BoardSkin, { name: string; hint: string }> = {
+  tema: { name: 'Do tema', hint: 'Casas na cor do tema que está vestido.' },
+  marrom: { name: 'Madeira', hint: 'Bege e marrom, o tabuleiro clássico do chess.com.' }
+}
+export function isBoardSkin(value: unknown): value is BoardSkin {
+  return typeof value === 'string' && (BOARD_SKIN_IDS as readonly string[]).includes(value)
+}
+
 export interface LauncherSettings {
   /**
    * Revisao do arquivo de configuracoes. Sobe quando um padrao muda e a
@@ -800,6 +815,8 @@ export interface LauncherSettings {
   settingsRevision: number
   /** Tema visual (ver ThemeId). */
   theme: ThemeId
+  /** Cor das casas do tabuleiro (ver BoardSkin). */
+  boardSkin: BoardSkin
   maxRamMb: number
   minRamMb: number
   notifyOnJoinLeave: boolean
@@ -994,6 +1011,7 @@ export const SETTINGS_REVISION = 3
 export const DEFAULT_SETTINGS: LauncherSettings = {
   settingsRevision: SETTINGS_REVISION,
   theme: 'roxo',
+  boardSkin: 'tema',
   maxRamMb: 4096,
   minRamMb: 1024,
   notifyOnJoinLeave: true,

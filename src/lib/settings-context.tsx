@@ -43,6 +43,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dataset.theme = settings.theme
   }, [settings.theme])
 
+  // A cor do tabuleiro segue o mesmo caminho: board.css troca as casas por
+  // `data-board-skin`, e todo tabuleiro (mesa, saguão, cartas) acompanha.
+  React.useEffect(() => {
+    document.documentElement.dataset.boardSkin = settings.boardSkin
+  }, [settings.boardSkin])
+
   const open = React.useCallback(() => setIsOpen(true), [])
   const close = React.useCallback(() => setIsOpen(false), [])
 

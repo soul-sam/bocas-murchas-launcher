@@ -7,6 +7,7 @@ import {
   movableSquares,
   movesFrom,
   moveEnds,
+  capturedSquares,
   clockNow,
   formatClock,
   formatMove,
@@ -139,4 +140,24 @@ test('formatMove: UCI vira "e2–e4" e promoção em português', () => {
   assert.equal(formatMove('chess', 'e7e8q'), 'e7–e8=D')
   assert.equal(formatMove('chess', 'a7a8n'), 'a7–a8=C')
   assert.equal(formatMove('draughts', 'c3xe5xg7'), 'c3xe5xg7')
+})
+
+test('capturedSquares: captura dupla lê as peças da posição de antes, na ordem dos saltos', () => {
+  const before = parsePosition('draughts', '.'.repeat(64))
+  before[squareIndex('c3')] = { side: 'white', kind: 'man' }
+  before[squareIndex('d4')] = { side: 'black', kind: 'man' }
+  before[squareIndex('f6')] = { side: 'black', kind: 'king' }
+  assert.deepEqual(capturedSquares(before, 'c3xe5xg7'), [
+    { square: 'd4', piece: { side: 'black', kind: 'man' }, hop: 0 },
+    { square: 'f6', piece: { side: 'black', kind: 'king' }, hop: 1 }
+  ])
+  assert.deepEqual(capturedSquares(before, 'c3-d4'), [])
+  assert.deepEqual(capturedSquares(before, 'e2e4'), [])
+})
+
+test('capturedSquares: dama voadora come a peça longe no meio da diagonal', () => {
+  const before = parsePosition('draughts', '.'.repeat(64))
+  before[squareIndex('a1')] = { side: 'white', kind: 'king' }
+  before[squareIndex('e5')] = { side: 'black', kind: 'man' }
+  assert.deepEqual(capturedSquares(before, 'a1xg7'), [{ square: 'e5', piece: { side: 'black', kind: 'man' }, hop: 0 }])
 })

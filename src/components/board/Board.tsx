@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { sideIsLight, type BoardGame, type DraughtsVariant, type Side } from '@/lib/api-board'
 import {
+  capturedSquares,
   movableSquares,
   moveEnds,
+  movePath,
   movesFrom,
   parsePosition,
   squareIndex,
@@ -13,7 +15,7 @@ import {
 } from '@/lib/board-position'
 import { PROMOTION_ORDER, premoveMoves, readChess } from '@/lib/board-local'
 import { cn } from '@/lib/utils'
-import { PieceGlyph, type PieceMotion } from './pieces'
+import { HOP_MS, PieceGlyph, type PieceMotion } from './pieces'
 import './board.css'
 
 /**
@@ -486,12 +488,15 @@ export const Board = React.memo(function Board({
       if (selected) setSelected(null)
       return
     }
-    if (selected && selected !== square && targetSet.has(square)) {
+    const piece = squares[squareIndex(square)]
+    // Casa com peça minha que também é destino (recaptura em pré-lance): o
+    // clique troca a peça escolhida, como no chess.com; a recaptura entra
+    // soltando a peça arrastada em cima (ou por Enter, em `onSquareClick`).
+    if (selected && selected !== square && targetSet.has(square) && !(piece && movable.has(square))) {
       e.preventDefault()
       commit(selected, square, 'click')
       return
     }
-    const piece = squares[squareIndex(square)]
     if (piece && movable.has(square)) {
       e.preventDefault()
       setSelected(square)
@@ -532,22 +537,51 @@ export const Board = React.memo(function Board({
   // lance: a chave muda a cada lance novo, e o eco do servidor confirmando o
   // meu lance (mesma chave) não anima de novo.
   const animKey = lastMoveKey ?? lastMove
-  const arrivals = React.useMemo(() => {
-    const out = new Map<string, PieceMotion>()
-    if (!last || !animateLast) return out
-    const motion = (from: string, to: string): void => {
+  // A posição de ANTES deste render: é nela que ainda estão as peças comidas
+  // (o efeito só atualiza depois que o memo abaixo já leu).
+  const prevSquaresRef = React.useRef(squares)
+  React.useEffect(() => {
+    prevSquaresRef.current = squares
+  }, [squares])
+  const { arrivals, eaten } = React.useMemo(() => {
+    const arrivals = new Map<string, PieceMotion>()
+    /** Peças comidas na dama: ficam na casa (já vazia) até a pedra passar e então somem. */
+    const eaten = new Map<string, { piece: Piece; delay: number }>()
+    if (!last) return { arrivals, eaten }
+    const offset = (from: string, to: string): { dx: number; dy: number } | null => {
       const a = cells.indexOf(squareIndex(from))
       const b = cells.indexOf(squareIndex(to))
-      if (a < 0 || b < 0) return
-      out.set(to, { dx: (a % 8) - (b % 8), dy: Math.floor(a / 8) - Math.floor(b / 8) })
+      if (a < 0 || b < 0) return null
+      return { dx: (a % 8) - (b % 8), dy: Math.floor(a / 8) - Math.floor(b / 8) }
     }
+    const motion = (from: string, to: string): void => {
+      const o = offset(from, to)
+      if (o) arrivals.set(to, o)
+    }
+    if (game === 'draughts' && lastMove?.includes('x')) {
+      const path = movePath(lastMove)
+      const hops = path.length - 1
+      for (const c of capturedSquares(prevSquaresRef.current, lastMove)) {
+        if (squares[squareIndex(c.square)]) continue
+        // Some quando a pedra está no meio do salto que passa por cima dela.
+        eaten.set(c.square, { piece: c.piece, delay: animateLast ? Math.round((c.hop + 0.5) * HOP_MS) : 0 })
+      }
+      if (animateLast) {
+        const stops = path.map((s) => offset(s, last.to)).filter((s): s is { dx: number; dy: number } => !!s)
+        if (stops.length === path.length) {
+          arrivals.set(last.to, { ...stops[0], stops: hops > 1 ? stops : undefined, hopMs: HOP_MS })
+        }
+      }
+      return { arrivals, eaten }
+    }
+    if (!animateLast) return { arrivals, eaten }
     motion(last.from, last.to)
     const king = squares[squareIndex(last.to)]
     if (game === 'chess' && king?.kind === 'k' && Math.abs(last.to.charCodeAt(0) - last.from.charCodeAt(0)) === 2) {
       const kingside = last.to[0] === 'g'
       motion(`${kingside ? 'h' : 'a'}${last.to[1]}`, `${kingside ? 'f' : 'd'}${last.to[1]}`)
     }
-    return out
+    return { arrivals, eaten }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- uma decisão por lance (a chave) e por lado
   }, [animKey, cells])
 
@@ -610,6 +644,7 @@ export const Board = React.memo(function Board({
             const light = piece ? sideIsLight(game, variant, piece.side) : true
             const label = piece ? `${name}, ${pieceLabel(piece, light)}` : `${name}, vazia`
             const motion = piece ? arrivals.get(name) : undefined
+            const gone = eaten.get(name)
             const mark = markBySquare.get(name)
             return (
               <button
@@ -644,6 +679,14 @@ export const Board = React.memo(function Board({
                   ) : (
                     <PieceGlyph piece={piece} light={light} />
                   ))}
+                {!piece && gone && (
+                  <PieceGlyph
+                    key={`come:${animKey}`}
+                    piece={gone.piece}
+                    light={sideIsLight(game, variant, gone.piece.side)}
+                    eatenDelay={gone.delay}
+                  />
+                )}
               </button>
             )
           })}

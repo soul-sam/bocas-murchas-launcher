@@ -64,6 +64,47 @@ export function moveEnds(move: string): { from: string; to: string } {
   return { from: move.slice(0, 2), to: move.slice(2, 4) }
 }
 
+/** Casas do caminho de um lance de dama (`c3xe5xg7` → c3, e5, g7). UCI vira [from, to]. */
+export function movePath(move: string): string[] {
+  if (move.includes('-') || move.includes('x')) return move.split(/[-x]/)
+  return [move.slice(0, 2), move.slice(2, 4)]
+}
+
+/**
+ * As peças comidas num lance de dama, na ordem em que a pedra passa por cima,
+ * lidas na posição de ANTES do lance: em cada salto é a primeira peça do outro
+ * lado na diagonal entre as duas casas (a dama voadora pode saltar de longe).
+ * Lance sem 'x' (ou de xadrez) não come nada aqui.
+ */
+export function capturedSquares(
+  before: ReadonlyArray<Piece | null>,
+  move: string
+): Array<{ square: string; piece: Piece; hop: number }> {
+  if (!move.includes('x')) return []
+  const path = movePath(move)
+  const mover = before[squareIndex(path[0])]
+  const out: Array<{ square: string; piece: Piece; hop: number }> = []
+  for (let i = 0; i + 1 < path.length; i++) {
+    const a = squareIndex(path[i])
+    const b = squareIndex(path[i + 1])
+    const dr = Math.sign(Math.floor(b / 8) - Math.floor(a / 8))
+    const dc = Math.sign((b % 8) - (a % 8))
+    if (dr === 0 || dc === 0) continue
+    let r = Math.floor(a / 8) + dr
+    let c = (a % 8) + dc
+    while (r !== Math.floor(b / 8) && c !== b % 8) {
+      const piece = before[r * 8 + c]
+      if (piece && (!mover || piece.side !== mover.side)) {
+        out.push({ square: squareName(r * 8 + c), piece, hop: i })
+        break
+      }
+      r += dr
+      c += dc
+    }
+  }
+  return out
+}
+
 /** Casas de origem que têm lance legal. */
 export function movableSquares(legalMoves: string[]): Set<string> {
   return new Set(legalMoves.map((m) => moveEnds(m).from))

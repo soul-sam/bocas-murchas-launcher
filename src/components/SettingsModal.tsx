@@ -30,7 +30,7 @@ import { useVoice } from '@/lib/voice-context'
 import { useAudioDevices, useVideoDevices } from '@/lib/use-audio-devices'
 import { playUiSound } from '@/lib/ui-sounds'
 import { GATE_OFF_DB } from '@/lib/audio-processor'
-import { RAM_LIMITS, type LolPhase, type LolStatus, type OverlaySide, FREE_THEME_IDS, SHOP_THEME_IDS, THEME_LABEL, type ThemeId } from '../../electron/preload/types'
+import { RAM_LIMITS, type LolPhase, type LolStatus, type OverlaySide, FREE_THEME_IDS, SHOP_THEME_IDS, THEME_LABEL, type ThemeId, BOARD_SKIN_IDS, BOARD_SKIN_LABEL, type BoardSkin } from '../../electron/preload/types'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -1275,6 +1275,11 @@ function StartupTab() {
       </section>
 
       <section>
+        <SectionTitle>Tabuleiro</SectionTitle>
+        <BoardSkinPicker value={settings.boardSkin} onChange={(boardSkin) => void update({ boardSkin })} />
+      </section>
+
+      <section>
         <SectionTitle>Bandeja</SectionTitle>
         <SwitchRow
           label="Fechar pra bandeja"
@@ -1582,6 +1587,46 @@ function ThemePicker({
           {SHOP_THEME_IDS.map((id) => tile(id, !owned.has(id)))}
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * A cor das casas do tabuleiro, como amostras clicáveis: cada uma é um
+ * tabuleirinho 4×4 pintado com as cores DAQUELA opção (a do tema usa as
+ * variáveis vivas do board.css, então acompanha o tema escolhido acima).
+ */
+function BoardSkinPicker({ value, onChange }: { value: BoardSkin; onChange: (skin: BoardSkin) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {BOARD_SKIN_IDS.map((id) => {
+        const meta = BOARD_SKIN_LABEL[id]
+        const on = id === value
+        return (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(id)}
+            className={cn(
+              'flex flex-col gap-2 rounded-brutal border p-2 text-left transition-colors',
+              on ? 'border-acid bg-acid/5' : 'border-line hover:border-line-strong'
+            )}
+          >
+            <span
+              aria-hidden
+              data-board-skin={id}
+              className="board-amostra h-12 w-full overflow-hidden rounded-sm"
+            >
+              {Array.from({ length: 16 }, (_, i) => (
+                <span key={i} className={cn('board-amostra-casa', (Math.floor(i / 4) + i) % 2 === 1 && 'board-amostra-casa--escura')} />
+              ))}
+            </span>
+            <span className="text-xs font-semibold text-foreground">{meta.name}</span>
+            <span className="text-[11px] leading-snug text-muted-foreground">{meta.hint}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }

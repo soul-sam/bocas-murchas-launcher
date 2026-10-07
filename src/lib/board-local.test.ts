@@ -26,30 +26,40 @@ test('readChess/writeChess vão e voltam (casas, vez e roque)', () => {
   assert.equal(back.split(' ').slice(0, 4).join(' '), 'r3k2r/pp3ppp/8/3pP3/8/8/PPP2PPP/R3K2R w KQkq d6')
 })
 
-test('pré-lance do cavalo: só casas sem peça minha', () => {
-  assert.deepEqual(dests(START, 'g1', 'white'), ['g1f3', 'g1h3'])
-  assert.deepEqual(dests(START, 'b8', 'black'), ['b8a6', 'b8c6'])
+test('pré-lance do cavalo: casas vazias e peça minha (recaptura)', () => {
+  assert.deepEqual(dests(START, 'g1', 'white'), ['g1e2', 'g1f3', 'g1h3'])
+  assert.deepEqual(dests(START, 'b8', 'black'), ['b8a6', 'b8c6', 'b8d7'])
 })
 
 test('pré-lance: peça do outro lado não pré-joga', () => {
   assert.deepEqual(dests(START, 'g8', 'white'), [])
 })
 
-test('pré-lance do bispo: peça minha barra; depois de e4 a diagonal abre', () => {
-  assert.deepEqual(dests(START, 'f1', 'white'), [])
+test('pré-lance do bispo: peça minha é recaptura e fecha a diagonal; depois de e4 ela abre', () => {
+  assert.deepEqual(dests(START, 'f1', 'white'), ['f1e2', 'f1g2'])
   const afterE4 = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'
-  assert.deepEqual(dests(afterE4, 'f1', 'white'), ['f1a6', 'f1b5', 'f1c4', 'f1d3', 'f1e2'])
+  assert.deepEqual(dests(afterE4, 'f1', 'white'), ['f1a6', 'f1b5', 'f1c4', 'f1d3', 'f1e2', 'f1g2'])
 })
 
-test('pré-lance de linha atravessa peça do adversário e para antes da minha', () => {
+test('pré-lance de linha atravessa peça do adversário e para NA minha (recaptura)', () => {
   // Torre branca em a1, cavalo preto em a5, peão branco em a7.
   const fen = '4k3/P7/8/n7/8/8/8/R3K3 w - - 0 1'
-  assert.deepEqual(dests(fen, 'a1', 'white'), ['a1a2', 'a1a3', 'a1a4', 'a1a5', 'a1a6', 'a1b1', 'a1c1', 'a1d1'])
+  assert.deepEqual(dests(fen, 'a1', 'white'), [
+    'a1a2', 'a1a3', 'a1a4', 'a1a5', 'a1a6', 'a1a7', 'a1b1', 'a1c1', 'a1d1', 'a1e1'
+  ])
+})
+
+test('pré-lance de recaptura: peão toma de volta na casa do peão meu', () => {
+  // d4 branco, e5 preto: pré-lance c3xd4 vale enquanto d4 ainda é meu.
+  const fen = 'rnbqkbnr/pppp1ppp/8/4p3/3P4/2P5/PP3PPP/RNBQKBNR b KQkq - 0 2'
+  assert.ok(dests(fen, 'c3', 'white').includes('c3d4'))
+  assert.ok(dests(fen, 'd1', 'white').includes('d1d4'))
+  assert.ok(!dests(fen, 'd1', 'white').includes('d1d5'))
 })
 
 test('pré-lance do peão: frente, duas casas no começo e as duas diagonais mesmo vazias', () => {
   assert.deepEqual(dests(START, 'e2', 'white'), ['e2d3', 'e2e3', 'e2e4', 'e2f3'])
-  // Peça minha na frente barra o avanço (e as duas casas).
+  // Peça minha na frente barra o avanço (e as duas casas): empurrar nunca recaptura.
   assert.deepEqual(dests('4k3/8/8/8/8/4N3/4P3/4K3 w - - 0 1', 'e2', 'white'), ['e2d3', 'e2f3'])
 })
 
