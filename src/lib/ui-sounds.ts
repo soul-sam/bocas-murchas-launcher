@@ -66,6 +66,10 @@ export type UiSound =
   | 'board-end'
   | 'board-low-time'
   | 'board-illegal'
+  | 'pool-cue'
+  | 'pool-hit'
+  | 'pool-cushion'
+  | 'pool-pocket'
 
 interface Note {
   /** Frequência em Hz. */
@@ -414,7 +418,15 @@ const CUES: Partial<Record<UiSound, Cue>> = {
       { freq: 261.6, at: 0, dur: 0.04 },
       { freq: 174.6, at: 0.075, dur: 0.065 }
     ]
-  }
+  },
+  // Bilhar: o taco na branca — toque seco e curto.
+  'pool-cue': { volume: 0.5, cutoff: 2500, type: 'triangle', notes: [{ freq: 220, at: 0, dur: 0.03 }, { freq: 880, at: 0, dur: 0.015, gain: 0.4 }] },
+  // Bola em bola: clique de resina, mais agudo. O volume vem da velocidade.
+  'pool-hit': { volume: 0.55, cutoff: 4000, type: 'square', notes: [{ freq: 1200, at: 0, dur: 0.012 }, { freq: 2400, at: 0, dur: 0.008, gain: 0.5 }] },
+  // Tabela: abafado.
+  'pool-cushion': { volume: 0.35, cutoff: 900, type: 'sine', notes: [{ freq: 150, at: 0, dur: 0.05 }] },
+  // Caçapa: queda e rolagem curta.
+  'pool-pocket': { volume: 0.5, cutoff: 1200, type: 'sine', notes: [{ freq: 300, at: 0, dur: 0.06 }, { freq: 180, at: 0.05, dur: 0.12, gain: 0.6 }] }
 }
 
 /**

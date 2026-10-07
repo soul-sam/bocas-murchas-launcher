@@ -27,6 +27,7 @@ import {
   type ClockId,
   type DraughtsVariant,
   type LobbyBoardTable,
+  type PoolReplay,
   type Side
 } from './api-board'
 
@@ -109,6 +110,12 @@ interface BoardContextValue {
   offerDraw: () => Promise<BoardAck>
   answerDraw: (accept: boolean) => Promise<BoardAck>
   bet: (side: Side, amount: number) => Promise<BoardAck>
+  /** Bilhar: a animação da última tacada (só no broadcast logo após ela). `ply` = lances da mesa nesse instante. */
+  replay: { tableId: string; ply: number; replay: PoolReplay } | null
+  /** A tela já pegou o replay: limpa. */
+  consumeReplay: () => void
+  /** Pede revanche da mesa aberta e passa a abrir a nova. */
+  rematch: () => Promise<BoardAck>
 }
 
 const BoardContext = React.createContext<BoardContextValue | null>(null)
@@ -161,6 +168,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   const [table, setTable] = React.useState<BoardTableView | null>(null)
   const [invite, setInvite] = React.useState<BoardInvite | null>(null)
   const [notice, setNotice] = React.useState<string | null>(null)
+  const [replay, setReplay] = React.useState<{ tableId: string; ply: number; replay: PoolReplay } | null>(null)
 
   const settingsRef = React.useRef(settings)
   settingsRef.current = settings
@@ -215,19 +223,20 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       if (prev && prev.id === next.id) {
         if (prev.phase !== 'playing' && next.phase === 'playing') sound('board-start')
         const grew = next.moves.length > prev.moves.length
-        if (grew) {
+        // Bilhar: os sons vêm do replay da tacada, não do lance.
+        if (grew && next.game !== 'pool') {
           const ply = next.moves.length - 1
           const key = `${next.id}:${ply}`
           if (!soundedRef.current.has(key)) {
             soundedRef.current.add(key)
             const kind =
-              next.moves.length - prev.moves.length === 1 ? next.game === 'pool' ? 'move' : moveSound(next.game, prev.position, next.moves[ply]) : 'move'
+              next.moves.length - prev.moves.length === 1 ? moveSound(next.game, prev.position, next.moves[ply]) : 'move'
             sound(soundFor(kind, next.mySide !== null && moverOf(ply) === next.mySide))
           }
         }
-        if (r.send) {
+        if (r.send && next.game !== 'pool') {
           soundedRef.current.add(`${next.id}:${next.moves.length}`)
-          sound(soundFor(next.game === 'pool' ? 'move' : moveSound(next.game, next.position, r.send), true))
+          sound(soundFor(moveSound(next.game, next.position, r.send), true))
         }
         // O aviso de vez só quando nada mais tocou: no começo da partida
         // (ninguém jogou ainda) ou com a janela escondida.
@@ -247,8 +256,11 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     tableRef.current = null
     setOpenTableId(null)
     setTable(null)
+    setReplay(null)
     commitIntent(EMPTY_INTENT)
   }, [commitIntent])
+
+  const consumeReplay = React.useCallback((): void => setReplay(null), [])
 
   // --- socket -----------------------------------------------------------------
   React.useEffect(() => {
@@ -261,6 +273,10 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     }
     const handleTable = (data: { tableId: string; table: BoardTableView }): void => {
       if (!data?.tableId || !data.table || data.tableId !== openIdRef.current) return
+      // O replay vem antes da mesa: a tela lê replay.ply === table.moves.length.
+      if (data.table.game === 'pool' && data.table.replay) {
+        setReplay({ tableId: data.tableId, ply: data.table.moves.length, replay: data.table.replay })
+      }
       applyTable(data.table)
     }
     const handleInvite = (data: BoardInvite): void => {
@@ -496,6 +512,19 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   const answerDraw = React.useCallback((accept: boolean) => act('board:draw:answer', { accept }), [act])
   const bet = React.useCallback((side: Side, amount: number) => act('board:bet', { side, amount }), [act])
 
+  const rematch = React.useCallback(async (): Promise<BoardAck> => {
+    const t = tableRef.current
+    if (!t) return { ok: false, error: 'Nenhuma mesa aberta.' }
+    const ack = await emitWithAck(socket, 'board:rematch', { tableId: t.id })
+    if (ack.ok && ack.table) {
+      tableRef.current = null
+      setOpenTableId(ack.table.id)
+      openIdRef.current = ack.table.id
+      applyTable(ack.table)
+    }
+    return ack
+  }, [socket, applyTable])
+
   const myTable = React.useMemo(() => {
     const me = user?.id
     if (!me) return null
@@ -536,11 +565,14 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       resign,
       offerDraw,
       answerDraw,
-      bet
+      bet,
+      replay,
+      consumeReplay,
+      rematch
     }),
     [
       tables, ready, table, openTableId, invite, myTable, myTurn, notice, dismissNotice, openTable, closeTable, cancelTable, goToBoard,
-      create, answerInvite, sit, setReadyAction, play, intent, queuePremove, cancelPremoves, resign, offerDraw, answerDraw, bet
+      create, answerInvite, sit, setReadyAction, play, intent, queuePremove, cancelPremoves, resign, offerDraw, answerDraw, bet, replay, consumeReplay, rematch
     ]
   )
 
