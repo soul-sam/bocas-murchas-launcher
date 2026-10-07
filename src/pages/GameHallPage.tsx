@@ -70,6 +70,13 @@ export function GameHallPage() {
             online={countBoardPeople(boardTables, 'draughts')}
             onEnter={() => goToBoard('draughts')}
           />
+          <GameCard
+            game="pool"
+            title="Bilhar"
+            subtitle="Bola 8 com efeito, valendo murchos"
+            online={countBoardPeople(boardTables, 'pool')}
+            onEnter={() => goToBoard('pool')}
+          />
         </div>
       </div>
     </div>

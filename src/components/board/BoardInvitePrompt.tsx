@@ -4,7 +4,7 @@ import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { NaFila } from '@/components/ui/filas'
 import { resolveAssetUrl } from '@/lib/api'
-import { boardGameLabel } from '@/lib/api-board'
+import { boardClockLabel, boardGameLabel } from '@/lib/api-board'
 import { useBoard } from '@/lib/board-context'
 import { useMembers } from '@/lib/members-context'
 import { useTicker } from '@/lib/use-now'
@@ -90,7 +90,7 @@ export function BoardInvitePrompt() {
             <span className="font-medium">{name}</span> te chamou pra{' '}
             <span className="font-medium">{boardGameLabel(invite.game, invite.variant)}</span>
             {' · '}
-            <span className="font-mono">{invite.clock}</span>
+            <span className="font-mono">{boardClockLabel(invite.clock)}</span>
             {' · '}
             <span className={invite.stake > 0 ? 'text-burn' : 'text-muted-foreground'}>{worth}</span>
           </p>

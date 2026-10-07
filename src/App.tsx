@@ -465,6 +465,7 @@ export function App() {
                             <Route path="/lol" element={<LolPage />} />
                             <Route path="/xadrez" element={<BoardPage game="chess" />} />
                             <Route path="/dama" element={<BoardPage game="draughts" />} />
+                            <Route path="/bilhar" element={<BoardPage game="pool" />} />
                             {/* O pôquer é uma TELA, não um modal: mesa de
                                 cartas dentro de janelinha não dá imersão.
                                 O estado mora no PokerProvider, acima das

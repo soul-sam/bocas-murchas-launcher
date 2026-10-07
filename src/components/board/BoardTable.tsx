@@ -22,6 +22,7 @@ import { Hint } from '@/components/ui/tooltip'
 import { GameIcon } from '@/components/social/GameIcon'
 import { resolveAssetUrl } from '@/lib/api'
 import {
+  boardClockLabel,
   boardGameLabel,
   boardReasonLabel,
   sideIsLight,
@@ -148,7 +149,8 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
 
   // --- a posição da tela ----------------------------------------------------
   // A posição vem sempre do servidor; o fallback só garante a mesa posta.
-  const game = table?.game ?? null
+  // Bilhar tem mesa própria; aqui só entram xadrez e dama.
+  const game = table && table.game !== 'pool' ? table.game : null
   const serverPosition = table?.position || (game ? START_POSITION[game] : '')
   const serverMoves = table?.moves ?? NO_MOVES
   // O meu lance no ar (só vale se for o próximo lance da partida).
@@ -373,7 +375,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
         <div className="min-w-0 flex-1 px-1">
           <p className="truncate text-sm font-semibold leading-tight text-foreground">{label}</p>
           <p className="truncate text-[11.5px] leading-tight text-muted-foreground">
-            <span className="font-mono">{table.clock}</span> · {worth}
+            <span className="font-mono">{boardClockLabel(table.clock)}</span> · {worth}
             {table.spectators > 0 && (
               <>
                 {' '}
@@ -401,7 +403,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
               />
               <Board
                 key={table.id}
-                game={table.game}
+                game={table.game === 'pool' ? 'chess' : table.game} // bilhar não passa por aqui (mesa própria)
                 variant={table.variant}
                 position={boardPosition}
                 orientation={orientation}
@@ -441,7 +443,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
                     : 'Aguardando adversário'}
                 </p>
                 <p className="board-faixa-sub">
-                  {label} · <span className="font-mono">{table.clock}</span> · {worth}
+                  {label} · <span className="font-mono">{boardClockLabel(table.clock)}</span> · {worth}
                 </p>
                 {error && <ErrorLine message={error} className="mt-3 text-left" />}
                 <div className="board-faixa-acoes">

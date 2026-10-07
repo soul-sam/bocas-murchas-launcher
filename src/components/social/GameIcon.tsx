@@ -3,6 +3,7 @@ import {
   Boxes,
   Cake,
   Car,
+  CircleDashed,
   CircleDot,
   Crosshair,
   Crown,
@@ -37,6 +38,7 @@ const GAME_ICON: Record<string, IconComponent> = {
   // Xadrez e dama: as chaves são os valores de BoardGame (lib/api-board.ts).
   chess: Crown,
   draughts: CircleDot,
+  pool: CircleDashed,
   valorant: Crosshair,
   cs2: Target,
   'arc-raiders': Radiation,
@@ -72,6 +74,7 @@ export const GAME_CATALOG: { key: string; label: string }[] = [
 const GAME_LABEL: Record<string, string> = {
   chess: 'Xadrez',
   draughts: 'Dama',
+  pool: 'Bilhar',
   ...Object.fromEntries(
     GAME_CATALOG.map((game) => [game.key, game.label])
   )

@@ -7,7 +7,7 @@
  * contextos já entregam (`activities` do socket, `tables` do poker).
  */
 
-export type HallGame = 'minecraft' | 'poker' | 'lol' | 'chess' | 'draughts'
+export type HallGame = 'minecraft' | 'poker' | 'lol' | 'chess' | 'draughts' | 'pool'
 
 /** Membros com atividade publicada naquele jogo, em qualquer fase. */
 export function countByActivity(

@@ -91,7 +91,7 @@ export function CreateDialog({
     const ack = await create({
       game,
       variant: game === 'draughts' ? variant : undefined,
-      clock,
+      clock: game === 'pool' ? 'shot30' : clock,
       stake,
       inviteUserId: mode === 'invite' ? inviteId ?? undefined : undefined
     })
@@ -139,6 +139,7 @@ export function CreateDialog({
             </Field>
           )}
 
+          {game !== 'pool' && (
           <Field label="Relógio" hint="minutos + incremento em segundos">
             <div className="grid grid-cols-3 gap-1.5">
               {BOARD_CLOCKS.map((c) => (
@@ -148,6 +149,7 @@ export function CreateDialog({
               ))}
             </div>
           </Field>
+          )}
 
           <Field
             label="Valor"

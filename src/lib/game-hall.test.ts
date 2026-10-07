@@ -78,3 +78,8 @@ test('tabuleiro: jogo sem mesa conta 0', () => {
   assert.equal(countBoardPeople([mesa('chess', 'a', 'a', 'b')], 'draughts'), 0)
   assert.equal(countBoardPeople([], 'chess'), 0)
 })
+
+test('countBoardPeople conta mesas de bilhar', () => {
+  const tables = [{ game: 'pool', host: { userId: 'a' }, white: { userId: 'a' }, black: { userId: 'b' }, spectators: 1 }]
+  assert.equal(countBoardPeople(tables, 'pool'), 3)
+})

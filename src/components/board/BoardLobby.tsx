@@ -4,7 +4,7 @@ import { MurchosIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { resolveAssetUrl } from '@/lib/api'
-import { boardGameLabel, type BoardGame, type BoardPerson, type LobbyBoardTable } from '@/lib/api-board'
+import { boardClockLabel, boardGameLabel, type BoardGame, type BoardPerson, type LobbyBoardTable } from '@/lib/api-board'
 import { useAuth } from '@/lib/auth-context'
 import { amPlayer, useBoard } from '@/lib/board-context'
 import { useGamification } from '@/lib/gamification-context'
@@ -112,6 +112,7 @@ export function BoardLobby({ game }: { game: BoardGame }) {
         </p>
       ) : empty ? (
         <div className="board-vitrine">
+          {game !== 'pool' && (
           <div className="board-vitrine-tabuleiro" aria-hidden>
             <Board
               game={game}
@@ -123,6 +124,7 @@ export function BoardLobby({ game }: { game: BoardGame }) {
               annotations={false}
             />
           </div>
+          )}
           <div className="board-vitrine-texto">
             <p className="text-sm font-semibold text-foreground">
               Nenhuma mesa de {boardGameLabel(game, null).split(' ')[0].toLowerCase()} aberta agora.
@@ -166,7 +168,7 @@ export function BoardLobby({ game }: { game: BoardGame }) {
                     ) : (
                       <Button size="sm" onClick={() => onSit(t.id)}>
                         Sentar · {t.stake > 0 ? `${t.stake.toLocaleString('pt-BR')} · ` : ''}
-                        <span className="font-mono">{t.clock}</span>
+                        <span className="font-mono">{boardClockLabel(t.clock)}</span>
                       </Button>
                     )
                   }
@@ -312,7 +314,7 @@ function TableRow({
               {' · '}
             </>
           )}
-          <Timer className="inline h-3 w-3" aria-hidden /> <span className="font-mono">{table.clock}</span>
+          <Timer className="inline h-3 w-3" aria-hidden /> <span className="font-mono">{boardClockLabel(table.clock)}</span>
           {' · '}
           {table.stake > 0 ? (
             <span className="font-mono text-burn">{table.stake.toLocaleString('pt-BR')} murchos</span>

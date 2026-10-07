@@ -18,7 +18,7 @@ import '@/components/board/board.css'
  * está vendo. Com mesa aberta deste jogo o cabeçalho some e a tela é dela.
  */
 
-const TITLE: Record<BoardGame, string> = { chess: 'Xadrez', draughts: 'Dama' }
+const TITLE: Record<BoardGame, string> = { chess: 'Xadrez', draughts: 'Dama', pool: 'Bilhar' }
 
 export function BoardPage({ game }: { game: BoardGame }) {
   const { table, myTable, openTable, closeTable } = useBoard()

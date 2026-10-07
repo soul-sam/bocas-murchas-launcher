@@ -221,13 +221,13 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
           if (!soundedRef.current.has(key)) {
             soundedRef.current.add(key)
             const kind =
-              next.moves.length - prev.moves.length === 1 ? moveSound(next.game, prev.position, next.moves[ply]) : 'move'
+              next.moves.length - prev.moves.length === 1 ? next.game === 'pool' ? 'move' : moveSound(next.game, prev.position, next.moves[ply]) : 'move'
             sound(soundFor(kind, next.mySide !== null && moverOf(ply) === next.mySide))
           }
         }
         if (r.send) {
           soundedRef.current.add(`${next.id}:${next.moves.length}`)
-          sound(soundFor(moveSound(next.game, next.position, r.send), true))
+          sound(soundFor(next.game === 'pool' ? 'move' : moveSound(next.game, next.position, r.send), true))
         }
         // O aviso de vez só quando nada mais tocou: no começo da partida
         // (ninguém jogou ainda) ou com a janela escondida.
@@ -464,7 +464,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       if (!started) return Promise.resolve({ ok: false, error: 'Não é a sua vez.' })
       commitIntent(started)
       soundedRef.current.add(`${t.id}:${t.moves.length}`)
-      sound(soundFor(moveSound(t.game, t.position, m), true))
+      sound(soundFor(t.game === 'pool' ? 'move' : moveSound(t.game, t.position, m), true))
       return sendMove(m)
     },
     [commitIntent, sendMove, sound]

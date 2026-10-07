@@ -10,9 +10,11 @@ import { request } from './api'
  */
 
 export type Side = 'white' | 'black'
-export type BoardGame = 'chess' | 'draughts'
+export type BoardGame = 'chess' | 'draughts' | 'pool'
+/** Jogos de tabuleiro 8x8 (o bilhar tem mesa própria). */
+export type GridGame = Exclude<BoardGame, 'pool'>
 export type DraughtsVariant = 'br' | 'us'
-export type ClockId = '1+0' | '1+1' | '3+0' | '3+2' | '5+0' | '10+0'
+export type ClockId = '1+0' | '1+1' | '3+0' | '3+2' | '5+0' | '10+0' | 'shot30'
 export type BoardPhase = 'open' | 'invited' | 'pending' | 'playing' | 'finished'
 
 export interface BoardPerson { userId: string; displayName: string; avatar: string | null }
@@ -73,6 +75,31 @@ export interface BoardTableView extends LobbyBoardTable {
   myBet: { side: Side; amount: number } | null
   /** Teto de aposta de quem está vendo. */
   betLimit: number
+  /** Bilhar: só vem no broadcast logo após uma tacada. */
+  replay?: PoolReplay
+}
+
+export interface PoolReplay { frames: Array<{ t: number; b: Array<[number, number, number]> }>; events: PoolEvent[]; duration: number }
+export type PoolEvent =
+  | { t: number; k: 'hit'; a: number; b: number; v: number }
+  | { t: number; k: 'cushion'; a: number; v: number }
+  | { t: number; k: 'pocket'; a: number; pocket: number }
+export type PoolGroup = 'open' | 'solids' | 'stripes'
+/** `position` do bilhar, parseada (coordenadas em mm viram metros). */
+export interface PoolPosition {
+  balls: Array<{ id: number; x: number; y: number; state: 's' | 'p' | 'h' }>
+  turn: Side
+  groups: { white: PoolGroup; black: PoolGroup }
+  ballInHand: boolean
+  breakPending: boolean
+  timeouts: { white: number; black: number }
+  lastShot: { by: Side; fouls: string[]; pocketed: number[] } | null
+}
+export function parsePoolPosition(position: string): PoolPosition | null {
+  try {
+    const j = JSON.parse(position)
+    return { ...j, balls: (j.balls as Array<[number, number, number, 's' | 'p' | 'h']>).map(([id, x, y, state]) => ({ id, x: x / 1000, y: y / 1000, state })) }
+  } catch { return null }
 }
 
 export interface BoardAck { ok: boolean; error?: string; table?: BoardTableView }
@@ -108,14 +135,23 @@ export interface BoardCardMeta {
 // ============================================
 
 /** Os relógios aceitos pelo servidor, do mais curto pro mais longo. */
+/** 30 s por tacada: o único relógio do bilhar. */
+export const SHOT_CLOCK_MS = 30_000
+/** Relógios do xadrez/dama; o bilhar é só `shot30`. */
 export const BOARD_CLOCKS: readonly ClockId[] = ['1+0', '1+1', '3+0', '3+2', '5+0', '10+0']
+
+/** Como mostrar o relógio da mesa ("5+0" fica como está; bilhar lê por extenso). */
+export function boardClockLabel(clock: ClockId | string): string {
+  return clock === 'shot30' ? '30 s por tacada' : clock
+}
 
 // Cores: `white` é "quem joga primeiro"; na dama americana isso é o lado escuro.
 export { sideIsLight, sideLabel } from './board-sides'
 
-export const BOARD_ROUTE: Record<BoardGame, string> = { chess: '/xadrez', draughts: '/dama' }
+export const BOARD_ROUTE: Record<BoardGame, string> = { chess: '/xadrez', draughts: '/dama', pool: '/bilhar' }
 
 export function boardGameLabel(game: BoardGame, variant: DraughtsVariant | null): string {
+  if (game === 'pool') return 'Bilhar'
   if (game === 'chess') return 'Xadrez'
   return variant === 'us' ? 'Dama americana' : 'Dama brasileira'
 }
@@ -131,7 +167,10 @@ const REASON_LABEL: Record<string, string> = {
   timeout: 'tempo',
   resign: 'desistência',
   agreement: 'acordo',
-  'settle-error': 'erro no acerto'
+  'settle-error': 'erro no acerto',
+  eight_ball: 'bola 8',
+  eight_ball_foul: 'bola 8 fora de hora',
+  timeouts: 'três tempos esgotados'
 }
 
 export function boardReasonLabel(reason: string): string {

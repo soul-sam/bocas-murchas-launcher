@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import { sideIsLight, type BoardGame, type DraughtsVariant, type Side } from '@/lib/api-board'
+import { sideIsLight, type GridGame, type DraughtsVariant, type Side } from '@/lib/api-board'
 import {
   capturedSquares,
   movableSquares,
@@ -124,7 +124,7 @@ const paintOf = (e: { shiftKey: boolean; ctrlKey: boolean; altKey: boolean; meta
   e.shiftKey ? 'b' : e.ctrlKey || e.altKey || e.metaKey ? 'c' : 'a'
 
 export interface BoardProps {
-  game: BoardGame
+  game: GridGame
   /** Na dama americana quem abre (white) tem as peças escuras. */
   variant?: DraughtsVariant | null
   position: string
