@@ -36,6 +36,8 @@ const RULES = [
       'styles/effects.css',
       'lib/api-gamification.ts',
       'components/admin/CargosTab.tsx',
+      // pano/bolas da mesa de bilhar: cor de conteudo, como as pecas do xadrez
+      'components/pool/draw.ts',
       'index.web.html'
     ]
   },

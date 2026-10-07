@@ -802,6 +802,20 @@ export function isBoardSkin(value: unknown): value is BoardSkin {
   return typeof value === 'string' && (BOARD_SKIN_IDS as readonly string[]).includes(value)
 }
 
+/** Mesa de bilhar (salão de jogos): pano, acabamento e bordas. Cores são conteúdo, não seguem o tema. */
+export interface PoolSkin { cloth: 'verde' | 'azul' | 'vermelho' | 'preto'; finish: 'fosco' | 'brilho'; rails: 'madeira' | 'preto' }
+export const POOL_CLOTHS = ['verde', 'azul', 'vermelho', 'preto'] as const
+export const POOL_FINISHES = ['fosco', 'brilho'] as const
+export const POOL_RAILS = ['madeira', 'preto'] as const
+export const DEFAULT_POOL_SKIN: PoolSkin = { cloth: 'verde', finish: 'fosco', rails: 'madeira' }
+export function isPoolSkin(v: unknown): v is PoolSkin {
+  if (!v || typeof v !== 'object') return false
+  const o = v as Record<string, unknown>
+  return (POOL_CLOTHS as readonly unknown[]).includes(o.cloth) &&
+    (POOL_FINISHES as readonly unknown[]).includes(o.finish) &&
+    (POOL_RAILS as readonly unknown[]).includes(o.rails)
+}
+
 export interface LauncherSettings {
   /**
    * Revisao do arquivo de configuracoes. Sobe quando um padrao muda e a
@@ -817,6 +831,8 @@ export interface LauncherSettings {
   theme: ThemeId
   /** Cor das casas do tabuleiro (ver BoardSkin). */
   boardSkin: BoardSkin
+  /** Pano, acabamento e bordas da mesa de bilhar (ver PoolSkin). */
+  poolSkin: PoolSkin
   maxRamMb: number
   minRamMb: number
   notifyOnJoinLeave: boolean
@@ -1012,6 +1028,7 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   settingsRevision: SETTINGS_REVISION,
   theme: 'roxo',
   boardSkin: 'tema',
+  poolSkin: DEFAULT_POOL_SKIN,
   maxRamMb: 4096,
   minRamMb: 1024,
   notifyOnJoinLeave: true,
