@@ -16,9 +16,9 @@
    até o destino sem o React medir nada. */
 
 /* ---------- as cores ----------
-   PEÇAS: fixas, no estilo do chess.com (brancas brancas com contorno grafite,
-   pretas em cinza-chumbo com brilho em cima) — peça de xadrez é conteúdo,
-   não cromo, e tem que ler igual em todo tema e em toda cor de casa.
+   PEÇAS: as de xadrez são imagens (assets/chess, ver pieces.tsx); as cores
+   abaixo vestem só as pedras da dama — fixas, porque peça é conteúdo, não
+   cromo, e tem que ler igual em todo tema e em toda cor de casa.
    CASAS: derivadas do tema por padrão. Os temas claros trocam o sentido de
    --foreground / --background, e daí as casas inverteriam; por isso lá
    embaixo eles recebem valores neutros. `data-board-skin` no <html> troca

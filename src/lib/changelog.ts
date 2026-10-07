@@ -42,6 +42,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.56.1',
+    headline: 'Peças clássicas no xadrez',
+    items: [
+      'O xadrez trocou de peças: o conjunto clássico, brancas e pretas de contorno firme, que lê bem em qualquer cor de tabuleiro.'
+    ]
+  },
+  {
     version: '1.56.0',
     headline: 'Peças novas e tabuleiro de madeira',
     items: [
