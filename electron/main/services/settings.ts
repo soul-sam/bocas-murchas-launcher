@@ -57,7 +57,8 @@ function normalizeVoice(raw: Partial<VoiceSettings> | undefined): VoiceSettings 
     noiseSuppression: v.noiseSuppression ?? d.noiseSuppression,
     echoCancellation: v.echoCancellation ?? d.echoCancellation,
     autoGainControl: v.autoGainControl ?? d.autoGainControl,
-    rumbleFilter: v.rumbleFilter ?? d.rumbleFilter
+    rumbleFilter: v.rumbleFilter ?? d.rumbleFilter,
+    micProcessing: v.micProcessing ?? d.micProcessing
   }
 }
 

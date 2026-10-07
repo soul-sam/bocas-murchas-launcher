@@ -172,6 +172,16 @@ export interface VoiceSettings {
    * lib/audio-processor.ts.
    */
   rumbleFilter: boolean
+  /**
+   * Passar o mic pelo grafo Web Audio do launcher (ganho, gate, passa-alta).
+   *
+   * Desligado, o mic cru vai direto pro LiveKit — igual o Discord faz. Existe
+   * porque certos drivers de áudio onboard (relato: Cirrus Logic HD Audio)
+   * engasgam no callback de render do Chromium e a voz sai "robotizada" só
+   * no launcher. Sem o grafo não há callback pra engasgar. Custo: ganho e
+   * gate não valem pra essa pessoa.
+   */
+  micProcessing: boolean
 }
 
 /**
@@ -1029,7 +1039,8 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     noiseSuppression: true,
     echoCancellation: true,
     autoGainControl: false,
-    rumbleFilter: true
+    rumbleFilter: true,
+    micProcessing: true
   },
   hotkeys: {
     mute: 'Control+Shift+M',

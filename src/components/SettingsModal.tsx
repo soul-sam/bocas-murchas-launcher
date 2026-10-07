@@ -469,6 +469,12 @@ function VoiceTab() {
           checked={voice.autoGainControl}
           onCheckedChange={(autoGainControl) => patch({ autoGainControl })}
         />
+        <SwitchRow
+          label="Processar microfone no launcher"
+          hint="Ganho de entrada, gate de ruído e corte de grave. Se a sua voz chega robotizada ou picotada pros outros (e no Discord não), desligue: o microfone vai direto, sem esses ajustes."
+          checked={voice.micProcessing}
+          onCheckedChange={(micProcessing) => patch({ micProcessing })}
+        />
         <p className="pt-1 text-[11.5px] text-muted-foreground">
           vale na próxima vez que entrar na call
         </p>

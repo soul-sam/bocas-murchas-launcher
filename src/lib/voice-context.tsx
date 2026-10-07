@@ -338,6 +338,9 @@ function micConfigKey(voice: {
   ].join('|')
 }
 
+/** Sinal interno: a pessoa pediu o mic cru (configuração), não foi erro. */
+class RawMicRequested extends Error {}
+
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuth()
   const { socket } = useSocket()
@@ -997,8 +1000,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
             echoCancellation: settings.voice.echoCancellation,
             noiseSuppression: settings.voice.noiseSuppression,
             autoGainControl: settings.voice.autoGainControl,
-            channelCount: 1,
-            sampleRate: 48_000
+            // Sem sampleRate: ver createMicProcessor. O WebRTC leva pra 48k sozinho.
+            channelCount: 1
           },
           publishDefaults: {
             dtx: true,
@@ -1374,6 +1377,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
          * uma janela de alguns quadros com o mic no ar.
          */
         try {
+          // Processamento desligado: mic cru pelo LiveKit, sem Web Audio no
+          // caminho (ver `micProcessing` em preload/types.ts). Mesmo caminho
+          // do catch abaixo, mas de propósito e sem aviso.
+          if (!settings.voice.micProcessing) throw new RawMicRequested()
           const processor = await createMicProcessor({
             deviceId:
               settings.voice.inputDeviceId !== 'default'
@@ -1406,7 +1413,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
           // Sem permissão, sem mic, AudioContext falhou… a call ainda tem que
           // acontecer: cai pro mic cru do LiveKit, sem ganho e sem gate.
-          console.warn('[voice] processamento do mic falhou, publicando o mic cru', err)
+          if (!(err instanceof RawMicRequested)) {
+            console.warn('[voice] processamento do mic falhou, publicando o mic cru', err)
+          }
           pendingProcessor?.destroy()
           pendingProcessor = null
           await next.localParticipant.setMicrophoneEnabled(!startMuted)
@@ -2153,7 +2162,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       autoGainControl: voice.autoGainControl,
       inputGain: voice.inputGain,
       noiseGateThreshold: voice.noiseGateThreshold,
-      rumbleFilter: voice.rumbleFilter
+      rumbleFilter: voice.rumbleFilter,
+      // Sem processamento, o medidor e o teste leem o mic cru — o que a call
+      // vai transmitir nesse modo.
+      bypass: !voice.micProcessing
     })
       .then((processor) => {
         // A tela fechou (ou a call entrou) antes do getUserMedia responder.
@@ -2180,7 +2192,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     settings.voice.inputDeviceId,
     settings.voice.echoCancellation,
     settings.voice.noiseSuppression,
-    settings.voice.autoGainControl
+    settings.voice.autoGainControl,
+    settings.voice.micProcessing
   ])
 
   /**

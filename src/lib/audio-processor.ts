@@ -77,6 +77,13 @@ export interface MicProcessorOptions {
    * Ligado por padrão; desligue se sua voz está sendo cortada.
    */
   rumbleFilter: boolean
+  /**
+   * Só medir, não tocar no som: a faixa entregue é a CRUA do getUserMedia e o
+   * grafo existe apenas pros analisadores do medidor. É o que a tela de
+   * configurações usa quando `micProcessing` está desligado — assim o teste
+   * de mic toca o que a call vai transmitir de verdade.
+   */
+  bypass?: boolean
 }
 
 export interface MicProcessor {
@@ -177,19 +184,37 @@ export async function createMicProcessor(options: MicProcessorOptions): Promise<
       echoCancellation: options.echoCancellation,
       noiseSuppression: options.noiseSuppression,
       autoGainControl: options.autoGainControl,
-      channelCount: 1,
-      sampleRate: 48_000
+      channelCount: 1
     }
   }
   let raw = await navigator.mediaDevices.getUserMedia(constraints)
 
-  // 48k é o que o Opus quer; o Chromium reamostra o mic se ele vier em 44.1k.
-  let ctx: AudioContext
-  try {
-    ctx = new AudioContext({ sampleRate: 48_000, latencyHint: 'interactive' })
-  } catch {
-    ctx = new AudioContext({ latencyHint: 'interactive' })
-  }
+  /**
+   * SEM `sampleRate` forçado — nem aqui nem no getUserMedia acima.
+   *
+   * O grafo rodava a 48 kHz fixos "porque é o que o Opus quer". Só que o
+   * relógio de um AudioContext é o do dispositivo de SAÍDA padrão do Windows,
+   * mesmo que o grafo só alimente um MediaStreamDestination. Quando esse
+   * dispositivo roda em outra taxa (44,1 kHz em muita placa onboard, 96/192 kHz
+   * em headset gamer e DAC), o Chromium reamostra em cima do callback de
+   * render e perde quadros — a voz chega metálica, "robotizada", pra todo
+   * mundo que ouve, enquanto Discord (que não passa pelo Web Audio) fica
+   * normal. Foi exatamente o relato de um usuário novo com hardware diferente
+   * do resto da galera.
+   *
+   * Deixar o contexto na taxa nativa do hardware tira a reamostragem do
+   * caminho crítico. O WebRTC reamostra pra 48 kHz antes do Opus de qualquer
+   * jeito, de graça, fora do thread de render.
+   */
+  /**
+   * 'balanced', não 'interactive': o hint pequeno pede o menor buffer que o
+   * driver aceita, e driver de codec onboard (Cirrus Logic, Realtek antigo)
+   * não entrega quadro em dia nesse tamanho — cada atraso vira um estalo, e
+   * uma sequência deles é a voz "robotizada". O buffer maior custa uns 10 ms
+   * numa call que já tem 100+; o estalo custa a conversa.
+   */
+  const ctx = new AudioContext({ latencyHint: 'balanced' })
+  const bypass = options.bypass === true
 
   let source = ctx.createMediaStreamSource(raw)
 
@@ -211,8 +236,8 @@ export async function createMicProcessor(options: MicProcessorOptions): Promise<
    * destino. Ligados no ganho de entrada (sinal cru, antes do passa-alta):
    * o ramo do grave precisa ver o grave pra poder compará-lo com a voz.
    *
-   * 1024 amostras a 48k = ~21ms de janela: curto pra reagir, longo o bastante
-   * pra uma vogal grave não oscilar em volta do limiar.
+   * 1024 amostras = ~21ms de janela a 48k (~23ms a 44,1k): curto pra reagir,
+   * longo o bastante pra uma vogal grave não oscilar em volta do limiar.
    */
   const voiceBand = ctx.createBiquadFilter()
   voiceBand.type = 'bandpass'
@@ -240,12 +265,14 @@ export async function createMicProcessor(options: MicProcessorOptions): Promise<
 
   const destination = ctx.createMediaStreamDestination()
 
-  // Caminho do ar.
+  // Caminho do ar. Em bypass o ar não passa por aqui: a faixa crua é a saída.
   source.connect(inputGain)
-  inputGain.connect(highpass)
-  highpass.connect(lookahead)
-  lookahead.connect(gate)
-  gate.connect(destination)
+  if (!bypass) {
+    inputGain.connect(highpass)
+    highpass.connect(lookahead)
+    lookahead.connect(gate)
+    gate.connect(destination)
+  }
 
   // Ramos de deteccao (sem saida).
   inputGain.connect(voiceBand)
@@ -253,7 +280,8 @@ export async function createMicProcessor(options: MicProcessorOptions): Promise<
   inputGain.connect(lowBand)
   lowBand.connect(lowAnalyser)
 
-  const processedTrack = destination.stream.getAudioTracks()[0]
+  const processedTrack = bypass ? raw.getAudioTracks()[0] : destination.stream.getAudioTracks()[0]
+  const processedStream = bypass ? raw : destination.stream
 
   // --- estado do gate -------------------------------------------------------
 
@@ -352,7 +380,7 @@ export async function createMicProcessor(options: MicProcessorOptions): Promise<
 
   return {
     processedTrack,
-    processedStream: destination.stream,
+    processedStream,
     getLevel: () => meter,
     getLevelDb: () => levelDb,
     isOpen: () => open,
