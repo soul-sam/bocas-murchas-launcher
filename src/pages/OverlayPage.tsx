@@ -137,7 +137,7 @@ export function OverlayPage() {
   const { state, offline } = useOverlayState()
   const mode = useOverlayMode()
   const { dock, preview, commit } = useDock()
-  const { offset: idleOffset, preview: previewIdle, commit: commitIdle } = useIdleOffset()
+  const { dock: idleDock, preview: previewIdle, commit: commitIdle } = useIdleDock()
   const now = useOverlayClock()
   const { live: liveToasts, recent: recentToasts } = useToasts()
   const minimizeKey = useMinimizeKey()
@@ -279,10 +279,10 @@ export function OverlayPage() {
    */
   const latestRef = React.useRef(dock)
   latestRef.current = dock
-  const latestIdleRef = React.useRef(idleOffset)
-  latestIdleRef.current = idleOffset
-  /** A logo só sobe e desce: o lado dela é a direita, e não se escolhe. */
-  const verticalOnly = face === 'logo'
+  const latestIdleRef = React.useRef(idleDock)
+  latestIdleRef.current = idleDock
+  /** Fora de partida o arrasto move a logo, e não a aba: memórias separadas. */
+  const idle = face === 'logo'
 
   const startDrag = React.useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -315,13 +315,10 @@ export function OverlayPage() {
           0.94,
           Math.max(0.06, moveEvent.clientY / Math.max(1, window.innerHeight))
         )
-        if (verticalOnly) {
-          previewIdle(offset)
-          return
-        }
         const side: OverlaySide =
           moveEvent.clientX < window.innerWidth / 2 ? 'left' : 'right'
-        preview({ side, offset })
+        if (idle) previewIdle({ side, offset })
+        else preview({ side, offset })
       }
 
       const onUp = (): void => {
@@ -331,7 +328,7 @@ export function OverlayPage() {
         setDragging(false)
 
         if (moved) {
-          if (verticalOnly) commitIdle(latestIdleRef.current)
+          if (idle) commitIdle(latestIdleRef.current)
           else commit(latestRef.current)
         }
         // Clique seco na aba: prende (ou solta) o painel.
@@ -342,7 +339,7 @@ export function OverlayPage() {
       window.addEventListener('pointerup', onUp)
       window.addEventListener('pointercancel', onUp)
     },
-    [preview, commit, verticalOnly, previewIdle, commitIdle]
+    [preview, commit, idle, previewIdle, commitIdle]
   )
 
   // A janela cobre a tela inteira (ver services/overlay.ts), então a posição
@@ -378,7 +375,8 @@ export function OverlayPage() {
       {face === 'logo' && (
         <LogoTab
           state={state}
-          offset={idleOffset}
+          side={idleDock.side}
+          offset={idleDock.offset}
           expanded={expanded}
           pinned={pinned}
           dragging={dragging}
@@ -389,15 +387,21 @@ export function OverlayPage() {
 
       {face && expanded && (
         <DockedPanel
-          side={face === 'logo' ? 'right' : dock.side}
-          offset={face === 'logo' ? idleOffset : dock.offset}
-          inset={face === 'logo' ? 'right-[5.25rem]' : undefined}
+          side={face === 'logo' ? idleDock.side : dock.side}
+          offset={face === 'logo' ? idleDock.offset : dock.offset}
+          inset={
+            face === 'logo'
+              ? idleDock.side === 'left'
+                ? 'left-[5.25rem]'
+                : 'right-[5.25rem]'
+              : undefined
+          }
         >
           <Panel
             state={state}
             offline={offline}
             now={now}
-            side={face === 'logo' ? 'right' : dock.side}
+            side={face === 'logo' ? idleDock.side : dock.side}
             pinned={pinned}
             minimizeKey={minimizeKey}
             recent={recentToasts}
@@ -413,9 +417,15 @@ export function OverlayPage() {
       {face && !expanded && liveToasts.length > 0 && (
         <ToastStack
           toasts={liveToasts}
-          side={face === 'logo' ? 'right' : dock.side}
-          offset={face === 'logo' ? idleOffset : dock.offset}
-          inset={face === 'logo' ? 'right-[4.25rem]' : undefined}
+          side={face === 'logo' ? idleDock.side : dock.side}
+          offset={face === 'logo' ? idleDock.offset : dock.offset}
+          inset={
+            face === 'logo'
+              ? idleDock.side === 'left'
+                ? 'left-[4.25rem]'
+                : 'right-[4.25rem]'
+              : undefined
+          }
         />
       )}
 
@@ -595,30 +605,30 @@ function useDock(): {
   return { dock, preview, commit }
 }
 
-/** A altura da logo de fora de partida. Mesmo arranjo do `useDock`. */
-function useIdleOffset(): {
-  offset: number
-  preview: (offset: number) => void
-  commit: (offset: number) => void
+/** Onde a logo de fora de partida mora. Mesmo arranjo do `useDock`. */
+function useIdleDock(): {
+  dock: OverlayDock
+  preview: (dock: OverlayDock) => void
+  commit: (dock: OverlayDock) => void
 } {
-  const [offset, setOffset] = React.useState(0.6)
+  const [dock, setDock] = React.useState<OverlayDock>({ side: 'right', offset: 0.6 })
 
   React.useEffect(() => {
     void window.bocas.settings
       .get()
-      .then((settings) => setOffset(settings.overlay.idleOffset))
+      .then((settings) => setDock(settings.overlay.idleDock))
       .catch(() => {})
-    return window.bocas.overlay.onIdleOffset(setOffset)
+    return window.bocas.overlay.onIdleDock(setDock)
   }, [])
 
-  const preview = React.useCallback((next: number) => setOffset(next), [])
+  const preview = React.useCallback((next: OverlayDock) => setDock(next), [])
 
-  const commit = React.useCallback((next: number) => {
-    setOffset(next)
-    void window.bocas.overlay.setIdleOffset(next).catch(() => {})
+  const commit = React.useCallback((next: OverlayDock) => {
+    setDock(next)
+    void window.bocas.overlay.setIdleDock(next).catch(() => {})
   }, [])
 
-  return { offset, preview, commit }
+  return { dock, preview, commit }
 }
 
 /**

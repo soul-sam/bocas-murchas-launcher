@@ -47,6 +47,7 @@ import type {
   OverlayState,
   OverlayToast
 } from '../preload/types.js'
+import { isOverlaySide } from '../preload/types.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 import { showMainWindow } from './services/main-window.js'
 import { app, powerMonitor } from 'electron'
@@ -205,11 +206,14 @@ export function registerIpcHandlers(): void {
   })
 
   /** A logo de fora de partida foi arrastada. Mesmo caminho do `set-dock`. */
-  ipcMain.handle('overlay:set-idle-offset', async (_e, offset: number) => {
-    if (!Number.isFinite(offset)) return
-    const idleOffset = Math.min(0.94, Math.max(0.06, offset))
+  ipcMain.handle('overlay:set-idle-dock', async (_e, dock: OverlayDock) => {
+    if (!dock || !isOverlaySide(dock.side) || !Number.isFinite(dock.offset)) return
+    const idleDock: OverlayDock = {
+      side: dock.side,
+      offset: Math.min(0.94, Math.max(0.06, dock.offset))
+    }
     const next = await updateSettings((current) => ({
-      overlay: { ...current.overlay, idleOffset }
+      overlay: { ...current.overlay, idleDock }
     }))
     applyOverlaySettings(next)
   })

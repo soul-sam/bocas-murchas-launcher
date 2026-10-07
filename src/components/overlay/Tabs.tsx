@@ -120,13 +120,15 @@ export function EdgeTab({
 /**
  * A MEDALHA — a cara da sobreposição fora de partida.
  *
- * Metade escondida atrás da borda direita: presente sem ocupar a tela, e
- * encostar o mouse na borda naquela altura é o bastante pra ela sair inteira e
- * o painel abrir ao lado. Clicar prende aberto e arrastar muda a altura, igual
- * à aba do jogo — só que ela não troca de lado.
+ * Metade escondida atrás da borda: presente sem ocupar a tela, e encostar o
+ * mouse na borda naquela altura é o bastante pra ela sair inteira e o painel
+ * abrir ao lado. Clicar prende aberto e arrastar muda de lugar (altura e
+ * lado), igual à aba do jogo — com memória própria, porque o canto livre da
+ * área de trabalho não é o canto livre do HUD.
  *
- * O anel de XP cresce pela esquerda (ver `XpRing`) e a etiqueta de nível fica
- * no lado que aparece: encolhida, metade da medalha está fora da tela.
+ * O anel de XP cresce pelo lado que aparece (ver `XpRing`, `mirrored`) e a
+ * etiqueta de nível fica nesse mesmo lado: encolhida, metade da medalha está
+ * fora da tela.
  *
  * Quem mede o ponteiro é o main, contra o retângulo que esta peça publica (ver
  * `useClickThrough`). A metade escondida fica fora da janela e não conta; a
@@ -134,6 +136,7 @@ export function EdgeTab({
  */
 export function LogoTab({
   state,
+  side,
   offset,
   expanded,
   pinned,
@@ -142,6 +145,7 @@ export function LogoTab({
   onPointerDown
 }: {
   state: OverlayState | null
+  side: OverlaySide
   offset: number
   expanded: boolean
   pinned: boolean
@@ -153,20 +157,23 @@ export function LogoTab({
   const open = openBets(state)
   const ready = Boolean(state?.ready)
   const calling = open > 0 || alerting
+  const left = side === 'left'
+  // Encolhida, metade pra fora da tela; aberta, inteira e desencostada da
+  // borda. É transform, e não `left`/`right`, pra deslizar sem layout.
+  const slide = expanded ? (left ? '0.5rem' : '-0.5rem') : left ? '-50%' : '50%'
 
   return (
     <div
       data-overlay-hit
       onPointerDown={onPointerDown}
-      title="Arraste pra subir ou descer · clique pra prender aberto"
+      title="Arraste pra mudar de lugar · clique pra prender aberto"
       style={{
         top: `${offset * 100}%`,
-        // Encolhida, metade pra fora da tela; aberta, inteira e desencostada
-        // da borda. É transform, e não `right`, pra deslizar sem layout.
-        transform: `translate(${expanded ? '-0.5rem' : '50%'}, -50%)`
+        transform: `translate(${slide}, -50%)`
       }}
       className={cn(
-        'absolute right-0 z-conteudo h-[60px] w-[60px] cursor-grab rounded-full',
+        'absolute z-conteudo h-[60px] w-[60px] cursor-grab rounded-full',
+        left ? 'left-0' : 'right-0',
         'bg-void/95 shadow-neon-1 transition-transform duration-200 ease-out',
         dragging && 'cursor-grabbing',
         calling && !expanded && 'ov-halo'
@@ -174,7 +181,7 @@ export function LogoTab({
     >
       <Medallion
         size={60}
-        mirrored
+        mirrored={!left}
         progress={xpProgress(state)}
         className={cn(
           'rounded-full transition-opacity',
@@ -183,13 +190,21 @@ export function LogoTab({
         )}
       />
 
-      {/* No lado que aparece — com a medalha encolhida, o direito está fora. */}
-      {ready && <LevelTag level={state?.level ?? 1} className="absolute -bottom-0.5 left-0.5" />}
+      {/* No lado que aparece — com a medalha encolhida, o da borda está fora. */}
+      {ready && (
+        <LevelTag
+          level={state?.level ?? 1}
+          className={cn('absolute -bottom-0.5', left ? 'right-0.5' : 'left-0.5')}
+        />
+      )}
 
       {calling && (
         <span
           aria-label={open > 0 ? `${open} pra apostar` : 'notificação nova'}
-          className="absolute left-0.5 top-0.5 h-2.5 w-2.5 animate-pulse rounded-full border border-void bg-burn"
+          className={cn(
+            'absolute top-0.5 h-2.5 w-2.5 animate-pulse rounded-full border border-void bg-burn',
+            left ? 'right-0.5' : 'left-0.5'
+          )}
         />
       )}
     </div>

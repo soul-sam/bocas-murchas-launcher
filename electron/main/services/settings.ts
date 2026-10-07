@@ -183,9 +183,7 @@ function normalizeOverlay(
     enabled: o.enabled ?? d.enabled,
     corner,
     dock: normalizeDock(o.dock, corner),
-    // Mesma trava do `dock.offset`: com o centro colado na borda a logo sai
-    // metade pra fora em cima ou embaixo, alem da metade que ja esconde.
-    idleOffset: clamp(Number(o.idleOffset), 0.06, 0.94, d.idleOffset)
+    idleDock: normalizeIdleDock(o.idleDock, (o as { idleOffset?: unknown }).idleOffset)
   }
 }
 
@@ -197,6 +195,29 @@ function normalizeOverlay(
  * direto; a altura vira 1/4 ou 3/4 da tela, que e onde os cantos ficavam sem
  * encostar no placar nem no HUD.
  */
+/**
+ * A logo de fora de partida: lado + altura.
+ *
+ * MIGRACAO: ate a v1.52 so a altura era escolhida (`idleOffset`) e a logo
+ * morava na direita. Quem tem o campo velho gravado mantem a altura e ganha o
+ * lado direito — a tela nao pode mudar so porque o campo mudou de nome.
+ */
+function normalizeIdleDock(
+  raw: Partial<OverlayDock> | undefined,
+  legacyOffset: unknown
+): OverlayDock {
+  const d = DEFAULTS.overlay.idleDock
+  const dock = raw ?? {}
+  const fallbackOffset = clamp(Number(legacyOffset), 0.06, 0.94, d.offset)
+
+  return {
+    side: isOverlaySide(dock.side) ? dock.side : d.side,
+    // Mesma trava do `dock.offset`: com o centro colado na borda a logo sai
+    // metade pra fora em cima ou embaixo, alem da metade que ja esconde.
+    offset: clamp(Number(dock.offset), 0.06, 0.94, fallbackOffset)
+  }
+}
+
 function normalizeDock(
   raw: Partial<OverlayDock> | undefined,
   corner: OverlayCorner

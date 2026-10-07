@@ -421,8 +421,8 @@ function criarPonte(): BocasAPI {
       dismiss: async () => {},
       toast: async () => {},
       onToast: semEventos,
-      setIdleOffset: async () => {},
-      onIdleOffset: semEventos,
+      setIdleDock: async () => {},
+      onIdleDock: semEventos,
     },
 
     app: {

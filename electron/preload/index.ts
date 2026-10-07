@@ -107,8 +107,8 @@ const api: BocasAPI = {
     setInteractive: (interactive) => ipcRenderer.invoke('overlay:set-interactive', interactive),
     dismiss: () => ipcRenderer.invoke('overlay:dismiss'),
     onToast: (cb) => on('overlay:toast', cb),
-    setIdleOffset: (offset) => ipcRenderer.invoke('overlay:set-idle-offset', offset),
-    onIdleOffset: (cb) => on('overlay:idle-offset', cb),
+    setIdleDock: (dock) => ipcRenderer.invoke('overlay:set-idle-dock', dock),
+    onIdleDock: (cb) => on('overlay:idle-dock', cb),
 
     mode: () => ipcRenderer.invoke('overlay:mode'),
     onMode: (cb) => on('overlay:mode', cb),

@@ -122,13 +122,13 @@ let prefs: {
   enabled: boolean
   corner: OverlayCorner
   dock: OverlayDock
-  idleOffset: number
+  idleDock: OverlayDock
   autoOnMatch: boolean
 } = {
   enabled: true,
   corner: 'top-right',
   dock: { side: 'right', offset: 0.38 },
-  idleOffset: 0.6,
+  idleDock: { side: 'right', offset: 0.6 },
   autoOnMatch: true
 }
 
@@ -520,7 +520,7 @@ function createOverlayWindow(): BrowserWindow {
     // janela foi o atalho da roda.
     win.webContents.send('overlay:mode', mode)
     win.webContents.send('overlay:dock', prefs.dock)
-    win.webContents.send('overlay:idle-offset', prefs.idleOffset)
+    win.webContents.send('overlay:idle-dock', prefs.idleDock)
     // O ultimo retrato ja empurrado pinta a tela no primeiro quadro; o pedido
     // abaixo busca dados frescos (o poll da principal e de 30s).
     if (lastState) win.webContents.send('overlay:state', lastState)
@@ -667,13 +667,15 @@ export function applyOverlaySettings(settings: LauncherSettings): void {
   const dockChanged =
     prefs.dock.side !== settings.overlay.dock.side ||
     prefs.dock.offset !== settings.overlay.dock.offset
-  const idleChanged = prefs.idleOffset !== settings.overlay.idleOffset
+  const idleChanged =
+    prefs.idleDock.side !== settings.overlay.idleDock.side ||
+    prefs.idleDock.offset !== settings.overlay.idleDock.offset
 
   prefs = {
     enabled: settings.overlay.enabled,
     corner: settings.overlay.corner,
     dock: settings.overlay.dock,
-    idleOffset: settings.overlay.idleOffset,
+    idleDock: settings.overlay.idleDock,
     autoOnMatch: settings.lol.enabled && settings.lol.overlay
   }
 
@@ -700,7 +702,7 @@ export function applyOverlaySettings(settings: LauncherSettings): void {
   // esta desenhada no lugar certo quando este aviso volta. Mandar mesmo assim
   // e o que faz a posicao valer quando quem mexeu foram as CONFIGURACOES.
   if (dockChanged) win.webContents.send('overlay:dock', prefs.dock)
-  if (idleChanged) win.webContents.send('overlay:idle-offset', prefs.idleOffset)
+  if (idleChanged) win.webContents.send('overlay:idle-dock', prefs.idleDock)
 }
 
 /**

@@ -480,13 +480,15 @@ export interface OverlaySettings {
   /** Onde a aba fica grudada. A roda de sons ignora isto: ela e centrada. */
   dock: OverlayDock
   /**
-   * Altura da LOGO de fora de partida, como fracao da tela (0 = topo).
+   * Onde a LOGO de fora de partida mora: lado e altura, arrastando.
    *
-   * Separada do `dock` de proposito: o lugar livre no HUD do jogo e o lugar
+   * Separado do `dock` de proposito: o lugar livre no HUD do jogo e o lugar
    * livre na area de trabalho nao sao o mesmo, e arrastar uma nao pode mover a
-   * outra. O lado nao se escolhe — a logo mora na direita.
+   * outra. Ja foi so a altura (`idleOffset`, a logo presa na direita); quem
+   * tem o campo velho gravado ganha o lado direito com a altura que tinha
+   * (ver normalizeOverlay).
    */
-  idleOffset: number
+  idleDock: OverlayDock
 }
 
 /** Preferencias da integracao com o LoL. */
@@ -1024,7 +1026,7 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     dock: { side: 'right', offset: 0.38 },
     // Um pouco abaixo do meio: longe do X das janelas maximizadas (topo) e da
     // bandeja do Windows (base).
-    idleOffset: 0.6
+    idleDock: { side: 'right', offset: 0.6 }
   },
 
   voice: {
@@ -1232,9 +1234,9 @@ export interface BocasAPI {
      */
     dismiss: () => Promise<void>
     onToast: (cb: (toast: OverlayToast) => void) => () => void
-    /** A logo de fora de partida foi arrastada; grava a altura. */
-    setIdleOffset: (offset: number) => Promise<void>
-    onIdleOffset: (cb: (offset: number) => void) => () => void
+    /** A logo de fora de partida foi arrastada; grava lado e altura. */
+    setIdleDock: (dock: OverlayDock) => Promise<void>
+    onIdleDock: (cb: (dock: OverlayDock) => void) => () => void
 
     // --- modo (quem manda e o processo main; ver OverlayMode) ---
     /** O que esta aberto agora. */
