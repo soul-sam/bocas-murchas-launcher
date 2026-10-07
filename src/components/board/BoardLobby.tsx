@@ -9,8 +9,14 @@ import { useAuth } from '@/lib/auth-context'
 import { amPlayer, useBoard } from '@/lib/board-context'
 import { useGamification } from '@/lib/gamification-context'
 import { useMembers } from '@/lib/members-context'
+import { START_POSITION } from '@/lib/board-position'
 import { cn } from '@/lib/utils'
+import { Board } from './Board'
 import { CreateDialog } from './CreateDialog'
+import './board.css'
+
+/** Referência estável pro tabuleiro de enfeite (só leitura). */
+const NO_MOVES: string[] = []
 
 /**
  * O SAGUÃO do xadrez e da dama — no visual do PokerLobby.
@@ -105,11 +111,37 @@ export function BoardLobby({ game }: { game: BoardGame }) {
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Carregando as mesas…
         </p>
       ) : empty ? (
-        <div className="rounded-brutal border border-line bg-void/60 px-3 py-6 text-center">
-          <p className="text-xs text-foreground">Nenhuma mesa de {boardGameLabel(game, null).split(' ')[0].toLowerCase()} aberta agora.</p>
-          <p className="mt-1 text-[11.5px] text-muted-foreground">
-            Crie uma: ela aparece aqui pra todo mundo e vira um card no canal de jogos.
-          </p>
+        <div className="board-vitrine">
+          <div className="board-vitrine-tabuleiro" aria-hidden>
+            <Board
+              game={game}
+              variant={game === 'draughts' ? 'br' : null}
+              position={START_POSITION[game]}
+              orientation="white"
+              legalMoves={NO_MOVES}
+              lastMove={null}
+              annotations={false}
+            />
+          </div>
+          <div className="board-vitrine-texto">
+            <p className="text-sm font-semibold text-foreground">
+              Nenhuma mesa de {boardGameLabel(game, null).split(' ')[0].toLowerCase()} aberta agora.
+            </p>
+            <p className="mt-1 text-[11.5px] text-muted-foreground">
+              Crie uma: ela aparece aqui pra todo mundo e vira um card no canal de jogos. Ou chame alguém que está
+              online pra uma partida.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => setDialog('open')}>
+                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Criar mesa
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setDialog('invite')}>
+                <Send className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                Convidar
+              </Button>
+            </div>
+          </div>
         </div>
       ) : (
         <>

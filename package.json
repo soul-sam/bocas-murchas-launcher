@@ -1,6 +1,6 @@
 {
   "name": "bocas-murchas-launcher",
-  "version": "1.53.3",
+  "version": "1.55.0",
   "private": true,
   "description": "Launcher do grupo Bocas Murchas — chat, voz, tela, soundboard e Minecraft",
   "main": "out/main/index.js",
@@ -15,7 +15,7 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "lint:design": "node scripts/check-design-tokens.mjs",
-    "test:policy": "node --test src/lib/screen-share-policy.test.ts src/lib/screen-capture-gate.test.ts src/lib/layout-density.test.ts src/lib/game-hall.test.ts src/lib/board-position.test.ts src/lib/board-bet.test.ts src/lib/board-sides.test.ts",
+    "test:policy": "node --test src/lib/screen-share-policy.test.ts src/lib/screen-capture-gate.test.ts src/lib/layout-density.test.ts src/lib/game-hall.test.ts src/lib/board-position.test.ts src/lib/board-bet.test.ts src/lib/board-sides.test.ts src/lib/board-local.test.ts src/lib/board-intent.test.ts",
     "typecheck": "npm run lint:design && npm run typecheck:node && npm run typecheck:web",
     "package": "electron-vite build && electron-builder --win --x64",
     "release": "electron-vite build && electron-builder --win --x64 --publish always"
@@ -37,6 +37,7 @@
     "@radix-ui/react-tabs": "^1.1.2",
     "@radix-ui/react-toast": "^1.2.2",
     "@radix-ui/react-tooltip": "^1.1.6",
+    "chess.js": "^1.4.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "electron-updater": "^6.8.3",

@@ -102,3 +102,90 @@ export function formatClock(ms: number): string {
   const total = Math.floor(safe / 1000)
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
 }
+
+// ============================================
+// O que a tela desenha além da posição
+// ============================================
+
+/** Posição inicial de cada jogo: a mesa aparece montada antes da partida começar. */
+export const START_POSITION: Record<'chess' | 'draughts', string> = {
+  chess: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  draughts: '.b.b.b.b' + 'b.b.b.b.' + '.b.b.b.b' + '........' + '........' + 'w.w.w.w.' + '.w.w.w.w' + 'w.w.w.w. w'
+}
+
+type ChessKind = 'p' | 'n' | 'b' | 'r' | 'q' | 'k'
+
+const CHESS_START: Record<ChessKind, number> = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 }
+const CHESS_VALUE: Record<ChessKind, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
+/** Ordem em que as capturadas aparecem na placa: da mais valiosa pra menos. */
+const CAPTURE_ORDER: ChessKind[] = ['q', 'r', 'b', 'n', 'p']
+const DRAUGHTS_START = 12
+
+export interface Material {
+  /** Peças do adversário que cada lado já tirou do tabuleiro, da mais valiosa pra menos. */
+  captured: { white: Piece['kind'][]; black: Piece['kind'][] }
+  /** Vantagem em pontos (peão 1, cavalo e bispo 3, torre 5, dama 9; na dama, pedra 1 e dama 2). Positivo = brancas na frente. */
+  advantage: number
+}
+
+/**
+ * O que cada lado já capturou, lido da posição atual contra a inicial. Uma
+ * promoção faz a conta de "capturadas" de uma peça dar negativo; aí ela
+ * simplesmente não aparece (a vantagem em pontos continua certa).
+ */
+export function material(game: 'chess' | 'draughts', position: string): Material {
+  const squares = parsePosition(game, position)
+  if (game === 'draughts') {
+    let white = 0
+    let black = 0
+    let points = 0
+    for (const piece of squares) {
+      if (!piece) continue
+      const value = piece.kind === 'king' ? 2 : 1
+      if (piece.side === 'white') {
+        white++
+        points += value
+      } else {
+        black++
+        points -= value
+      }
+    }
+    return {
+      captured: {
+        white: new Array(Math.max(0, DRAUGHTS_START - black)).fill('man'),
+        black: new Array(Math.max(0, DRAUGHTS_START - white)).fill('man')
+      },
+      advantage: points
+    }
+  }
+  const count = { white: { ...CHESS_START }, black: { ...CHESS_START } }
+  for (const kind of Object.keys(CHESS_START) as ChessKind[]) {
+    count.white[kind] = 0
+    count.black[kind] = 0
+  }
+  let points = 0
+  for (const piece of squares) {
+    if (!piece || piece.kind === 'man' || piece.kind === 'king') continue
+    count[piece.side][piece.kind]++
+    points += piece.side === 'white' ? CHESS_VALUE[piece.kind] : -CHESS_VALUE[piece.kind]
+  }
+  const taken = (victim: 'white' | 'black'): Piece['kind'][] => {
+    const out: Piece['kind'][] = []
+    for (const kind of CAPTURE_ORDER) {
+      const missing = CHESS_START[kind] - count[victim][kind]
+      for (let i = 0; i < missing; i++) out.push(kind)
+    }
+    return out
+  }
+  return { captured: { white: taken('black'), black: taken('white') }, advantage: points }
+}
+
+/** Letra da peça de promoção como se escreve em português (D, T, B, C). */
+const PROMOTION_LETTER: Record<string, string> = { q: 'D', r: 'T', b: 'B', n: 'C' }
+
+/** Lance como a lista mostra: 'e2e4' vira 'e2–e4', 'e7e8q' vira 'e7–e8=D'. Dama já vem legível. */
+export function formatMove(game: 'chess' | 'draughts', move: string): string {
+  if (game === 'draughts') return move
+  const promotion = move[4] ? `=${PROMOTION_LETTER[move[4]] ?? move[4].toUpperCase()}` : ''
+  return `${move.slice(0, 2)}–${move.slice(2, 4)}${promotion}`
+}

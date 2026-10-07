@@ -8,7 +8,10 @@ import {
   movesFrom,
   moveEnds,
   clockNow,
-  formatClock
+  formatClock,
+  formatMove,
+  material,
+  START_POSITION
 } from './board-position.ts'
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
@@ -94,4 +97,46 @@ test('formatClock', () => {
   assert.equal(formatClock(182000), '3:02')
   assert.equal(formatClock(9400), '0:09.4')
   assert.equal(formatClock(0), '0:00.0')
+})
+
+test('posição inicial embutida bate com a do servidor (64 casas, 32 e 24 peças)', () => {
+  assert.equal(parsePosition('chess', START_POSITION.chess).filter(Boolean).length, 32)
+  assert.equal(START_POSITION.draughts.length, 66)
+  assert.equal(parsePosition('draughts', START_POSITION.draughts).filter(Boolean).length, 24)
+})
+
+test('material: nada capturado no início; brancas sem a dama e um peão = pretas +10', () => {
+  const start = material('chess', START_POSITION.chess)
+  assert.deepEqual(start.captured, { white: [], black: [] })
+  assert.equal(start.advantage, 0)
+
+  // Brancas perderam a dama (d1) e o peão de e2; pretas, o cavalo de b8.
+  const pos = 'r1bqkbnr/pppppppp/8/8/8/8/PPPP1PPP/RNB1KBNR w KQkq - 0 1'
+  const m = material('chess', pos)
+  assert.deepEqual(m.captured.white, ['n'])
+  assert.deepEqual(m.captured.black, ['q', 'p'])
+  assert.equal(m.advantage, 3 - 10)
+})
+
+test('material: promoção não vira peça capturada negativa', () => {
+  // Duas damas brancas, nenhum peão branco.
+  const pos = 'rnbqkbnr/pppppppp/8/8/8/8/8/RNBQKBNQ w KQkq - 0 1'
+  const m = material('chess', pos)
+  assert.deepEqual(m.captured.black, ['r', 'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'])
+  assert.equal(m.captured.white.length, 0)
+})
+
+test('material na dama: pedras que faltam e dama vale 2', () => {
+  const pos = 'W' + '.'.repeat(62) + 'b w'
+  const m = material('draughts', pos)
+  assert.equal(m.captured.white.length, 11)
+  assert.equal(m.captured.black.length, 11)
+  assert.equal(m.advantage, 1)
+})
+
+test('formatMove: UCI vira "e2–e4" e promoção em português', () => {
+  assert.equal(formatMove('chess', 'e2e4'), 'e2–e4')
+  assert.equal(formatMove('chess', 'e7e8q'), 'e7–e8=D')
+  assert.equal(formatMove('chess', 'a7a8n'), 'a7–a8=C')
+  assert.equal(formatMove('draughts', 'c3xe5xg7'), 'c3xe5xg7')
 })

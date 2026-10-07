@@ -7,6 +7,7 @@ import { BoardLobby } from '@/components/board/BoardLobby'
 import { BoardTable } from '@/components/board/BoardTable'
 import { BetPanel } from '@/components/board/BetPanel'
 import { GameIcon } from '@/components/social/GameIcon'
+import '@/components/board/board.css'
 
 /**
  * XADREZ E DAMA — uma tela por jogo (`/xadrez`, `/dama`), do lado do pôquer.
@@ -53,6 +54,8 @@ export function BoardPage({ game }: { game: BoardGame }) {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+      <div aria-hidden className="board-sala" />
+
       {/* Cabeçalho só fora da mesa. */}
       {!here && (
         <header className="relative z-conteudo flex shrink-0 items-center gap-3 border-b border-line/70 px-4 py-3 sm:px-6">
