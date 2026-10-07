@@ -42,6 +42,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.55.0',
+    headline: 'Xadrez com a mecânica do chess.com',
+    items: [
+      'Pré-lance: na vez do outro, já faça o seu lance (ou vários seguidos). Ele sai sozinho no instante em que a vez volta, e o botão direito cancela.',
+      'Arraste a peça: ela segue o mouse e a casa embaixo ganha um contorno. Clicar na peça e no destino continua valendo.',
+      'O seu lance aparece na hora, sem esperar o servidor responder.',
+      'Botão direito marca casas e desenha setas (em L no cavalo). Shift e Ctrl trocam a cor; um clique limpa.',
+      'Lista de lances com as figuras das peças. Clique num lance ou use as setas do teclado pra rever a partida; F vira o tabuleiro.',
+      'Rei em xeque fica vermelho, a promoção ganhou o × pra desistir, e cada lance tem o seu som: captura, roque, xeque e promoção.',
+      'Revanche direto da tela do fim da partida.'
+    ],
+    note: 'O pré-lance vale no xadrez. Na dama, o arrasto e o lance na hora já valem; o pré-lance ainda não.'
+  },
+  {
     version: '1.54.0',
     headline: 'O xadrez ganhou mesa de verdade',
     items: [

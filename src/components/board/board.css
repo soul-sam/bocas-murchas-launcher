@@ -219,10 +219,19 @@
   border-radius: 3px;
   overflow: hidden;
   box-shadow: 0 0 0 1px rgb(0 0 0 / 0.55);
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* Mesa em que eu jogo: o dedo arrasta a peça, não rola a página. */
+.board-grade--viva {
+  touch-action: none;
 }
 /* Textura de tecido (ruído fino) e a luz da luminária com a vinheta nas
-   bordas. Ficam ACIMA das casas e dos realces (z 1) e ABAIXO das peças (z 2):
-   ::before é o primeiro filho, então sem z-index ele ficaria embaixo de tudo. */
+   bordas, por cima da grade inteira (z 1). Cada casa é um contexto de
+   empilhamento próprio (o `container-type` liga a contenção de layout), então
+   o z da peça vale só dentro da casa: a luz e o ruído passam por cima das
+   peças também, como uma luz de verdade. As setas (z 4) e a escolha de
+   promoção (z 5) ficam acima disso. */
 .board-grade::before {
   content: '';
   position: absolute;
@@ -263,6 +272,14 @@
 .board-casa--ativa {
   cursor: pointer;
 }
+/* Peça que dá pra pegar: a mãozinha aberta; arrastando, a fechada no app todo. */
+.board-casa--pega {
+  cursor: grab;
+}
+:root.board-arrastando,
+:root.board-arrastando * {
+  cursor: grabbing !important;
+}
 .board-casa:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: -2px;
@@ -282,6 +299,13 @@
   position: absolute;
   inset: 0;
   background: hsl(var(--burn) / 0.38);
+}
+/* pré-lance na fila: origem e destino em vermelho, como no chess.com */
+.board-casa.board-casa--pre::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--destructive) / 0.62);
 }
 /* peça escolhida */
 .board-casa.board-casa--escolhida::before {
@@ -303,16 +327,142 @@
   background: hsl(var(--acid) / 0.8);
   box-shadow: 0 0 0 3px hsl(var(--acid) / 0.22), 0 2px 6px rgb(0 0 0 / 0.35);
 }
+/* captura possível: um aro em volta da peça */
 .board-casa--destino.board-casa--ocupada::after {
-  width: 100%;
-  height: 100%;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: inset 0 0 0 5px hsl(var(--acid) / 0.8);
+  inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle closest-side,
+    transparent 0 77%,
+    hsl(var(--acid) / 0.8) 79% 95%,
+    transparent 97%
+  );
+  box-shadow: none;
+}
+/* na vez do outro, os destinos são de pré-lance: mesma forma, cor do pré-lance */
+.board-grade--pre .board-casa--destino::after {
+  background: hsl(var(--destructive) / 0.8);
+  box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.22), 0 2px 6px rgb(0 0 0 / 0.35);
+}
+.board-grade--pre .board-casa--destino.board-casa--ocupada::after {
+  background: radial-gradient(
+    circle closest-side,
+    transparent 0 77%,
+    hsl(var(--destructive) / 0.8) 79% 95%,
+    transparent 97%
+  );
+  box-shadow: none;
+}
+/* rei em xeque: o brilho vermelho embaixo da peça */
+.board-casa.board-casa--xeque {
+  background-image: radial-gradient(
+    circle closest-side,
+    hsl(var(--destructive)) 0%,
+    hsl(var(--destructive) / 0.75) 38%,
+    hsl(var(--destructive) / 0) 100%
+  );
+}
+/* peça sem saída com o rei em xeque: o rei pisca */
+@keyframes board-alerta {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 0 hsl(var(--destructive) / 0);
+  }
+  50% {
+    box-shadow: inset 0 0 0 999px hsl(var(--destructive) / 0.6);
+  }
+}
+.board-casa--alerta {
+  animation: board-alerta 0.32s ease-in-out 2;
+}
+/* arrastando: a casa embaixo do cursor ganha o contorno */
+.board-casa--sob {
+  outline: 3px solid hsl(var(--foreground) / 0.75);
+  outline-offset: -3px;
+}
+/* arrastando: a peça fica de fantasma na casa de onde saiu */
+.board-casa--origem .board-peca {
+  opacity: 0.28;
+  filter: none;
 }
 /* a casa onde a peça acabou de pousar passa por cima das vizinhas enquanto desliza */
 .board-casa--chegada {
   z-index: 3;
+}
+
+/* ---------- marcações e setas (botão direito) ----------
+   Cor a (padrão): laranja nas setas e vermelho nas casas, como no chess.com;
+   b (Shift): verde da marca; c (Ctrl/Alt): azul. */
+.board-marca {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.board-marca--a {
+  background: hsl(var(--destructive) / 0.65);
+}
+.board-marca--b {
+  background: hsl(var(--acid) / 0.5);
+}
+.board-marca--c {
+  background: hsl(212 90% 58% / 0.55);
+}
+.board-setas {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.board-seta {
+  opacity: 0.82;
+}
+.board-seta path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.19;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+.board-seta polygon {
+  fill: currentColor;
+  stroke: none;
+}
+.board-seta--a {
+  color: hsl(30 95% 55%);
+}
+.board-seta--b {
+  color: hsl(var(--acid));
+}
+.board-seta--c {
+  color: hsl(212 90% 58%);
+}
+.board-seta--previa {
+  opacity: 0.55;
+}
+
+/* ---------- a peça arrastada ----------
+   Desenhada no <body> (portal), fora da grade: passa da borda do tabuleiro e
+   não é cortada pelo `overflow` nem presa pela contenção das casas. */
+.board-arrasto {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  will-change: transform;
+}
+.board-arrasto .board-peca {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.5)) drop-shadow(0 12px 14px rgb(0 0 0 / 0.45));
+  transition: none;
 }
 
 /* ---------- as peças ---------- */
@@ -404,6 +554,29 @@
 }
 .board-escolha--promocao {
   width: 12.5%;
+}
+/* Promoção na fileira de baixo (tabuleiro virado): a coluna sobe. */
+.board-escolha--sobe {
+  flex-direction: column-reverse;
+}
+/* O "×" de desistir da promoção, baixinho no fim da coluna. */
+.board-escolha-cancela {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  border: 0;
+  border-radius: 5px;
+  background: hsl(var(--foreground) / 0.06);
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.board-escolha-cancela:hover,
+.board-escolha-cancela:focus-visible {
+  background: hsl(var(--destructive) / 0.18);
+  color: hsl(var(--destructive));
+  outline: none;
 }
 .board-escolha-opcao {
   display: flex;
@@ -616,17 +789,38 @@
   animation: board-relogio-pulsa 1s ease-in-out infinite;
 }
 
-/* ---------- o aviso do primeiro lance ---------- */
-.board-aviso {
-  align-self: center;
-  margin-top: 8px;
-  padding: 3px 12px;
-  border-radius: 999px;
-  border: 1px solid hsl(var(--burn) / 0.5);
-  background: hsl(var(--background) / 0.8);
-  font-size: 11.5px;
+/* A contagem do primeiro lance, na placa de quem tem que jogar. */
+.board-primeiro {
+  color: hsl(var(--burn));
+}
+
+/* Vendo um lance antigo: o botão de voltar ao vivo, em cima da lista. */
+.board-historico {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px 8px 12px;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--acid) / 0.5);
+  background: hsl(var(--acid) / 0.07);
+  font-size: 12px;
   color: hsl(var(--muted-foreground));
-  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+.board-historico:hover,
+.board-historico:focus-visible {
+  border-color: hsl(var(--acid));
+  background: hsl(var(--acid) / 0.12);
+  outline: none;
+}
+.board-historico-volta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+  color: hsl(var(--acid-text));
 }
 
 /* ---------- o que flutua sobre o tabuleiro ---------- */
@@ -899,16 +1093,109 @@
   color: hsl(var(--muted-foreground));
 }
 .board-lance {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
   padding: 2px 8px;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
   color: hsl(var(--foreground) / 0.85);
+  font: inherit;
   font-variant-numeric: tabular-nums;
+  text-align: left;
   white-space: nowrap;
 }
-.board-lance--ultimo {
+button.board-lance {
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+button.board-lance:hover {
+  background: hsl(var(--foreground) / 0.07);
+  color: hsl(var(--foreground));
+}
+button.board-lance:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -2px;
+}
+/* o lance da posição na tela */
+.board-lance.board-lance--atual {
   background: hsl(var(--acid) / 0.14);
   color: hsl(var(--foreground));
   box-shadow: inset 2px 0 0 hsl(var(--acid));
+}
+/* a figura da peça no lugar da letra (Cf3 → [cavalo]f3) */
+.board-lance .board-san-peca {
+  width: 14px;
+  height: 14px;
+  margin-right: 1px;
+}
+
+/* ---------- navegação pelos lances ---------- */
+.board-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-top: 1px solid hsl(var(--border));
+}
+.board-nav-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.board-nav-botao:hover:not(:disabled) {
+  background: hsl(var(--foreground) / 0.08);
+  color: hsl(var(--foreground));
+}
+.board-nav-botao:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -2px;
+}
+.board-nav-botao:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ---------- pré-lance marcado (lateral) ---------- */
+.board-pre-aviso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 12px;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--destructive) / 0.45);
+  background: hsl(var(--destructive) / 0.08);
+  font-size: 12px;
+  color: hsl(var(--foreground));
+}
+.board-pre-cancela {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+.board-pre-cancela:hover,
+.board-pre-cancela:focus-visible {
+  background: hsl(var(--destructive) / 0.18);
+  color: hsl(var(--destructive));
+  outline: none;
 }
 
 /* ---------- resultado (resumo na lateral) ---------- */
@@ -940,4 +1227,16 @@
 .board-vitrine-texto {
   flex: 1 1 220px;
   min-width: 0;
+}
+
+/* Quem pediu menos movimento: a peça chega sem deslizar e nada pisca. */
+@media (prefers-reduced-motion: reduce) {
+  .board-peca--anda,
+  .board-casa--alerta,
+  .board-medalhao--espera::before,
+  .board-avatar--vez,
+  .board-relogio--baixo.board-relogio--ativo,
+  .board-vez--minha .board-vez-ponto {
+    animation: none;
+  }
 }

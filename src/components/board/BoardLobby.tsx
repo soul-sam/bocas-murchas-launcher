@@ -120,6 +120,7 @@ export function BoardLobby({ game }: { game: BoardGame }) {
               orientation="white"
               legalMoves={NO_MOVES}
               lastMove={null}
+              annotations={false}
             />
           </div>
           <div className="board-vitrine-texto">

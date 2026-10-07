@@ -43,9 +43,22 @@ export type UiSound =
   | 'poker-deal'
   | 'poker-chip'
   | 'poker-win'
-  /** Xadrez e dama: a peça pousando na casa, a captura. */
+  /**
+   * Xadrez e dama, no vocabulário do chess.com: o meu lance e o do outro
+   * (timbres diferentes), captura, roque, xeque, promoção, pré-lance
+   * marcado, começo e fim da partida, pouco tempo e lance proibido.
+   */
   | 'board-move'
+  | 'board-move-opp'
   | 'board-capture'
+  | 'board-castle'
+  | 'board-check'
+  | 'board-promote'
+  | 'board-premove'
+  | 'board-start'
+  | 'board-end'
+  | 'board-low-time'
+  | 'board-illegal'
 
 interface Note {
   /** Frequência em Hz. */
@@ -299,6 +312,90 @@ const CUES: Record<UiSound, Cue> = {
       { freq: 196, at: 0, dur: 0.05 },
       { freq: 392, at: 0, dur: 0.025, gain: 0.35 }
     ]
+  },
+  // O lance do outro: o mesmo toque de madeira, um tom abaixo e mais curto,
+  // pra dar pra saber de olho fechado de quem foi.
+  'board-move-opp': {
+    volume: 0.38,
+    cutoff: 1300,
+    type: 'sine',
+    notes: [
+      { freq: 164.8, at: 0, dur: 0.045 },
+      { freq: 329.6, at: 0, dur: 0.022, gain: 0.3 }
+    ]
+  },
+  // Roque: rei e torre, dois toques colados.
+  'board-castle': {
+    volume: 0.42,
+    cutoff: 1500,
+    type: 'sine',
+    notes: [
+      { freq: 196, at: 0, dur: 0.04 },
+      { freq: 220, at: 0.06, dur: 0.045 }
+    ]
+  },
+  // Xeque: o toque da peça com um estalo agudo por cima.
+  'board-check': {
+    volume: 0.5,
+    cutoff: 2600,
+    type: 'triangle',
+    notes: [
+      { freq: 196, at: 0, dur: 0.045 },
+      { freq: E5, at: 0.02, dur: 0.07, gain: 0.55 }
+    ]
+  },
+  // Promoção: subindo, parente do `levelup` mas curto.
+  'board-promote': {
+    volume: 0.5,
+    cutoff: 3000,
+    notes: [
+      { freq: G4, at: 0, dur: 0.06 },
+      { freq: C5, at: 0.06, dur: 0.06 },
+      { freq: E5, at: 0.12, dur: 0.1 }
+    ]
+  },
+  // Pré-lance marcado: um tique baixinho, quase nada.
+  'board-premove': {
+    volume: 0.28,
+    cutoff: 1800,
+    type: 'sine',
+    notes: [{ freq: 523.25, at: 0, dur: 0.03 }]
+  },
+  // A partida começou: duas notas subindo.
+  'board-start': {
+    volume: 0.55,
+    cutoff: 2800,
+    notes: [
+      { freq: C5, at: 0, dur: 0.09 },
+      { freq: G5, at: 0.1, dur: 0.14 }
+    ]
+  },
+  // A partida acabou: as mesmas duas notas, descendo.
+  'board-end': {
+    volume: 0.55,
+    cutoff: 2600,
+    notes: [
+      { freq: G5, at: 0, dur: 0.09 },
+      { freq: C5, at: 0.1, dur: 0.16 }
+    ]
+  },
+  // Dez segundos no relógio: três tiques secos.
+  'board-low-time': {
+    volume: 0.55,
+    cutoff: 3200,
+    type: 'square',
+    notes: [
+      { freq: B5, at: 0, dur: 0.03 },
+      { freq: B5, at: 0.14, dur: 0.03 },
+      { freq: B5, at: 0.28, dur: 0.03 }
+    ]
+  },
+  // Lance proibido (peça sem saída com o rei em xeque): grave e curto.
+  'board-illegal': {
+    volume: 0.45,
+    cutoff: 900,
+    type: 'square',
+    notes: [{ freq: 110, at: 0, dur: 0.09 }]
   },
   // Captura: a peça que sai e a que chega, dois toques.
   'board-capture': {

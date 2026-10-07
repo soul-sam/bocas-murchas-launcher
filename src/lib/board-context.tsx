@@ -4,8 +4,20 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
-import { playUiSound } from './ui-sounds'
-import { parsePosition } from './board-position'
+import { playUiSound, type UiSound } from './ui-sounds'
+import { moveSound, type MoveSound } from './board-local'
+import {
+  clearPremoves,
+  EMPTY_INTENT,
+  failPending,
+  isMyTurnView,
+  isStaleView,
+  queuePremove as queueIntent,
+  reconcile,
+  startMove,
+  type Intent,
+  type PlayedMove
+} from './board-intent'
 import {
   BOARD_ROUTE,
   type BoardAck,
@@ -33,6 +45,12 @@ import {
  * `cancelTable` é o botão Sair/Cancelar: antes do início o servidor cancela a
  * mesa e devolve os valores. Cor (`mySide`) só existe com os dois sentados,
  * então "não sou jogador" nunca se deduz de `mySide === null`: use `amPlayer`.
+ *
+ * O PRÉ-LANCE mora aqui, e não na tela: o contexto fica acima das rotas, então
+ * a fila sai mesmo com a pessoa em outra aba. A cada vista nova, `reconcile`
+ * (lib/board-intent) decide se o primeiro pré-lance sai — conferido contra os
+ * lances legais que o servidor manda junto com a vista — ou se a fila cai.
+ * O meu lance também aparece antes de o servidor confirmar (`pendingMove`).
  */
 
 /** Sou o host, as brancas ou as pretas desta mesa (vale pra vista e pro saguão). */
@@ -76,7 +94,17 @@ interface BoardContextValue {
   answerInvite: (accept: boolean) => Promise<BoardAck>
   sit: (tableId: string) => Promise<BoardAck>
   setReady: () => Promise<BoardAck>
-  move: (move: string) => Promise<BoardAck>
+  /** Meu lance, na minha vez: aparece na hora e some se o servidor recusar. */
+  play: (move: string, how: 'drag' | 'click') => Promise<BoardAck>
+  /** O lance que mandei e ainda não voltou (a tela já desenha ele). */
+  pendingMove: PlayedMove | null
+  /** Pré-lances na fila, na ordem em que vão sair. */
+  premoves: string[]
+  /** Como saiu o meu último lance (a tela anima o clique, não o arrasto nem o pré-lance). */
+  lastLocalMove: PlayedMove | null
+  /** Pré-lance no fim da fila (na vez do outro). Na minha vez, vira lance. */
+  queuePremove: (move: string) => void
+  cancelPremoves: () => void
   resign: () => Promise<BoardAck>
   offerDraw: () => Promise<BoardAck>
   answerDraw: (accept: boolean) => Promise<BoardAck>
@@ -100,14 +128,26 @@ function emitWithAck(socket: Socket | null, event: string, payload: unknown): Pr
   })
 }
 
-/** Quantas peças há no tabuleiro: menos que antes do lance = captura. */
-function pieceCount(t: BoardTableView): number {
-  return parsePosition(t.game, t.position).filter(Boolean).length
+const isMyTurn = (t: BoardTableView | null): boolean => isMyTurnView(t)
+
+/** O som de cada tipo de lance; o lance simples tem um timbre pra mim e outro pro adversário. */
+function soundFor(kind: MoveSound, mine: boolean): UiSound {
+  switch (kind) {
+    case 'capture':
+      return 'board-capture'
+    case 'castle':
+      return 'board-castle'
+    case 'check':
+      return 'board-check'
+    case 'promote':
+      return 'board-promote'
+    default:
+      return mine ? 'board-move' : 'board-move-opp'
+  }
 }
 
-function isMyTurn(t: BoardTableView | null): boolean {
-  return !!t && t.phase === 'playing' && !t.result && t.mySide !== null && t.turn === t.mySide
-}
+/** Quem jogou o lance número `ply`: as brancas (quem abre) jogam os pares. */
+const moverOf = (ply: number): Side => (ply % 2 === 0 ? 'white' : 'black')
 
 export function BoardProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -138,32 +178,77 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   // Última mesa gravada, pra comparar a transição fora do updater do setState.
   const tableRef = React.useRef<BoardTableView | null>(null)
 
-  // Grava a mesa e toca o que mudou (só na transição entre dois retratos
-  // da MESMA mesa): a peça pousando a cada lance (ou a captura), o aviso de
-  // "sua vez", e a vitória.
-  const applyTable = React.useCallback((next: BoardTableView): void => {
-    const prev = tableRef.current
-    tableRef.current = next
-    if (prev && prev.id === next.id) {
-      const s = settingsRef.current
-      const volume = s.soundEnabled ? s.soundVolume : 0
-      const moved = next.phase === 'playing' && next.moves.length > prev.moves.length
-      if (moved) playUiSound(pieceCount(next) < pieceCount(prev) ? 'board-capture' : 'board-move', volume)
-      // O aviso de vez só quando o som do lance não bastou: no começo da
-      // partida (ninguém jogou ainda) ou com a janela escondida.
-      if (!isMyTurn(prev) && isMyTurn(next) && (!moved || document.hidden)) playUiSound('poker-turn', volume)
-      if (prev.phase !== 'finished' && next.phase === 'finished' && next.result?.winner && next.result.winner === next.mySide) {
-        playUiSound('poker-win', volume)
-      }
-    }
-    setTable(next)
+  // O que eu quero jogar: o lance no ar e a fila de pré-lances. O ref é a
+  // fonte da verdade (os handlers do socket leem dele); o estado só redesenha.
+  const intentRef = React.useRef<Intent>(EMPTY_INTENT)
+  const [intent, setIntent] = React.useState<Intent>(EMPTY_INTENT)
+  const commitIntent = React.useCallback((next: Intent): void => {
+    if (next === intentRef.current) return
+    intentRef.current = next
+    setIntent(next)
   }, [])
+  /** Lances que já tocaram som aqui (o meu toca na hora; o eco do servidor fica quieto). */
+  const soundedRef = React.useRef<Set<string>>(new Set())
+  /** Manda um lance; preenchido depois que `act` existe (o applyTable precisa dele). */
+  const sendMoveRef = React.useRef<(move: string) => void>(() => {})
+
+  const sound = React.useCallback((name: UiSound): void => {
+    const s = settingsRef.current
+    playUiSound(name, s.soundEnabled ? s.soundVolume : 0)
+  }, [])
+
+  // Grava a mesa, acerta a fila de pré-lances e toca o que mudou (só na
+  // transição entre dois retratos da MESMA mesa): o começo, o lance que chegou
+  // (pelo tipo: captura, roque, xeque...), o pré-lance que saiu, o aviso de
+  // "sua vez" e o fim.
+  const applyTable = React.useCallback(
+    (next: BoardTableView): void => {
+      const prev = tableRef.current
+      // O ack de um lance e o board:table do lance seguinte podem trocar de
+      // ordem no fio: gravar o mais velho por cima desfaria um lance na tela.
+      if (isStaleView(prev, next)) return
+      tableRef.current = next
+
+      const r = reconcile(intentRef.current, next)
+      commitIntent(r.intent)
+
+      if (prev && prev.id === next.id) {
+        if (prev.phase !== 'playing' && next.phase === 'playing') sound('board-start')
+        const grew = next.moves.length > prev.moves.length
+        if (grew) {
+          const ply = next.moves.length - 1
+          const key = `${next.id}:${ply}`
+          if (!soundedRef.current.has(key)) {
+            soundedRef.current.add(key)
+            const kind =
+              next.moves.length - prev.moves.length === 1 ? moveSound(next.game, prev.position, next.moves[ply]) : 'move'
+            sound(soundFor(kind, next.mySide !== null && moverOf(ply) === next.mySide))
+          }
+        }
+        if (r.send) {
+          soundedRef.current.add(`${next.id}:${next.moves.length}`)
+          sound(soundFor(moveSound(next.game, next.position, r.send), true))
+        }
+        // O aviso de vez só quando nada mais tocou: no começo da partida
+        // (ninguém jogou ainda) ou com a janela escondida.
+        if (!isMyTurn(prev) && isMyTurn(next) && !r.send && (!grew || document.hidden)) sound('poker-turn')
+        if (prev.phase !== 'finished' && next.phase === 'finished') {
+          const won = !!next.result?.winner && next.result.winner === next.mySide
+          sound(won ? 'poker-win' : 'board-end')
+        }
+      }
+      setTable(next)
+      if (r.send) sendMoveRef.current(r.send)
+    },
+    [commitIntent, sound]
+  )
 
   const clearOpen = React.useCallback((): void => {
     tableRef.current = null
     setOpenTableId(null)
     setTable(null)
-  }, [])
+    commitIntent(EMPTY_INTENT)
+  }, [commitIntent])
 
   // --- socket -----------------------------------------------------------------
   React.useEffect(() => {
@@ -357,7 +442,55 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     [socket, applyTable]
   )
   const setReadyAction = React.useCallback(() => act('board:ready'), [act])
-  const move = React.useCallback((m: string) => act('board:move', { move: m }), [act])
+
+  /** Manda o lance; recusado, ele sai da tela (e a fila de pré-lances junto). */
+  const sendMove = React.useCallback(
+    async (m: string): Promise<BoardAck> => {
+      const ack = await act('board:move', { move: m })
+      if (!ack.ok) commitIntent(failPending(intentRef.current, m))
+      return ack
+    },
+    [act, commitIntent]
+  )
+  sendMoveRef.current = (m: string): void => {
+    void sendMove(m)
+  }
+
+  const play = React.useCallback(
+    (m: string, how: 'drag' | 'click'): Promise<BoardAck> => {
+      const t = tableRef.current
+      if (!t) return Promise.resolve({ ok: false, error: 'Nenhuma mesa aberta.' })
+      const started = startMove(intentRef.current, t, m, how)
+      if (!started) return Promise.resolve({ ok: false, error: 'Não é a sua vez.' })
+      commitIntent(started)
+      soundedRef.current.add(`${t.id}:${t.moves.length}`)
+      sound(soundFor(moveSound(t.game, t.position, m), true))
+      return sendMove(m)
+    },
+    [commitIntent, sendMove, sound]
+  )
+
+  const queuePremove = React.useCallback(
+    (m: string): void => {
+      const t = tableRef.current
+      if (!t) return
+      // A vez voltou no meio do gesto (o adversário jogou enquanto eu
+      // arrastava): o pré-lance vira lance, se for legal agora.
+      if (isMyTurn(t) && !intentRef.current.pending) {
+        if (t.legalMoves.includes(m)) void play(m, 'drag')
+        return
+      }
+      const next = queueIntent(intentRef.current, t, m)
+      if (!next) return
+      commitIntent(next)
+      sound('board-premove')
+    },
+    [commitIntent, play, sound]
+  )
+
+  const cancelPremoves = React.useCallback((): void => {
+    commitIntent(clearPremoves(intentRef.current))
+  }, [commitIntent])
   const resign = React.useCallback(() => act('board:resign'), [act])
   const offerDraw = React.useCallback(() => act('board:draw:offer'), [act])
   const answerDraw = React.useCallback((accept: boolean) => act('board:draw:answer', { accept }), [act])
@@ -394,7 +527,12 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       answerInvite,
       sit,
       setReady: setReadyAction,
-      move,
+      play,
+      pendingMove: intent.pending,
+      premoves: intent.premoves,
+      lastLocalMove: intent.lastLocal,
+      queuePremove,
+      cancelPremoves,
       resign,
       offerDraw,
       answerDraw,
@@ -402,7 +540,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       tables, ready, table, openTableId, invite, myTable, myTurn, notice, dismissNotice, openTable, closeTable, cancelTable, goToBoard,
-      create, answerInvite, sit, setReadyAction, move, resign, offerDraw, answerDraw, bet
+      create, answerInvite, sit, setReadyAction, play, intent, queuePremove, cancelPremoves, resign, offerDraw, answerDraw, bet
     ]
   )
 
