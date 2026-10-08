@@ -19,22 +19,31 @@ import './poker.css'
  * (mão, mesa, histórico, colinha) sejam SEMPRE da mesma família:
  *   xs  24×34   histórico da mão, chat
  *   sm  42×59   os outros assentos, exemplos compactos
- *   md  64×90   a mesa (flop/turn/river), a colinha
- *   lg  92×129  as suas duas
+ *   ms  52×73   os outros assentos em tela grande; a mesa no celular
+ *   md  64×90   a mesa em janela pequena, a colinha
+ *   ml  80×112  a mesa (flop/turn/river) em janela média
+ *   lg  92×129  as suas duas; a mesa em tela grande
  *   xl 110×154  as suas duas em tela grande
  *
  * `faceDown` é o verso; `code` vazio com `placeholder` é a vaga na mesa.
  */
 
-export type CardSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+export type CardSize = 'xs' | 'sm' | 'ms' | 'md' | 'ml' | 'lg' | 'xl'
 export type CardEnter = 'fly' | 'flip' | 'fly-flip' | 'slide' | 'none'
 
-export const CARD_WIDTH: Record<CardSize, number> = { xs: 24, sm: 42, md: 64, lg: 92, xl: 110 }
+export const CARD_WIDTH: Record<CardSize, number> = { xs: 24, sm: 42, ms: 52, md: 64, ml: 80, lg: 92, xl: 110 }
+
+/** Altura da carta (proporção 5:7), pra quem posiciona coisas em volta dela. */
+export function cardHeight(size: CardSize): number {
+  return Math.round((CARD_WIDTH[size] * 7) / 5)
+}
 
 const SIZE: Record<CardSize, { rank: string; corner: string; pip: string; court: string; courtSuit: string; cornerTop: string }> = {
   xs: { rank: 'text-[11px] leading-none font-bold', corner: 'h-[7px] w-[7px]', pip: 'h-3 w-3', court: 'text-[11px]', courtSuit: 'h-[7px] w-[7px]', cornerTop: '4%' },
   sm: { rank: 'text-[13px] leading-none font-bold', corner: 'h-2.5 w-2.5', pip: 'h-5 w-5', court: 'text-base', courtSuit: 'h-2.5 w-2.5', cornerTop: '5%' },
+  ms: { rank: 'text-[15px] leading-none font-bold', corner: 'h-[11px] w-[11px]', pip: 'h-6 w-6', court: 'text-xl', courtSuit: 'h-[11px] w-[11px]', cornerTop: '5%' },
   md: { rank: 'text-[18px] leading-none font-bold', corner: 'h-3 w-3', pip: 'h-8 w-8', court: 'text-2xl', courtSuit: 'h-3 w-3', cornerTop: '5%' },
+  ml: { rank: 'text-[22px] leading-none font-bold', corner: 'h-3.5 w-3.5', pip: 'h-10 w-10', court: 'text-3xl', courtSuit: 'h-3.5 w-3.5', cornerTop: '5%' },
   lg: { rank: 'text-[26px] leading-none font-bold', corner: 'h-4 w-4', pip: 'h-12 w-12', court: 'text-4xl', courtSuit: 'h-4 w-4', cornerTop: '5%' },
   xl: { rank: 'text-[30px] leading-none font-bold', corner: 'h-5 w-5', pip: 'h-14 w-14', court: 'text-5xl', courtSuit: 'h-5 w-5', cornerTop: '5%' }
 }
@@ -207,6 +216,9 @@ export function FlipCard({
   highlight,
   delayMs,
   fly,
+  flipDelayMs,
+  flipMs,
+  holdMs,
   dx,
   dy,
   tilt,
@@ -220,6 +232,16 @@ export function FlipCard({
   delayMs?: number
   /** Sai do baralho antes de virar. */
   fly?: boolean
+  /** Quando vira (ms desde a montagem). Sem isto: logo depois de pousar. */
+  flipDelayMs?: number
+  /** Quanto dura a virada (a do river é mais lenta). */
+  flipMs?: number
+  /**
+   * SUSPENSE: pousada de costas, a carta levanta, balança e acende por este
+   * tempo antes de virar (turn e river; no run-out de all-in, mais). O tempo
+   * conta de quando ela pousa até `flipDelayMs`.
+   */
+  holdMs?: number
   dx?: number
   dy?: number
   tilt?: number
@@ -228,15 +250,25 @@ export function FlipCard({
 }) {
   const w = CARD_WIDTH[size]
   const motion: Motion = { enter: fly ? 'fly' : 'none', delayMs, dx, dy, tilt }
+  const timing: Record<string, string> = {}
+  if (flipDelayMs !== undefined) timing['--carta-vira'] = `${flipDelayMs}ms`
+  if (flipMs !== undefined) timing['--carta-vira-dura'] = `${flipMs}ms`
+  if (holdMs && flipDelayMs !== undefined) {
+    timing['--carta-suspense'] = `${holdMs}ms`
+    timing['--carta-suspense-de'] = `${Math.max(0, flipDelayMs - holdMs)}ms`
+  }
+  const faces = (
+    <span className="carta-flip-inner">
+      <PlayingCard faceDown size={size} className="carta-flip-face carta-flip-back" />
+      <PlayingCard code={code} size={size} dim={dim} highlight={highlight} className="carta-flip-face" />
+    </span>
+  )
   return (
     <span
-      className={cn('carta-flip', fly && 'carta-flip--chega', motionClass(motion), className)}
-      style={{ width: w, ...motionStyle(motion), ...style }}
+      className={cn('carta-flip', fly && 'carta-flip--chega', holdMs ? 'carta-flip--suspense' : null, motionClass(motion), className)}
+      style={{ width: w, ...motionStyle(motion), ...(timing as React.CSSProperties), ...style }}
     >
-      <span className="carta-flip-inner">
-        <PlayingCard faceDown size={size} className="carta-flip-face carta-flip-back" />
-        <PlayingCard code={code} size={size} dim={dim} highlight={highlight} className="carta-flip-face" />
-      </span>
+      {holdMs ? <span className="carta-suspense">{faces}</span> : faces}
     </span>
   )
 }
@@ -252,6 +284,7 @@ export function CardRow({
   faceDown,
   dim,
   highlightCodes,
+  dimOthers,
   overlap,
   fan,
   spread,
@@ -270,6 +303,8 @@ export function CardRow({
   dim?: boolean
   /** Cartas que fazem parte da melhor mão. */
   highlightCodes?: string[] | null
+  /** Com `highlightCodes`: as que NÃO fazem parte da mão vencedora ficam apagadas. */
+  dimOthers?: boolean
   /** Nome antigo de `fan`. */
   overlap?: boolean
   /** Em leque: sobrepostas e giradas. */
@@ -303,7 +338,7 @@ export function CardRow({
   const w = CARD_WIDTH[size]
   // No leque a segunda carta cobre ~38% da primeira (~25% no aberto).
   const stride = leque ? Math.round(w * (spread ? 0.76 : 0.62)) : w + gap
-  const tiltStep = leque ? (size === 'xs' ? 8 : size === 'sm' ? 9 : 7) : 0
+  const tiltStep = leque ? (size === 'xs' ? 8 : size === 'sm' || size === 'ms' ? 9 : 7) : 0
 
   return (
     <span
@@ -313,6 +348,7 @@ export function CardRow({
       {Array.from({ length: total }).map((_, i) => {
         const code = codes[i]
         const fresh = i >= staggerFrom
+        const off = dim || (!!dimOthers && !!hl && !!code && !hl.has(code))
         const delay = fresh ? baseDelayMs + (i - staggerFrom) * staggerMs : 0
         const dx = Math.round((i - (total - 1) / 2) * stride)
         const tilt = leque ? (i - (total - 1) / 2) * tiltStep : 0
@@ -324,7 +360,7 @@ export function CardRow({
               key={`${code}-${i}`}
               code={code}
               size={size}
-              dim={dim}
+              dim={off}
               highlight={!!hl && hl.has(code)}
               delayMs={delay}
               fly={mode === 'fly-flip'}
@@ -341,7 +377,7 @@ export function CardRow({
             size={size}
             faceDown={faceDown && !!code}
             placeholder={!code}
-            dim={dim}
+            dim={off}
             highlight={!!code && !!hl && hl.has(code)}
             enter={code && fresh && (mode === 'fly' || mode === 'slide') ? 'fly' : 'none'}
             delayMs={delay}

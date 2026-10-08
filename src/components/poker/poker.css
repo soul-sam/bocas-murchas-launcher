@@ -140,6 +140,91 @@
   top: 0;
 }
 
+/* As queimadas: de costas e tortas do lado do maço, uma por rua. */
+.poker-baralho .poker-queimada {
+  transform: translate(calc(-20px - var(--q) * 4px), calc(16px + var(--q) * 2px)) rotate(calc(-18deg + var(--q) * 6deg));
+  opacity: 0.88;
+}
+@keyframes poker-queima {
+  from { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+}
+.poker-baralho .poker-queimada--nova { animation: poker-queima 260ms cubic-bezier(0.3, 0.7, 0.3, 1) both; }
+
+/* Embaralhar (mão nova): o maço some, oito cartas se abrem em duas metades,
+   voltam intercaladas (uma de cada lado) e o maço bate na mesa. */
+.poker-baralho-repouso { position: absolute; inset: 0; }
+@keyframes poker-repouso-espera {
+  0%, 99% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.poker-baralho--embaralha .poker-baralho-repouso { animation: poker-repouso-espera 1000ms linear both; }
+@keyframes embaralha-abre {
+  from { transform: translate(0, calc(var(--i) * -1px)); }
+  to { transform: translate(calc(var(--lado) * 30px), calc(-10px - var(--i) * 2px)) rotate(calc(var(--lado) * 18deg)); }
+}
+@keyframes embaralha-fecha {
+  from { transform: translate(calc(var(--lado) * 30px), calc(-10px - var(--i) * 2px)) rotate(calc(var(--lado) * 18deg)); }
+  55% { transform: translate(calc(var(--lado) * 9px), calc(-16px - var(--i) * 1px)) rotate(calc(var(--lado) * 5deg)); }
+  to { transform: translate(0, calc(var(--ordem) * -0.5px)); }
+}
+.poker-baralho .poker-embaralho-carta {
+  animation:
+    embaralha-abre 260ms cubic-bezier(0.3, 0.7, 0.3, 1) both,
+    embaralha-fecha 170ms ease-in var(--volta, 400ms) forwards;
+}
+@keyframes poker-baralho-bate {
+  0% { transform: translate(-50%, -50%); }
+  45% { transform: translate(-50%, calc(-50% - 3px)) scale(1.07); }
+  100% { transform: translate(-50%, -50%); }
+}
+.poker-baralho--embaralha { animation: poker-baralho-bate 180ms ease-out 900ms both; }
+
+/* O meio da mesa antes da primeira mão. */
+.poker-espera {
+  white-space: nowrap;
+  border-radius: 999px;
+  background: hsl(var(--background) / 0.55);
+  padding: 4px 14px;
+  text-align: center;
+  font-size: 12px;
+  color: hsl(var(--foreground) / 0.8);
+}
+@keyframes poker-reticencias {
+  0% { content: ''; }
+  33% { content: '.'; }
+  66% { content: '..'; }
+  100% { content: '...'; }
+}
+.poker-reticencias::after {
+  content: '...';
+  display: inline-block;
+  width: 1.2em;
+  text-align: left;
+  animation: poker-reticencias 1.4s steps(1, end) infinite;
+}
+/* O "Começar": o botão mais importante da mesa parada. */
+@keyframes poker-comecar {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--neon-rgb) / 0.45), 0 10px 30px rgb(0 0 0 / 0.5); }
+  50% { box-shadow: 0 0 0 10px rgb(var(--neon-rgb) / 0), 0 10px 30px rgb(0 0 0 / 0.5); }
+}
+.poker-comecar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 26px;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  animation: poker-comecar 1.8s ease-out infinite;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+.poker-comecar:not(:disabled):hover { transform: translateY(-1px) scale(1.03); filter: brightness(1.06); }
+.poker-comecar:disabled { opacity: 0.5; cursor: not-allowed; animation: none; }
+
 /* ---------- cartas ---------- */
 
 .carta {
@@ -277,14 +362,25 @@
         calc((var(--deck-x, 50) - var(--seat-x, 50)) * 1cqw - var(--carta-dx, 0px)),
         calc((var(--deck-y, 15) - var(--seat-y, 50)) * 1cqh - var(--carta-dy, 0px))
       )
-      rotate(calc(var(--carta-giro, 0deg) - 30deg))
-      scale(0.72);
+      rotate(calc(var(--carta-giro, 0deg) - 200deg))
+      scale(0.6);
   }
-  18% { opacity: 1; }
+  10% { opacity: 1; }
+  /* Passa um fio do ponto (a carta desliza no feltro) e volta. */
+  80% {
+    opacity: 1;
+    transform:
+      translate(
+        calc((var(--seat-x, 50) - var(--deck-x, 50)) * 0.025cqw),
+        calc((var(--seat-y, 50) - var(--deck-y, 15)) * 0.025cqh)
+      )
+      rotate(calc(var(--carta-giro, 0deg) + 7deg))
+      scale(1.03);
+  }
   100% { opacity: 1; transform: rotate(var(--carta-giro, 0deg)); }
 }
 .carta--voa {
-  animation: carta-voa 520ms cubic-bezier(0.22, 0.8, 0.26, 1) both;
+  animation: carta-voa 560ms cubic-bezier(0.2, 0.75, 0.3, 1) both;
   animation-delay: var(--carta-atraso, 0ms);
   will-change: transform;
 }
@@ -324,11 +420,56 @@
   100% { transform: none; }
 }
 /* Chegou voando (o pai tem `.carta--voa`) e só depois vira: o miolo espera
-   a carta pousar — o atraso da virada é o da chegada mais o voo. */
-.carta-flip--chega > .carta-flip-inner {
+   a carta pousar — o atraso da virada é o da chegada mais o voo, ou o que a
+   mesa mandar (`--carta-vira`: o flop vira uma por uma). */
+.carta-flip--chega .carta-flip-inner {
   animation-name: carta-vira-chegada;
-  animation-delay: calc(var(--carta-atraso, 0ms) + 420ms);
+  animation-delay: var(--carta-vira, calc(var(--carta-atraso, 0ms) + 420ms));
+  animation-duration: var(--carta-vira-dura, 560ms);
 }
+
+/* SUSPENSE (turn e river): pousada de costas, a carta levanta, balança
+   acesa e só então vira. O balanço mora num invólucro (o miolo de dentro é
+   quem vira — duas animações de transform não cabem no mesmo elemento) e o
+   brilho fica no VERSO, que é o que se vê enquanto ela segura. Sem `filter`
+   no invólucro: filtro achata o 3D e a virada perde o verso. */
+.carta-suspense {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation:
+    carta-suspense var(--carta-suspense, 420ms) ease-in-out var(--carta-suspense-de, 0ms) both,
+    carta-suspense-pousa 240ms ease-out calc(var(--carta-suspense-de, 0ms) + var(--carta-suspense, 420ms) + var(--carta-vira-dura, 560ms)) forwards;
+}
+@keyframes carta-suspense {
+  0% { transform: none; }
+  22% { transform: translateY(-9px) rotateY(-18deg) rotateZ(-2deg); }
+  48% { transform: translateY(-7px) rotateY(12deg) rotateZ(1.5deg); }
+  74% { transform: translateY(-10px) rotateY(-7deg) rotateZ(-1deg); }
+  100% { transform: translateY(-8px); }
+}
+@keyframes carta-suspense-pousa {
+  from { transform: translateY(-8px); }
+  to { transform: none; }
+}
+.carta-flip--suspense .carta-flip-back {
+  animation: carta-acende var(--carta-suspense, 420ms) ease-in var(--carta-suspense-de, 0ms);
+}
+@keyframes carta-acende {
+  0% { box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.6), 0 1px 2px rgb(0 0 0 / 0.35), 0 6px 14px rgb(0 0 0 / 0.45); }
+  100% {
+    box-shadow:
+      inset 0 0 0 1px rgb(0 0 0 / 0.6),
+      0 0 0 2px rgb(var(--neon-rgb) / 0.75),
+      0 0 28px rgb(var(--neon-rgb) / 0.6),
+      0 14px 24px rgb(0 0 0 / 0.5);
+  }
+}
+
+/* As suas, depois de desistir: ficam na mão, apagadas e um pouco abaixadas. */
+.poker-heroi-cartas--fora { transform: translateY(14px) rotate(-2deg); }
+.poker-heroi-cartas--fora .carta--apagada { opacity: 0.45; filter: grayscale(0.85) brightness(0.75); }
+.poker-heroi-fold { animation: jogada-pop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
 @keyframes carta-vira-chegada {
   0% { transform: rotateY(180deg); }
   45% { transform: translateY(-12px) rotateY(100deg) scale(1.04); }
@@ -365,16 +506,6 @@
   }
 }
 .poker-fantasma--pote { animation: ficha-pro-pote 600ms cubic-bezier(0.3, 0.6, 0.2, 1) both; }
-/* O pote indo pra quem levou (do centro ao assento). */
-@keyframes pote-pro-vencedor {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
-  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) translate(calc((var(--seat-x) - 50) * 1cqw), calc((var(--seat-y) - var(--pot-y, 40)) * 1cqh)) scale(0.9);
-  }
-}
-.poker-fantasma--vencedor { animation: pote-pro-vencedor 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 /* Cartas de quem desistiu, jogadas pro meio. */
 @keyframes cartas-pro-centro {
   0% { opacity: 0.95; transform: translate(-50%, -50%); }
@@ -511,29 +642,6 @@ button.poker-vazio:hover {
 
 /* ---------- fichas ---------- */
 
-/* Aposta na frente do assento (pilha + valor) entrando com um toque. */
-@keyframes poker-ficha-entra {
-  from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-.poker-ficha { animation: poker-ficha-entra 220ms ease-out both; }
-
-.poker-valor {
-  border-radius: 999px;
-  padding: 1px 8px 1px 4px;
-  background: hsl(var(--background) / 0.86);
-  border: 1px solid hsl(var(--border-strong));
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
-  font-family: 'JetBrains Mono', Consolas, monospace;
-  font-size: 11.5px;
-  line-height: 18px;
-  color: hsl(var(--foreground));
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
-
 /* O pote no meio: pilha de fichas e o valor em dourado. */
 .poker-pote {
   display: inline-flex;
@@ -579,37 +687,6 @@ button.poker-vazio:hover {
   box-shadow: 0 2px 4px rgb(0 0 0 / 0.6), inset 0 0 0 1.5px #cfc8b6, inset 0 0 0 3px #fffdf7;
 }
 
-/* ---------- a faixa do resultado ---------- */
-@keyframes poker-faixa {
-  from { opacity: 0; transform: translate(-50%, 10px) scale(0.96); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-.poker-faixa {
-  position: absolute;
-  left: 50%;
-  border-radius: 12px;
-  border: 1px solid hsl(var(--burn) / 0.6);
-  background: linear-gradient(180deg, hsl(var(--depth-3) / 0.96), hsl(var(--background) / 0.96));
-  box-shadow: 0 14px 40px rgb(0 0 0 / 0.6), 0 0 30px hsl(var(--burn) / 0.18), inset 0 1px 0 hsl(var(--foreground) / 0.06);
-  animation: poker-faixa 300ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
-  z-index: 12;
-}
-/* Brilho que varre a faixa uma vez. */
-.poker-faixa::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(110deg, transparent 30%, hsl(var(--burn) / 0.18) 50%, transparent 70%);
-  background-size: 250% 100%;
-  animation: faixa-varre 1.6s ease-out 300ms both;
-  pointer-events: none;
-}
-@keyframes faixa-varre {
-  from { background-position: 120% 0; }
-  to { background-position: -120% 0; }
-}
-
 /* "+1.250" subindo da placa de quem levou. */
 @keyframes poker-ganho {
   0% { opacity: 0; transform: translate(-50%, 6px); }
@@ -617,6 +694,522 @@ button.poker-vazio:hover {
   100% { opacity: 0; transform: translate(-50%, -34px); }
 }
 .poker-ganho { animation: poker-ganho 1.8s ease-out 200ms both; }
+
+/* ---------- fichas na mesa ----------
+   A aposta de cada um são pilhas de verdade (ChipPile, ver lib/poker-chips)
+   paradas no feltro, com o valor numa etiqueta pequena embaixo. Ela entra
+   DESLIZANDO do assento (--seat-x/--seat-y) até onde para (--bet-x/--bet-y):
+   as fichas saem da mão de quem apostou. */
+.poker-aposta {
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  pointer-events: none;
+}
+@keyframes poker-aposta-entra {
+  from {
+    opacity: 0.2;
+    transform: translate(-50%, -50%)
+      translate(calc((var(--seat-x) - var(--bet-x)) * 1cqw), calc((var(--seat-y) - var(--bet-y)) * 1cqh))
+      scale(0.8);
+  }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+.poker-aposta--entra { animation: poker-aposta-entra 380ms cubic-bezier(0.2, 0.75, 0.3, 1) both; }
+/* As fichas escolhidas na barra, antes de apostar: um "fantasma" tracejado. */
+.poker-aposta--previa { opacity: 0.78; }
+.poker-aposta--previa > svg { filter: drop-shadow(0 0 6px rgb(var(--neon-rgb) / 0.55)); }
+.poker-aposta-valor {
+  border-radius: 999px;
+  padding: 0 7px;
+  background: hsl(var(--background) / 0.8);
+  border: 1px solid hsl(var(--border-strong) / 0.9);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 17px;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+}
+.poker-aposta-valor--previa {
+  border-style: dashed;
+  border-color: hsl(var(--acid) / 0.8);
+  color: hsl(var(--acid-text));
+}
+
+/* O pote: o monte de fichas e o valor do lado. */
+.poker-pote-mesa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Ficha clicável da barra (escolher fichas). */
+.poker-ficha-botao {
+  position: relative;
+  border-radius: 999px;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+.poker-ficha-botao:not(:disabled):hover { transform: translateY(-3px); filter: brightness(1.08) drop-shadow(0 4px 8px rgb(0 0 0 / 0.5)); }
+.poker-ficha-botao:not(:disabled):active { transform: translateY(0) scale(0.94); }
+.poker-ficha-botao:disabled { cursor: not-allowed; filter: grayscale(0.5) brightness(0.8); }
+.poker-ficha-conta {
+  position: absolute;
+  right: -3px;
+  top: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: hsl(var(--acid));
+  color: hsl(var(--primary-foreground));
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+}
+/* "Pagar" quando as fichas escolhidas dão exatamente o pagamento. */
+.poker-botao--sugerido { border-color: hsl(var(--acid)); box-shadow: 0 0 16px rgb(var(--neon-rgb) / 0.3); }
+
+/* Perdeu o showdown: a placa recua um pouco enquanto o vencedor brilha. */
+.poker-assento--perdeu .poker-placa { opacity: 0.7; transition: opacity 400ms ease; }
+
+/* ---------- a vitória ----------
+   Ver PokerWinFx: holofote, fichas em arco, onda e faíscas, carimbo da mão,
+   raios na mão grande e confete quando fui eu. */
+@keyframes poker-holofote {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.poker-holofote {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at calc(var(--seat-x) * 1%) calc(var(--seat-y) * 1%),
+    transparent 0,
+    transparent 70px,
+    rgb(0 0 0 / 0.42) 190px,
+    rgb(0 0 0 / 0.5) 100%
+  );
+  animation: poker-holofote 3.4s ease-out both;
+}
+
+/* Uma ficha do pote: o pai anda em X (do meio até o assento), o filho em Y
+   com um arco (sobe e desce) — duas animações, uma curva. */
+@keyframes poker-voo-x {
+  0% { transform: translate(-50%, -50%); }
+  100% { transform: translate(-50%, -50%) translateX(calc((var(--seat-x) - 50) * 1cqw + var(--desvio, 0cqw))); }
+}
+@keyframes poker-voo-y {
+  0% { transform: translateY(0) scale(0.9); }
+  45% { transform: translateY(calc((var(--seat-y) - var(--pot-y, 40)) * 0.45cqh - var(--arco, 8cqh))) scale(1.08); }
+  100% { transform: translateY(calc((var(--seat-y) - var(--pot-y, 40)) * 1cqh)) scale(0.85); }
+}
+@keyframes poker-voo-some {
+  0% { opacity: 0; }
+  8%, 90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.poker-voo {
+  position: absolute;
+  left: 50%;
+  opacity: 0;
+  animation: poker-voo-x 620ms cubic-bezier(0.35, 0.1, 0.25, 1) both, poker-voo-some 700ms linear both;
+  animation-delay: var(--atraso, 0ms);
+  z-index: 2;
+}
+.poker-voo-arco {
+  display: block;
+  animation: poker-voo-y 620ms cubic-bezier(0.3, 0, 0.3, 1) both;
+  animation-delay: var(--atraso, 0ms);
+  filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.5));
+}
+
+/* A chegada: onda dourada e faíscas saindo do avatar. */
+.poker-estouro {
+  position: absolute;
+  left: calc(var(--seat-x) * 1%);
+  top: calc(var(--seat-y) * 1%);
+  width: 0;
+  height: 0;
+}
+@keyframes poker-onda {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+  15% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.6); }
+}
+.poker-onda {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 70px;
+  height: 70px;
+  border-radius: 999px;
+  border: 3px solid hsl(var(--burn));
+  box-shadow: 0 0 22px hsl(var(--burn) / 0.6), inset 0 0 14px hsl(var(--burn) / 0.4);
+  opacity: 0;
+  animation: poker-onda 900ms ease-out both;
+  animation-delay: var(--atraso, 0ms);
+}
+.poker-onda--2 { animation-delay: calc(var(--atraso, 0ms) + 220ms); border-width: 2px; }
+@keyframes poker-faisca {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--ang)) translateX(10px) scale(0.6); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--ang)) translateX(var(--dist)) scale(0.2); }
+}
+.poker-faisca {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 2px;
+  background: var(--cor);
+  box-shadow: 0 0 8px var(--cor);
+  opacity: 0;
+  animation: poker-faisca 820ms cubic-bezier(0.15, 0.7, 0.3, 1) both;
+  animation-delay: var(--atraso, 0ms);
+}
+
+/* Mão grande: raios girando atrás de quem levou. */
+@keyframes poker-raios {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(0.6); }
+  15% { opacity: 0.85; }
+  80% { opacity: 0.6; }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(70deg) scale(1.15); }
+}
+.poker-raios {
+  position: absolute;
+  left: calc(var(--seat-x) * 1%);
+  top: calc(var(--seat-y) * 1%);
+  width: 260px;
+  height: 260px;
+  border-radius: 999px;
+  background: repeating-conic-gradient(from 0deg, hsl(var(--burn) / 0.38) 0 9deg, transparent 9deg 24deg);
+  -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 18%, transparent 68%);
+  animation: poker-raios 3.2s ease-out both;
+}
+
+/* O nome da mão batendo no meio da mesa. */
+@keyframes poker-carimbo-mao {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(2.2) rotate(-8deg); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(0.94) rotate(-4deg); }
+  20% { transform: translate(-50%, -50%) scale(1.04) rotate(-4deg); }
+  26% { transform: translate(-50%, -50%) scale(1) rotate(-4deg); }
+  78% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-4deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.08) rotate(-4deg); }
+}
+.poker-carimbo-mao {
+  position: absolute;
+  left: 50%;
+  z-index: 3;
+  padding: 4px 18px;
+  border-radius: 10px;
+  border: 3px solid hsl(var(--burn));
+  background: hsl(var(--background) / 0.72);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.55), 0 0 30px hsl(var(--burn) / 0.35);
+  font-family: Anton, 'Arial Narrow', Impact, sans-serif;
+  font-size: clamp(22px, 4.2cqw, 44px);
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: hsl(var(--burn));
+  text-shadow: 0 0 18px hsl(var(--burn) / 0.55);
+  animation: poker-carimbo-mao 2.6s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+  animation-delay: 450ms;
+}
+.poker-carimbo-mao--grande {
+  font-size: clamp(28px, 5.6cqw, 60px);
+  border-width: 4px;
+  background: linear-gradient(180deg, hsl(var(--background) / 0.82), hsl(var(--depth-3) / 0.82));
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.6), 0 0 50px hsl(var(--burn) / 0.55);
+  animation-duration: 3.2s;
+}
+
+/* Confete: só quando fui eu que levei. */
+@keyframes poker-confete {
+  0% { opacity: 0; transform: translate3d(0, -20px, 0) rotate(0deg); }
+  8% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--deriva, 0cqw), 105cqh, 0) rotate(var(--giro, 540deg)); }
+}
+.poker-confete {
+  position: absolute;
+  top: 0;
+  border-radius: 2px;
+  background: var(--cor);
+  opacity: 0;
+  animation: poker-confete var(--dura, 2000ms) cubic-bezier(0.25, 0.4, 0.5, 1) both;
+  animation-delay: var(--atraso, 0ms);
+}
+
+/* A placa do vencedor, encostada por cima das cartas da mesa. */
+@keyframes poker-placa-vitoria {
+  from { opacity: 0; transform: translate(-50%, calc(-100% + 10px)) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -100%); }
+}
+.poker-placa-vitoria {
+  position: absolute;
+  left: 50%;
+  z-index: 13;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 220px;
+  max-width: 88%;
+  margin-top: -10px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--burn) / 0.65);
+  background: linear-gradient(180deg, hsl(var(--depth-3) / 0.96), hsl(var(--background) / 0.96));
+  box-shadow: 0 14px 40px rgb(0 0 0 / 0.6), 0 0 30px hsl(var(--burn) / 0.22), inset 0 1px 0 hsl(var(--foreground) / 0.06);
+  transform: translate(-50%, -100%);
+  animation: poker-placa-vitoria 320ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+  animation-delay: 250ms;
+  overflow: hidden;
+}
+/* Brilho que varre a placa uma vez. */
+.poker-placa-vitoria::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 30%, hsl(var(--burn) / 0.2) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: faixa-varre 1.6s ease-out 600ms both;
+  pointer-events: none;
+}
+@keyframes faixa-varre {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
+
+/* ---------- reações ---------- */
+
+/* O botão redondo de reagir, no canto da mesa. */
+.poker-reagir {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border-strong));
+  background: linear-gradient(180deg, hsl(var(--depth-3) / 0.95), hsl(var(--background) / 0.95));
+  color: hsl(var(--foreground) / 0.85);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.5);
+  transition: transform 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+.poker-reagir:hover { transform: translateY(-2px) rotate(-8deg); border-color: hsl(var(--acid) / 0.7); color: hsl(var(--acid)); box-shadow: 0 10px 26px rgb(0 0 0 / 0.55), 0 0 18px rgb(var(--neon-rgb) / 0.3); }
+.poker-reagir--aberto { border-color: hsl(var(--acid)); color: hsl(var(--acid)); }
+.poker-reagir--compacto { width: 40px; height: 40px; }
+
+.poker-reacao-aba {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+  transition: color 120ms ease, background-color 120ms ease;
+  white-space: nowrap;
+}
+.poker-reacao-aba:hover { color: hsl(var(--foreground)); background: hsl(var(--muted) / 0.6); }
+.poker-reacao-aba--ativa { color: hsl(var(--acid-text)); background: hsl(var(--acid) / 0.12); }
+
+.poker-reacao-emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  border-radius: 8px;
+  font-size: 22px;
+  line-height: 1;
+  transition: transform 100ms ease, background-color 100ms ease;
+}
+.poker-reacao-emoji:hover { background: hsl(var(--muted) / 0.7); transform: scale(1.18); }
+.poker-reacao-emote,
+.poker-reacao-figurinha {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: transform 100ms ease, background-color 100ms ease;
+}
+.poker-reacao-emote { height: 44px; }
+.poker-reacao-figurinha { aspect-ratio: 1; padding: 4px; }
+.poker-reacao-emote:hover,
+.poker-reacao-figurinha:hover { background: hsl(var(--muted) / 0.7); transform: scale(1.07); }
+.poker-reacao-pacote {
+  flex-shrink: 0;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border));
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+}
+.poker-reacao-pacote:hover { color: hsl(var(--foreground)); }
+.poker-reacao-pacote--ativo { color: hsl(var(--acid-text)); border-color: hsl(var(--acid) / 0.6); background: hsl(var(--acid) / 0.1); }
+/* "Pra quem": a mesa toda ou alguém sentado (a reação voa até a pessoa). */
+.poker-reacao-alvo {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px 0 3px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border));
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+  transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+}
+.poker-reacao-alvo:hover { color: hsl(var(--foreground)); }
+.poker-reacao-alvo--ativo { color: hsl(var(--acid-text)); border-color: hsl(var(--acid) / 0.6); background: hsl(var(--acid) / 0.1); }
+.poker-reacao-som {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  font-size: 11.5px;
+  color: hsl(var(--foreground));
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+.poker-reacao-som:hover { border-color: hsl(var(--acid) / 0.6); background: hsl(var(--acid) / 0.08); }
+.poker-reacao-gif { border-radius: 6px; overflow: hidden; break-inside: avoid; transition: transform 100ms ease; }
+.poker-reacao-gif:hover { transform: scale(1.03); }
+
+/* A bolha na mesa: nasce no centro do avatar de quem mandou e sobe. Quem
+   arremessou: a bolha nasce na pessoa (--de-x/--de-y, relativo ao alvo) e
+   voa até o alvo num arco, girando, e estoura lá. */
+.poker-reacao {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.poker-reacao-arco { position: absolute; left: 0; top: 0; }
+.poker-reacao-corpo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+}
+@keyframes poker-reacao-sobe {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  9% { opacity: 1; transform: translate(-50%, -50%) scale(1.22); }
+  15% { transform: translate(-50%, -50%) scale(1); }
+  82% { opacity: 1; transform: translate(-50%, calc(-50% - 16px)) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% - 30px)) scale(0.92); }
+}
+.poker-reacao-corpo--sobe { animation: poker-reacao-sobe var(--vida, 3000ms) cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+.poker-reacao--plateia .poker-reacao-corpo { transform: translate(-50%, 0); }
+@keyframes poker-reacao-plateia {
+  0% { opacity: 0; transform: translate(-50%, -6px) scale(0.3); }
+  9% { opacity: 1; transform: translate(-50%, 10px) scale(1.18); }
+  15% { transform: translate(-50%, 8px) scale(1); }
+  82% { opacity: 1; transform: translate(-50%, 18px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, 26px) scale(0.92); }
+}
+.poker-reacao--plateia .poker-reacao-corpo--sobe { animation-name: poker-reacao-plateia; }
+@keyframes poker-reacao-voo {
+  from { transform: translate(calc(var(--de-x) * 1cqw), calc(var(--de-y) * 1cqh)); }
+  to { transform: translate(0, 0); }
+}
+@keyframes poker-reacao-arco {
+  0% { translate: 0 0; }
+  50% { translate: 0 -9cqh; }
+  100% { translate: 0 0; }
+}
+.poker-reacao--voa { animation: poker-reacao-voo 700ms cubic-bezier(0.3, 0.1, 0.3, 1) both; }
+.poker-reacao--voa .poker-reacao-arco { animation: poker-reacao-arco 700ms cubic-bezier(0.3, 0, 0.6, 1) both; }
+@keyframes poker-reacao-chega {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(0.75) rotate(-30deg); }
+  18% { transform: translate(-50%, -50%) scale(0.75) rotate(300deg); }
+  23% { transform: translate(-50%, -50%) scale(1.4) rotate(360deg); }
+  29% { transform: translate(-50%, -50%) scale(0.95) rotate(360deg); }
+  33% { transform: translate(-50%, -50%) scale(1) rotate(360deg); }
+  85% { opacity: 1; transform: translate(-50%, calc(-50% - 10px)) rotate(360deg); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% - 22px)) rotate(360deg); }
+}
+.poker-reacao-corpo--chega { animation: poker-reacao-chega 3700ms cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+.poker-reacao-emoji-grande {
+  font-size: 46px;
+  line-height: 1;
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.55));
+}
+.poker-reacao-quem {
+  margin-top: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: hsl(var(--background) / 0.85);
+  font-size: 11px;
+  line-height: 16px;
+  color: hsl(var(--foreground) / 0.85);
+  white-space: nowrap;
+}
+.poker-reacao-som-bolha {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--acid) / 0.6);
+  background: hsl(var(--background) / 0.92);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.55), 0 0 16px rgb(var(--neon-rgb) / 0.25);
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+}
+.poker-equalizador { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.poker-equalizador i {
+  display: block;
+  width: 3px;
+  height: 100%;
+  border-radius: 1px;
+  background: hsl(var(--acid));
+  transform-origin: bottom;
+  animation: poker-eq 520ms ease-in-out infinite alternate;
+}
+.poker-equalizador i:nth-child(2) { animation-delay: -180ms; }
+.poker-equalizador i:nth-child(3) { animation-delay: -360ms; }
+@keyframes poker-eq {
+  from { transform: scaleY(0.25); }
+  to { transform: scaleY(1); }
+}
+
+/* A plateia: quem assiste, no canto de cima. */
+.poker-plateia {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 0 6px 0 4px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--background) / 0.6);
+  backdrop-filter: blur(6px);
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+.poker-plateia:hover { border-color: hsl(var(--acid) / 0.5); background: hsl(var(--background) / 0.8); }
 
 /* ---------- o rodapé de ação (dock) ---------- */
 .poker-dock {
@@ -848,29 +1441,58 @@ button.poker-vazio:hover {
   .poker-quebrou-chama,
   .carta--voa,
   .carta-flip-inner,
+  .carta-suspense,
+  .carta-flip--suspense .carta-flip-back,
+  .poker-baralho--embaralha,
+  .poker-baralho--embaralha .poker-baralho-repouso,
+  .poker-baralho .poker-queimada--nova,
+  .poker-comecar,
+  .poker-reticencias::after,
   .carta--vencedora,
   .poker-fantasma,
   .poker-vez,
   .poker-vencedor,
-  .poker-ficha,
+  .poker-aposta--entra,
   .poker-pote-pulso,
-  .poker-faixa,
-  .poker-faixa::after,
+  .poker-placa-vitoria,
+  .poker-placa-vitoria::after,
   .poker-ganho,
-  .poker-jogada {
+  .poker-jogada,
+  .poker-reacao,
+  .poker-reacao-arco,
+  .poker-reacao-corpo,
+  .poker-equalizador i {
     animation: none !important;
   }
+  /* Partícula e voo não têm versão parada: somem. */
+  .poker-holofote,
+  .poker-voo,
+  .poker-estouro,
+  .poker-raios,
+  .poker-confete,
+  .poker-carimbo-mao {
+    display: none;
+  }
+  .poker-placa-vitoria { transform: translate(-50%, -100%); }
   .poker-quebrou { backdrop-filter: blur(3px); }
   .poker-quebrou-carimbo { transform: rotate(-6deg); }
   .poker-ficha-caindo { display: none; }
+  .poker-baralho .poker-embaralho-carta { display: none; }
   .poker-vez { box-shadow: 0 0 0 2px hsl(var(--acid)); }
   .poker-vencedor { box-shadow: 0 0 0 2px hsl(var(--burn)); }
-  .poker-faixa { transform: translate(-50%, 0); }
   .poker-ganho { display: none; }
 }
 html.game-running .poker-vez,
 html.game-running .poker-vencedor,
 html.game-running .carta--vencedora,
-html.game-running .poker-faixa::after {
+html.game-running .poker-placa-vitoria::after,
+html.game-running .poker-equalizador i {
   animation: none !important;
+}
+/* Com jogo aberto a GPU é do jogo: a vitória fica só com a placa e as fichas. */
+html.game-running .poker-holofote,
+html.game-running .poker-raios,
+html.game-running .poker-confete,
+html.game-running .poker-faisca {
+  display: none;
 }

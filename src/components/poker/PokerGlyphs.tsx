@@ -179,3 +179,208 @@ export function ChipStack({
 export function BetChip({ amount, bigBlind, className }: { amount: number; bigBlind: number; className?: string }) {
   return <Chip color={chipColor(amount, bigBlind)} size={16} className={className} />
 }
+
+// ---------------------------------------------------------------------------
+// Fichas de verdade: denominações da mesa (lib/poker-chips) em pilhas vistas
+// de lado, como ficam no feltro.
+// ---------------------------------------------------------------------------
+
+/**
+ * A paleta de cassino, da menor ficha da mesa pra maior: branca, vermelha,
+ * verde, preta, roxa e (se um dia houver sexta) dourada. É conteúdo, como a
+ * carta: a ficha verde é verde em qualquer tema, senão ninguém conta pilha.
+ */
+const CHIP_TONES: ReadonlyArray<{ face: string; band: string; spot: string; ink: string }> = [
+  { face: '#ece7da', band: '#c9c2af', spot: '#2c5aa8', ink: '#1d3b70' },
+  { face: '#c73441', band: '#962330', spot: '#f4efe3', ink: '#fff7ea' },
+  { face: '#2f8c55', band: '#206640', spot: '#f4efe3', ink: '#fff7ea' },
+  { face: '#2a2a31', band: '#18181d', spot: '#e3c46c', ink: '#f4e2a6' },
+  { face: '#6d42a6', band: '#4f2e7d', spot: '#f4efe3', ink: '#fff7ea' },
+  { face: '#d89a2a', band: '#a8731a', spot: '#2a2a31', ink: '#2a1a05' }
+]
+
+export function chipTone(tone: number): (typeof CHIP_TONES)[number] {
+  return CHIP_TONES[Math.max(0, Math.min(CHIP_TONES.length - 1, tone))]
+}
+
+/** Geometria de uma ficha de lado, em unidades do viewBox (diâmetro 32). */
+const CHIP_D = 32
+const CHIP_RY = 10.5
+const CHIP_T = 4.2
+
+interface PileStack {
+  tone: number
+  count: number
+  /** Canto de cima à esquerda do miolo da pilha (o topo da ficha de BAIXO), em unidades. */
+  x: number
+  baseY: number
+}
+
+/**
+ * Pilhas vistas de lado num SVG só: cada ficha é uma faixa (a borda, com as
+ * riscas) e só a de cima mostra a face. `layout="row"` põe as pilhas lado a
+ * lado (aposta na frente de alguém); `cluster` em duas fileiras, a de trás
+ * mais alta, como um pote arrumado pelo crupiê. Pilha alta demais vira duas.
+ */
+export function ChipPile({
+  stacks,
+  size = 22,
+  layout = 'row',
+  maxPerStack = 8,
+  maxStacks = 6,
+  className,
+  style
+}: {
+  stacks: ReadonlyArray<{ denom: { tone: number }; count: number }>
+  /** Largura de UMA ficha, em px. */
+  size?: number
+  layout?: 'row' | 'cluster'
+  maxPerStack?: number
+  maxStacks?: number
+  className?: string
+  style?: React.CSSProperties
+}) {
+  // Quebra pilhas altas em várias da mesma ficha (como o crupiê faz).
+  const columns: Array<{ tone: number; count: number }> = []
+  for (const s of stacks) {
+    let left = s.count
+    while (left > 0 && columns.length < maxStacks) {
+      const take = Math.min(left, maxPerStack)
+      columns.push({ tone: s.denom.tone, count: take })
+      left -= take
+    }
+  }
+  if (columns.length === 0) return null
+
+  const gap = CHIP_D * 0.86
+  const placed: PileStack[] = []
+  if (layout === 'cluster' && columns.length > 2) {
+    // Duas fileiras: a de trás (maiores) e a da frente, deslocada meio passo.
+    const back = columns.slice(0, Math.ceil(columns.length / 2))
+    const front = columns.slice(back.length)
+    back.forEach((c, i) => placed.push({ ...c, x: i * gap, baseY: 0 }))
+    front.forEach((c, i) => placed.push({ ...c, x: i * gap + gap / 2, baseY: CHIP_RY * 1.15 }))
+  } else {
+    // Em fila, com um leve sobe-e-desce pra não parecer carimbo.
+    columns.forEach((c, i) => placed.push({ ...c, x: i * gap, baseY: i % 2 === 1 ? CHIP_RY * 0.35 : 0 }))
+  }
+
+  const tallest = Math.max(...placed.map((p) => p.count))
+  const top = CHIP_RY + (tallest - 1) * CHIP_T
+  const minX = Math.min(...placed.map((p) => p.x))
+  const maxX = Math.max(...placed.map((p) => p.x)) + CHIP_D
+  const maxBase = Math.max(...placed.map((p) => p.baseY))
+  const vbW = maxX - minX
+  const vbH = top + maxBase + CHIP_RY + CHIP_T + 1
+  const scale = size / CHIP_D
+
+  return (
+    <svg
+      aria-hidden
+      viewBox={`${minX} 0 ${vbW} ${vbH}`}
+      width={vbW * scale}
+      height={vbH * scale}
+      className={cn('inline-block shrink-0 overflow-visible', className)}
+      style={style}
+    >
+      {/* De trás pra frente: quem tem baseY menor é desenhado antes. */}
+      {[...placed]
+        .sort((a, b) => a.baseY - b.baseY)
+        .map((p, si) => (
+          <g key={si} transform={`translate(${p.x} ${top + p.baseY})`}>
+            {/* sombra no feltro */}
+            <ellipse cx={CHIP_D / 2} cy={CHIP_T + 2} rx={CHIP_D / 2 + 1.5} ry={CHIP_RY + 1} fill="rgb(0 0 0 / 0.35)" />
+            {Array.from({ length: p.count }, (_, k) => (
+              <SideChip key={k} tone={p.tone} y={-k * CHIP_T} face={k === p.count - 1} twist={(k * 7 + si * 3) % 10} />
+            ))}
+          </g>
+        ))}
+    </svg>
+  )
+}
+
+/** Uma ficha de lado com o topo em `y` (centro da elipse de cima). */
+function SideChip({ tone, y, face, twist }: { tone: number; y: number; face: boolean; twist: number }) {
+  const c = chipTone(tone)
+  const r = CHIP_D / 2
+  const band = `M0 ${y} L0 ${y + CHIP_T} A${r} ${CHIP_RY} 0 0 0 ${CHIP_D} ${y + CHIP_T} L${CHIP_D} ${y} A${r} ${CHIP_RY} 0 0 1 0 ${y} Z`
+  // As riscas da borda: três aparecem na frente, deslocadas um pouco por
+  // ficha (`twist`) pra pilha não parecer um código de barras.
+  const spots = [4, 13.7, 23.4].map((x) => x + (twist - 5) * 0.35)
+  // A frente da borda acompanha a metade de baixo da elipse: no meio ela
+  // desce `ry` inteiro; nas pontas, quase nada.
+  const frontY = (xc: number): number => y + CHIP_RY * Math.sqrt(Math.max(0, 1 - ((xc - r) / r) ** 2))
+  return (
+    <g>
+      <path d={band} fill={c.band} stroke="rgb(0 0 0 / 0.45)" strokeWidth={0.6} />
+      {spots.map((x, i) => (
+        <rect key={i} x={x} y={frontY(x + 2.3) + 0.4} width={4.6} height={CHIP_T - 0.8} fill={c.spot} opacity={0.92} rx={0.6} />
+      ))}
+      {face && (
+        <>
+          <ellipse cx={r} cy={y} rx={r} ry={CHIP_RY} fill={c.face} stroke="rgb(0 0 0 / 0.35)" strokeWidth={0.6} />
+          {/* as seis riscas da borda, na face */}
+          <ellipse
+            cx={r}
+            cy={y}
+            rx={r - 2.4}
+            ry={CHIP_RY - 1.7}
+            fill="none"
+            stroke={c.spot}
+            strokeWidth={3}
+            pathLength={60}
+            strokeDasharray="4.4 5.6"
+            strokeDashoffset={twist}
+            opacity={0.95}
+          />
+          <ellipse cx={r} cy={y} rx={r - 7} ry={CHIP_RY - 4.4} fill="rgb(0 0 0 / 0.12)" stroke={c.spot} strokeWidth={0.7} opacity={0.9} />
+          {/* brilho de cima */}
+          <ellipse cx={r - 3} cy={y - 2.4} rx={r - 9} ry={2} fill="rgb(255 255 255 / 0.18)" />
+        </>
+      )}
+    </g>
+  )
+}
+
+/**
+ * Uma ficha vista DE CIMA com o valor no miolo — a do "escolher fichas" da
+ * barra de ação. Mesma paleta das pilhas.
+ */
+export function ChipFace({
+  tone,
+  label,
+  size = 40,
+  className
+}: {
+  tone: number
+  label: string
+  size?: number
+  className?: string
+}) {
+  const c = chipTone(tone)
+  const long = label.length >= 4
+  return (
+    <svg viewBox="0 0 40 40" width={size} height={size} aria-hidden className={cn('inline-block shrink-0', className)}>
+      <circle cx="20" cy="21" r="19" fill="rgb(0 0 0 / 0.35)" />
+      <circle cx="20" cy="20" r="19" fill={c.face} stroke="rgb(0 0 0 / 0.45)" strokeWidth="0.8" />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+        <rect key={a} x="17.4" y="1.3" width="5.2" height="5" rx="1" fill={c.spot} transform={`rotate(${a} 20 20)`} />
+      ))}
+      <circle cx="20" cy="20" r="13" fill="none" stroke={c.spot} strokeWidth="1.2" strokeDasharray="2.2 2" opacity="0.9" />
+      <circle cx="20" cy="20" r="11" fill="rgb(0 0 0 / 0.14)" />
+      <text
+        x="20"
+        y="20"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={c.ink}
+        fontFamily="Inter, system-ui, sans-serif"
+        fontWeight={800}
+        fontSize={long ? 7.6 : 9.6}
+        letterSpacing="-0.02em"
+      >
+        {label}
+      </text>
+    </svg>
+  )
+}

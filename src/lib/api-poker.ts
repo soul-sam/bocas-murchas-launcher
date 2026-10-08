@@ -291,6 +291,13 @@ export interface TableView {
   speed: TimerSpeed
   maxSeats: number
   status: TableStatus
+  /**
+   * O jogo começou (o "Começar" de quem abriu). Mesa nova nasce parada:
+   * ninguém recebe cartas antes. Servidor antigo não manda (= começada).
+   */
+  started?: boolean
+  /** EU posso apertar "Começar" (quem abriu; ou qualquer sentado, se quem abriu sumiu). */
+  canStart?: boolean
   createdById: string
   handId: string | null
   handNumber: number
@@ -310,10 +317,47 @@ export interface TableView {
   resultUntil: number | null
   canShow: boolean
   log: HandEvent[]
+  /** Quantos assistem (sem lugar). Servidor antigo contava os sentados também. */
   spectators: number
+  /** A plateia, em ordem de chegada. Servidor antigo não manda. */
+  watchers?: Watcher[]
   minBuyIn: number
   maxBuyIn: number
   pendingTopUp: number
+}
+
+export interface Watcher {
+  userId: string
+  displayName: string
+  avatar: string | null
+}
+
+// ============================================
+// REAÇÕES (poker:react / poker:reaction)
+// ============================================
+
+export type ReactionKind = 'emoji' | 'emote' | 'sticker' | 'gif' | 'sound'
+
+/** O que o launcher manda: o servidor resolve url e nome. */
+export interface ReactionInput {
+  kind: ReactionKind
+  /** emoji: o caractere; emote: o nome; sticker/sound: o id; gif: a url do Giphy. */
+  value: string
+  /** Lugar pra onde a reação voa (mirar em alguém). */
+  to?: number | null
+}
+
+export interface PokerReaction {
+  id: string
+  at: number
+  kind: ReactionKind
+  from: { userId: string; displayName: string; avatar: string | null; seat: number | null }
+  to: number | null
+  emoji?: string
+  emote?: { name: string; url: string }
+  sticker?: { id: string; name: string; url: string }
+  gif?: { url: string }
+  sound?: { id: string; name: string; emoji: string; url: string; volume: number; durationMs: number }
 }
 
 export interface LobbyTable {
@@ -328,6 +372,8 @@ export interface LobbyTable {
   seated: number
   players: Array<{ userId: string; displayName: string; avatar: string | null }>
   status: TableStatus
+  /** O jogo já começou (servidor antigo não manda). */
+  started?: boolean
   handCount: number
   createdById: string
   createdAt: number
@@ -339,6 +385,8 @@ export interface LobbyTable {
 export interface PokerAck {
   ok: boolean
   error?: string
+  /** Freio de clique duplo nas reações: não é erro, não mostra nada. */
+  throttled?: boolean
   tableId?: string
   table?: TableView
   returned?: number

@@ -44,6 +44,13 @@ export type UiSound =
   | 'poker-chip'
   | 'poker-win'
   /**
+   * Pôquer, o baralho: a carta saindo da mão do crupiê, a carta virando e o
+   * embaralhar. São RUÍDO filtrado (papel), não nota — ver NOISE_CUES.
+   */
+  | 'poker-card'
+  | 'poker-flip'
+  | 'poker-shuffle'
+  /**
    * Xadrez e dama, no vocabulário do chess.com: o meu lance e o do outro
    * (timbres diferentes), captura, roque, xeque, promoção, pré-lance
    * marcado, começo e fim da partida, pouco tempo e lance proibido.
@@ -98,7 +105,8 @@ const E6 = 1318.51
  * É a mesma convenção do Discord e do TeamSpeak — a galera já chega sabendo
  * ler, sem precisar decorar nada.
  */
-const CUES: Record<UiSound, Cue> = {
+/** Os de papel (cartas) moram em NOISE_CUES; aqui só os de nota. */
+const CUES: Partial<Record<UiSound, Cue>> = {
   /**
    * Alguém entrou ou saiu da call. É o aviso que mais toca numa noite, então é
    * o mais curto e o mais discreto do conjunto: DUAS NOTAS DE 45ms, seno puro
@@ -541,14 +549,95 @@ export function playUiSound(name: UiSound, volume: number): void {
   // inteira ouviria o ping deste launcher. Ver lib/launcher-silence.
   if (isLauncherSilenced()) return
 
+  const noise = NOISE_CUES[name]
   const cue = CUES[name]
-  if (!cue) return
+  if (!cue && !noise) return
 
   const audio = audioContext()
   if (!audio) return
 
   wake(audio)
-  playSynth(audio, cue, volume)
+  if (noise) playNoise(audio, noise, volume)
+  else if (cue) playSynth(audio, cue, volume)
+}
+
+/**
+ * Sons de PAPEL: batidas curtas de ruído branco num passa-banda. Carta não
+ * tem nota — o estalo de uma carta saindo do baralho é um "tsk" de 40 ms
+ * agudo; virar é um "fwip" mais longo e mais grave; embaralhar é uma rajada
+ * de estalinhos (as duas metades se intercalando) e uma batida no fim
+ * (o maço acertado na mesa).
+ */
+interface NoiseHit {
+  /** Início, em segundos, contado do disparo. */
+  at: number
+  /** Duração, em segundos. */
+  dur: number
+  /** Centro do passa-banda, em Hz. */
+  freq: number
+  q?: number
+  gain?: number
+}
+
+interface NoiseCue {
+  volume: number
+  hits: NoiseHit[]
+}
+
+function riffle(): NoiseHit[] {
+  const hits: NoiseHit[] = [{ at: 0, dur: 0.08, freq: 1300, q: 0.6, gain: 0.6 }]
+  for (let i = 0; i < 24; i++) {
+    hits.push({ at: 0.32 + i * 0.022, dur: 0.018, freq: i % 2 ? 2900 : 2300, q: 1.4, gain: 0.45 + ((i * 7) % 5) * 0.08 })
+  }
+  hits.push({ at: 0.9, dur: 0.05, freq: 520, q: 0.8, gain: 1 })
+  return hits
+}
+
+const NOISE_CUES: Partial<Record<UiSound, NoiseCue>> = {
+  'poker-card': { volume: 0.5, hits: [{ at: 0, dur: 0.04, freq: 2700, q: 0.9 }] },
+  'poker-flip': {
+    volume: 0.55,
+    hits: [
+      { at: 0, dur: 0.075, freq: 1500, q: 0.7 },
+      { at: 0.06, dur: 0.03, freq: 3300, q: 1.2, gain: 0.5 }
+    ]
+  },
+  'poker-shuffle': { volume: 0.55, hits: riffle() }
+}
+
+let noiseBuffer: AudioBuffer | null = null
+
+function playNoise(audio: AudioContext, cue: NoiseCue, volume: number): void {
+  if (!noiseBuffer || noiseBuffer.sampleRate !== audio.sampleRate) {
+    const length = Math.floor(audio.sampleRate)
+    noiseBuffer = audio.createBuffer(1, length, audio.sampleRate)
+    const data = noiseBuffer.getChannelData(0)
+    for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1
+  }
+  const now = audio.currentTime
+  const master = audio.createGain()
+  master.gain.value = Math.min(1, volume) * cue.volume * 0.5
+  master.connect(audio.destination)
+
+  for (const hit of cue.hits) {
+    const start = now + hit.at
+    const end = start + hit.dur
+    const source = audio.createBufferSource()
+    source.buffer = noiseBuffer
+    const band = audio.createBiquadFilter()
+    band.type = 'bandpass'
+    band.frequency.value = hit.freq
+    band.Q.value = hit.q ?? 1
+    const envelope = audio.createGain()
+    envelope.gain.setValueAtTime(0.0001, start)
+    envelope.gain.exponentialRampToValueAtTime(hit.gain ?? 1, start + 0.003)
+    envelope.gain.exponentialRampToValueAtTime(0.0001, end)
+    source.connect(band)
+    band.connect(envelope)
+    envelope.connect(master)
+    // Cada batida pega um trecho diferente do ruído: senão todas soam iguais.
+    source.start(start, Math.random() * 0.8, hit.dur + 0.02)
+  }
 }
 
 function playSynth(audio: AudioContext, cue: Cue, volume: number): void {

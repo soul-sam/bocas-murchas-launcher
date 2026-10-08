@@ -1,11 +1,12 @@
 import * as React from 'react'
 import type { Socket } from 'socket.io-client'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
+import { useSoundboard } from './soundboard-context'
 import { playUiSound } from './ui-sounds'
-import type { ActionType, LobbyTable, PokerAck, TableView, TimerSpeed } from './api-poker'
+import type { ActionType, LobbyTable, PokerAck, PokerReaction, ReactionInput, TableView, TimerSpeed } from './api-poker'
 
 /**
  * PÔQUER — o espelho da mesa no launcher.
@@ -21,7 +22,36 @@ import type { ActionType, LobbyTable, PokerAck, TableView, TimerSpeed } from './
  * sai da sala mas NÃO levanta — a pessoa continua sentada, e a mesa segue
  * foldando por ela se dormir (ver o relógio no servidor). A barra lateral
  * avisa quando é a sua vez com a tela fechada.
+ *
+ * REAÇÕES (emoji, emote, figurinha, GIF, som) chegam por `poker:reaction`
+ * só pra quem está com a mesa aberta; ficam aqui só o tempo de aparecer
+ * (`reactionLifeMs`). O som toca pelo soundboard (mesmo volume e saída), a
+ * não ser que a pessoa tenha calado os sons da mesa.
  */
+
+/** Quanto tempo uma reação fica na mesa (o som, o quanto ele dura). */
+export function reactionLifeMs(r: PokerReaction): number {
+  const flight = r.to !== null && r.to !== r.from.seat ? 700 : 0
+  switch (r.kind) {
+    case 'sound':
+      return flight + Math.min(8_000, Math.max(2_600, (r.sound?.durationMs ?? 0) + 600))
+    case 'sticker':
+    case 'gif':
+      return flight + 4_200
+    default:
+      return flight + 3_000
+  }
+}
+
+const MUTE_KEY = 'bocas:poker:mute-reactions'
+
+function readMuted(): boolean {
+  try {
+    return window.localStorage.getItem(MUTE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 interface PokerContextValue {
   tables: LobbyTable[]
@@ -58,6 +88,15 @@ interface PokerContextValue {
   act: (tableId: string, type: ActionType, amount?: number) => Promise<PokerAck>
   show: (tableId: string) => Promise<PokerAck>
   closeTable: (tableId: string) => Promise<PokerAck>
+  /** O "Começar" de quem abriu a mesa. */
+  start: (tableId: string) => Promise<PokerAck>
+
+  /** Reações na mesa aberta agora (as que ainda estão no ar). */
+  reactions: PokerReaction[]
+  react: (tableId: string, input: ReactionInput) => Promise<PokerAck>
+  /** Calou os SONS das reações (as bolhas continuam). Só nesta máquina. */
+  reactionSoundsMuted: boolean
+  setReactionSoundsMuted: (muted: boolean) => void
 }
 
 const PokerContext = React.createContext<PokerContextValue | null>(null)
@@ -80,12 +119,23 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const { socket, connected } = useSocket()
   const { settings } = useSettings()
+  const { playIncoming } = useSoundboard()
   const navigate = useNavigate()
+  // No app a rota mora no hash (HashRouter): quem diz se a tela é a do pôquer é o router.
+  const location = useLocation()
+  const onPokerRef = React.useRef(false)
+  onPokerRef.current = location.pathname === '/poker'
 
   const [tables, setTables] = React.useState<LobbyTable[]>([])
   const [ready, setReady] = React.useState(false)
   const [openTableId, setOpenTableId] = React.useState<string | null>(null)
   const [table, setTable] = React.useState<TableView | null>(null)
+  const [reactions, setReactions] = React.useState<PokerReaction[]>([])
+  const [reactionSoundsMuted, setMutedState] = React.useState<boolean>(readMuted)
+  const mutedRef = React.useRef(reactionSoundsMuted)
+  mutedRef.current = reactionSoundsMuted
+  const playIncomingRef = React.useRef(playIncoming)
+  playIncomingRef.current = playIncoming
 
   const settingsRef = React.useRef(settings)
   settingsRef.current = settings
@@ -97,6 +147,16 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
   const sound = React.useCallback((name: 'poker-turn' | 'poker-deal' | 'poker-chip' | 'poker-win') => {
     const s = settingsRef.current
     playUiSound(name, s.soundEnabled ? s.soundVolume : 0)
+  }, [])
+
+  // Timers das reações: caem só ao desmontar (uma vista nova não apaga bolha).
+  const reactionTimers = React.useRef(new Set<ReturnType<typeof setTimeout>>())
+  React.useEffect(() => {
+    const timers = reactionTimers.current
+    return () => {
+      for (const timer of timers) clearTimeout(timer)
+      timers.clear()
+    }
   }, [])
 
   // --- socket -----------------------------------------------------------------
@@ -127,7 +187,11 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
               })
             }
           }
-          if (next.handId && next.handId !== prev.handId) sound('poker-deal')
+          // Mão nova: com a mesa na tela quem toca é ela (embaralhar e as
+          // cartas, ver PokerTable); aqui só o tique pra quem está em outra aba.
+          if (next.handId && next.handId !== prev.handId) {
+            if (document.hidden || !onPokerRef.current) sound('poker-deal')
+          }
           // Alguém (que não eu) pôs fichas na mesa: aposta, aumento ou pagamento.
           else if (next.handId === prev.handId && !next.result) {
             const chips = next.seats.some((s, i) => {
@@ -144,13 +208,32 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
       })
     }
 
+    const handleReaction = (data: { tableId: string; reaction: PokerReaction }): void => {
+      const r = data?.reaction
+      if (!r?.id || data.tableId !== openIdRef.current) return
+      setReactions((prev) => [...prev.filter((x) => x.id !== r.id), r].slice(-24))
+      if (r.kind === 'sound' && r.sound && !mutedRef.current) playIncomingRef.current(r.sound)
+      const timer = setTimeout(() => {
+        reactionTimers.current.delete(timer)
+        setReactions((prev) => prev.filter((x) => x.id !== r.id))
+      }, reactionLifeMs(r))
+      reactionTimers.current.add(timer)
+    }
+
     socket.on('poker:lobby', handleLobby)
     socket.on('poker:table', handleTable)
+    socket.on('poker:reaction', handleReaction)
     return () => {
       socket.off('poker:lobby', handleLobby)
       socket.off('poker:table', handleTable)
+      socket.off('poker:reaction', handleReaction)
     }
   }, [socket, sound])
+
+  // Trocou de mesa (ou voltou pro saguão): as bolhas da outra mesa somem.
+  React.useEffect(() => {
+    setReactions([])
+  }, [openTableId])
 
   // Lista a cada (re)conexão, e a mesa aberta volta pra sala sozinha.
   React.useEffect(() => {
@@ -211,7 +294,8 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
 
   const createTable = React.useCallback<PokerContextValue['createTable']>(
     async (input) => {
-      const ack = await emitWithAck(socket, 'poker:create', input)
+      // `manualStart`: este launcher tem o botão "Começar", a mesa nasce parada.
+      const ack = await emitWithAck(socket, 'poker:create', { ...input, manualStart: true })
       if (ack.ok && ack.tableId) {
         setOpenTableId(ack.tableId)
         if (ack.table) setTable(ack.table)
@@ -249,6 +333,20 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
   )
   const show = React.useCallback((tableId: string) => emitWithAck(socket, 'poker:show', { tableId }), [socket])
   const closeTable = React.useCallback((tableId: string) => emitWithAck(socket, 'poker:close', { tableId }), [socket])
+  const start = React.useCallback((tableId: string) => emitWithAck(socket, 'poker:start', { tableId }), [socket])
+  const react = React.useCallback(
+    (tableId: string, input: ReactionInput) =>
+      emitWithAck(socket, 'poker:react', { tableId, kind: input.kind, value: input.value, to: input.to ?? null }),
+    [socket]
+  )
+  const setReactionSoundsMuted = React.useCallback((muted: boolean) => {
+    setMutedState(muted)
+    try {
+      window.localStorage.setItem(MUTE_KEY, muted ? '1' : '0')
+    } catch {
+      // Sem armazenamento (janela privada): vale só nesta sessão.
+    }
+  }, [])
 
   const seatedAt = React.useMemo(() => {
     const me = user?.id
@@ -276,9 +374,37 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
       sitOut,
       act,
       show,
-      closeTable
+      closeTable,
+      start,
+      reactions,
+      react,
+      reactionSoundsMuted,
+      setReactionSoundsMuted
     }),
-    [tables, ready, table, openTableId, openTable, leaveTable, goToPoker, seatedAt, myTurn, createTable, sit, stand, topUp, sitOut, act, show, closeTable]
+    [
+      tables,
+      ready,
+      table,
+      openTableId,
+      openTable,
+      leaveTable,
+      goToPoker,
+      seatedAt,
+      myTurn,
+      createTable,
+      sit,
+      stand,
+      topUp,
+      sitOut,
+      act,
+      show,
+      closeTable,
+      start,
+      reactions,
+      react,
+      reactionSoundsMuted,
+      setReactionSoundsMuted
+    ]
   )
 
   return <PokerContext.Provider value={value}>{children}</PokerContext.Provider>

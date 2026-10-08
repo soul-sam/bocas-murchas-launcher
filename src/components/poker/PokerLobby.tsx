@@ -271,6 +271,7 @@ function TableRow({ table, mine, onOpen }: { table: LobbyTable; mine: boolean; o
           <span className="font-mono">{table.seated}/{table.maxSeats}</span> lugares
           {' · '}
           <Timer className="inline h-3 w-3" aria-hidden /> {SPEED_LABEL[table.speed]}
+          {table.started === false && <span className="text-acid-text"> · esperando começar — dá tempo de sentar</span>}
           {table.pot > 0 && (
             <>
               {' · pote '}

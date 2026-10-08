@@ -42,6 +42,12 @@ interface SoundboardContextValue {
 
   play: (soundId: string) => Promise<void>
   preview: (sound: Sound) => void
+  /**
+   * Toca um som que chegou de FORA da call (a mesa de pôquer manda os sons
+   * dela pela sala da mesa). Mesmas regras do som da sala: volume do
+   * soundboard, saída da call, ensurdecido não ouve, no máximo três juntos.
+   */
+  playIncoming: (sound: { url: string; volume?: number }) => void
   stopAll: () => void
 
   upload: (payload: {
@@ -308,6 +314,15 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
     [playFile]
   )
 
+  const playIncoming = React.useCallback(
+    (sound: { url: string; volume?: number }) => {
+      if (deafenedRef.current) return
+      const url = resolveAssetUrl(sound.url)
+      if (url) playFile(url, sound.volume ?? 1)
+    },
+    [playFile]
+  )
+
   const stopAll = React.useCallback(() => {
     for (const audio of activeAudioRef.current) audio.pause()
     activeAudioRef.current = []
@@ -381,6 +396,7 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
       recent,
       play,
       preview,
+      playIncoming,
       stopAll,
       upload,
       update,
@@ -396,6 +412,7 @@ export function SoundboardProvider({ children }: { children: React.ReactNode }) 
       recent,
       play,
       preview,
+      playIncoming,
       stopAll,
       upload,
       update,

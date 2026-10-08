@@ -42,6 +42,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.57.0',
+    headline: 'Pôquer com cara de cassino',
+    items: [
+      'Mesa nova não começa sozinha: quem abriu aperta "Começar o jogo" quando todo mundo sentou. Depois disso ela corre como sempre.',
+      'Cartas da mesa maiores — em tela grande, do tamanho das suas.',
+      'Fichas de verdade: cada mesa tem cinco fichas, e aposta e pote aparecem como pilhas no feltro, na frente de quem apostou.',
+      'Dá pra apostar escolhendo fichas: clique nas fichas embaixo da sua pilha (botão direito tira uma) e confirme no botão de apostar.',
+      'O crupiê embaralha antes de dar, uma carta queima antes de cada rua, o flop vira uma carta por vez e turn e river seguram o suspense antes de virar. Com som de carta.',
+      'Desistiu? Suas cartas ficam na mão, apagadas, até a mão acabar.',
+      'Vitória nova: o pote voa em fichas até quem levou, a mão aparece carimbada no meio da mesa e, se foi você, chove confete.',
+      'Reações na mesa (o carinha no canto): emoji, emote e figurinha do servidor, GIF e os sons do soundboard — pra mesa toda ou arremessados em alguém.',
+      'A plateia aparece no canto de cima: quem está assistindo, e as reações de quem assiste saem de lá.'
+    ],
+    note: 'Os sons que alguém solta na mesa usam o volume do soundboard. Pra calar só os da mesa, use o "som" no painel de reações.'
+  },
+  {
     version: '1.56.1',
     headline: 'Peças clássicas no xadrez',
     items: [
