@@ -15,7 +15,7 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "lint:design": "node scripts/check-design-tokens.mjs",
-    "test:policy": "node --test src/lib/screen-share-policy.test.ts src/lib/screen-capture-gate.test.ts src/lib/layout-density.test.ts src/lib/game-hall.test.ts src/lib/board-position.test.ts src/lib/board-bet.test.ts src/lib/board-sides.test.ts src/lib/board-local.test.ts src/lib/board-intent.test.ts src/lib/poker-chips.test.ts src/lib/pool-geometry.test.ts src/lib/pool-replay.test.ts",
+    "test:policy": "node --test src/lib/screen-share-policy.test.ts src/lib/screen-capture-gate.test.ts src/lib/layout-density.test.ts src/lib/game-hall.test.ts src/lib/board-position.test.ts src/lib/board-bet.test.ts src/lib/board-sides.test.ts src/lib/board-local.test.ts src/lib/board-intent.test.ts src/lib/poker-chips.test.ts src/lib/pool-geometry.test.ts src/lib/pool-replay.test.ts src/lib/pool-roll.test.ts",
     "typecheck": "npm run lint:design && npm run typecheck:node && npm run typecheck:web",
     "package": "electron-vite build && electron-builder --win --x64",
     "release": "electron-vite build && electron-builder --win --x64 --publish always"
