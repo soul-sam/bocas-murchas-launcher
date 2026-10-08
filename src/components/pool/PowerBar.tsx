@@ -12,6 +12,7 @@ interface Props {
 
 const CANCEL_BELOW = 0.02
 const KEY_PERIOD_MS = 1200
+const MIN_TRAVEL_PX = 8
 
 /** Barra de força: arraste para baixo para carregar, solte para tacar; voltar ao topo cancela. */
 export function PowerBar({ power, onChange, onRelease, onCancel, disabled, vertical = true }: Props): JSX.Element {
@@ -22,15 +23,21 @@ export function PowerBar({ power, onChange, onRelease, onCancel, disabled, verti
   const keyRaf = React.useRef<number | null>(null)
   // força mais recente emitida (o prop só chega no próximo render)
   const lastP = React.useRef(0)
+  // posição (px) onde o arrasto começou e se já andou o bastante para valer como gesto
+  const startPos = React.useRef(0)
+  const travelled = React.useRef(false)
 
   const emit = (p: number) => { lastP.current = p; live.current.onChange(p) }
 
+  const posOf = (e: React.PointerEvent): number => (live.current.vertical ? e.clientY : e.clientX)
+
+  // força relativa ao ponto onde o dedo encostou: um toque simples não carrega nada
   const fromEvent = (e: React.PointerEvent): number => {
     const el = trackRef.current
     if (!el) return 0
     const r = el.getBoundingClientRect()
-    const v = live.current.vertical ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width
-    return Math.min(1, Math.max(0, v))
+    const size = live.current.vertical ? r.height : r.width
+    return Math.min(1, Math.max(0, (posOf(e) - startPos.current) / size))
   }
 
   const stopKey = React.useCallback(() => {
@@ -83,18 +90,21 @@ export function PowerBar({ power, onChange, onRelease, onCancel, disabled, verti
         onPointerDown={(e) => {
           if (live.current.disabled) return
           dragging.current = e.pointerId
+          startPos.current = posOf(e)
+          travelled.current = false
           e.currentTarget.setPointerCapture(e.pointerId)
-          emit(fromEvent(e))
+          emit(0)
         }}
         onPointerMove={(e) => {
           if (dragging.current !== e.pointerId || live.current.disabled) return
+          if (Math.abs(posOf(e) - startPos.current) >= MIN_TRAVEL_PX) travelled.current = true
           emit(fromEvent(e))
         }}
         onPointerUp={(e) => {
           if (dragging.current !== e.pointerId) return
           dragging.current = null
           if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
-          finish(true)
+          finish(travelled.current)
         }}
         onPointerCancel={(e) => {
           if (dragging.current !== e.pointerId) return
@@ -102,7 +112,7 @@ export function PowerBar({ power, onChange, onRelease, onCancel, disabled, verti
           finish(false)
         }}
         onKeyDown={(e) => {
-          if (e.code !== 'Space' || live.current.disabled) return
+          if (e.code !== 'Space' || live.current.disabled || dragging.current != null) return
           e.preventDefault()
           if (!e.repeat) startKey()
         }}
