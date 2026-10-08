@@ -116,7 +116,38 @@ interface BoardContextValue {
   consumeReplay: () => void
   /** Pede revanche da mesa aberta e passa a abrir a nova. */
   rematch: () => Promise<BoardAck>
+  /**
+   * Bilhar: a mira de quem está na vez, pra quem assiste (o adversário vê o
+   * taco). Ref, não estado: chega a 20 Hz e quem desenha lê no quadro.
+   * `peerAimLive` é o que liga o laço de desenho.
+   */
+  peerAim: React.MutableRefObject<PeerAim | null>
+  peerAimLive: boolean
+  /** Manda a minha mira (acelerada pra 20 Hz; `off` sai na hora). */
+  sendAim: (aim: AimPacket) => void
 }
+
+export interface PeerAim {
+  side: Side
+  /** ângulo do taco; nulo enquanto a pessoa só posiciona a branca */
+  a: number | null
+  p: number
+  sx: number
+  sy: number
+  /** branca na mão sendo posicionada */
+  g: [number, number] | null
+  /** `performance.now()` da chegada */
+  at: number
+}
+export interface AimPacket {
+  a: number | null
+  p: number
+  sx: number
+  sy: number
+  g?: [number, number] | null
+  off?: boolean
+}
+const AIM_EVERY_MS = 50
 
 const BoardContext = React.createContext<BoardContextValue | null>(null)
 
@@ -186,6 +217,20 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   // Última mesa gravada, pra comparar a transição fora do updater do setState.
   const tableRef = React.useRef<BoardTableView | null>(null)
 
+  // Bilhar: a mira de quem está na vez (ver PeerAim). Só o liga/desliga passa pelo React.
+  const peerAimRef = React.useRef<PeerAim | null>(null)
+  const [peerAimLive, setPeerAimLive] = React.useState(false)
+  const peerLiveRef = React.useRef(false)
+  const setPeerLive = React.useCallback((v: boolean): void => {
+    if (peerLiveRef.current === v) return
+    peerLiveRef.current = v
+    setPeerAimLive(v)
+  }, [])
+  const clearPeerAim = React.useCallback((): void => {
+    peerAimRef.current = null
+    setPeerLive(false)
+  }, [setPeerLive])
+
   // O que eu quero jogar: o lance no ar e a fila de pré-lances. O ref é a
   // fonte da verdade (os handlers do socket leem dele); o estado só redesenha.
   const intentRef = React.useRef<Intent>(EMPTY_INTENT)
@@ -216,6 +261,10 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       // ordem no fio: gravar o mais velho por cima desfaria um lance na tela.
       if (isStaleView(prev, next)) return
       tableRef.current = next
+      // Bilhar: lance novo ou vez trocada = a mira que estava no ar já era.
+      if (next.game === 'pool' && (!prev || prev.id !== next.id || prev.moves.length !== next.moves.length || prev.turn !== next.turn)) {
+        clearPeerAim()
+      }
 
       const r = reconcile(intentRef.current, next)
       commitIntent(r.intent)
@@ -249,7 +298,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       setTable(next)
       if (r.send) sendMoveRef.current(r.send)
     },
-    [commitIntent, sound]
+    [commitIntent, sound, clearPeerAim]
   )
 
   const clearOpen = React.useCallback((): void => {
@@ -257,8 +306,9 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     setOpenTableId(null)
     setTable(null)
     setReplay(null)
+    clearPeerAim()
     commitIntent(EMPTY_INTENT)
-  }, [commitIntent])
+  }, [commitIntent, clearPeerAim])
 
   const consumeReplay = React.useCallback((): void => setReplay(null), [])
 
@@ -286,18 +336,91 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     const handleInviteGone = (data: { tableId: string }): void => {
       if (inviteRef.current && inviteRef.current.tableId === data?.tableId) setInvite(null)
     }
+    const handleAim = (data: Partial<PeerAim> & { tableId?: string; off?: boolean }): void => {
+      if (!data?.tableId || data.tableId !== openIdRef.current) return
+      if (data.side !== 'white' && data.side !== 'black') return
+      // Eco da minha própria mira (outra janela minha): não é o adversário.
+      if (tableRef.current?.mySide === data.side) return
+      if (data.off) {
+        clearPeerAim()
+        return
+      }
+      const num = (v: unknown, d = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : d)
+      const g = Array.isArray(data.g) && data.g.length === 2 ? ([num(data.g[0]), num(data.g[1])] as [number, number]) : null
+      peerAimRef.current = {
+        side: data.side,
+        a: typeof data.a === 'number' && Number.isFinite(data.a) ? data.a : null,
+        p: Math.max(0, Math.min(1, num(data.p))),
+        sx: num(data.sx),
+        sy: num(data.sy),
+        g,
+        at: performance.now()
+      }
+      setPeerLive(true)
+    }
 
     socket.on('board:lobby', handleLobby)
     socket.on('board:table', handleTable)
     socket.on('board:invite', handleInvite)
     socket.on('board:invite:gone', handleInviteGone)
+    socket.on('board:aim', handleAim)
     return () => {
       socket.off('board:lobby', handleLobby)
       socket.off('board:table', handleTable)
       socket.off('board:invite', handleInvite)
       socket.off('board:invite:gone', handleInviteGone)
+      socket.off('board:aim', handleAim)
     }
-  }, [socket, applyTable])
+  }, [socket, applyTable, clearPeerAim, setPeerLive])
+
+  // A minha mira sai no máximo a cada 50 ms (o último valor sempre sai); `off` sai na hora.
+  const aimQueue = React.useRef<{ timer: ReturnType<typeof setTimeout> | null; pending: Record<string, unknown> | null; last: number }>({
+    timer: null,
+    pending: null,
+    last: 0
+  })
+  React.useEffect(
+    () => () => {
+      const q = aimQueue.current
+      if (q.timer) clearTimeout(q.timer)
+      q.timer = null
+      q.pending = null
+    },
+    []
+  )
+  const sendAim = React.useCallback(
+    (aim: AimPacket): void => {
+      const t = tableRef.current
+      if (!socket || !socket.connected || !t || t.game !== 'pool') return
+      const q = aimQueue.current
+      const payload: Record<string, unknown> = { tableId: t.id, a: aim.a, p: aim.p, sx: aim.sx, sy: aim.sy, g: aim.g ?? null }
+      const now = Date.now()
+      if (aim.off) {
+        if (q.timer) clearTimeout(q.timer)
+        q.timer = null
+        q.pending = null
+        socket.emit('board:aim', { tableId: t.id, off: true })
+        q.last = now
+        return
+      }
+      if (!q.timer && now - q.last >= AIM_EVERY_MS) {
+        socket.emit('board:aim', payload)
+        q.last = now
+        return
+      }
+      q.pending = payload
+      if (!q.timer) {
+        q.timer = setTimeout(() => {
+          q.timer = null
+          if (!q.pending || !socket.connected) return
+          socket.emit('board:aim', q.pending)
+          q.pending = null
+          q.last = Date.now()
+        }, Math.max(0, AIM_EVERY_MS - (now - q.last)))
+      }
+    },
+    [socket]
+  )
 
   // Lista a cada (re)conexão, e a mesa aberta volta pra sala sozinha.
   React.useEffect(() => {
@@ -571,11 +694,15 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       bet,
       replay,
       consumeReplay,
-      rematch
+      rematch,
+      peerAim: peerAimRef,
+      peerAimLive,
+      sendAim
     }),
     [
       tables, ready, table, openTableId, invite, myTable, myTurn, notice, dismissNotice, openTable, closeTable, cancelTable, goToBoard,
-      create, answerInvite, sit, setReadyAction, play, intent, queuePremove, cancelPremoves, resign, offerDraw, answerDraw, bet, replay, consumeReplay, rematch
+      create, answerInvite, sit, setReadyAction, play, intent, queuePremove, cancelPremoves, resign, offerDraw, answerDraw, bet, replay, consumeReplay, rematch,
+      peerAimLive, sendAim
     ]
   )
 
