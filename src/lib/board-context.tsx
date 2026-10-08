@@ -274,7 +274,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     const handleTable = (data: { tableId: string; table: BoardTableView }): void => {
       if (!data?.tableId || !data.table || data.tableId !== openIdRef.current) return
       // O replay vem antes da mesa: a tela lê replay.ply === table.moves.length.
-      if (data.table.game === 'pool' && data.table.replay) {
+      if (data.table.game === 'pool' && data.table.replay && !isStaleView(tableRef.current, data.table)) {
         setReplay({ tableId: data.tableId, ply: data.table.moves.length, replay: data.table.replay })
       }
       applyTable(data.table)
@@ -519,12 +519,14 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     const ack = await emitWithAck(socket, 'board:rematch', { tableId: t.id })
     if (ack.ok && ack.table) {
       tableRef.current = null
+      setReplay(null)
+      commitIntent(EMPTY_INTENT)
       setOpenTableId(ack.table.id)
       openIdRef.current = ack.table.id
       applyTable(ack.table)
     }
     return ack
-  }, [socket, applyTable])
+  }, [socket, applyTable, commitIntent])
 
   const myTable = React.useMemo(() => {
     const me = user?.id

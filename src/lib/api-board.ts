@@ -134,10 +134,9 @@ export interface BoardCardMeta {
 // Constantes e rótulos
 // ============================================
 
-/** Os relógios aceitos pelo servidor, do mais curto pro mais longo. */
 /** 30 s por tacada: o único relógio do bilhar. */
 export const SHOT_CLOCK_MS = 30_000
-/** Relógios do xadrez/dama; o bilhar é só `shot30`. */
+/** Os relógios aceitos pelo servidor, do mais curto pro mais longo (xadrez/dama; o bilhar é só `shot30`). */
 export const BOARD_CLOCKS: readonly ClockId[] = ['1+0', '1+1', '3+0', '3+2', '5+0', '10+0']
 
 /** Como mostrar o relógio da mesa ("5+0" fica como está; bilhar lê por extenso). */
