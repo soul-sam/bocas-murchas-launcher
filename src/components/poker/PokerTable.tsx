@@ -284,6 +284,17 @@ function useReveal(table: TableView): RevealState {
   return r
 }
 
+/**
+ * Segura um valor enquanto `hold` (a mesa virando carta): devolve o de
+ * antes. O rótulo da minha mão e o histórico já sabem do river quando ele
+ * ainda está de costas — mostrar entregaria o suspense.
+ */
+function useHeld<T>(value: T, hold: boolean): T {
+  const ref = React.useRef(value)
+  if (!hold) ref.current = value
+  return hold ? ref.current : value
+}
+
 /** Toca um som da mesa no volume dos avisos (ou nada, se os avisos estão desligados). */
 function useTableSound(): (name: UiSound) => void {
   const { settings } = useSettings()
@@ -667,6 +678,8 @@ function TableScreen({
   }, [reveal.endAt])
 
   const ghosts = useGhosts(table, rotated)
+  const heldLog = useHeld(table.log, locked)
+  const heldBest = useHeld(me?.best ?? null, locked)
 
   const myCategory = me?.best?.category ?? null
 
@@ -817,6 +830,7 @@ function TableScreen({
                   set={set}
                   myTurn={myTurn}
                   staged={myTurn && picked && pickedSum > 0 ? pickedSum : 0}
+                  best={heldBest}
                   onOpenRules={onOpenRules}
                 />
               ) : (
@@ -839,8 +853,9 @@ function TableScreen({
               )
             )}
 
-            {table.result && <WinFx key={table.handId ?? 'mao'} table={table} rotated={rotated} geo={geo} set={set} />}
-            {table.result && <WinnerPlaque key={`placa-${table.handId}`} table={table} fmt={fmt} topY={layout.boardTopY} />}
+            {/* A vitória espera a mesa terminar de virar (o river com suspense). */}
+            {table.result && !locked && <WinFx key={table.handId ?? 'mao'} table={table} rotated={rotated} geo={geo} set={set} />}
+            {table.result && !locked && <WinnerPlaque key={`placa-${table.handId}`} table={table} fmt={fmt} topY={layout.boardTopY} />}
 
             <ReactionLayer reactions={reactions} geometry={reactionGeometry} />
 
@@ -1038,7 +1053,7 @@ function TableScreen({
                 Histórico da mão
                 {logOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
               </button>
-              {logOpen && <HandLog table={table} fmt={fmt} className="max-h-40" />}
+              {logOpen && <HandLog table={table} log={heldLog} fmt={fmt} className="max-h-40" />}
             </>
           ) : (
             <>
@@ -1046,7 +1061,7 @@ function TableScreen({
                 <History className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                 Histórico da mão
               </h4>
-              <HandLog table={table} fmt={fmt} className="min-h-0 flex-1" />
+              <HandLog table={table} log={heldLog} fmt={fmt} className="min-h-0 flex-1" />
             </>
           )}
         </aside>
@@ -1641,6 +1656,7 @@ function HeroSeat({
   set,
   myTurn,
   staged,
+  best: bestNow,
   onOpenRules
 }: {
   table: TableView
@@ -1656,6 +1672,8 @@ function HeroSeat({
   myTurn: boolean
   /** Soma das fichas escolhidas na barra (0 = nenhuma): aparece na frente, tracejada. */
   staged: number
+  /** A minha melhor mão, segurada enquanto a mesa vira (não entrega a carta antes). */
+  best: SeatView['best']
   onOpenRules: (category?: HandCategory | null) => void
 }) {
   const { byId } = useMembers()
@@ -1669,7 +1687,7 @@ function HeroSeat({
   const inHand = seat.inHand && !seat.folded
   const away = seat.sittingOut || !seat.connected
   const action = seat.lastAction && !seat.toAct && !result ? seat.lastAction : null
-  const best = inHand && !result ? seat.best : null
+  const best = inHand && !result ? bestNow : null
   const handLabel = result?.hands[String(seat.index)]?.label ?? null
   const avatarPx = layout.avatarPx
   const vars = seatVars(pos, avatarPx)
@@ -2538,20 +2556,20 @@ function BustedOverlay({
 // Histórico
 // ---------------------------------------------------------------------------
 
-function HandLog({ table, fmt, className }: { table: TableView; fmt: (v: number) => string; className?: string }) {
+function HandLog({ table, log, fmt, className }: { table: TableView; log: HandEvent[]; fmt: (v: number) => string; className?: string }) {
   const ref = React.useRef<HTMLOListElement>(null)
   const name = (seat: number): string => table.seats[seat]?.displayName?.split(/\s+/)[0] ?? `lugar ${seat + 1}`
   React.useEffect(() => {
     ref.current?.scrollTo({ top: ref.current.scrollHeight })
-  }, [table.log.length])
+  }, [log.length])
 
-  if (table.log.length === 0) {
+  if (log.length === 0) {
     return <p className={cn('px-3 py-3 text-[11.5px] text-muted-foreground', className)}>A mão ainda não começou.</p>
   }
 
   return (
     <ol ref={ref} className={cn('scroll-stable space-y-1 overflow-y-auto px-3 py-2 text-[11.5px] leading-snug', className)}>
-      {table.log.map((e) => (
+      {log.map((e) => (
         <li key={e.seq} className={cn(e.kind === 'street' || e.kind === 'win' ? 'text-foreground' : 'text-muted-foreground')}>
           {renderEvent(e, name, fmt, table.stake.currency)}
         </li>
