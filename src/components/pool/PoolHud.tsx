@@ -4,18 +4,18 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { clockNow } from '@/lib/board-position'
 import { SHOT_CLOCK_MS, type BoardTableView, type PoolGroup, type PoolPosition, type Side } from '@/lib/api-board'
 import { cn } from '@/lib/utils'
-import { ballLook, type PoolSkin } from './draw'
+import { miniBallCss, type PoolSkin } from './draw'
 import { PoolSkinPicker } from './PoolSkinPicker'
 
 const SOLIDS = [1, 2, 3, 4, 5, 6, 7]
 const STRIPES = [9, 10, 11, 12, 13, 14, 15]
 
-const FOUL_LABEL: Record<string, string> = {
-  scratch: 'Branca na caçapa',
-  'no-hit': 'Não tocou bola',
-  'wrong-ball': 'Tocou bola errada',
-  'no-rail': 'Nenhuma bola na tabela',
-  timeout: 'Tempo esgotado'
+export const FOUL_LABEL: Record<string, string> = {
+  scratch: 'branca na caçapa',
+  'no-hit': 'não tocou bola',
+  'wrong-ball': 'tocou bola errada',
+  'no-rail': 'nenhuma bola na tabela',
+  timeout: 'tempo esgotado'
 }
 
 const GROUP_LABEL: Record<PoolGroup, string> = { open: 'Mesa aberta', solids: 'Lisas', stripes: 'Listradas' }
@@ -30,10 +30,14 @@ interface Props {
   error: string | null
   skin: PoolSkin
   onSkin: (skin: PoolSkin) => void
+  /** Toque numa bola do placar aponta o taco pra ela (só na minha vez). */
+  onAimBall?: (id: number) => void
+  /** Faixa embaixo da mesa (PC baixo): os dois lados ficam lado a lado, em duas colunas. */
+  wide?: boolean
 }
 
 /** O placar do bilhar: de quem é a vez, o tempo da tacada, os grupos e o aviso da última jogada. */
-export function PoolHud({ table, position, mySide, replaying, compact, error, skin, onSkin }: Props): JSX.Element {
+export function PoolHud({ table, position, mySide, replaying, compact, error, skin, onSkin, onAimBall, wide }: Props): JSX.Element {
   const live = table.phase === 'playing' && !table.result
   const turn = position.turn
   const onTable = new Set(position.balls.filter((b) => b.state === 's').map((b) => b.id))
@@ -65,7 +69,7 @@ export function PoolHud({ table, position, mySide, replaying, compact, error, sk
   }
 
   return (
-    <div className={cn('flex w-full min-w-0 flex-col', compact ? 'gap-1.5' : 'gap-2.5')}>
+    <div className={cn('w-full min-w-0', wide ? 'pool-hud--largo' : cn('flex flex-col', compact ? 'gap-1.5' : 'gap-2.5'))}>
       <div className="flex items-center gap-2">
         <p className={cn('board-vez min-w-0 flex-1', live && !replaying && mySide === turn && 'board-vez--minha')}>
           <span className="board-vez-ponto" aria-hidden />
@@ -90,7 +94,7 @@ export function PoolHud({ table, position, mySide, replaying, compact, error, sk
 
       {live && table.clockRunning && <ShotTimer table={table} />}
 
-      <div className={cn('flex flex-col', compact ? 'gap-1' : 'gap-2')}>
+      <div className={cn(wide ? 'contents' : 'flex flex-col', !wide && (compact ? 'gap-1' : 'gap-2'))}>
         {(['white', 'black'] as const).map((side) => (
           <SideRow
             key={side}
@@ -98,6 +102,7 @@ export function PoolHud({ table, position, mySide, replaying, compact, error, sk
             group={position.groups[side]}
             onTable={onTable}
             active={live && turn === side}
+            onAimBall={live && !replaying && mySide === turn ? onAimBall : undefined}
           />
         ))}
       </div>
@@ -145,51 +150,65 @@ function ShotTimer({ table }: { table: BoardTableView }) {
   )
 }
 
-function SideRow({ label, group, onTable, active }: { label: string; group: PoolGroup; onTable: Set<number>; active: boolean }) {
+function SideRow({
+  label,
+  group,
+  onTable,
+  active,
+  onAimBall
+}: {
+  label: string
+  group: PoolGroup
+  onTable: Set<number>
+  active: boolean
+  onAimBall?: (id: number) => void
+}) {
   const ids = group === 'solids' ? SOLIDS : group === 'stripes' ? STRIPES : null
   const left = ids ? ids.filter((id) => onTable.has(id)).length : null
   return (
-    <div className={cn('flex flex-col gap-1 rounded-brutal border px-2 py-1.5', active ? 'border-acid/60' : 'border-line')}>
+    <div className={cn('pool-lado', active && 'pool-lado--vez')}>
       <div className="flex items-center gap-1.5 text-xs">
         <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{label}</span>
         {ids ? (
-          <span className="flex shrink-0 items-center gap-1 text-muted-foreground">
-            <MiniBall id={ids[0]} />
-            {GROUP_LABEL[group]}
+          <span className="shrink-0 text-muted-foreground">
+            {GROUP_LABEL[group]} · <span className="font-mono">{left}</span>
           </span>
         ) : (
-          <span className="shrink-0 font-mono text-muted-foreground" title={GROUP_LABEL.open}>
-            ?
+          <span className="shrink-0 text-muted-foreground" title={GROUP_LABEL.open}>
+            {GROUP_LABEL.open}
           </span>
         )}
       </div>
       {ids && (
         <div className="flex flex-wrap items-center gap-1" aria-label={`${left} bola${left === 1 ? '' : 's'} na mesa`}>
           {ids.map((id) => (
-            <MiniBall key={id} id={id} gone={!onTable.has(id)} />
+            <MiniBall key={id} id={id} gone={!onTable.has(id)} onAim={onTable.has(id) ? onAimBall : undefined} />
           ))}
-          {left === 0 && (
-            <>
-              <span className="text-[11px] text-muted-foreground">falta a</span>
-              <MiniBall id={8} gone={!onTable.has(8)} />
-            </>
-          )}
+          <span className="mx-0.5 text-[11px] text-muted-foreground" aria-hidden>
+            →
+          </span>
+          <MiniBall id={8} gone={!onTable.has(8)} onAim={left === 0 && onTable.has(8) ? onAimBall : undefined} eight />
         </div>
       )}
     </div>
   )
 }
 
-/** Bolinha do placar com a cor da bola de verdade (a cor vem do desenho da mesa). */
-function MiniBall({ id, gone }: { id: number; gone?: boolean }) {
-  const { color, striped } = ballLook(id)
-  const white = ballLook(0).color
-  const background = striped ? `linear-gradient(${white} 0 28%, ${color} 28% 72%, ${white} 72%)` : color
+/** Bolinha do placar com a cor da bola de verdade (a cor vem do desenho da mesa). Clicável = mira nela. */
+export function MiniBall({ id, gone, onAim, eight }: { id: number; gone?: boolean; onAim?: (id: number) => void; eight?: boolean }) {
+  const style = { background: miniBallCss(id) }
+  const cls = cn('pool-mini-bola', gone && 'pool-mini-bola--fora', onAim && 'pool-mini-bola--mira', eight && 'pool-mini-bola--oito')
+  const num = <span className="pool-mini-bola-num">{id}</span>
+  if (onAim && !gone) {
+    return (
+      <button type="button" title={`Mirar na bola ${id}`} aria-label={`Mirar na bola ${id}`} className={cls} style={style} onClick={() => onAim(id)}>
+        {num}
+      </button>
+    )
+  }
   return (
-    <span
-      title={`Bola ${id}${gone ? ' (encaçapada)' : ''}`}
-      className={cn('pool-mini-bola', gone && 'pool-mini-bola--fora')}
-      style={{ background }}
-    />
+    <span title={`Bola ${id}${gone ? ' (encaçapada)' : ''}`} className={cls} style={style}>
+      {num}
+    </span>
   )
 }

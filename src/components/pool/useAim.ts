@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { clampOffset, HEAD_LINE_X, insideTable, overlaps } from '@/lib/pool-geometry'
+import { BALL_R, clampOffset, HEAD_LINE_X, inPocket, insideTable, overlaps } from '@/lib/pool-geometry'
 
 /** Branca na mão seguindo o ponteiro; `ok` falso = lugar proibido (desenha em vermelho). */
 export interface Ghost { x: number; y: number; ok: boolean }
@@ -12,24 +12,41 @@ interface Opts {
   breakPending: boolean
   cue: { x: number; y: number } | null
   balls: ReadonlyArray<{ id: number; x: number; y: number }>
+  /** Pra onde o taco aponta quando a vez começa (a bola mais sensata); nulo = fica como estava. */
+  initialAngle: number | null
   onShoot: (shot: { a: number; p: number; sx: number; sy: number }) => void
   onPlace: (x: number, y: number) => void
 }
 
 interface Raw { angle: number; power: number; sx: number; sy: number; aiming: boolean; ghost: Ghost | null }
 const INITIAL: Raw = { angle: 0, power: 0, sx: 0, sy: 0, aiming: false, ghost: null }
-const FINE_RADIUS = 0.15
-const FINE_GAIN = 0.8
 const MIN_POWER = 0.02
+/** Toque sem andar mais que isso (m) = "aponta pra cá"; andou = gira o taco junto com o dedo. */
+const TAP_EPS = 0.012
+/** Perto demais da branca o ângulo do ponteiro é instável: nessa roda o arrasto não gira. */
+const NEAR = 0.07
 
-/** Estado da mira: ângulo, força, efeito e bola na mão. Handlers estáveis (leem opts por ref). */
+/** Normaliza para (−π, π]. */
+function wrap(a: number): number {
+  while (a > Math.PI) a -= Math.PI * 2
+  while (a <= -Math.PI) a += Math.PI * 2
+  return a
+}
+
+/**
+ * Estado da mira: ângulo, força, efeito e bola na mão. Handlers estáveis
+ * (leem opts por ref).
+ *
+ * Como no 8 Ball Pool: um TOQUE aponta o taco pro lugar tocado; ARRASTAR gira
+ * o taco acompanhando o dedo em volta da branca (quanto mais longe da branca,
+ * mais fino o ajuste). ←/→ (PoolMatch) ajustam meio grau.
+ */
 export function useAim(opts: Opts) {
   const [raw, setRaw] = React.useState<Raw>(INITIAL)
   const rawRef = React.useRef(raw)
   const optsRef = React.useRef(opts)
   optsRef.current = opts
-  const last = React.useRef<{ x: number; y: number } | null>(null)
-  const down = React.useRef(false)
+  const drag = React.useRef<{ x: number; y: number; angle0: number; pa0: number | null; moved: boolean } | null>(null)
 
   const commit = React.useCallback((patch: Partial<Raw>) => {
     rawRef.current = { ...rawRef.current, ...patch }
@@ -39,8 +56,7 @@ export function useAim(opts: Opts) {
   // perdeu a vez / entrou replay: zera força e arrasto
   React.useEffect(() => {
     if (!opts.enabled) {
-      down.current = false
-      last.current = null
+      drag.current = null
       commit({ power: 0, aiming: false, ghost: null })
     }
   }, [opts.enabled, commit])
@@ -48,10 +64,17 @@ export function useAim(opts: Opts) {
   React.useEffect(() => {
     if (!opts.ballInHand) commit({ ghost: null })
   }, [opts.ballInHand, commit])
+  // A vez começou (ou a branca acabou de ser posta): o taco já aponta pra bola mais sensata.
+  React.useEffect(() => {
+    const o = optsRef.current
+    if (o.enabled && !o.ballInHand && o.initialAngle !== null) commit({ angle: o.initialAngle })
+    // só nas transições: quem já girou o taco não é interrompido
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opts.enabled, opts.ballInHand, commit])
 
   const validSpot = (x: number, y: number): boolean => {
     const o = optsRef.current
-    if (!insideTable(x, y) || overlaps(x, y, o.balls.filter((b) => b.id !== 0))) return false
+    if (!insideTable(x, y) || inPocket(x, y) || overlaps(x, y, o.balls.filter((b) => b.id !== 0))) return false
     return !o.breakPending || x <= HEAD_LINE_X
   }
 
@@ -68,26 +91,27 @@ export function useAim(opts: Opts) {
     }
     if (!o.cue) return
     const r = rawRef.current
-    const far = Math.hypot(ev.x - o.cue.x, ev.y - o.cue.y) > FINE_RADIUS
+    const dist = Math.hypot(ev.x - o.cue.x, ev.y - o.cue.y)
+    const pa = Math.atan2(ev.y - o.cue.y, ev.x - o.cue.x)
     if (ev.kind === 'down') {
-      down.current = true
-      last.current = { x: ev.x, y: ev.y }
-      commit({ aiming: true, angle: far ? Math.atan2(ev.y - o.cue.y, ev.x - o.cue.x) : r.angle })
+      drag.current = { x: ev.x, y: ev.y, angle0: r.angle, pa0: dist > NEAR ? pa : null, moved: false }
+      commit({ aiming: true })
     } else if (ev.kind === 'move') {
-      if (!down.current) return
-      const prev = last.current ?? { x: ev.x, y: ev.y }
-      last.current = { x: ev.x, y: ev.y }
-      if (far) {
-        commit({ angle: Math.atan2(ev.y - o.cue.y, ev.x - o.cue.x) })
-      } else {
-        const dx = ev.x - prev.x
-        const dy = ev.y - prev.y
-        commit({ angle: r.angle + (dx * -Math.sin(r.angle) + dy * Math.cos(r.angle)) * FINE_GAIN })
+      const d = drag.current
+      if (!d) return
+      if (!d.moved && Math.hypot(ev.x - d.x, ev.y - d.y) > TAP_EPS) d.moved = true
+      if (!d.moved || dist <= NEAR) return
+      if (d.pa0 === null) {
+        // começou colado na branca: vale o ângulo absoluto a partir de agora
+        d.pa0 = pa
+        d.angle0 = pa
       }
+      commit({ angle: wrap(d.angle0 + wrap(pa - d.pa0)) })
     } else {
-      down.current = false
-      last.current = null
-      commit({ aiming: false })
+      const d = drag.current
+      drag.current = null
+      if (d && !d.moved && dist > 2 * BALL_R) commit({ angle: pa, aiming: false })
+      else commit({ aiming: false })
     }
   }, [commit])
 
@@ -114,7 +138,13 @@ export function useAim(opts: Opts) {
   const nudge = React.useCallback((d: number) => {
     const o = optsRef.current
     if (!o.enabled || o.ballInHand) return
-    commit({ angle: rawRef.current.angle + d })
+    commit({ angle: wrap(rawRef.current.angle + d) })
+  }, [commit])
+  /** Aponta pra um lugar da mesa (atalho: toque numa bola do placar, por exemplo). */
+  const aimAt = React.useCallback((x: number, y: number) => {
+    const o = optsRef.current
+    if (!o.enabled || o.ballInHand || !o.cue) return
+    commit({ angle: Math.atan2(y - o.cue.y, x - o.cue.x) })
   }, [commit])
 
   const phase: AimPhase = !opts.enabled ? 'locked'
@@ -125,5 +155,5 @@ export function useAim(opts: Opts) {
     angle: raw.angle, power: raw.power, sx: raw.sx, sy: raw.sy, phase,
     ghost: opts.enabled && opts.ballInHand ? raw.ghost : null,
   }
-  return { state, onPointer, setOffset, centerOffset, setPower, release, cancel, nudge }
+  return { state, onPointer, setOffset, centerOffset, setPower, release, cancel, nudge, aimAt }
 }

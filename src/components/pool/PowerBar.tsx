@@ -18,8 +18,15 @@ const CANCEL_BELOW = 0.02
 const KEY_PERIOD_MS = 1200
 const MIN_TRAVEL_PX = 8
 const FULL_AT = 0.7
+/** Quanto o taco desce (fração do trilho) com força total. */
+const CUE_TRAVEL = 0.62
 
-/** Barra de força: arraste para baixo para carregar, solte para tacar; voltar ao topo cancela. */
+/**
+ * Barra de força: um medidor com o taco dentro. Arraste pra baixo pra puxar o
+ * taco (quanto mais, mais força), solte pra tacar; voltar ao topo cancela.
+ * Espaço segura um medidor que vai e volta (o "power meter" do Side Pocket):
+ * solte na hora certa.
+ */
 export function PowerBar({ power, onChange, onRelease, onCancel, disabled, vertical = true, focusOnEnable, hint = true }: Props): JSX.Element {
   const trackRef = React.useRef<HTMLDivElement>(null)
   const live = React.useRef({ onChange, onRelease, onCancel, disabled, vertical, power })
@@ -84,8 +91,9 @@ export function PowerBar({ power, onChange, onRelease, onCancel, disabled, verti
   }
 
   const pct = Math.round(power * 100)
+  const travel = `${(power * CUE_TRAVEL * 100).toFixed(1)}%`
   return (
-    <div className={cn('flex select-none flex-col gap-2', vertical && 'items-center')}>
+    <div className={cn('pool-forca', !vertical && 'w-full')}>
       <div
         ref={trackRef}
         role="slider"
@@ -95,11 +103,7 @@ export function PowerBar({ power, onChange, onRelease, onCancel, disabled, verti
         aria-valuemax={100}
         aria-valuenow={pct}
         aria-disabled={disabled}
-        className={cn(
-          'relative touch-none overflow-hidden rounded-md border border-line bg-card outline-none focus-visible:ring-2 focus-visible:ring-acid',
-          vertical ? 'h-48 w-8' : 'h-8 w-full',
-          disabled ? 'opacity-50' : 'cursor-pointer',
-        )}
+        className={cn('pool-forca-trilho', vertical ? 'pool-forca-trilho--v' : 'pool-forca-trilho--h', disabled && 'pool-forca-trilho--off')}
         onPointerDown={(e) => {
           if (live.current.disabled) return
           dragging.current = e.pointerId
@@ -140,13 +144,21 @@ export function PowerBar({ power, onChange, onRelease, onCancel, disabled, verti
         }}
       >
         <div
-          className="absolute bg-acid"
-          style={vertical ? { left: 0, right: 0, top: 0, height: `${pct}%` } : { top: 0, bottom: 0, left: 0, width: `${pct}%` }}
+          className="pool-forca-nivel"
+          style={vertical ? { height: `${pct}%` } : { width: `${pct}%` }}
+        />
+        <div
+          className="pool-forca-taco"
+          aria-hidden
+          style={vertical ? ({ '--pool-forca-y': travel } as React.CSSProperties) : ({ '--pool-forca-x': travel } as React.CSSProperties)}
         />
       </div>
+      <span className={cn('pool-forca-num', pct > 0 && 'pool-forca-num--on')} aria-hidden>
+        {pct}%
+      </span>
       {hint && (
-        <p className="max-w-[10rem] text-center text-[11px] leading-tight text-muted-foreground">
-          Segure e arraste para baixo · solte para tacar
+        <p className={cn('text-center text-[11px] leading-tight text-muted-foreground', vertical && 'max-w-[9rem]')}>
+          {vertical ? 'Arraste pra baixo e solte pra tacar' : 'Arraste pra direita e solte pra tacar'}
         </p>
       )}
     </div>

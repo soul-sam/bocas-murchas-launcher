@@ -3,6 +3,7 @@ import { RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLayout } from '@/lib/layout-context'
 import { cn } from '@/lib/utils'
+import { CUE_DOT_COLOR, cueBallSphereCss } from './draw'
 
 interface Props {
   sx: number
@@ -15,7 +16,11 @@ interface Props {
 
 const LIMIT = 0.6
 
-/** Ponto de impacto na branca. sy > 0 = acima do centro (bola segue); sx > 0 = direita. */
+/**
+ * Ponto de impacto na branca (o diagrama da bola do Side Pocket). sy > 0 =
+ * acima do centro (bola segue); sx > 0 = direita. A bola é uma esfera de
+ * verdade com a mira em cruz; o ponto vermelho é onde a sola do taco bate.
+ */
 export function CueBallWidget({ sx, sy, onChange, onCenter, disabled, size }: Props): JSX.Element {
   const { isPhone } = useLayout()
   const px = size ?? (isPhone ? 96 : 128)
@@ -37,16 +42,17 @@ export function CueBallWidget({ sx, sy, onChange, onCenter, disabled, size }: Pr
     if (disabled) dragging.current = null
   }, [disabled])
 
+  const sphere = React.useMemo(() => cueBallSphereCss(), [])
+  const hint = sy > 0.2 ? 'Bola segue' : sy < -0.2 ? 'Bola volta' : Math.abs(sx) > 0.2 ? 'Efeito na tabela' : 'Tacada seca'
+
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="pool-efeito">
       <div
         ref={ref}
-        aria-label="Ponto de impacto na bola branca"
-        className={cn(
-          'relative touch-none select-none rounded-full border border-line bg-card',
-          disabled ? 'opacity-50' : 'cursor-crosshair',
-        )}
-        style={{ width: px, height: px }}
+        role="img"
+        aria-label={`Ponto de impacto na bola branca: ${hint}`}
+        className={cn('pool-efeito-bola', disabled && 'pool-efeito-bola--off')}
+        style={{ width: px, height: px, background: sphere }}
         onPointerDown={(e) => {
           if (live.current.disabled) return
           dragging.current = e.pointerId
@@ -61,25 +67,25 @@ export function CueBallWidget({ sx, sy, onChange, onCenter, disabled, size }: Pr
         }}
         onPointerCancel={() => { dragging.current = null }}
       >
+        <span className="pool-efeito-cruz" aria-hidden />
         {/* círculo-limite do raio 0,6 */}
-        <div
-          className="pointer-events-none absolute rounded-full border border-foreground"
-          style={{ opacity: 0.25, width: px * LIMIT, height: px * LIMIT, left: half - (px * LIMIT) / 2, top: half - (px * LIMIT) / 2 }}
+        <span
+          className="pool-efeito-limite"
+          aria-hidden
+          style={{ width: px * LIMIT, height: px * LIMIT, left: half - (px * LIMIT) / 2, top: half - (px * LIMIT) / 2 }}
         />
-        <div
-          className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-acid ring-1 ring-background"
-          style={{ left: half + sx * half, top: half - sy * half }}
+        <span
+          className="pool-efeito-ponto"
+          aria-hidden
+          style={{ left: half + sx * half, top: half - sy * half, background: CUE_DOT_COLOR }}
         />
       </div>
-      <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={onCenter}>
-        <RotateCcw className="h-3.5 w-3.5" /> Centralizar
+      <p className="pool-efeito-legenda" aria-hidden>
+        {hint}
+      </p>
+      <Button type="button" variant="ghost" size="sm" disabled={disabled || (sx === 0 && sy === 0)} onClick={onCenter}>
+        <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Centralizar
       </Button>
-      {/* no celular a linha de controles não tem largura pra dica */}
-      {!isPhone && (
-        <p className="max-w-[10rem] text-center text-[11px] leading-tight text-muted-foreground">
-          Cima: bola segue · Baixo: bola volta · Lados: efeito na tabela
-        </p>
-      )}
     </div>
   )
 }
