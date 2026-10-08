@@ -70,6 +70,8 @@ export type UiSound =
   | 'pool-hit'
   | 'pool-cushion'
   | 'pool-pocket'
+  | 'pool-nice'
+  | 'pool-foul'
 
 interface Note {
   /** Frequência em Hz. */
@@ -419,14 +421,10 @@ const CUES: Partial<Record<UiSound, Cue>> = {
       { freq: 174.6, at: 0.075, dur: 0.065 }
     ]
   },
-  // Bilhar: o taco na branca — toque seco e curto.
-  'pool-cue': { volume: 0.5, cutoff: 2500, type: 'triangle', notes: [{ freq: 220, at: 0, dur: 0.03 }, { freq: 880, at: 0, dur: 0.015, gain: 0.4 }] },
-  // Bola em bola: clique de resina, mais agudo. O volume vem da velocidade.
-  'pool-hit': { volume: 0.55, cutoff: 4000, type: 'square', notes: [{ freq: 1200, at: 0, dur: 0.012 }, { freq: 2400, at: 0, dur: 0.008, gain: 0.5 }] },
-  // Tabela: abafado.
-  'pool-cushion': { volume: 0.35, cutoff: 900, type: 'sine', notes: [{ freq: 150, at: 0, dur: 0.05 }] },
-  // Caçapa: queda e rolagem curta.
-  'pool-pocket': { volume: 0.5, cutoff: 1200, type: 'sine', notes: [{ freq: 300, at: 0, dur: 0.06 }, { freq: 180, at: 0.05, dur: 0.12, gain: 0.6 }] }
+  // Bilhar: bola encaçapada (o "NICE SHOT" do Side Pocket): duas notas pra cima, curtas.
+  'pool-nice': { volume: 0.5, cutoff: 3000, type: 'triangle', notes: [{ freq: E5, at: 0, dur: 0.07 }, { freq: 880, at: 0.08, dur: 0.14 }] },
+  // Bilhar: falta — duas notas pra baixo, graves e secas.
+  'pool-foul': { volume: 0.5, cutoff: 1400, type: 'square', notes: [{ freq: 220, at: 0, dur: 0.08 }, { freq: 146.8, at: 0.1, dur: 0.16 }] }
 }
 
 /**
@@ -614,7 +612,15 @@ const NOISE_CUES: Partial<Record<UiSound, NoiseCue>> = {
       { at: 0.06, dur: 0.03, freq: 3300, q: 1.2, gain: 0.5 }
     ]
   },
-  'poker-shuffle': { volume: 0.55, hits: riffle() }
+  'poker-shuffle': { volume: 0.55, hits: riffle() },
+  // Bilhar: o taco na branca — o estalo do couro e o baque da madeira.
+  'pool-cue': { volume: 0.6, hits: [{ at: 0, dur: 0.035, freq: 1800, q: 1.2 }, { at: 0, dur: 0.05, freq: 320, q: 0.8, gain: 0.5 }] },
+  // Bola em bola: clique de resina, agudo e curtíssimo. O volume vem da velocidade.
+  'pool-hit': { volume: 0.7, hits: [{ at: 0, dur: 0.028, freq: 4200, q: 1.6 }, { at: 0, dur: 0.02, freq: 2300, q: 1, gain: 0.6 }] },
+  // Tabela: baque abafado na borracha.
+  'pool-cushion': { volume: 0.45, hits: [{ at: 0, dur: 0.07, freq: 260, q: 0.8 }, { at: 0, dur: 0.03, freq: 900, q: 1, gain: 0.35 }] },
+  // Caçapa: bate no aro, cai e rola na calha.
+  'pool-pocket': { volume: 0.6, hits: [{ at: 0, dur: 0.05, freq: 1400, q: 1.1, gain: 0.5 }, { at: 0.03, dur: 0.14, freq: 220, q: 0.7 }, { at: 0.16, dur: 0.1, freq: 500, q: 0.9, gain: 0.35 }] }
 }
 
 let noiseBuffer: AudioBuffer | null = null
