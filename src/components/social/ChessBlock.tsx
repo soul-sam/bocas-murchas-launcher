@@ -116,7 +116,7 @@ export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: b
       // às vezes horas). Sem avisar, "sincronizei e não veio nada" parece bug.
       setSyncNote(
         res.newGames > 0
-          ? `${res.newGames} partida${res.newGames > 1 ? 's' : ''} nova${res.newGames > 1 ? 's' : ''} paga${res.newGames > 1 ? 's' : ''}`
+          ? `${res.newGames} partida${res.newGames > 1 ? 's' : ''} nova${res.newGames > 1 ? 's' : ''}`
           : 'Nada novo ainda. O Chess.com demora pra publicar a partida (minutos, às vezes horas); o servidor confere sozinho a cada 2 min.'
       )
     })

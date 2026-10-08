@@ -138,9 +138,6 @@ function RulesList({ rules }: { rules: EarnRules }) {
         <Row Icon={GameIcon} label="League of Legends">
           toda partida paga, vitória paga mais
         </Row>
-        <Row Icon={ChessGlyph} label="Xadrez">
-          quanto mais longo o controle de tempo, mais paga; vitória dobra
-        </Row>
         <Row Icon={BetIcon} label="Apostando">
           quem acerta leva o dobro do que apostou; só nos {Math.round(wager.betWindowMs / 60000)}{' '}
           primeiros minutos da partida, uma aposta por partida
@@ -208,14 +205,5 @@ function Row({
       </div>
       {value && <span className="shrink-0 font-mono text-xs text-burn">{value}</span>}
     </div>
-  )
-}
-
-/** Peão de xadrez: o lucide não tem um, e o ♟ já é o glifo usado nas badges. */
-function ChessGlyph({ className }: { className?: string }): React.ReactElement {
-  return (
-    <span aria-hidden className={cn('text-center text-[13px] leading-none', className)}>
-      ♟
-    </span>
   )
 }

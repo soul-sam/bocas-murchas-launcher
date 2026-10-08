@@ -286,12 +286,6 @@ export interface EarnRules {
     missionComplete: number
     recapAward: number
   }
-  chess: {
-    bullet: { coins: number; perDay: number }
-    blitz: { coins: number; perDay: number }
-    rapid: { coins: number; perDay: number }
-    winMultiplier: number
-  }
   levelUp: {
     level: number
     next: { level: number; coins: number }

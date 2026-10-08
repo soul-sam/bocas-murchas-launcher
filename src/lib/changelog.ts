@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.59.1',
+    headline: 'Só vale o que é daqui de dentro',
+    items: [
+      'Partida no Chess.com não dá mais XP nem murcho. O card continua aparecendo no canal e o histórico no perfil; pra pontuar no xadrez, jogue no Salão de Jogos.',
+      'Minuto de call com o microfone mudo ou ensurdecido não conta mais: sem XP, sem murcho e sem tempo no recap. Push-to-talk continua valendo.'
+    ]
+  },
+  {
     version: '1.59.0',
     headline: 'Bilhar de verdade',
     items: [
