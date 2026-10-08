@@ -142,3 +142,12 @@ test('vista velha (fora de ordem) é reconhecida', () => {
   assert.equal(isStaleView(now, { ...now, id: 't2', moves: [] }), false)
   assert.equal(isStaleView(null, now), false)
 })
+
+test('startMove livre (bilhar): sem lista de lances, só a vez e nada no ar', () => {
+  const pool = view({ legalMoves: [] })
+  assert.equal(startMove(ready(), pool, '{"t":"place","x":0.5,"y":0.6}', 'click'), null)
+  const started = startMove(ready(), pool, '{"t":"place","x":0.5,"y":0.6}', 'click', true)
+  assert.ok(started?.pending)
+  assert.equal(startMove(ready(), view({ legalMoves: [], turn: 'black' }), 'x', 'click', true), null)
+  assert.equal(startMove(started!, pool, 'y', 'click', true), null)
+})

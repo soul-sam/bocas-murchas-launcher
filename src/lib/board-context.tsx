@@ -476,11 +476,12 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     (m: string, how: 'drag' | 'click'): Promise<BoardAck> => {
       const t = tableRef.current
       if (!t) return Promise.resolve({ ok: false, error: 'Nenhuma mesa aberta.' })
-      const started = startMove(intentRef.current, t, m, how)
+      const started = startMove(intentRef.current, t, m, how, t.game === 'pool')
       if (!started) return Promise.resolve({ ok: false, error: 'Não é a sua vez.' })
       commitIntent(started)
       soundedRef.current.add(`${t.id}:${t.moves.length}`)
-      sound(soundFor(t.game === 'pool' ? 'move' : moveSound(t.game, t.position, m), true))
+      // Bilhar: o som da tacada (taco na branca) quem toca é a mesa.
+      if (t.game !== 'pool') sound(soundFor(moveSound(t.game, t.position, m), true))
       return sendMove(m)
     },
     [commitIntent, sendMove, sound]

@@ -106,10 +106,14 @@ export function reconcile(intent: Intent, next: TableLike): Reconciled {
   return { intent: { tableId: next.id, pending, premoves, lastLocal }, send, cancelled }
 }
 
-/** Meu lance, na minha vez. Null quando não dá (não é a vez, ou já tem um no ar). */
-export function startMove(intent: Intent, table: TableLike, move: string, how: MoveHow): Intent | null {
+/**
+ * Meu lance, na minha vez. Null quando não dá (não é a vez, ou já tem um no ar).
+ * `free`: o lance não sai de uma lista (bilhar: a tacada é contínua e o
+ * servidor manda `legalMoves: []`); quem julga é só o servidor.
+ */
+export function startMove(intent: Intent, table: TableLike, move: string, how: MoveHow, free = false): Intent | null {
   if (!isMyTurnView(table) || intent.pending || intent.tableId !== table.id) return null
-  if (!table.legalMoves.includes(move)) return null
+  if (!free && !table.legalMoves.includes(move)) return null
   const pending: PlayedMove = { move, ply: table.moves.length, how }
   return { ...intent, pending, lastLocal: pending }
 }
