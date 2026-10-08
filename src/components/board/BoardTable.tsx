@@ -368,22 +368,24 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
           disabled: busy || (!rematchInvite && !opponentOnline),
           hint: !rematchInvite && !opponentOnline ? `${opponent.displayName} não está online.` : undefined,
           onClick: () =>
-            void run(() =>
-              pool
-                ? askRematch().then((ack) => {
-                    if (ack.ok && ack.table?.phase === 'invited') setRematchSentId(ack.table.id)
-                    return ack
-                  })
-                : rematchInvite
-                ? answerInvite(true)
-                : create({
-                    game: table.game,
-                    variant: table.game === 'draughts' ? (table.variant ?? undefined) : undefined,
-                    clock: table.clock,
-                    stake: table.stake,
-                    inviteUserId: opponent.userId
-                  })
-            )
+            void run(async () => {
+              if (rematchInvite) return answerInvite(true)
+              const invite = () =>
+                create({
+                  game: table.game,
+                  variant: table.game === 'draughts' ? (table.variant ?? undefined) : undefined,
+                  clock: table.clock,
+                  stake: table.stake,
+                  inviteUserId: opponent.userId
+                })
+              if (!pool) return invite()
+              // Bilhar: `board:rematch`. A mesa acabada some do servidor quando
+              // o outro já saiu dela; aí vale o convite comum, com os mesmos dados.
+              const first = await askRematch()
+              const ack = first.ok ? first : await invite()
+              if (ack.ok && ack.table?.phase === 'invited') setRematchSentId(ack.table.id)
+              return ack
+            })
         }
       : null
 

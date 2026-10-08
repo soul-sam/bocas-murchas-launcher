@@ -61,3 +61,16 @@
   aspect-ratio: 145 / 272;
   max-height: 62dvh;
 }
+
+/* PC: a mesa na proporção dela, sem passar da altura que sobra entre as placas
+   (`.board-area` é container de tamanho, ver board.css). */
+.pool-mesa-pc {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  aspect-ratio: 272 / 145;
+  max-height: calc(100cqh - var(--board-placas, 136px));
+}
+.pool-controles {
+  max-height: calc(100cqh - var(--board-placas, 136px));
+}

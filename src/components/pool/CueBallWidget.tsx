@@ -74,9 +74,12 @@ export function CueBallWidget({ sx, sy, onChange, onCenter, disabled, size }: Pr
       <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={onCenter}>
         <RotateCcw className="h-3.5 w-3.5" /> Centralizar
       </Button>
-      <p className="max-w-[10rem] text-center text-[11px] leading-tight text-muted-foreground">
-        Cima: bola segue · Baixo: bola volta · Lados: efeito na tabela
-      </p>
+      {/* no celular a linha de controles não tem largura pra dica */}
+      {!isPhone && (
+        <p className="max-w-[10rem] text-center text-[11px] leading-tight text-muted-foreground">
+          Cima: bola segue · Baixo: bola volta · Lados: efeito na tabela
+        </p>
+      )}
     </div>
   )
 }

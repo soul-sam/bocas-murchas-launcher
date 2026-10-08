@@ -40,7 +40,8 @@ export function PoolHud({ table, position, mySide, replaying, compact, error, sk
   const name = (side: Side) => table[side]?.displayName ?? (side === 'white' ? 'Quem abre' : 'Adversário')
 
   let turnText: string | null = null
-  if (live) turnText = mySide === turn ? 'Sua vez' : `Vez de ${name(turn)}`
+  // Durante o replay a vez já é a nova; dizer isso antes da bola parar entrega o fim.
+  if (live) turnText = replaying ? 'Bolas rolando…' : mySide === turn ? 'Sua vez' : `Vez de ${name(turn)}`
 
   // Aviso da última jogada (só depois que o replay termina, pra não entregar o fim).
   const notes: string[] = []
@@ -66,7 +67,7 @@ export function PoolHud({ table, position, mySide, replaying, compact, error, sk
   return (
     <div className={cn('flex w-full min-w-0 flex-col', compact ? 'gap-1.5' : 'gap-2.5')}>
       <div className="flex items-center gap-2">
-        <p className={cn('board-vez min-w-0 flex-1', live && mySide === turn && 'board-vez--minha')}>
+        <p className={cn('board-vez min-w-0 flex-1', live && !replaying && mySide === turn && 'board-vez--minha')}>
           <span className="board-vez-ponto" aria-hidden />
           <span className="min-w-0 flex-1 truncate">{turnText ?? (table.result ? 'Fim de partida' : 'Bilhar')}</span>
         </p>
@@ -120,12 +121,18 @@ export function PoolHud({ table, position, mySide, replaying, compact, error, sk
  * React): a chave muda a cada tacada/vez e a barra recomeça do que sobrou.
  */
 function ShotTimer({ table }: { table: BoardTableView }) {
-  const left = clockNow(table.clocks, table.clockAt, table.clockRunning, table.turn, Date.now())[table.turn]
-  const from = Math.max(0, Math.min(1, left / SHOT_CLOCK_MS))
-  const style = { '--pool-timer-from': from, '--pool-timer-ms': `${Math.max(0, left)}ms` } as React.CSSProperties
+  const key = `${table.clockAt}:${table.turn}:${table.clocks[table.turn]}`
+  // Calculado UMA vez por tacada: mudar duração/início no meio reinicia a conta
+  // da animação (o placar re-renderiza a cada tique do relógio da mesa).
+  const style = React.useMemo(() => {
+    const left = clockNow(table.clocks, table.clockAt, table.clockRunning, table.turn, Date.now())[table.turn]
+    const from = Math.max(0, Math.min(1, left / SHOT_CLOCK_MS))
+    return { '--pool-timer-from': from, '--pool-timer-ms': `${Math.max(0, left)}ms` } as React.CSSProperties
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
   return (
-    <div className="pool-timer" role="timer" aria-label={`Tempo da tacada: ${Math.ceil(left / 1000)} segundos`}>
-      <div key={`${table.clockAt}:${table.turn}`} className="pool-timer-fill" style={style} />
+    <div className="pool-timer" role="timer" aria-label="Tempo da tacada">
+      <div key={key} className="pool-timer-fill" style={style} />
     </div>
   )
 }

@@ -10,6 +10,8 @@ interface Props {
   vertical?: boolean
   /** Pega o foco quando fica habilitada (Espaço funciona sem clicar), se ninguém estiver digitando. */
   focusOnEnable?: boolean
+  /** Dica embaixo da barra (some no celular, onde a linha de controles é estreita). */
+  hint?: boolean
 }
 
 const CANCEL_BELOW = 0.02
@@ -18,7 +20,7 @@ const MIN_TRAVEL_PX = 8
 const FULL_AT = 0.7
 
 /** Barra de força: arraste para baixo para carregar, solte para tacar; voltar ao topo cancela. */
-export function PowerBar({ power, onChange, onRelease, onCancel, disabled, vertical = true, focusOnEnable }: Props): JSX.Element {
+export function PowerBar({ power, onChange, onRelease, onCancel, disabled, vertical = true, focusOnEnable, hint = true }: Props): JSX.Element {
   const trackRef = React.useRef<HTMLDivElement>(null)
   const live = React.useRef({ onChange, onRelease, onCancel, disabled, vertical, power })
   live.current = { onChange, onRelease, onCancel, disabled, vertical, power }
@@ -142,9 +144,11 @@ export function PowerBar({ power, onChange, onRelease, onCancel, disabled, verti
           style={vertical ? { left: 0, right: 0, top: 0, height: `${pct}%` } : { top: 0, bottom: 0, left: 0, width: `${pct}%` }}
         />
       </div>
-      <p className="max-w-[10rem] text-center text-[11px] leading-tight text-muted-foreground">
-        Segure e arraste para baixo · solte para tacar
-      </p>
+      {hint && (
+        <p className="max-w-[10rem] text-center text-[11px] leading-tight text-muted-foreground">
+          Segure e arraste para baixo · solte para tacar
+        </p>
+      )}
     </div>
   )
 }

@@ -96,7 +96,9 @@ export function BetPanel() {
                   )}
                 >
                   <span className="w-full truncate font-semibold">{nameOf(s)}</span>
-                  <span className="text-[11.5px] text-muted-foreground">{sideLabel(table.game, table.variant, s)}</span>
+                  {table.game !== 'pool' && (
+                    <span className="text-[11.5px] text-muted-foreground">{sideLabel(table.game, table.variant, s)}</span>
+                  )}
                 </button>
               ))}
             </div>

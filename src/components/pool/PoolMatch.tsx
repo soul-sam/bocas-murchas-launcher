@@ -251,8 +251,12 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
   if (!position) return null
 
   const iPlay = mySide !== null
+  // Esperando adversário ou a contagem: só a mesa posta, sem placar.
+  const showHud = table.phase === 'playing' || table.phase === 'finished'
+  // Efeito e força só com a partida rolando (no fim fica só o placar).
+  const controls = iPlay && table.phase === 'playing'
   const controlsOff = !enabled || position.ballInHand
-  const hud = (
+  const hud = showHud && (
     <PoolHud
       table={table}
       position={position}
@@ -281,7 +285,7 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
       onChange={aimCtl.setOffset}
       onCenter={aimCtl.centerOffset}
       disabled={controlsOff}
-      size={isPhone ? 80 : undefined}
+      size={isPhone ? 80 : 112}
     />
   )
   const bar = (
@@ -292,6 +296,7 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
       onCancel={aimCtl.cancel}
       disabled={controlsOff}
       focusOnEnable
+      hint={!isPhone}
     />
   )
 
@@ -300,8 +305,8 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
     return (
       <div className="flex w-full min-w-0 flex-col gap-2">
         <div className="pool-mesa-fone">{canvas}</div>
-        {iPlay ? (
-          <div className="flex items-start gap-2">
+        {controls ? (
+          <div className="flex min-w-0 items-start gap-2">
             {widget}
             {bar}
             <div className="min-w-0 flex-1">{hud}</div>
@@ -313,14 +318,21 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
     )
   }
 
+  // PC: a mesa deitada à esquerda; efeito e força lado a lado, o placar embaixo.
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 gap-3">
-      <div className="relative min-h-0 min-w-0 flex-1">{canvas}</div>
-      <div className="flex w-48 shrink-0 flex-col items-center gap-3 overflow-y-auto">
-        {iPlay && widget}
-        {iPlay && bar}
-        {hud}
-      </div>
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="pool-mesa-pc">{canvas}</div>
+      {showHud && (
+        <div className="pool-controles flex w-56 shrink-0 flex-col gap-3 overflow-y-auto">
+          {controls && (
+            <div className="flex items-start justify-center gap-3">
+              {widget}
+              {bar}
+            </div>
+          )}
+          {hud}
+        </div>
+      )}
     </div>
   )
 }

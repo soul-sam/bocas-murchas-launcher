@@ -123,7 +123,9 @@ export function BoardResultCard({ metadata, compact }: CardProps<BoardCardMeta>)
             <span className={cn('min-w-0 truncate', n.winner === s ? 'text-foreground' : 'text-muted-foreground')}>
               {n.players[s].displayName}
             </span>
-            <span className="text-muted-foreground">({sideLabel(n.game, n.variant, s).toLowerCase()})</span>
+            {n.game !== 'pool' && (
+              <span className="text-muted-foreground">({sideLabel(n.game, n.variant, s).toLowerCase()})</span>
+            )}
             {a && (
               <span className="ml-auto shrink-0 text-muted-foreground">
                 {a.accuracy[s].toFixed(1)}%
