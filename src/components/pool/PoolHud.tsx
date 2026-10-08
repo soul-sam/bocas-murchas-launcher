@@ -125,9 +125,17 @@ function ShotTimer({ table }: { table: BoardTableView }) {
   // Calculado UMA vez por tacada: mudar duração/início no meio reinicia a conta
   // da animação (o placar re-renderiza a cada tique do relógio da mesa).
   const style = React.useMemo(() => {
-    const left = clockNow(table.clocks, table.clockAt, table.clockRunning, table.turn, Date.now())[table.turn]
+    const now = Date.now()
+    // Depois da tacada o servidor põe `clockAt` no FUTURO (fim do replay): até
+    // lá a barra fica cheia (teto de 30 s) e só então começa a esvaziar.
+    const left = Math.min(SHOT_CLOCK_MS, clockNow(table.clocks, table.clockAt, table.clockRunning, table.turn, now)[table.turn])
+    const wait = table.clockRunning ? Math.max(0, table.clockAt - now) : 0
     const from = Math.max(0, Math.min(1, left / SHOT_CLOCK_MS))
-    return { '--pool-timer-from': from, '--pool-timer-ms': `${Math.max(0, left)}ms` } as React.CSSProperties
+    return {
+      '--pool-timer-from': from,
+      '--pool-timer-ms': `${Math.max(0, left)}ms`,
+      '--pool-timer-wait': `${wait}ms`
+    } as React.CSSProperties
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
   return (

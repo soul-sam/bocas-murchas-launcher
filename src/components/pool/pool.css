@@ -30,7 +30,7 @@
   background: hsl(var(--acid));
   transform-origin: left center;
   transform: scaleX(var(--pool-timer-from, 1));
-  animation: pool-timer var(--pool-timer-ms, 0ms) linear forwards;
+  animation: pool-timer var(--pool-timer-ms, 0ms) linear var(--pool-timer-wait, 0ms) forwards;
 }
 @keyframes pool-timer {
   from { transform: scaleX(var(--pool-timer-from, 1)); }
@@ -47,7 +47,6 @@
   height: 14px;
   flex-shrink: 0;
   border-radius: 999px;
-  box-shadow: inset -2px -2px 3px rgb(0 0 0 / 0.35);
 }
 .pool-mini-bola--fora {
   opacity: 0.25;

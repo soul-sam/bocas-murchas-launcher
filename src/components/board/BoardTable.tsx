@@ -26,6 +26,7 @@ import {
   boardGameLabel,
   boardReasonLabel,
   parsePoolPosition,
+  SHOT_CLOCK_MS,
   sideIsLight,
   sideLabel,
   type BoardAck,
@@ -303,7 +304,13 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
   const onIllegal = React.useCallback((): void => sound('board-illegal'), [sound])
 
   const mySide = table?.mySide ?? null
-  const clocks = table ? clockNow(table.clocks, table.clockAt, table.clockRunning, table.turn, now) : null
+  const rawClocks = table ? clockNow(table.clocks, table.clockAt, table.clockRunning, table.turn, now) : null
+  // Bilhar: depois da tacada o `clockAt` vem no futuro (fim do replay); o
+  // relógio fica em 30 s até lá, nunca acima.
+  const clocks =
+    rawClocks && table?.game === 'pool'
+      ? { white: Math.min(SHOT_CLOCK_MS, rawClocks.white), black: Math.min(SHOT_CLOCK_MS, rawClocks.black) }
+      : rawClocks
 
   // Dez segundos no meu relógio, na minha vez: três tiques, uma vez por partida.
   const lowRef = React.useRef<string | null>(null)
@@ -369,22 +376,23 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
           hint: !rematchInvite && !opponentOnline ? `${opponent.displayName} não está online.` : undefined,
           onClick: () =>
             void run(async () => {
-              if (rematchInvite) return answerInvite(true)
-              const invite = () =>
-                create({
-                  game: table.game,
-                  variant: table.game === 'draughts' ? (table.variant ?? undefined) : undefined,
-                  clock: table.clock,
-                  stake: table.stake,
-                  inviteUserId: opponent.userId
-                })
-              if (!pool) return invite()
-              // Bilhar: `board:rematch`. A mesa acabada some do servidor quando
-              // o outro já saiu dela; aí vale o convite comum, com os mesmos dados.
-              const first = await askRematch()
-              const ack = first.ok ? first : await invite()
-              if (ack.ok && ack.table?.phase === 'invited') setRematchSentId(ack.table.id)
-              return ack
+              if (pool) {
+                // Bilhar: um `board:rematch` só. O servidor aceita o convite do
+                // outro se ele já pediu; erro vira aviso e nada mais (o convite
+                // que chegar ainda pode ser aceito pelo toast).
+                const ack = await askRematch()
+                if (ack.ok && ack.table?.phase === 'invited') setRematchSentId(ack.table.id)
+                return ack
+              }
+              return rematchInvite
+                ? answerInvite(true)
+                : create({
+                    game: table.game,
+                    variant: table.game === 'draughts' ? (table.variant ?? undefined) : undefined,
+                    clock: table.clock,
+                    stake: table.stake,
+                    inviteUserId: opponent.userId
+                  })
             })
         }
       : null
@@ -428,12 +436,12 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
                 material={mat}
                 firstMoveIn={secsToFirstMove}
               />
-              {pool ? (
+              {pool || !game ? (
                 <PoolMatch key={table.id} table={table} mySide={mySide} canAct={canMove} />
               ) : (
                 <Board
                   key={table.id}
-                  game={table.game === 'pool' ? 'chess' : table.game}
+                  game={game}
                   variant={table.variant}
                   position={boardPosition}
                   orientation={orientation}

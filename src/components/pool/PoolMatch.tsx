@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { parsePoolPosition, type BoardTableView, type Side } from '@/lib/api-board'
+import { parsePoolPosition, type BoardTableView, type PoolPosition, type Side } from '@/lib/api-board'
 import { useBoard } from '@/lib/board-context'
 import { useLayout } from '@/lib/layout-context'
 import { aim } from '@/lib/pool-geometry'
@@ -21,7 +21,13 @@ interface Props {
 }
 
 type Ball = { id: number; x: number; y: number }
-interface Playing { player: ReplayPlayer; startedAt: number }
+interface Playing {
+  player: ReplayPlayer
+  startedAt: number
+  /** Bolas e grupos de ANTES da tacada: o placar não entrega o fim enquanto as bolas rolam. */
+  start: Ball[]
+  startGroups: PoolPosition['groups'] | null
+}
 
 const STRIKE_MS = 120
 /** Um som do mesmo tipo a cada 50 ms, no máximo (quebra com 15 bolas vira barulho branco). */
@@ -57,11 +63,14 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
   playingRef.current = playing
   const strikeRef = React.useRef<{ t0: number; angle: number } | null>(null)
   /** Bolas da vista anterior: o replay começa da posição de ANTES da tacada. */
-  const lastViewRef = React.useRef<{ tableId: string; balls: Ball[] } | null>(null)
+  const lastViewRef = React.useRef<{ tableId: string; balls: Ball[]; groups: PoolPosition['groups'] | null } | null>(null)
   /** Último `ply` que já virou replay (não toca duas vezes a mesma tacada). */
   const lastPlyRef = React.useRef<string | null>(null)
   const sceneRef = React.useRef<Scene>(EMPTY_SCENE)
   const soundAtRef = React.useRef<Record<string, number>>({})
+  /** Relógio e caçapas do replay em curso (zerados a cada tacada nova). */
+  const prevTRef = React.useRef(-1e-6)
+  const goneRef = React.useRef<Set<number>>(new Set())
 
   const settingsRef = React.useRef(settings)
   settingsRef.current = settings
@@ -73,7 +82,8 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
   // Replay que vale para esta vista: mesma mesa e o lance que acabou de chegar.
   const replayKey = replay ? `${replay.tableId}:${replay.ply}` : null
   const replayFits = !!replay && replay.tableId === table.id && replay.ply === table.moves.length
-  const prevView = lastViewRef.current && lastViewRef.current.tableId === table.id ? lastViewRef.current.balls : null
+  const prevSame = lastViewRef.current && lastViewRef.current.tableId === table.id ? lastViewRef.current : null
+  const prevView = prevSame ? prevSame.balls : null
   // Ainda não começou (o efeito abaixo liga): desenha a posição de antes, sem piscar a final.
   const aboutToPlay = replayFits && lastPlyRef.current !== replayKey && !!prevView
 
@@ -83,13 +93,15 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
         lastPlyRef.current = replayKey
         const player = createReplayPlayer(replay.replay, prevView)
         soundAtRef.current = {}
-        setPlaying({ player, startedAt: performance.now() })
+        prevTRef.current = -1e-6
+        goneRef.current = new Set()
+        setPlaying({ player, startedAt: performance.now(), start: prevView, startGroups: prevSame?.groups ?? null })
       } else if (!replayFits || !prevView) {
         // Outra mesa/outro lance, ou sem a posição de antes (acabei de abrir a mesa): fica a final.
         if (!playingRef.current) consumeReplay()
       }
     }
-    lastViewRef.current = { tableId: table.id, balls }
+    lastViewRef.current = { tableId: table.id, balls, groups: position?.groups ?? null }
     // `prevView` e `replayFits` saem de `replay`/`table`: as deps abaixo cobrem.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [replay, table.id, table.moves.length, balls, consumeReplay])
@@ -110,7 +122,8 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
 
   // --- mira -------------------------------------------------------------------
   const myTurn = !!position && mySide !== null && position.turn === mySide
-  const enabled = canAct && !playing && !striking && table.phase === 'playing' && !table.result && myTurn
+  const enabled =
+    canAct && !playing && !aboutToPlay && !striking && table.phase === 'playing' && !table.result && myTurn
 
   const send = React.useCallback(
     (move: Record<string, unknown>) => {
@@ -180,17 +193,17 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
   sceneLive.current = scene
   if (!playing && !striking) sceneRef.current = scene
 
-  // --- o loop (replay e a batida do taco) ---------------------------------------
+  // --- o quadro (replay e a batida do taco) -------------------------------------
+  // Não há rAF aqui: o PoolCanvas roda o ÚNICO loop enquanto `animating` e chama
+  // `onFrame` antes de pintar `sceneRef`.
   const animating = !!playing || striking
-  React.useEffect(() => {
-    if (!animating) return
-    let raf = 0
-    let prevT = -1e-6
-    const gone = new Set<number>()
-    const tick = (now: number): void => {
+  const onFrame = React.useCallback(
+    (now: number): void => {
       const p = playingRef.current
       if (p) {
         const t = (now - p.startedAt) / 1000
+        const prevT = prevTRef.current
+        const gone = goneRef.current
         const quiet = t - prevT > SOUND_SKIP_S
         for (const ev of p.player.eventsBetween(prevT, t)) {
           if (ev.k === 'pocket') gone.add(ev.a)
@@ -202,10 +215,9 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
           else if (ev.k === 'cushion') sound('pool-cushion', Math.min(1, ev.v / 3))
           else sound('pool-pocket')
         }
-        prevT = t
-        const at = p.player.at(t)
+        prevTRef.current = t
         const out: Ball[] = []
-        for (const [id, b] of at) if (!gone.has(id)) out.push({ id, x: b.x, y: b.y })
+        for (const [id, b] of p.player.at(t)) if (!gone.has(id)) out.push({ id, x: b.x, y: b.y })
         sceneRef.current = { balls: out, ghostCue: null, aim: null, cue: null, lastPocketed: [] }
         if (t >= p.player.duration) {
           // fim: a vista do servidor (posição final) volta a mandar
@@ -214,26 +226,23 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
           setPlaying(null)
           setStriking(false)
           consumeReplay()
-          return
         }
-      } else {
-        const s = strikeRef.current
-        const k = s ? (now - s.t0) / STRIKE_MS : 1
-        const base = sceneLive.current
-        if (k >= 1 || !s) {
-          // taco bateu; até a mesa nova chegar, a cena parada sem taco
-          sceneRef.current = { ...base, aim: null, cue: null }
-          setStriking(false)
-          return
-        }
-        sceneRef.current = { ...base, aim: null, cue: { angle: s.angle, pull: 0, strike: k } }
+        return
       }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-    // `playing` também: uma tacada nova no meio da outra recomeça o relógio e as caçapas
-  }, [animating, playing, consumeReplay, sound])
+      const s = strikeRef.current
+      const k = s ? (now - s.t0) / STRIKE_MS : 1
+      const base = sceneLive.current
+      if (k >= 1 || !s) {
+        // taco bateu; até a mesa nova chegar, a cena parada sem taco
+        sceneRef.current = { ...base, aim: null, cue: null }
+        if (s) strikeRef.current = null
+        setStriking(false)
+        return
+      }
+      sceneRef.current = { ...base, aim: null, cue: { angle: s.angle, pull: 0, strike: k } }
+    },
+    [consumeReplay, sound]
+  )
 
   // Desmontou: solta o tocador e as referências.
   React.useEffect(
@@ -256,10 +265,16 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
   // Efeito e força só com a partida rolando (no fim fica só o placar).
   const controls = iPlay && table.phase === 'playing'
   const controlsOff = !enabled || position.ballInHand
+  // Enquanto as bolas rolam o placar mostra a mesa de ANTES (bolas e grupos).
+  const before = playing ? { balls: playing.start, groups: playing.startGroups } : aboutToPlay ? { balls: prevView, groups: prevSame?.groups ?? null } : null
+  const hudPosition =
+    before && before.balls && before.groups
+      ? { ...position, groups: before.groups, balls: before.balls.map((b) => ({ ...b, state: 's' as const })) }
+      : position
   const hud = showHud && (
     <PoolHud
       table={table}
-      position={position}
+      position={hudPosition}
       mySide={mySide}
       replaying={!!playing || aboutToPlay}
       compact={isPhone}
@@ -276,6 +291,7 @@ export function PoolMatch({ table, mySide, canAct }: Props): JSX.Element | null 
       onPointer={iPlay ? aimCtl.onPointer : undefined}
       animating={animating}
       sceneRef={sceneRef}
+      onFrame={onFrame}
     />
   )
   const widget = (

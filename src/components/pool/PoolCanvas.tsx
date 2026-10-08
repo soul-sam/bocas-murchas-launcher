@@ -15,11 +15,13 @@ interface Props {
   /** com true, um rAF em loop lê `sceneRef.current`; com false não há rAF nenhum */
   animating: boolean
   sceneRef: React.MutableRefObject<Scene>
+  /** Chamado a cada quadro do loop (antes de pintar), para quem anima escrever `sceneRef`. */
+  onFrame?: (now: number) => void
 }
 
 const MAX_DPR = 2
 
-export function PoolCanvas({ scene, skin, rotated, onPointer, animating, sceneRef }: Props): JSX.Element {
+export function PoolCanvas({ scene, skin, rotated, onPointer, animating, sceneRef, onFrame }: Props): JSX.Element {
   const wrapRef = React.useRef<HTMLDivElement>(null)
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   // mesa pré-renderizada (só refaz quando skin/tamanho/logo mudam)
@@ -30,8 +32,8 @@ export function PoolCanvas({ scene, skin, rotated, onPointer, animating, sceneRe
   const [logoTick, setLogoTick] = React.useState(0)
 
   // as props mais novas sem recriar callbacks
-  const live = React.useRef({ skin, rotated, size, onPointer })
-  live.current = { skin, rotated, size, onPointer }
+  const live = React.useRef({ skin, rotated, size, onPointer, onFrame })
+  live.current = { skin, rotated, size, onPointer, onFrame }
 
   // logo
   React.useEffect(() => {
@@ -96,7 +98,11 @@ export function PoolCanvas({ scene, skin, rotated, onPointer, animating, sceneRe
   React.useEffect(() => {
     if (!animating) return
     let raf = 0
-    const tick = () => { paint(sceneRef.current); raf = requestAnimationFrame(tick) }
+    const tick = (now: number) => {
+      live.current.onFrame?.(now)
+      paint(sceneRef.current)
+      raf = requestAnimationFrame(tick)
+    }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [animating, paint, sceneRef])
