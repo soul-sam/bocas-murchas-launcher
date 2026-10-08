@@ -42,6 +42,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.59.0',
+    headline: 'Bilhar de verdade',
+    items: [
+      'As bolas rolam: número e listra giram com a bola, cada uma tem sombra e brilho, e a que cai na caçapa afunda.',
+      'Você vê o taco do adversário: enquanto ele mira, o taco e a linha dele aparecem na sua mesa; na hora da tacada o taco bate antes das bolas andarem.',
+      'Mira nova, estilo Side Pocket: toque na mesa pra apontar, arraste pra girar fino, ←/→ ajustam meio grau. A linha pontilhada mostra a branca até a bola, pra onde a bola vai (até a tabela ou a caçapa, que acende) e a tangente da branca. Clicar numa bola do placar mira nela.',
+      'Mesa redesenhada: madeira com veio (carvalho, mogno ou laca preta), losangos, caçapas de latão, tabelas chanfradas e feltro com textura.',
+      'Barra de força com o taco recuando e a bola de efeito virou uma esfera com a cruz de mira. Avisos arcade: BOA!, QUE TACADA!, FALTA e TEMPO!.',
+      'Sons novos: estalo de resina nas bolas, baque na tabela e a bola caindo na calha.',
+      'No PC a mesa escolhe o maior tamanho que couber: controles ao lado ou embaixo.'
+    ],
+    note: 'A mira é geometria pura: efeito e a física de verdade podem desviar um pouco do pontilhado. A linha do adversário aparece pra quem assiste também.'
+  },
+  {
     version: '1.58.0',
     headline: 'Bilhar no Salão de Jogos',
     items: [
