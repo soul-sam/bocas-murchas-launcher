@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.58.0',
+    headline: 'Bilhar no Salão de Jogos',
+    items: [
+      'Bola 8 contra alguém do grupo, valendo murchos como o xadrez: convite, aposta de quem assiste e revanche no fim.',
+      'Mira com a linha até a primeira bola e pra onde ela vai; barra de força: segure, arraste pra baixo e solte pra tacar.',
+      'Ponto de impacto na branca: arraste o marcador pra dar efeito — em cima a branca segue, embaixo ela volta, nos lados pega na tabela. O efeito é de verdade: tacada fraca e longa perde o giro antes de chegar.',
+      'Regras estilo 8 Ball Pool: qualquer bola na abertura mantém a vez, falta dá bola na mão em qualquer lugar, 8 fora de hora ou com falta é derrota. 30 segundos por tacada; três estouros seguidos perdem.',
+      'A mesa tem a logo do launcher no pano. Tecido, acabamento e bordas são suas: engrenagem na mesa ou em Configurações.',
+      'Revanche vale pro xadrez e pra dama também.'
+    ],
+    note: 'A física roda no servidor: os dois veem exatamente a mesma jogada. No celular a mesa fica em pé e os controles embaixo.'
+  },
+  {
     version: '1.57.0',
     headline: 'Pôquer com cara de cassino',
     items: [
