@@ -21,12 +21,17 @@ export interface Scene {
 }
 
 const MARGIN = 0.09 // borda de cada lado, em metros
-const CLOTH: Record<PoolSkin['cloth'], string> = { verde: '#2e7d4f', azul: '#1f5f8b', vermelho: '#8b2d2d', preto: '#2a2a2a' }
-const RAIL: Record<PoolSkin['rails'], string> = { madeira: '#5b3a1e', preto: '#141414' }
+export const CLOTH: Record<PoolSkin['cloth'], string> = { verde: '#2e7d4f', azul: '#1f5f8b', vermelho: '#8b2d2d', preto: '#2a2a2a' }
+export const RAIL: Record<PoolSkin['rails'], string> = { madeira: '#5b3a1e', preto: '#141414' }
 const BALL_COLOR: Record<number, string> = {
   1: '#f2c200', 2: '#1552b0', 3: '#d12b2b', 4: '#5b2a86', 5: '#f07d10', 6: '#1b8a3a', 7: '#7a3b16', 8: '#111111'
 }
 const CUE_BALL = '#f4f1e8'
+
+/** Cor de uma bola (e se é listrada), para as miniaturas do placar. */
+export function ballLook(id: number): { color: string; striped: boolean } {
+  return { color: id === 0 ? CUE_BALL : BALL_COLOR[id <= 8 ? id : id - 8], striped: id >= 9 }
+}
 const CUE_WOOD = '#c9a36a'
 const CUE_TIP = '#1b3a6b'
 

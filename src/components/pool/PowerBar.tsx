@@ -8,14 +8,17 @@ interface Props {
   onCancel: () => void
   disabled?: boolean
   vertical?: boolean
+  /** Pega o foco quando fica habilitada (Espaço funciona sem clicar), se ninguém estiver digitando. */
+  focusOnEnable?: boolean
 }
 
 const CANCEL_BELOW = 0.02
 const KEY_PERIOD_MS = 1200
 const MIN_TRAVEL_PX = 8
+const FULL_AT = 0.7
 
 /** Barra de força: arraste para baixo para carregar, solte para tacar; voltar ao topo cancela. */
-export function PowerBar({ power, onChange, onRelease, onCancel, disabled, vertical = true }: Props): JSX.Element {
+export function PowerBar({ power, onChange, onRelease, onCancel, disabled, vertical = true, focusOnEnable }: Props): JSX.Element {
   const trackRef = React.useRef<HTMLDivElement>(null)
   const live = React.useRef({ onChange, onRelease, onCancel, disabled, vertical, power })
   live.current = { onChange, onRelease, onCancel, disabled, vertical, power }
@@ -37,7 +40,8 @@ export function PowerBar({ power, onChange, onRelease, onCancel, disabled, verti
     if (!el) return 0
     const r = el.getBoundingClientRect()
     const size = live.current.vertical ? r.height : r.width
-    return Math.min(1, Math.max(0, (posOf(e) - startPos.current) / size))
+    // 70% da barra já é força máxima: quem começa no meio ainda chega no 100%
+    return Math.min(1, Math.max(0, (posOf(e) - startPos.current) / (FULL_AT * size)))
   }
 
   const stopKey = React.useCallback(() => {
@@ -53,6 +57,13 @@ export function PowerBar({ power, onChange, onRelease, onCancel, disabled, verti
       if (was) live.current.onCancel()
     }
   }, [disabled, stopKey])
+
+  React.useEffect(() => {
+    if (disabled || !focusOnEnable) return
+    const a = document.activeElement as HTMLElement | null
+    if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return
+    trackRef.current?.focus({ preventScroll: true })
+  }, [disabled, focusOnEnable])
 
   const finish = (shoot: boolean) => {
     const c = live.current

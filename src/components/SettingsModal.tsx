@@ -30,6 +30,7 @@ import { useVoice } from '@/lib/voice-context'
 import { useAudioDevices, useVideoDevices } from '@/lib/use-audio-devices'
 import { playUiSound } from '@/lib/ui-sounds'
 import { GATE_OFF_DB } from '@/lib/audio-processor'
+import { PoolSkinPicker } from '@/components/pool/PoolSkinPicker'
 import { RAM_LIMITS, type LolPhase, type LolStatus, type OverlaySide, FREE_THEME_IDS, SHOP_THEME_IDS, THEME_LABEL, type ThemeId, BOARD_SKIN_IDS, BOARD_SKIN_LABEL, type BoardSkin } from '../../electron/preload/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -1277,6 +1278,11 @@ function StartupTab() {
       <section>
         <SectionTitle>Tabuleiro</SectionTitle>
         <BoardSkinPicker value={settings.boardSkin} onChange={(boardSkin) => void update({ boardSkin })} />
+      </section>
+
+      <section>
+        <SectionTitle>Mesa de bilhar</SectionTitle>
+        <PoolSkinPicker value={settings.poolSkin} onChange={(poolSkin) => void update({ poolSkin })} />
       </section>
 
       <section>

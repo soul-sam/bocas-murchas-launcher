@@ -1,8 +1,10 @@
 import * as React from 'react'
 import { clampOffset, HEAD_LINE_X, insideTable, overlaps } from '@/lib/pool-geometry'
 
+/** Branca na mão seguindo o ponteiro; `ok` falso = lugar proibido (desenha em vermelho). */
+export interface Ghost { x: number; y: number; ok: boolean }
 export type AimPhase = 'locked' | 'idle' | 'aiming' | 'charging' | 'placing'
-export interface AimState { angle: number; power: number; sx: number; sy: number; phase: AimPhase; ghost: { x: number; y: number } | null }
+export interface AimState { angle: number; power: number; sx: number; sy: number; phase: AimPhase; ghost: Ghost | null }
 
 interface Opts {
   enabled: boolean
@@ -14,7 +16,7 @@ interface Opts {
   onPlace: (x: number, y: number) => void
 }
 
-interface Raw { angle: number; power: number; sx: number; sy: number; aiming: boolean; ghost: { x: number; y: number } | null }
+interface Raw { angle: number; power: number; sx: number; sy: number; aiming: boolean; ghost: Ghost | null }
 const INITIAL: Raw = { angle: 0, power: 0, sx: 0, sy: 0, aiming: false, ghost: null }
 const FINE_RADIUS = 0.15
 const FINE_GAIN = 0.8
@@ -61,7 +63,7 @@ export function useAim(opts: Opts) {
         if (validSpot(ev.x, ev.y)) { commit({ ghost: null }); o.onPlace(ev.x, ev.y) }
         return
       }
-      commit({ ghost: validSpot(ev.x, ev.y) ? { x: ev.x, y: ev.y } : null })
+      commit({ ghost: { x: ev.x, y: ev.y, ok: validSpot(ev.x, ev.y) } })
       return
     }
     if (!o.cue) return

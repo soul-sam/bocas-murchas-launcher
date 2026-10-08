@@ -25,6 +25,7 @@ import {
   boardClockLabel,
   boardGameLabel,
   boardReasonLabel,
+  parsePoolPosition,
   sideIsLight,
   sideLabel,
   type BoardAck,
@@ -47,6 +48,7 @@ import { Board } from './Board'
 import { Clock } from './Clock'
 import { MoveList } from './MoveList'
 import { PieceGlyph } from './pieces'
+import { PoolMatch } from '@/components/pool/PoolMatch'
 import './board.css'
 
 /**
@@ -85,6 +87,17 @@ const ANALYSIS_WAIT_MS = 90_000
 const ANALYSIS_MIN_PLIES = 10
 
 /** "Fulano venceu por xeque-mate" / "Empate por acordo". */
+const POOL_GROUP_LABEL = { open: 'mesa aberta', solids: 'lisas', stripes: 'listradas' } as const
+
+/** O que a placa diz de um lado: a cor no xadrez/dama; no bilhar, o grupo (ou quem abre). */
+function seatLabel(table: BoardTableView, side: Side): string {
+  if (table.game !== 'pool') return sideLabel(table.game, table.variant, side)
+  const pos = table.phase === 'pending' ? null : parsePoolPosition(table.position)
+  const group = pos?.groups[side] ?? 'open'
+  if (group !== 'open') return POOL_GROUP_LABEL[group]
+  return side === 'white' ? 'dá a saída' : POOL_GROUP_LABEL.open
+}
+
 function resultHeadline(table: BoardTableView): string {
   const result = table.result
   if (!result) return ''
@@ -113,7 +126,8 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
     cancelPremoves,
     resign,
     offerDraw,
-    answerDraw
+    answerDraw,
+    rematch: askRematch
   } = useBoard()
   const { user } = useAuth()
   const { isPhone } = useLayout()
@@ -133,6 +147,8 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
   /** Chave do lance alcançado com um passo pra frente na lista: só ele anima. */
   const steppedRef = React.useRef<string | null>(null)
   const [flipped, setFlipped] = React.useState(false)
+  /** Bilhar: a revanche que eu mandei (id da mesa nova), pro aviso na espera. */
+  const [rematchSentId, setRematchSentId] = React.useState<string | null>(null)
 
   const phase = table?.phase ?? null
   const tableId = table?.id ?? null
@@ -301,7 +317,9 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
     }
   })
 
-  if (!table || !game || !clocks) return null
+  // Xadrez e dama precisam do `game`; o bilhar tem mesa própria (PoolMatch).
+  if (!table || !clocks || (!game && table.game !== 'pool')) return null
+  const pool = table.game === 'pool'
 
   const label = boardGameLabel(table.game, table.variant)
   const bottom: Side = mySide ?? 'white'
@@ -312,6 +330,8 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
   const playing = table.phase === 'playing'
   const finished = table.phase === 'finished'
   const isHost = table.host.userId === user?.id
+  // A mesa nova da revanche do bilhar abre direto aqui, em `invited`.
+  const rematchSent = waiting && rematchSentId === table.id
   const iAmPlayer = mySide !== null
 
   const myTurn = playing && !table.result && mySide === table.turn
@@ -349,7 +369,12 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
           hint: !rematchInvite && !opponentOnline ? `${opponent.displayName} não está online.` : undefined,
           onClick: () =>
             void run(() =>
-              rematchInvite
+              pool
+                ? askRematch().then((ack) => {
+                    if (ack.ok && ack.table?.phase === 'invited') setRematchSentId(ack.table.id)
+                    return ack
+                  })
+                : rematchInvite
                 ? answerInvite(true)
                 : create({
                     game: table.game,
@@ -391,7 +416,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
         <div className={cn('board-palco p-2 sm:p-3', isPhone ? 'shrink-0' : 'min-h-0 flex-1')}>
           <span aria-hidden className="board-palco-marca" style={BRAND_MASK_STYLE} />
           <div className={cn('board-area', isPhone && 'board-area--fone')}>
-            <div className={cn('board-mesa', waiting && 'board-mesa--espera')}>
+            <div className={cn('board-mesa', waiting && 'board-mesa--espera', pool && 'board-mesa--bilhar')}>
               <PlayerBar
                 person={topPerson}
                 side={waiting ? null : top}
@@ -401,24 +426,28 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
                 material={mat}
                 firstMoveIn={secsToFirstMove}
               />
-              <Board
-                key={table.id}
-                game={table.game === 'pool' ? 'chess' : table.game} // bilhar não passa por aqui (mesa própria)
-                variant={table.variant}
-                position={boardPosition}
-                orientation={orientation}
-                legalMoves={canMove ? table.legalMoves : NO_MOVES}
-                lastMove={boardLast}
-                lastMoveKey={boardLastKey}
-                animateLast={boardAnimate}
-                checkSquare={boardCheck}
-                premoves={browsing ? NO_MOVES : premoves}
-                mySide={mySide}
-                onMove={canMove ? onMove : undefined}
-                onPremove={canPremove ? queuePremove : undefined}
-                onCancelPremoves={cancelPremoves}
-                onIllegal={onIllegal}
-              />
+              {pool ? (
+                <PoolMatch key={table.id} table={table} mySide={mySide} canAct={canMove} />
+              ) : (
+                <Board
+                  key={table.id}
+                  game={table.game === 'pool' ? 'chess' : table.game}
+                  variant={table.variant}
+                  position={boardPosition}
+                  orientation={orientation}
+                  legalMoves={canMove ? table.legalMoves : NO_MOVES}
+                  lastMove={boardLast}
+                  lastMoveKey={boardLastKey}
+                  animateLast={boardAnimate}
+                  checkSquare={boardCheck}
+                  premoves={browsing ? NO_MOVES : premoves}
+                  mySide={mySide}
+                  onMove={canMove ? onMove : undefined}
+                  onPremove={canPremove ? queuePremove : undefined}
+                  onCancelPremoves={cancelPremoves}
+                  onIllegal={onIllegal}
+                />
+              )}
               <PlayerBar
                 person={bottomPerson}
                 side={waiting ? null : orientation}
@@ -439,7 +468,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
                 </div>
                 <p className="board-faixa-titulo">
                   {table.phase === 'invited' && table.invited
-                    ? `Convite enviado para ${table.invited.displayName}`
+                    ? `${rematchSent ? 'Convite de revanche enviado' : 'Convite enviado'} para ${table.invited.displayName}`
                     : 'Aguardando adversário'}
                 </p>
                 <p className="board-faixa-sub">
@@ -476,13 +505,15 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
                 <div className="board-faixa-lados">
                   {(['white', 'black'] as const).map((side) => (
                     <div key={side} className="board-faixa-lado">
-                      <PieceGlyph
-                        piece={{ side, kind: table.game === 'chess' ? 'k' : 'man' }}
-                        light={sideIsLight(table.game, table.variant, side)}
-                        className="board-peca--mini"
-                      />
+                      {!pool && (
+                        <PieceGlyph
+                          piece={{ side, kind: table.game === 'chess' ? 'k' : 'man' }}
+                          light={sideIsLight(table.game, table.variant, side)}
+                          className="board-peca--mini"
+                        />
+                      )}
                       <span className="board-faixa-lado-nome">{table[side]?.displayName ?? '—'}</span>
-                      <span className="text-[11.5px]">{sideLabel(table.game, table.variant, side)}</span>
+                      <span className="text-[11.5px]">{seatLabel(table, side)}</span>
                       <span className={cn('board-pronto', !table.ready[side] && 'board-pronto--nao')}>
                         {table.ready[side] ? 'pronto' : 'esperando'}
                       </span>
@@ -540,14 +571,16 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
 
           {playing && iAmPlayer && !table.result && (
             <div className="flex flex-col gap-2">
-              <p className={cn('board-vez', canMove && 'board-vez--minha')}>
-                <span className="board-vez-ponto" aria-hidden />
-                <span className="min-w-0 flex-1 truncate">
-                  {myTurn && !pending
-                    ? 'Sua vez'
-                    : `Vez de ${table[other(mySide)]?.displayName ?? sideLabel(table.game, table.variant, other(mySide))}`}
-                </span>
-              </p>
+              {!pool && (
+                <p className={cn('board-vez', canMove && 'board-vez--minha')}>
+                  <span className="board-vez-ponto" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate">
+                    {myTurn && !pending
+                      ? 'Sua vez'
+                      : `Vez de ${table[other(mySide)]?.displayName ?? sideLabel(table.game, table.variant, other(mySide))}`}
+                  </span>
+                </p>
+              )}
               {premoves.length > 0 && (
                 <p className="board-pre-aviso">
                   <span className="min-w-0 flex-1">
@@ -602,10 +635,12 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
                   <Flag className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                   {confirm === 'resign' ? 'Desistir mesmo?' : 'Desistir'}
                 </Button>
-                <Button size="sm" variant="secondary" disabled={busy || drawFromMe} onClick={() => void run(offerDraw)}>
-                  <Handshake className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                  {drawFromMe ? 'Empate proposto' : 'Propor empate'}
-                </Button>
+                {!pool && (
+                  <Button size="sm" variant="secondary" disabled={busy || drawFromMe} onClick={() => void run(offerDraw)}>
+                    <Handshake className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                    {drawFromMe ? 'Empate proposto' : 'Propor empate'}
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -657,7 +692,7 @@ export function BoardTable({ children }: { children?: React.ReactNode }) {
               </span>
             </button>
           )}
-          {(playing || finished) && (
+          {(playing || finished) && !pool && (
             <div className="board-secao min-h-[8rem]">
               <h4 className="board-secao-cabeca">
                 <ListOrdered className="h-3.5 w-3.5" aria-hidden />
@@ -759,6 +794,7 @@ function PlayerBar({
   const active = !!side && table.phase === 'playing' && !table.result && table.turn === side
   const won = !!side && table.phase === 'finished' && table.result?.winner === side
   const light = side ? sideIsLight(table.game, table.variant, side) : true
+  const pool = table.game === 'pool'
   const captured = side && mat ? mat.captured[side] : []
   const advantage = side && mat ? (side === 'white' ? mat.advantage : -mat.advantage) : 0
 
@@ -796,7 +832,7 @@ function PlayerBar({
       </>
     )
   } else {
-    line = <span>{sideLabel(table.game, table.variant, side)}</span>
+    line = <span>{seatLabel(table, side)}</span>
   }
 
   return (
@@ -823,7 +859,7 @@ function PlayerBar({
       )}
       <div className="min-w-0 flex-1">
         <p className="board-nome">
-          {side && (
+          {side && !pool && (
             <PieceGlyph
               piece={{ side, kind: table.game === 'chess' ? 'k' : 'man' }}
               light={light}
@@ -832,11 +868,12 @@ function PlayerBar({
           )}
           <span>{person?.displayName ?? (table.phase === 'invited' ? 'Convidado' : 'Vaga')}</span>
           {won && <Crown className="h-3.5 w-3.5 shrink-0 text-burn" aria-label="venceu" />}
-          {side && <span className="sr-only"> ({sideLabel(table.game, table.variant, side)})</span>}
+          {side && !pool && <span className="sr-only"> ({sideLabel(table.game, table.variant, side)})</span>}
         </p>
         <div className="board-placa-linha">{line}</div>
       </div>
-      {showClock && side && (
+      {/* Bilhar: 30 s por tacada, só o relógio de quem está na vez importa. */}
+      {showClock && side && (!pool || active) && (
         <Clock ms={clocks[side]} active={active && table.clockRunning} low={clocks[side] < LOW_MS} />
       )}
     </div>
@@ -922,11 +959,13 @@ function ResultBanner({
         <div className="board-faixa-lados">
           {(['white', 'black'] as const).map((side) => (
             <div key={side} className={cn('board-faixa-lado', winner === side && 'board-faixa-lado--vencedor')}>
-              <PieceGlyph
-                piece={{ side, kind: table.game === 'chess' ? 'k' : 'man' }}
-                light={sideIsLight(table.game, table.variant, side)}
-                className="board-peca--mini"
-              />
+              {table.game !== 'pool' && (
+                <PieceGlyph
+                  piece={{ side, kind: table.game === 'chess' ? 'k' : 'man' }}
+                  light={sideIsLight(table.game, table.variant, side)}
+                  className="board-peca--mini"
+                />
+              )}
               <span className="board-faixa-lado-nome">{table[side]?.displayName ?? '—'}</span>
               <span className="board-faixa-stat text-acid-text">+{result.xp[side] ?? 0} XP</span>
               {analysis && (
