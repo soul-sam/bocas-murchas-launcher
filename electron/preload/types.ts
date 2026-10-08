@@ -803,10 +803,10 @@ export function isBoardSkin(value: unknown): value is BoardSkin {
 }
 
 /** Mesa de bilhar (salão de jogos): pano, acabamento e bordas. Cores são conteúdo, não seguem o tema. */
-export interface PoolSkin { cloth: 'verde' | 'azul' | 'vermelho' | 'preto'; finish: 'fosco' | 'brilho'; rails: 'madeira' | 'preto' }
+export interface PoolSkin { cloth: 'verde' | 'azul' | 'vermelho' | 'preto'; finish: 'fosco' | 'brilho'; rails: 'madeira' | 'cereja' | 'preto' }
 export const POOL_CLOTHS = ['verde', 'azul', 'vermelho', 'preto'] as const
 export const POOL_FINISHES = ['fosco', 'brilho'] as const
-export const POOL_RAILS = ['madeira', 'preto'] as const
+export const POOL_RAILS = ['madeira', 'cereja', 'preto'] as const
 export const DEFAULT_POOL_SKIN: PoolSkin = { cloth: 'verde', finish: 'fosco', rails: 'madeira' }
 export function isPoolSkin(v: unknown): v is PoolSkin {
   if (!v || typeof v !== 'object') return false

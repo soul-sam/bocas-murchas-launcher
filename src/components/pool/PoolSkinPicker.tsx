@@ -5,7 +5,7 @@ import { CLOTH, RAIL } from './draw'
 
 const CLOTH_LABEL: Record<PoolSkin['cloth'], string> = { verde: 'Verde', azul: 'Azul', vermelho: 'Vermelho', preto: 'Preto' }
 const FINISH_LABEL: Record<PoolSkin['finish'], string> = { fosco: 'Fosco', brilho: 'Com brilho' }
-const RAIL_LABEL: Record<PoolSkin['rails'], string> = { madeira: 'Madeira', preto: 'Preto' }
+const RAIL_LABEL: Record<PoolSkin['rails'], string> = { madeira: 'Carvalho', cereja: 'Mogno', preto: 'Laca preta' }
 
 /**
  * A mesa de bilhar de cada um: pano, acabamento e bordas. Três fileiras de
