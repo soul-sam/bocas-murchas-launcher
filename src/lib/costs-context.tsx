@@ -4,6 +4,7 @@ import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
+import { isPopout } from './platform'
 
 /**
  * A CONTA DA HOSPEDAGEM — quanto custa manter isto de pé e quanto cabe a cada um.
@@ -118,7 +119,7 @@ export function CostsProvider({ children }: { children: React.ReactNode }) {
 
     const onPending = (data: { displayName?: string }): void => {
       const s = settingsRef.current
-      void window.bocas.notify.show({
+      if (!isPopout()) void window.bocas.notify.show({
         title: 'Tem Pix pra conferir',
         body: `${data?.displayName ?? 'Alguém'} marcou que pagou a parte do mês.`,
         silent: !s.soundEnabled
@@ -129,7 +130,7 @@ export function CostsProvider({ children }: { children: React.ReactNode }) {
 
     const onUndone = (data: { title?: string; body?: string }): void => {
       const s = settingsRef.current
-      void window.bocas.notify.show({
+      if (!isPopout()) void window.bocas.notify.show({
         title: data?.title ?? 'Sua marcação da vaquinha foi desfeita',
         body: data?.body ?? 'É só marcar de novo quando pagar.',
         silent: !s.soundEnabled

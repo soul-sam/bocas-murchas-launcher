@@ -27,6 +27,27 @@ export function isDesktop(): boolean {
 }
 
 /**
+ * QUAL TELA ESTA JANELA É, quando ela é uma janela própria.
+ *
+ * O processo principal abre a mesa de pôquer numa segunda BrowserWindow
+ * carregando o mesmo `index.html` com `?janela=poker` (ver
+ * main/services/popout.ts). A query fica fora do hash, então sobrevive a
+ * qualquer navegação do HashRouter — e é por ela que a casca decide virar
+ * "só a mesa": sem barra de ícones, sem chat, sem jukebox, sem atalhos.
+ * `null` na janela principal e na web.
+ */
+export function popoutKind(): 'poker' | null {
+  if (typeof window === 'undefined' || isWeb()) return null
+  const kind = new URLSearchParams(window.location.search).get('janela')
+  return kind === 'poker' ? kind : null
+}
+
+/** Esta janela é a janela própria de uma tela (não a principal). */
+export function isPopout(): boolean {
+  return popoutKind() !== null
+}
+
+/**
  * ESTE APARELHO CONSEGUE COMPARTILHAR A TELA?
  *
  * `getDisplayMedia` simplesmente NÃO EXISTE no Safari do iPhone nem no Chrome

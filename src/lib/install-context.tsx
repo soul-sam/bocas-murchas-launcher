@@ -1,5 +1,6 @@
 import * as React from 'react'
 import type { InstallStatus } from '../../electron/preload/types'
+import { isPopout } from './platform'
 
 interface InstallContextValue {
   status: InstallStatus
@@ -27,7 +28,9 @@ export function InstallProvider({ children }: { children: React.ReactNode }) {
     void (async () => {
       const current = await window.bocas.install.status()
       setStatus(current)
-      if (current.stage === 'idle') {
+      // A janela própria da mesa não dispara a conferência do Minecraft: a
+      // principal já fez (ou faz) isso.
+      if (current.stage === 'idle' && !isPopout()) {
         await window.bocas.install.start({ quickCheck: true })
       }
     })()

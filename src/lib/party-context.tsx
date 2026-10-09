@@ -4,6 +4,7 @@ import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
+import { isPopout } from './platform'
 import { gameLabel, type PartyStatus } from './api-events'
 import type { AgendaEvent } from './api-events'
 
@@ -164,7 +165,7 @@ export function PartyProvider({ children }: { children: React.ReactNode }) {
 
       const label = gameLabel(data.party.game)
       const vagas = `${data.party.members.length}/${data.party.slots}`
-      void window.bocas.notify.show({
+      if (!isPopout()) void window.bocas.notify.show({
         title: `${data.from.displayName} chamou pra jogar ${label}`,
         body: data.party.note ? `${data.party.note} · ${vagas}` : `Bora? ${vagas}`,
         silent: !s.soundEnabled
@@ -188,7 +189,7 @@ export function PartyProvider({ children }: { children: React.ReactNode }) {
       const event = data?.event
       if (!event?.title) return
       const s = settingsRef.current
-      void window.bocas.notify.show({
+      if (!isPopout()) void window.bocas.notify.show({
         title: 'Começa em 15 min',
         body: event.game ? `${event.title} · ${gameLabel(event.game)}` : event.title,
         silent: !s.soundEnabled

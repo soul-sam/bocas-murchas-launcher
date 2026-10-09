@@ -396,6 +396,18 @@ function criarPonte(): BocasAPI {
       launch: async () => ({ ok: false, error: 'Abrir o LoL só funciona no app do PC' }),
     },
 
+    // Janela própria pra mesa é coisa do PC: no navegador a aba É a janela.
+    popout: {
+      open: async () => ({ open: false, kind: null, tableId: null }),
+      close: async () => {},
+      focus: async () => false,
+      state: async () => ({ open: false, kind: null, tableId: null }),
+      bringBack: async () => {},
+      flash: async () => {},
+      onState: semEventos,
+      onBringBack: semEventos,
+    },
+
     // A sobreposição é uma segunda janela transparente, sem moldura e sempre
     // por cima do jogo. Não tem equivalente nenhum no navegador — nem a
     // janela, nem o clique que atravessa, nem o atalho global que a chama.

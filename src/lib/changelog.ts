@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.60.0',
+    headline: 'Pôquer: a mesa do seu jeito',
+    items: [
+      'A mesa em outra janela: o botão "Outra janela" no topo da mesa abre o pôquer numa janela própria. Dá pra jogar num monitor e usar o launcher no outro; "Voltar pro launcher" traz a mesa de volta.',
+      'Suas fichas no feltro: a pilha aparece à direita das suas cartas, arrumada por valor, com a contagem de cada ficha. Na sua vez, clique numa pilha pra empurrar uma ficha pra aposta (botão direito devolve).',
+      'Jogada antes da vez: fora da sua vez a barra oferece "passar ou desistir", "pagar tanto" e "pagar qualquer". Deixe marcado e a jogada sai sozinha quando chegar a sua vez — se alguém aumentou no meio, a marca cai e você decide.',
+      'Digite o valor da aposta: o número ao lado da régua virou um campo. Escreva 1250, 2,5k ou 12,50 e aperte Enter.',
+      'Baralho maior e mais perto do flop, com a sombra mais discreta; a barra de ação ficou mais limpa, sem repetir a pilha que já está na placa.'
+    ],
+    note: 'A janela própria só existe no app do PC. No celular as fichas pra apostar continuam na barra.'
+  },
+  {
     version: '1.59.1',
     headline: 'Só vale o que é daqui de dentro',
     items: [

@@ -1,7 +1,9 @@
 import * as React from 'react'
 import {
+  AppWindow,
   ArrowLeft,
   BookOpen,
+  Check,
   ChevronDown,
   ChevronUp,
   Coins,
@@ -14,6 +16,7 @@ import {
   Play,
   Plus,
   Trash2,
+  Undo2,
   X
 } from 'lucide-react'
 import { MurchosIcon } from '@/lib/bocas-icons'
@@ -42,8 +45,10 @@ import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { useGamification } from '@/lib/gamification-context'
 import { useLayout } from '@/lib/layout-context'
+import { isPopout, isWeb } from '@/lib/platform'
 import { usePoker } from '@/lib/poker-context'
-import { breakdown, chipFace, chipSet, sumChips, type ChipDenom } from '@/lib/poker-chips'
+import { breakdown, chipFace, chipSet, rackBreakdown, sumChips, type ChipDenom } from '@/lib/poker-chips'
+import { parseAmount, rawAmount, resolvePreAction, samePreAction, type PreAction } from '@/lib/poker-turn'
 import { useSettings } from '@/lib/settings-context'
 import { playUiSound, type UiSound } from '@/lib/ui-sounds'
 import { useTicker } from '@/lib/use-now'
@@ -81,13 +86,21 @@ import './poker.css'
  * acertem o destino sem medir nada.
  *
  * Fichas (`lib/poker-chips`): cada mesa tem cinco fichas tiradas dos blinds,
- * e todo valor na mesa — aposta, pote — aparece como pilhas delas. A barra
- * de ação tem as mesmas fichas pra clicar: escolher fichas é empurrar as
- * fichas pro meio, como numa mesa de verdade.
+ * e todo valor na mesa — aposta, pote — aparece como pilhas delas. A SUA
+ * pilha fica no feltro, à direita das suas cartas, arrumada por ficha
+ * (`HeroRack`): clicar numa pilha empurra uma ficha daquele valor pra frente
+ * (a aposta montada aparece tracejada do outro lado), como numa mesa de
+ * verdade. No celular, sem feltro sobrando, as fichas moram na barra.
+ *
+ * Fora da sua vez a barra oferece as jogadas PRÉ-ESCOLHIDAS (passar/desistir,
+ * pagar tanto, pagar qualquer): a escolha fica guardada e sai sozinha no
+ * instante em que a vez chega — se ainda valer. Alguém aumentou depois de
+ * você marcar "pagar 300"? A marca cai e você decide de novo.
  *
  * Valores: `fmt()` escreve na moeda da mesa — 1.250 (murchos) ou R$ 12,50
  * (mesa valendo). Nenhum número bruto chega ao JSX sem passar por ele.
  */
+
 
 interface Geometry {
   /** Centro e raios da elipse dos assentos, em % da área. */
@@ -324,9 +337,18 @@ interface Layout {
   /** Largura de uma ficha (px) no pote e numa aposta. */
   chipPot: number
   chipBet: number
+  /** O baralho: um degrau abaixo das cartas da mesa, do lado do pote. */
+  deckCard: CardSize
+  /** A minha pilha arrumada (borda esquerda x, centro y, em %) e a largura de uma ficha dela. */
+  rack: [number, number]
+  chipRack: number
   /** Por posição na roda (0 = embaixo): onde fica o assento e onde para a aposta dele, em %. */
   slots: Array<{ pos: [number, number]; bet: [number, number] }>
 }
+
+/** O baralho é um degrau menor que as cartas da mesa (e nunca menor que `sm`). */
+const DECK_FOR: Record<CardSize, CardSize> = { xs: 'xs', sm: 'sm', ms: 'sm', md: 'ms', ml: 'md', lg: 'ml', xl: 'lg' }
+const ONE_DOWN: Record<CardSize, CardSize> = { xs: 'xs', sm: 'xs', ms: 'sm', md: 'ms', ml: 'md', lg: 'ml', xl: 'lg' }
 
 /** Placa de um assento (px): do centro do avatar pra baixo. */
 function plateBox(phone: boolean): { half: number; h: number } {
@@ -382,6 +404,9 @@ function computeLayout(w: number, h: number, phone: boolean, maxSeats: number, h
       boardTopY: base.boardY - 8,
       chipPot: phone ? 16 : 22,
       chipBet: phone ? 14 : 18,
+      deckCard: phone ? 'xs' : 'sm',
+      rack: [60, 86],
+      chipRack: phone ? 14 : 20,
       slots
     }
   }
@@ -440,14 +465,27 @@ function computeLayout(w: number, h: number, phone: boolean, maxSeats: number, h
   // A minha aposta: à esquerda das minhas cartas, na altura do terço de cima delas.
   const heroBetX = w / 2 - (CARD_WIDTH[heroCard] * 0.9 + 22 + c.chipBet)
   const heroBetY = heroTop + cardHeight(heroCard) * 0.3
+  // A minha pilha: do outro lado das cartas, na mesma altura da aposta.
+  const chipRack = Math.round(Math.max(16, Math.min(26, c.chipBet * 1.05)))
+  const rackX = w / 2 + CARD_WIDTH[heroCard] * 0.9 + 26
   const pct = (px: number, total: number): number => (px * 100) / total
+
+  // O baralho: do lado esquerdo do pote, com o pé um pouco acima das cartas
+  // da mesa — é de lá que tudo sai. Um degrau menor que elas; se não couber
+  // entre a placa de quem senta em cima e a mesa, desce mais um degrau.
+  const boardTop = boardY - ch / 2
+  let deckCard: CardSize = DECK_FOR[c.size]
+  if (phone && (deckCard === 'ms' || deckCard === 'md')) deckCard = 'sm'
+  const deckRoom = boardTop - 12 - c.top + 4
+  while (cardHeight(deckCard) > deckRoom && deckCard !== 'sm' && deckCard !== 'xs') deckCard = ONE_DOWN[deckCard]
+  const deckX = w / 2 - 120 - CARD_WIDTH[deckCard] / 2 - (phone ? 6 : 14)
+  const deckY = boardTop - 12 - cardHeight(deckCard) / 2
 
   const geo: Geometry = {
     ...base,
     boardY: pct(boardY, h),
     potY: pct(potY, h),
-    // O baralho fica do lado do pote, à esquerda: é de lá que tudo sai.
-    deck: [pct(w / 2 - (phone ? 112 : 160), w), pct(potY, h)]
+    deck: [pct(Math.max(CARD_WIDTH[deckCard] / 2 + 8, deckX), w), pct(deckY, h)]
   }
 
   // Onde a aposta de cada assento para: saindo do avatar em direção ao meio,
@@ -506,6 +544,9 @@ function computeLayout(w: number, h: number, phone: boolean, maxSeats: number, h
     boardTopY: pct(boardY - ch / 2, h),
     chipPot: c.chipPot,
     chipBet: c.chipBet,
+    deckCard,
+    rack: [pct(rackX, w), pct(heroBetY, h)],
+    chipRack,
     slots
   }
 }
@@ -552,7 +593,7 @@ function TableScreen({
   onOpenRules: (category?: HandCategory | null) => void
   onOpenCash?: () => void
 }) {
-  const { leaveTable, act, sit, stand, topUp, sitOut, show, closeTable, start, seatedAt, reactions } = usePoker()
+  const { leaveTable, act, sit, stand, topUp, sitOut, show, closeTable, start, seatedAt, reactions, popOut, bringBack } = usePoker()
   const { user } = useAuth()
   const { isPhone } = useLayout()
   const reveal = useReveal(table)
@@ -568,6 +609,8 @@ function TableScreen({
   const [bustDismissedFor, setBustDismissedFor] = React.useState<string | null>(null)
   /** As fichas escolhidas na barra (null = não está usando fichas). */
   const [picked, setPicked] = React.useState<number[] | null>(null)
+  /** A jogada deixada marcada pra quando for a minha vez. */
+  const [pre, setPre] = React.useState<PreAction | null>(null)
   const [reactOpen, setReactOpen] = React.useState(false)
   const [reactTarget, setReactTarget] = React.useState<ReactionTarget | null>(null)
   const areaRef = React.useRef<HTMLDivElement>(null)
@@ -591,6 +634,14 @@ function TableScreen({
   React.useEffect(() => {
     setPicked(null)
   }, [table.handId, table.street, table.currentBet, myTurn])
+
+  // A jogada pré-escolhida vale pra esta rua; "pagar tanto" cai se o tanto mudou.
+  React.useEffect(() => {
+    setPre(null)
+  }, [table.handId, table.street])
+  React.useEffect(() => {
+    setPre((p) => (p && p.kind === 'call' && p.amount !== table.currentBet ? null : p))
+  }, [table.currentBet])
 
   const layout = React.useMemo(
     () => computeLayout(area.w, area.h, isPhone, table.maxSeats, table.mySeat !== null),
@@ -681,6 +732,23 @@ function TableScreen({
   const heldLog = useHeld(table.log, locked)
   const heldBest = useHeld(me?.best ?? null, locked)
 
+  // Chegou a minha vez com uma jogada marcada: ela sai sozinha — depois que
+  // as cartas pousaram (ninguém paga sem ver o flop) e só se ainda valer.
+  const actRef = React.useRef(act)
+  actRef.current = act
+  React.useEffect(() => {
+    if (!pre || !myTurn || locked || busy || !table.legal) return
+    const play = resolvePreAction(pre, table.legal, table.currentBet)
+    setPre(null)
+    if (!play) return
+    setBusy(true)
+    void actRef.current(table.id, play.type).then((ack) => {
+      setBusy(false)
+      if (!ack.ok) setError(ack.error ?? 'Deu ruim.')
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pre, myTurn, locked, busy, table.legal, table.currentBet, table.id])
+
   const myCategory = me?.best?.category ?? null
 
   // QUEBROU: pilha zerada, sem recarga a caminho, e a mão que zerou já
@@ -712,6 +780,16 @@ function TableScreen({
 
   const myBet = me?.bet ?? 0
   const pickedSum = picked ? sumChips(picked) : 0
+  // A prévia das fichas escolhidas diz o que falta (ou que é all-in).
+  const stagedRange = myTurn && table.legal ? table.legal.raise ?? table.legal.bet : null
+  const stagedHint =
+    stagedRange && pickedSum > 0
+      ? myBet + pickedSum >= stagedRange.max
+        ? 'all-in'
+        : myBet + pickedSum < stagedRange.min
+          ? `mín ${formatMoneyShort(stagedRange.min, table.stake.currency)}`
+          : null
+      : null
 
   const areaStyle = {
     ['--deck-x' as string]: geo.deck[0],
@@ -761,6 +839,28 @@ function TableScreen({
             </button>
           </Hint>
         )}
+        {/* A mesa em janela própria (só no app do PC): daqui ela vai; de lá ela volta. */}
+        {!isPhone &&
+          !isWeb() &&
+          (isPopout() ? (
+            <Hint label="Voltar pro launcher" description="Fecha esta janela e abre a mesa de volta na janela principal." side="bottom">
+              <button type="button" onClick={() => void bringBack()} aria-label="Voltar pro launcher" className="poker-topo-botao">
+                <Undo2 className="h-3.5 w-3.5" aria-hidden />
+                <span className="hidden md:inline">Voltar pro launcher</span>
+              </button>
+            </Hint>
+          ) : (
+            <Hint
+              label="Abrir em outra janela"
+              description="A mesa vai pra uma janela própria, pra jogar num monitor e usar o launcher no outro."
+              side="bottom"
+            >
+              <button type="button" onClick={() => void popOut(table.id)} aria-label="Abrir em outra janela" className="poker-topo-botao">
+                <AppWindow className="h-3.5 w-3.5" aria-hidden />
+                <span className="hidden lg:inline">Outra janela</span>
+              </button>
+            </Hint>
+          ))}
         <Hint label="Colinha e regras" description="As combinações, do royal flush à carta alta, e as regras da mesa." side="bottom">
           <button type="button" onClick={() => onOpenRules(myCategory)} aria-label="Colinha" className="poker-topo-botao">
             <BookOpen className="h-3.5 w-3.5" aria-hidden />
@@ -796,7 +896,7 @@ function TableScreen({
               </div>
             </div>
 
-            <Deck size={isPhone ? 'xs' : 'sm'} shuffleKey={reveal.freshHand ? table.handId : null} burned={reveal.burned} />
+            <Deck size={layout.deckCard} shuffleKey={reveal.freshHand ? table.handId : null} burned={reveal.burned} />
 
             <Board table={table} fmt={fmt} layout={layout} set={set} timings={reveal.timings} />
 
@@ -830,6 +930,7 @@ function TableScreen({
                   set={set}
                   myTurn={myTurn}
                   staged={myTurn && picked && pickedSum > 0 ? pickedSum : 0}
+                  stagedHint={stagedHint}
                   best={heldBest}
                   onOpenRules={onOpenRules}
                 />
@@ -851,6 +952,22 @@ function TableScreen({
                   set={set}
                 />
               )
+            )}
+
+            {/* A minha pilha, arrumada no feltro à direita das cartas: é daqui
+                que as fichas saem pra apostar (no celular elas moram na barra). */}
+            {me && !isPhone && (
+              <HeroRack
+                table={table}
+                seat={me}
+                at={layout.rack}
+                chip={layout.chipRack}
+                set={set}
+                legal={myTurn && !locked ? table.legal : null}
+                picked={picked}
+                onPick={setPicked}
+                fmt={fmt}
+              />
             )}
 
             {/* A vitória espera a mesa terminar de virar (o river com suspense). */}
@@ -921,8 +1038,9 @@ function TableScreen({
           <footer className={cn('poker-dock shrink-0 px-3 py-2', myTurn && 'poker-dock--vez')}>
             {me ? (
               <div className={cn('flex gap-3', isPhone ? 'flex-col' : 'flex-row items-end')}>
-                {/* Esquerda: a sua mesa — pilha, recarga, levantar; e a linha de estado. */}
-                <div className={cn('flex min-w-0 flex-col gap-1.5', isPhone ? '' : 'w-[300px] shrink-0 xl:w-[340px]')}>
+                {/* Esquerda: recarga, sentar fora, levantar; e a linha de estado.
+                    A pilha está na placa e no feltro — não repete aqui. */}
+                <div className={cn('flex min-w-0 flex-col gap-1.5', isPhone ? '' : 'w-[260px] shrink-0 xl:w-[300px]')}>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {table.canShow && (
                       <button type="button" className="poker-mini" onClick={() => void run(() => show(table.id))}>
@@ -956,16 +1074,17 @@ function TableScreen({
                     </button>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      {table.stake.currency === 'brl' ? <Coins className="h-3.5 w-3.5 text-burn" aria-hidden /> : <MurchosIcon className="h-3.5 w-3.5 text-burn" aria-hidden />}
-                      pilha <span className="font-mono text-foreground">{fmt(me.stack)}</span>
-                      {table.pendingTopUp > 0 && (
-                        <span>
-                          {' '}
-                          (+<span className="font-mono">{fmt(table.pendingTopUp)}</span> na próxima)
-                        </span>
-                      )}
-                    </span>
+                    {isPhone && (
+                      <span className="flex items-center gap-1">
+                        {table.stake.currency === 'brl' ? <Coins className="h-3.5 w-3.5 text-burn" aria-hidden /> : <MurchosIcon className="h-3.5 w-3.5 text-burn" aria-hidden />}
+                        pilha <span className="font-mono text-foreground">{fmt(me.stack)}</span>
+                      </span>
+                    )}
+                    {table.pendingTopUp > 0 && (
+                      <span>
+                        +<span className="font-mono">{fmt(table.pendingTopUp)}</span> na próxima mão
+                      </span>
+                    )}
                     {busted && !showBusted && (
                       <button
                         type="button"
@@ -975,21 +1094,8 @@ function TableScreen({
                         sem fichas — recarregar
                       </button>
                     )}
-                    <WaitingLine table={table} me={me} />
+                    <WaitingLine table={table} me={me} pre={pre} />
                   </div>
-                  {/* As fichas pra empurrar: no desktop moram aqui, embaixo da pilha. */}
-                  {!isPhone && (
-                    <ChipTray
-                      table={table}
-                      set={set}
-                      legal={myTurn && !locked ? table.legal : null}
-                      myBet={myBet}
-                      myStack={me.stack}
-                      picked={picked}
-                      onPick={setPicked}
-                      fmt={fmt}
-                    />
-                  )}
                 </div>
 
                 {/* Direita: a aposta. */}
@@ -1016,6 +1122,9 @@ function TableScreen({
                     myBet={myBet}
                     picked={picked}
                     locked={locked}
+                    canPre={inHand && !table.result && table.toAct !== null}
+                    pre={pre}
+                    onPre={setPre}
                     onClearPicked={() => setPicked(null)}
                     onAct={(type, amount) => void run(() => act(table.id, type, amount), () => setPicked(null))}
                   />
@@ -1087,9 +1196,9 @@ const RIFFLE = Array.from({ length: 8 }, (_, k) => ({
  * e bate na mesa — só então as cartas saem. Do lado, de costas e tortas, as
  * queimadas da mão (uma antes de cada rua).
  */
-function Deck({ size, shuffleKey, burned }: { size: 'xs' | 'sm'; shuffleKey: string | null; burned: number }) {
-  const w = size === 'xs' ? 24 : 42
-  const h = size === 'xs' ? 34 : 59
+function Deck({ size, shuffleKey, burned }: { size: CardSize; shuffleKey: string | null; burned: number }) {
+  const w = CARD_WIDTH[size]
+  const h = cardHeight(size)
   // A última queimada chega voando; as anteriores já estão no monte.
   const seen = React.useRef(burned)
   const fresh = burned > seen.current ? burned - 1 : -1
@@ -1097,7 +1206,12 @@ function Deck({ size, shuffleKey, burned }: { size: 'xs' | 'sm'; shuffleKey: str
     seen.current = burned
   }, [burned])
   return (
-    <div key={shuffleKey ?? 'baralho'} className={cn('poker-baralho', shuffleKey && 'poker-baralho--embaralha')} aria-hidden>
+    <div
+      key={shuffleKey ?? 'baralho'}
+      className={cn('poker-baralho', shuffleKey && 'poker-baralho--embaralha')}
+      style={{ ['--bw' as string]: `${w}px` } as React.CSSProperties}
+      aria-hidden
+    >
       <div className="relative" style={{ width: w, height: h }}>
         {Array.from({ length: burned }, (_, q) => (
           <PlayingCard
@@ -1321,7 +1435,8 @@ function BetChips({
   table,
   set,
   layout,
-  staged
+  staged,
+  hint
 }: {
   amount: number
   at: [number, number]
@@ -1331,6 +1446,8 @@ function BetChips({
   layout: Layout
   /** Prévia das fichas escolhidas (ainda não apostadas): tracejada e transparente. */
   staged?: boolean
+  /** Na prévia: o que falta ("mín 600") ou o que ela é ("all-in"). */
+  hint?: string | null
 }) {
   const stacks = React.useMemo(() => breakdown(amount, set), [amount, set])
   const style = {
@@ -1347,6 +1464,7 @@ function BetChips({
       <span className={cn('poker-aposta-valor', staged && 'poker-aposta-valor--previa')}>
         {staged ? '+' : ''}
         {formatMoneyShort(amount, table.stake.currency)}
+        {staged && hint && <span className="poker-aposta-dica"> · {hint}</span>}
       </span>
     </div>
   )
@@ -1656,6 +1774,7 @@ function HeroSeat({
   set,
   myTurn,
   staged,
+  stagedHint,
   best: bestNow,
   onOpenRules
 }: {
@@ -1672,6 +1791,7 @@ function HeroSeat({
   myTurn: boolean
   /** Soma das fichas escolhidas na barra (0 = nenhuma): aparece na frente, tracejada. */
   staged: number
+  stagedHint?: string | null
   /** A minha melhor mão, segurada enquanto a mesa vira (não entrega a carta antes). */
   best: SeatView['best']
   onOpenRules: (category?: HandCategory | null) => void
@@ -1695,7 +1815,7 @@ function HeroSeat({
   return (
     <>
       {staged > 0 ? (
-        <BetChips amount={staged} at={bet} from={pos} table={table} set={set} layout={layout} staged />
+        <BetChips amount={staged} at={bet} from={pos} table={table} set={set} layout={layout} staged hint={stagedHint} />
       ) : (
         seat.bet > 0 && <BetChips key={`${table.handId}-${seat.bet}`} amount={seat.bet} at={bet} from={pos} table={table} set={set} layout={layout} />
       )}
@@ -1946,8 +2066,186 @@ function ChipTray({
 }
 
 // ---------------------------------------------------------------------------
+// A minha pilha no feltro
+// ---------------------------------------------------------------------------
+
+/**
+ * As MINHAS fichas, arrumadas por valor à direita das minhas cartas, como
+ * um jogador arruma a pilha na frente dele: as cinco fichas da mesa, da
+ * menor pra maior, cada uma com a contagem embaixo (`rackBreakdown`: um
+ * pouco de cada pra trocar, o grosso nas maiores). A soma é a pilha.
+ *
+ * Na minha vez cada pilha vira botão: um clique empurra uma ficha daquele
+ * valor pra frente (ela some daqui e aparece na prévia tracejada do outro
+ * lado das cartas); botão direito traz uma de volta; o "devolver" traz
+ * todas. Fora da vez é só a pilha, parada.
+ */
+function HeroRack({
+  table,
+  seat,
+  at,
+  chip,
+  set,
+  legal,
+  picked,
+  onPick,
+  fmt
+}: {
+  table: TableView
+  seat: SeatView
+  /** Borda esquerda (x) e centro (y), em % da área. */
+  at: [number, number]
+  /** Largura de uma ficha, em px. */
+  chip: number
+  set: ChipDenom[]
+  legal: LegalActions | null
+  picked: number[] | null
+  onPick: (next: number[] | null) => void
+  fmt: (v: number) => string
+}) {
+  const range = legal ? legal.raise ?? legal.bet : null
+  const on = !!range
+  const sum = picked ? sumChips(picked) : 0
+  const room = range ? range.max - seat.bet - sum : 0
+  const rack = React.useMemo(() => rackBreakdown(seat.stack, set), [seat.stack, set])
+  const countOf = (value: number): number => rack.find((s) => s.denom.value === value)?.count ?? 0
+  const pickedOf = (value: number): number => (picked ? picked.filter((v) => v === value).length : 0)
+
+  const add = (value: number): void => {
+    if (!range || room <= 0) return
+    onPick([...(picked ?? []), Math.min(value, room)].filter((v) => v > 0))
+  }
+  const removeOne = (value: number): void => {
+    if (!picked) return
+    const i = picked.lastIndexOf(value)
+    if (i < 0) return
+    const next = [...picked.slice(0, i), ...picked.slice(i + 1)]
+    onPick(next.length ? next : null)
+  }
+
+  const style = {
+    left: `${at[0]}%`,
+    top: `${at[1]}%`,
+    ['--seat-x' as string]: at[0],
+    ['--seat-y' as string]: at[1]
+  } as React.CSSProperties
+
+  return (
+    <div className={cn('poker-rack absolute z-[9]', on && 'poker-rack--vez')} style={style} aria-label={`Sua pilha: ${fmt(seat.stack)}`}>
+      <div className="poker-rack-pilhas" role="group" aria-label="Suas fichas">
+        {set.map((d) => {
+          const have = countOf(d.value)
+          const shown = Math.max(0, have - pickedOf(d.value))
+          const disabled = !on || shown <= 0 || room <= 0
+          return (
+            <button
+              key={d.value}
+              type="button"
+              disabled={disabled}
+              onClick={() => add(d.value)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                removeOne(d.value)
+              }}
+              className={cn('poker-rack-pilha', shown === 0 && 'poker-rack-pilha--vazia')}
+              aria-label={`${shown} ficha${shown === 1 ? '' : 's'} de ${fmt(d.value)}${on ? ' — clique pra apostar uma' : ''}`}
+              title={on ? `+${fmt(d.value)} · botão direito devolve` : `${shown} × ${fmt(d.value)}`}
+            >
+              <span className="poker-rack-ficha" style={{ width: chip, minHeight: Math.round(chip * 0.9) }}>
+                {shown > 0 ? (
+                  <ChipPile stacks={[{ denom: d, count: shown }]} size={chip} maxPerStack={10} maxStacks={2} />
+                ) : (
+                  <span className="poker-rack-marca" style={{ width: chip, height: Math.round(chip * 0.66) }} />
+                )}
+              </span>
+              <span className="poker-rack-conta">
+                <span className="poker-rack-valor">{chipFace(d.value, table.stake.currency)}</span>
+                <span className="poker-rack-vezes">×{shown}</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      {sum > 0 ? (
+        <button type="button" onClick={() => onPick(null)} className="poker-rack-devolver">
+          <Undo2 className="h-3 w-3" aria-hidden />
+          devolver <span className="font-mono">{fmt(sum)}</span>
+        </button>
+      ) : (
+        <span className={cn('poker-rack-dica', !on && 'poker-rack-dica--parada')}>{on ? 'clique numa pilha pra apostar' : `pilha ${fmt(seat.stack)}`}</span>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Barra de ação
 // ---------------------------------------------------------------------------
+
+/**
+ * O valor da aposta, digitável (a leitura do texto mora em lib/poker-turn): mostra formatado; ao focar vira o número cru
+ * pra editar. Enter confirma E aposta (como o ⏎ do botão); Esc desfaz; sair
+ * do campo só ajusta o valor (arredondado pro passo e preso aos limites).
+ */
+function AmountInput({
+  value,
+  currency,
+  disabled,
+  clamp,
+  onChange,
+  onSubmit
+}: {
+  value: number
+  currency: TableView['stake']['currency']
+  disabled: boolean
+  clamp: (v: number) => number
+  onChange: (v: number) => void
+  onSubmit: (v: number) => void
+}) {
+  const [text, setText] = React.useState<string | null>(null)
+  const ref = React.useRef<HTMLInputElement>(null)
+  const commit = (): number | null => {
+    if (text === null) return null
+    const parsed = parseAmount(text, currency)
+    setText(null)
+    if (parsed === null) return null
+    const v = clamp(parsed)
+    onChange(v)
+    return v
+  }
+  return (
+    <input
+      ref={ref}
+      type="text"
+      inputMode="decimal"
+      autoComplete="off"
+      spellCheck={false}
+      className="poker-valor-input"
+      value={text ?? formatMoney(value, currency)}
+      disabled={disabled}
+      aria-label="Valor da aposta (digite)"
+      title="Digite o valor e aperte Enter"
+      onFocus={() => {
+        setText(rawAmount(value, currency))
+        requestAnimationFrame(() => ref.current?.select())
+      }}
+      onChange={(e) => setText(e.target.value.replace(/[^\d.,kK]/g, ''))}
+      onBlur={() => commit()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          const v = commit() ?? value
+          onSubmit(v)
+          ref.current?.blur()
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          setText(null)
+          ref.current?.blur()
+        }
+      }}
+    />
+  )
+}
 
 function roundTo(value: number, step: number): number {
   if (step <= 0) return Math.round(value)
@@ -1963,6 +2261,9 @@ function ActionBar({
   myBet,
   picked,
   locked,
+  canPre,
+  pre,
+  onPre,
   onClearPicked,
   onAct
 }: {
@@ -1978,6 +2279,10 @@ function ActionBar({
   picked: number[] | null
   /** O crupiê está dando ou a mesa está virando: espera a carta aparecer. */
   locked: boolean
+  /** Fora da minha vez, mas na mão: dá pra deixar a jogada marcada. */
+  canPre: boolean
+  pre: PreAction | null
+  onPre: (pre: PreAction | null) => void
   onClearPicked: () => void
   onAct: (type: 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin', amount?: number) => void
 }) {
@@ -2064,6 +2369,62 @@ function ActionBar({
   const myStack = table.seats[table.mySeat ?? -1]?.stack ?? Infinity
   const callIsAllIn = legal?.call !== null && legal?.call !== undefined && legal.call >= myStack
 
+  // Fora da minha vez: as jogadas pra deixar marcadas, no lugar dos botões.
+  // Enfrentando aposta: desistir / pagar tanto / pagar qualquer. Sem aposta:
+  // passar ou desistir / passar / pagar qualquer.
+  if (!legal && canPre) {
+    const facing = table.currentBet > myBet
+    const toCall = Math.min(table.currentBet - myBet, myStack)
+    const options: Array<{ pre: PreAction; label: React.ReactNode; tone: 'fold' | 'check' | 'raise' }> = facing
+      ? [
+          { pre: { kind: 'check-fold' }, label: 'Desistir', tone: 'fold' },
+          {
+            pre: { kind: 'call', amount: table.currentBet },
+            label: (
+              <>
+                {toCall >= myStack ? 'All-in' : 'Pagar'} <span className="font-mono">{fmt(toCall)}</span>
+              </>
+            ),
+            tone: 'check'
+          },
+          { pre: { kind: 'call-any' }, label: 'Pagar qualquer', tone: 'raise' }
+        ]
+      : [
+          { pre: { kind: 'check-fold' }, label: phone ? 'Passar/desistir' : 'Passar ou desistir', tone: 'fold' },
+          { pre: { kind: 'check' }, label: 'Passar', tone: 'check' },
+          { pre: { kind: 'call-any' }, label: 'Pagar qualquer', tone: 'raise' }
+        ]
+    const same = samePreAction
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="poker-pre-titulo">
+          Antes da sua vez
+          <span className="text-muted-foreground"> — deixe marcado e sai sozinho quando chegar</span>
+        </p>
+        <div className={cn('grid grid-cols-3', phone ? 'gap-1.5' : 'gap-2')}>
+          {options.map((o, i) => {
+            const active = same(o.pre, pre)
+            return (
+              <button
+                key={i}
+                type="button"
+                aria-pressed={active}
+                disabled={busy}
+                onClick={() => onPre(active ? null : o.pre)}
+                className={cn('poker-botao poker-botao--pre', `poker-botao--pre-${o.tone}`, active && 'poker-botao--pre-ativo', phone && 'poker-botao--compacto')}
+              >
+                <span className="poker-pre-marca" aria-hidden>
+                  {active && <Check className="h-3 w-3" strokeWidth={3} />}
+                </span>
+                {o.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-2">
       {/* Tamanho da aposta: atalhos + régua. Só aparece quando dá pra apostar. */}
@@ -2110,7 +2471,17 @@ function ActionBar({
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
           </button>
-          <span className="w-24 text-right font-mono text-sm font-semibold text-foreground">{range ? fmt(value) : ''}</span>
+          <AmountInput
+            value={value}
+            currency={table.stake.currency}
+            disabled={!range || allInOnly}
+            clamp={clamp}
+            onChange={setFromRuler}
+            onSubmit={(v) => {
+              if (!range || off) return
+              onAct(isBet ? 'bet' : 'raise', v)
+            }}
+          />
         </div>
       </div>
 
@@ -2195,11 +2566,12 @@ function ActionBar({
   )
 }
 
-function WaitingLine({ table, me }: { table: TableView; me: SeatView }) {
+function WaitingLine({ table, me, pre }: { table: TableView; me: SeatView; pre?: PreAction | null }) {
   const acting = table.toAct !== null ? table.seats[table.toAct] : null
   const myTurn = table.toAct === me.index && !table.result
   let text: string
   if (myTurn) text = 'Sua vez.'
+  else if (pre && acting) text = `Vez de ${acting.displayName.split(/\s+/)[0]}… a sua já está marcada.`
   else if (table.result) text = 'Próxima mão daqui a pouco.'
   else if (table.started === false) text = table.canStart ? 'Aperte "Começar o jogo" quando todo mundo sentar.' : 'Esperando começar o jogo.'
   else if (me.sittingOut) text = 'Sentado fora. "Voltar" entra na próxima mão.'

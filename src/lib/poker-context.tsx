@@ -6,6 +6,7 @@ import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { useSoundboard } from './soundboard-context'
 import { playUiSound } from './ui-sounds'
+import { isPopout } from './platform'
 import type { ActionType, LobbyTable, PokerAck, PokerReaction, ReactionInput, TableView, TimerSpeed } from './api-poker'
 
 /**
@@ -97,6 +98,20 @@ interface PokerContextValue {
   /** Calou os SONS das reações (as bolhas continuam). Só nesta máquina. */
   reactionSoundsMuted: boolean
   setReactionSoundsMuted: (muted: boolean) => void
+
+  /**
+   * A MESA EM OUTRA JANELA (só no app do PC).
+   *
+   * `popoutOpen` diz, na janela principal, que a mesa está numa janela
+   * própria (a tela do pôquer vira um aviso com "mostrar" e "trazer de
+   * volta"). `popOut` abre a janela própria com a mesa aberta e, aqui, sai
+   * da sala e volta pro chat. `bringBack` é o inverso, chamado de dentro da
+   * janela própria. Na web os três são inertes.
+   */
+  popoutOpen: boolean
+  popOut: (tableId: string) => Promise<void>
+  bringBack: () => Promise<void>
+  focusPopout: () => Promise<void>
 }
 
 const PokerContext = React.createContext<PokerContextValue | null>(null)
@@ -132,6 +147,7 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
   const [table, setTable] = React.useState<TableView | null>(null)
   const [reactions, setReactions] = React.useState<PokerReaction[]>([])
   const [reactionSoundsMuted, setMutedState] = React.useState<boolean>(readMuted)
+  const [popoutOpen, setPopoutOpen] = React.useState(false)
   const mutedRef = React.useRef(reactionSoundsMuted)
   mutedRef.current = reactionSoundsMuted
   const playIncomingRef = React.useRef(playIncoming)
@@ -143,6 +159,12 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
   userIdRef.current = user?.id
   const openIdRef = React.useRef<string | null>(null)
   openIdRef.current = openTableId
+  /**
+   * Mesa pedida antes de o socket conectar (a janela própria nasce com
+   * `?mesa=` na rota e abre a mesa no primeiro render; um link do chat na
+   * abertura do app também). Abre assim que a conexão chega.
+   */
+  const pendingOpenRef = React.useRef<string | null>(null)
 
   const sound = React.useCallback((name: 'poker-turn' | 'poker-deal' | 'poker-chip' | 'poker-win') => {
     const s = settingsRef.current
@@ -185,6 +207,8 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
                 body: `${next.name} · pote ${next.pot}`,
                 silent: !settingsRef.current.soundEnabled
               })
+              // Na janela própria atrás de outra coisa: pisca na barra de tarefas.
+              if (isPopout()) void window.bocas.popout.flash().catch(() => {})
             }
           }
           // Mão nova: com a mesa na tela quem toca é ela (embaralhar e as
@@ -263,8 +287,14 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
   // --- ações ---------------------------------------------------------------------
   const openTable = React.useCallback(
     async (tableId: string): Promise<PokerAck> => {
+      if (!socket || !socket.connected) {
+        // Sem conexão ainda: fica na fila e abre quando o socket chegar.
+        pendingOpenRef.current = tableId
+        return { ok: false, error: 'Conectando ao servidor…' }
+      }
+      pendingOpenRef.current = null
       const previous = openIdRef.current
-      if (previous && previous !== tableId && socket) socket.emit('poker:leave', { tableId: previous })
+      if (previous && previous !== tableId) socket.emit('poker:leave', { tableId: previous })
       setOpenTableId(tableId)
       const ack = await emitWithAck(socket, 'poker:open', { tableId })
       if (ack.ok && ack.table) setTable(ack.table)
@@ -276,6 +306,15 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
     },
     [socket]
   )
+
+  // A mesa que ficou esperando a conexão.
+  React.useEffect(() => {
+    if (!socket || !connected) return
+    const pending = pendingOpenRef.current
+    if (!pending) return
+    pendingOpenRef.current = null
+    void openTable(pending)
+  }, [socket, connected, openTable])
 
   const goToPoker = React.useCallback(
     (tableId?: string): void => {
@@ -291,6 +330,29 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
     setOpenTableId(null)
     setTable(null)
   }, [socket])
+
+  // A janela própria: a principal acompanha se ela existe e atende o
+  // "trazer de volta" de lá. Dentro dela mesma, `popoutOpen` fica false
+  // (a mesa está AQUI, não em outra janela).
+  React.useEffect(() => {
+    if (isPopout()) return
+    let alive = true
+    void window.bocas.popout
+      .state()
+      .then((s) => alive && setPopoutOpen(s.open && s.kind === 'poker'))
+      .catch(() => {})
+    const offState = window.bocas.popout.onState((s) => setPopoutOpen(s.open && s.kind === 'poker'))
+    const offBack = window.bocas.popout.onBringBack((p) => {
+      if (p.kind !== 'poker') return
+      navigate('/poker')
+      if (p.tableId) void openTable(p.tableId)
+    })
+    return () => {
+      alive = false
+      offState()
+      offBack()
+    }
+  }, [navigate, openTable])
 
   const createTable = React.useCallback<PokerContextValue['createTable']>(
     async (input) => {
@@ -348,6 +410,25 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const popOut = React.useCallback(
+    async (tableId: string): Promise<void> => {
+      const state = await window.bocas.popout.open({ kind: 'poker', tableId }).catch(() => null)
+      if (!state?.open) return
+      setPopoutOpen(true)
+      // A mesa agora mora lá: esta janela sai da sala e volta pro chat, que
+      // é o que a pessoa queria ver enquanto joga no outro monitor.
+      leaveTable()
+      navigate('/')
+    },
+    [leaveTable, navigate]
+  )
+  const bringBack = React.useCallback(async (): Promise<void> => {
+    await window.bocas.popout.bringBack().catch(() => {})
+  }, [])
+  const focusPopout = React.useCallback(async (): Promise<void> => {
+    await window.bocas.popout.focus().catch(() => {})
+  }, [])
+
   const seatedAt = React.useMemo(() => {
     const me = user?.id
     if (!me) return null
@@ -379,7 +460,11 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
       reactions,
       react,
       reactionSoundsMuted,
-      setReactionSoundsMuted
+      setReactionSoundsMuted,
+      popoutOpen,
+      popOut,
+      bringBack,
+      focusPopout
     }),
     [
       tables,
@@ -403,7 +488,11 @@ export function PokerProvider({ children }: { children: React.ReactNode }) {
       reactions,
       react,
       reactionSoundsMuted,
-      setReactionSoundsMuted
+      setReactionSoundsMuted,
+      popoutOpen,
+      popOut,
+      bringBack,
+      focusPopout
     ]
   )
 

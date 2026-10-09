@@ -20,6 +20,7 @@
  */
 
 import { isLauncherSilenced } from './launcher-silence'
+import { isPopout } from './platform'
 
 export type UiSound =
   | 'voice-join'
@@ -558,6 +559,9 @@ export function playUiSound(name: UiSound, volume: number): void {
   // Compartilhando o som do sistema: o aviso iria pro loopback e a call
   // inteira ouviria o ping deste launcher. Ver lib/launcher-silence.
   if (isLauncherSilenced()) return
+  // Na janela própria da mesa só os sons DA MESA tocam: mensagem, menção,
+  // cutucada e afins já tocam na janela principal — em dobro vira eco.
+  if (isPopout() && !name.startsWith('poker-')) return
 
   const noise = NOISE_CUES[name]
   const cue = CUES[name]

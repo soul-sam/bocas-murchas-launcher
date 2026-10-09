@@ -2,6 +2,7 @@ import * as React from 'react'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
+import { isPopout } from './platform'
 import { useAfk } from './afk-context'
 
 /**
@@ -97,7 +98,8 @@ export function NudgeProvider({ children }: { children: React.ReactNode }) {
 
       // Janela escondida na bandeja ou atrás do jogo: o tremor não aparece pra
       // ninguém, então a notificação do sistema é o único aviso que funciona.
-      if (!document.hasFocus()) {
+      // (Da janela própria da mesa não: a principal já avisa.)
+      if (!document.hasFocus() && !isPopout()) {
         void window.bocas.notify.show({
           title:
             data.scope === 'channel'

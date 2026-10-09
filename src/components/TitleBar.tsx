@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Minus, Square, Copy, X } from 'lucide-react'
 import { UpdatePill } from '@/components/UpdatePill'
 import { useUpdater } from '@/lib/updater-context'
-import { isWeb } from '@/lib/platform'
+import { isPopout, isWeb } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { emitEgg, onEgg, useTitleDecor } from '@/lib/easter-eggs/bus'
 import { DecorButton } from '@/components/easter-eggs/DecorButton'
@@ -101,6 +101,23 @@ export function TitleBar() {
   // componente montasse nas duas plataformas.
   if (isWeb()) return null
 
+  // Janela própria da mesa: a barra é só pra arrastar e fechar — sem ovos,
+  // sem versão, sem pílula de atualização (isso tudo mora na principal).
+  if (isPopout()) {
+    return (
+      <div className="app-drag relative flex h-9 shrink-0 items-center justify-between border-b border-line bg-void pl-3 pr-0 select-none">
+        <div className="flex items-center gap-2">
+          <img src="bocas-murchas-transp.png" alt="" className="h-5 w-5 drop-shadow-[0_0_6px_rgb(var(--neon-rgb)/0.3)]" />
+          <span className="font-display text-[11px] uppercase tracking-[0.2em] text-foreground">
+            Bocas <span className="text-acid-text">Murchas</span>
+          </span>
+          <span className="font-display text-[11px] uppercase tracking-[0.2em] text-muted-foreground">· Pôquer</span>
+        </div>
+        <WindowButtons maximized={maximized} />
+      </div>
+    )
+  }
+
   return (
     <div
       className="app-drag relative flex h-9 shrink-0 items-center justify-between border-b border-line bg-void pl-3 pr-0 select-none"
@@ -172,31 +189,38 @@ export function TitleBar() {
         <UpdatePill />
       </div>
 
-      <div className="app-no-drag flex h-full items-stretch">
-        <TitleBarButton
-          label="Minimizar"
-          onClick={() => void window.bocas.appWindow.minimize()}
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </TitleBarButton>
-        <TitleBarButton
-          label={maximized ? 'Restaurar' : 'Maximizar'}
-          onClick={() => void window.bocas.appWindow.maximizeToggle()}
-        >
-          {maximized ? (
-            <Copy className="h-3 w-3 -scale-x-100" />
-          ) : (
-            <Square className="h-3 w-3" />
-          )}
-        </TitleBarButton>
-        <TitleBarButton
-          label="Fechar"
-          variant="danger"
-          onClick={() => void window.bocas.appWindow.close()}
-        >
-          <X className="h-4 w-4" />
-        </TitleBarButton>
-      </div>
+      <WindowButtons maximized={maximized} />
+    </div>
+  )
+}
+
+/** Minimizar, maximizar e fechar — da janela que chamou (o main acha pelo remetente). */
+function WindowButtons({ maximized }: { maximized: boolean }) {
+  return (
+    <div className="app-no-drag flex h-full items-stretch">
+      <TitleBarButton
+        label="Minimizar"
+        onClick={() => void window.bocas.appWindow.minimize()}
+      >
+        <Minus className="h-3.5 w-3.5" />
+      </TitleBarButton>
+      <TitleBarButton
+        label={maximized ? 'Restaurar' : 'Maximizar'}
+        onClick={() => void window.bocas.appWindow.maximizeToggle()}
+      >
+        {maximized ? (
+          <Copy className="h-3 w-3 -scale-x-100" />
+        ) : (
+          <Square className="h-3 w-3" />
+        )}
+      </TitleBarButton>
+      <TitleBarButton
+        label="Fechar"
+        variant="danger"
+        onClick={() => void window.bocas.appWindow.close()}
+      >
+        <X className="h-4 w-4" />
+      </TitleBarButton>
     </div>
   )
 }

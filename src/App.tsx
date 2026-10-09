@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BrowserRouter, HashRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/lib/auth-context'
 import { McAuthProvider } from '@/lib/mc-auth-context'
 import { InstallProvider } from '@/lib/install-context'
@@ -8,7 +8,7 @@ import { UpdaterProvider } from '@/lib/updater-context'
 import { SettingsProvider } from '@/lib/settings-context'
 import { ServerStatusProvider } from '@/lib/server-status-context'
 import { SocketProvider } from '@/lib/socket-context'
-import { isWeb } from '@/lib/platform'
+import { isPopout, isWeb } from '@/lib/platform'
 import { useVisualViewport } from '@/lib/use-visual-viewport'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { FilasProvider } from '@/components/ui/filas'
@@ -158,6 +158,22 @@ function RequirePermission({
 function AuthedShell() {
   const { shaking } = useNudge()
   const { isPhone } = useLayout()
+  const location = useLocation()
+
+  // JANELA PRÓPRIA (a mesa de pôquer em outra janela, ver lib/platform):
+  // só a tela, sem barra de ícones e sem as camadas do app inteiro. Os
+  // providers continuam os mesmos (a mesa precisa de socket, membros,
+  // gamificação…); o que não pode existir em dobro — jukebox, sobreposição,
+  // ovos, atalhos globais, AFK — se desliga sozinho por `isPopout()`.
+  if (isPopout()) {
+    if (location.pathname !== '/poker') return <Navigate to="/poker" replace />
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Outlet />
+        <PopoutOverlays />
+      </div>
+    )
+  }
 
   return (
     /* No celular a casca deita: conteúdo em cima, barra de ícones no rodapé.
@@ -180,6 +196,23 @@ function AuthedShell() {
       <NudgeOverlay />
       <GlobalOverlays />
     </div>
+  )
+}
+
+/**
+ * As camadas que a janela própria ainda precisa: o perfil de quem está na
+ * mesa (clique no avatar), o menu de contexto e a imagem ampliada (GIF de
+ * reação). O resto — configurações, lojinha, novidades, banners, jukebox,
+ * ovos, ponte da sobreposição — é da janela principal, e em dobro faria
+ * barulho duas vezes.
+ */
+function PopoutOverlays() {
+  return (
+    <>
+      <ProfileModal />
+      <UserContextMenu />
+      <ImageLightbox />
+    </>
   )
 }
 

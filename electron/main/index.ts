@@ -26,6 +26,7 @@ import {
 import { loadSettings } from './services/settings.js'
 import { startLolWatcher, stopLolWatcher } from './services/lol.js'
 import { applyOverlaySettings, destroyOverlay } from './services/overlay.js'
+import { destroyPopout } from './services/popout.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 import { closeSplash, showSplash } from './services/splash.js'
 
@@ -265,4 +266,5 @@ app.on('will-quit', () => {
   stopUpdater()
   stopLolWatcher()
   destroyOverlay()
+  destroyPopout()
 })

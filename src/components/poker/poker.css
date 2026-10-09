@@ -138,11 +138,20 @@
   position: absolute;
   left: 0;
   top: 0;
+  /* Maço parado no feltro: sombra curta e rente (a de carta solta, 14px
+     pra baixo, fazia o baralho parecer flutuando). */
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.08),
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 1px 1px rgb(0 0 0 / 0.3),
+    0 2px 5px rgb(0 0 0 / 0.22);
 }
 
-/* As queimadas: de costas e tortas do lado do maço, uma por rua. */
+/* As queimadas: de costas e tortas do lado do maço, uma por rua. As
+   medidas acompanham a largura do maço (--bw), que muda com a tela. */
 .poker-baralho .poker-queimada {
-  transform: translate(calc(-20px - var(--q) * 4px), calc(16px + var(--q) * 2px)) rotate(calc(-18deg + var(--q) * 6deg));
+  transform: translate(calc(var(--bw, 42px) * -0.48 - var(--q) * 4px), calc(var(--bw, 42px) * 0.38 + var(--q) * 2px))
+    rotate(calc(-18deg + var(--q) * 6deg));
   opacity: 0.88;
 }
 @keyframes poker-queima {
@@ -160,11 +169,11 @@
 .poker-baralho--embaralha .poker-baralho-repouso { animation: poker-repouso-espera 1000ms linear both; }
 @keyframes embaralha-abre {
   from { transform: translate(0, calc(var(--i) * -1px)); }
-  to { transform: translate(calc(var(--lado) * 30px), calc(-10px - var(--i) * 2px)) rotate(calc(var(--lado) * 18deg)); }
+  to { transform: translate(calc(var(--lado) * var(--bw, 42px) * 0.72), calc(-10px - var(--i) * 2px)) rotate(calc(var(--lado) * 18deg)); }
 }
 @keyframes embaralha-fecha {
-  from { transform: translate(calc(var(--lado) * 30px), calc(-10px - var(--i) * 2px)) rotate(calc(var(--lado) * 18deg)); }
-  55% { transform: translate(calc(var(--lado) * 9px), calc(-16px - var(--i) * 1px)) rotate(calc(var(--lado) * 5deg)); }
+  from { transform: translate(calc(var(--lado) * var(--bw, 42px) * 0.72), calc(-10px - var(--i) * 2px)) rotate(calc(var(--lado) * 18deg)); }
+  55% { transform: translate(calc(var(--lado) * var(--bw, 42px) * 0.22), calc(-16px - var(--i) * 1px)) rotate(calc(var(--lado) * 5deg)); }
   to { transform: translate(0, calc(var(--ordem) * -0.5px)); }
 }
 .poker-baralho .poker-embaralho-carta {
@@ -738,6 +747,108 @@ button.poker-vazio:hover {
   border-color: hsl(var(--acid) / 0.8);
   color: hsl(var(--acid-text));
 }
+.poker-aposta-dica {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 10.5px;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ---------- a minha pilha no feltro (HeroRack) ----------
+   À direita das minhas cartas: as cinco fichas da mesa em pilhas, com a
+   contagem embaixo. Na minha vez as pilhas viram botões. */
+.poker-rack {
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.poker-rack-pilhas {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 4px 8px 3px;
+  border-radius: 12px;
+  background: rgb(0 0 0 / 0.16);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), inset 0 0 0 1px rgb(0 0 0 / 0.18);
+}
+.poker-rack-pilha {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 30px;
+  border-radius: 8px;
+  padding: 2px 1px 1px;
+  transition: transform 120ms ease, filter 120ms ease, background-color 120ms ease;
+}
+.poker-rack-ficha {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+/* Sem ficha daquele valor: só a marca redonda no feltro. */
+.poker-rack-marca {
+  display: inline-block;
+  border-radius: 50%;
+  border: 1.5px dashed rgb(255 255 255 / 0.18);
+  margin-bottom: 3px;
+}
+.poker-rack-conta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+}
+.poker-rack-valor {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: hsl(var(--foreground) / 0.92);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.7);
+}
+.poker-rack-vezes {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 10px;
+  color: hsl(var(--foreground) / 0.6);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.7);
+}
+.poker-rack-pilha--vazia .poker-rack-conta { opacity: 0.45; }
+.poker-rack-pilha:disabled { cursor: default; }
+.poker-rack--vez .poker-rack-pilha:not(:disabled) { cursor: pointer; }
+.poker-rack--vez .poker-rack-pilha:not(:disabled):hover {
+  transform: translateY(-3px);
+  background: rgb(255 255 255 / 0.06);
+  filter: brightness(1.08) drop-shadow(0 4px 8px rgb(0 0 0 / 0.5));
+}
+.poker-rack--vez .poker-rack-pilha:not(:disabled):active { transform: translateY(0) scale(0.95); }
+.poker-rack--vez .poker-rack-pilhas {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), inset 0 0 0 1px rgb(var(--neon-rgb) / 0.45), 0 0 18px rgb(var(--neon-rgb) / 0.18);
+}
+.poker-rack-dica,
+.poker-rack-devolver {
+  margin-left: 8px;
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10.5px;
+  line-height: 16px;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+}
+.poker-rack-dica--parada { color: hsl(var(--foreground) / 0.55); }
+.poker-rack-devolver {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px dashed hsl(var(--acid) / 0.7);
+  background: hsl(var(--background) / 0.75);
+  color: hsl(var(--acid-text));
+  transition: background-color 120ms ease;
+}
+.poker-rack-devolver:hover { background: hsl(var(--acid) / 0.12); }
 
 /* O pote: o monte de fichas e o valor do lado. */
 .poker-pote-mesa {
@@ -1316,6 +1427,71 @@ button.poker-vazio:hover {
 }
 .poker-preset:hover { color: hsl(var(--foreground)); border-color: hsl(var(--acid) / 0.4); }
 .poker-preset--ativo { color: hsl(var(--acid)); border-color: hsl(var(--acid) / 0.6); background: hsl(var(--acid) / 0.1); }
+
+/* O valor da aposta, digitável: parece o número de sempre até ganhar foco. */
+.poker-valor-input {
+  width: 6.5rem;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 7px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background) / 0.6);
+  color: hsl(var(--foreground));
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.poker-valor-input:hover:not(:disabled) { border-color: hsl(var(--acid) / 0.45); }
+.poker-valor-input:focus {
+  border-color: hsl(var(--acid));
+  box-shadow: 0 0 0 1px hsl(var(--acid) / 0.4), 0 0 14px rgb(var(--neon-rgb) / 0.25);
+}
+.poker-valor-input:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Jogadas pré-escolhidas (fora da sua vez), no lugar dos botões grandes. */
+.poker-pre-titulo {
+  font-size: 11px;
+  line-height: 16px;
+  color: hsl(var(--foreground) / 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.poker-botao--pre {
+  color: hsl(var(--foreground) / 0.85);
+  background: hsl(var(--background) / 0.5);
+  border: 1px dashed hsl(var(--border-strong));
+}
+.poker-botao--pre:not(:disabled):hover { border-color: hsl(var(--foreground) / 0.4); background: hsl(var(--muted) / 0.8); }
+.poker-botao--pre-fold:not(:disabled):hover { border-color: hsl(var(--destructive) / 0.6); }
+.poker-botao--pre-ativo,
+.poker-botao--pre-ativo:not(:disabled):hover {
+  border-style: solid;
+  border-color: hsl(var(--acid));
+  background: hsl(var(--acid) / 0.12);
+  color: hsl(var(--foreground));
+  box-shadow: 0 0 16px rgb(var(--neon-rgb) / 0.25);
+}
+.poker-pre-marca {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  opacity: 0.6;
+  color: inherit;
+}
+.poker-botao--pre-ativo .poker-pre-marca {
+  opacity: 1;
+  border-color: hsl(var(--acid));
+  background: hsl(var(--acid));
+  color: hsl(var(--primary-foreground));
+}
 
 /* Trilho da régua de aposta. */
 .poker-regua {

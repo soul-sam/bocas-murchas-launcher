@@ -50,6 +50,8 @@ import type {
 import { isOverlaySide } from '../preload/types.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 import { showMainWindow } from './services/main-window.js'
+import { bringBack, closePopout, flashPopout, focusPopout, getPopoutState, openPopout } from './services/popout.js'
+import type { PopoutKind } from '../preload/types.js'
 import { app, powerMonitor } from 'electron'
 
 function serializeError(err: unknown): { message: string; code?: string } {
@@ -257,6 +259,22 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('window:is-maximized', (e) => {
     return BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false
+  })
+
+  // A mesa em outra janela (ver services/popout.ts).
+  ipcMain.handle('popout:open', (_e, payload: { kind: PopoutKind; tableId?: string | null }) =>
+    openPopout(payload?.kind ?? 'poker', payload?.tableId ?? null)
+  )
+  ipcMain.handle('popout:close', () => {
+    closePopout()
+  })
+  ipcMain.handle('popout:focus', () => focusPopout())
+  ipcMain.handle('popout:state', () => getPopoutState())
+  ipcMain.handle('popout:bring-back', () => {
+    bringBack()
+  })
+  ipcMain.handle('popout:flash', () => {
+    flashPopout()
   })
 
   // Saida de emergencia: se a interface travar de um jeito que nem o guarda do

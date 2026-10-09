@@ -4,6 +4,7 @@ import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
+import { isPopout } from './platform'
 import type { VoiceAlertEvent } from './api-alerts'
 
 /**
@@ -153,7 +154,7 @@ export function SmokeProvider({ children }: { children: React.ReactNode }) {
       const s = settingsRef.current
       const outros = smoke.members.length - 1
 
-      void window.bocas.notify.show({
+      if (!isPopout()) void window.bocas.notify.show({
         title: 'Deu a hora 🔥',
         body:
           outros > 0
@@ -173,7 +174,7 @@ export function SmokeProvider({ children }: { children: React.ReactNode }) {
         .join(', ')
 
       setCallAlert(data)
-      void window.bocas.notify.show({
+      if (!isPopout()) void window.bocas.notify.show({
         title: `Encheu: ${data.size} na call 🎙️`,
         body: data.channelName ? `${nomes} no #${data.channelName}` : nomes,
         silent: !s.soundEnabled

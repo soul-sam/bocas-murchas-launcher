@@ -23,6 +23,7 @@ import { useSettings } from './settings-context'
 import { useLayout } from './layout-context'
 import { useActivity } from './activity-context'
 import { playUiSound, type UiSound } from './ui-sounds'
+import { isPopout } from './platform'
 import { DEFAULT_SETTINGS, isShopThemeId } from '../../electron/preload/types'
 import { XpToasts } from '@/components/social/XpToast'
 
@@ -521,8 +522,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       })
       sound('levelup')
 
-      // Janela atrás do jogo: o toast não aparece pra ninguém.
-      if (!document.hasFocus()) {
+      // Janela atrás do jogo: o toast não aparece pra ninguém. (A janela
+      // própria da mesa deixa o balão com a principal.)
+      if (!document.hasFocus() && !isPopout()) {
         void window.bocas.notify.show({
           title: `Nível ${data.level}!`,
           body:

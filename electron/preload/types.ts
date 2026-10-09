@@ -1140,6 +1140,16 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   clipBuffer: true
 }
 
+/** Telas que sabem viver em janela própria (ver main/services/popout.ts). */
+export type PopoutKind = 'poker'
+
+export interface PopoutState {
+  open: boolean
+  kind: PopoutKind | null
+  /** A mesa que a janela própria está mostrando, se souber. */
+  tableId: string | null
+}
+
 export interface BocasAPI {
   auth: {
     saveToken: (token: string) => Promise<void>
@@ -1223,6 +1233,24 @@ export interface BocasAPI {
   }
   notify: {
     show: (payload: { title: string; body: string; silent?: boolean }) => Promise<void>
+  }
+  /**
+   * Uma tela em janela própria (hoje, a mesa de pôquer): a principal pede
+   * `open`, a janela própria pede `bringBack`; as duas ouvem `onState`.
+   */
+  popout: {
+    open: (payload: { kind: PopoutKind; tableId?: string | null }) => Promise<PopoutState>
+    close: () => Promise<void>
+    /** Traz a janela própria pra frente. `false` se ela não existe. */
+    focus: () => Promise<boolean>
+    state: () => Promise<PopoutState>
+    /** Da janela própria: fecha ela e a principal abre a mesma tela. */
+    bringBack: () => Promise<void>
+    /** Pisca a janela própria na barra de tarefas (sua vez, janela atrás). */
+    flash: () => Promise<void>
+    onState: (cb: (state: PopoutState) => void) => () => void
+    /** Na principal: a janela própria pediu pra voltar. */
+    onBringBack: (cb: (payload: { kind: PopoutKind; tableId: string | null }) => void) => () => void
   }
   /** Leitura do cliente do League of Legends (LCU) na maquina. */
   lol: {

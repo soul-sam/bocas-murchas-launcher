@@ -121,6 +121,16 @@ const api: BocasAPI = {
     setPanelOpen: (open) => ipcRenderer.invoke('overlay:set-panel-open', open),
     onOutsideClick: (cb) => on('overlay:outside-click', () => cb())
   },
+  popout: {
+    open: (payload) => ipcRenderer.invoke('popout:open', payload),
+    close: () => ipcRenderer.invoke('popout:close'),
+    focus: () => ipcRenderer.invoke('popout:focus'),
+    state: () => ipcRenderer.invoke('popout:state'),
+    bringBack: () => ipcRenderer.invoke('popout:bring-back'),
+    flash: () => ipcRenderer.invoke('popout:flash'),
+    onState: (cb) => on('popout:state', cb),
+    onBringBack: (cb) => on('popout:bring-back', cb)
+  },
   app: {
     applyAutostart: () => ipcRenderer.invoke('app:apply-autostart'),
     launchedAtLogin: () => ipcRenderer.invoke('app:launched-at-login'),

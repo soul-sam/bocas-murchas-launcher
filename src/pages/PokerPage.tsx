@@ -1,11 +1,14 @@
 import * as React from 'react'
-import { BookOpen, X } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { AppWindow, BookOpen, Undo2, X } from 'lucide-react'
 import { poker as api, type HandCategory, type PokerRules } from '@/lib/api-poker'
 import { useAuth } from '@/lib/auth-context'
 import { useLayout } from '@/lib/layout-context'
+import { isPopout } from '@/lib/platform'
 import { usePoker } from '@/lib/poker-context'
 import { useCamadaVoltar } from '@/lib/use-camada-voltar'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { BackToHall } from '@/components/games/BackToHall'
 import { CashPanel } from '@/components/poker/CashPanel'
 import { HandRankings } from '@/components/poker/HandRankings'
@@ -35,9 +38,11 @@ import '@/components/poker/poker.css'
 type View = 'lobby' | 'cash'
 
 export function PokerPage() {
-  const { table, leaveTable, seatedAt, openTable } = usePoker()
+  const { table, leaveTable, seatedAt, openTable, popoutOpen, focusPopout, bringBack } = usePoker()
   const { token } = useAuth()
   const { isPhone } = useLayout()
+  const [params, setParams] = useSearchParams()
+  const popout = isPopout()
 
   const [rules, setRules] = React.useState<PokerRules | null>(null)
   const [view, setView] = React.useState<View>('lobby')
@@ -60,12 +65,26 @@ export function PokerPage() {
     }
   }, [token])
 
-  // Sentado numa mesa e sem mesa aberta na tela: cai nela. É o que a pessoa
-  // quer ao voltar pra aba — não o saguão.
+  // A janela própria chega com `?mesa=<id>` na rota: abre essa mesa e
+  // limpa a query (senão um "Saguão" voltaria pra ela).
+  const mesaParam = params.get('mesa')
   React.useEffect(() => {
-    if (seatedAt && !table) void openTable(seatedAt.id)
+    if (!mesaParam) return
+    void openTable(mesaParam)
+    setParams((p) => {
+      p.delete('mesa')
+      return p
+    }, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seatedAt?.id])
+  }, [mesaParam])
+
+  // Sentado numa mesa e sem mesa aberta na tela: cai nela. É o que a pessoa
+  // quer ao voltar pra aba — não o saguão. Com a mesa em outra janela, não:
+  // aqui fica o aviso.
+  React.useEffect(() => {
+    if (seatedAt && !table && !popoutOpen && !mesaParam) void openTable(seatedAt.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seatedAt?.id, popoutOpen])
 
   // Saindo da tela: quem só assistia sai da sala; quem está sentado fica.
   const tableRef = React.useRef(table)
@@ -109,7 +128,15 @@ export function PokerPage() {
               {rules?.cashEnabled ? ' — ou, na mesa valendo, dinheiro de verdade até R$ 20' : ''}
             </p>
           </div>
-          <BackToHall />
+          {/* Na janela própria não há salão pra voltar: o caminho é "voltar pro launcher". */}
+          {popout ? (
+            <Button variant="outline" size="sm" onClick={() => void bringBack()}>
+              <Undo2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              Voltar pro launcher
+            </Button>
+          ) : (
+            <BackToHall />
+          )}
         </header>
       )}
 
@@ -121,6 +148,27 @@ export function PokerPage() {
             // O caixa abre também de dentro da mesa (quem quebrou e precisa
             // depositar); "voltar" cai na mesa, se houver, senão no saguão.
             <CashPanel onBack={() => setView('lobby')} />
+          ) : popoutOpen && !table ? (
+            // A mesa está na janela própria: aqui só o aviso e os dois caminhos.
+            <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+              <div className="card-gradient flex w-full max-w-md flex-col items-center gap-3 rounded-brutal border-2 border-acid-dark p-6 text-center shadow-[0_20px_60px_rgb(0_0_0/0.6)]">
+                <AppWindow className="h-8 w-8 text-acid" aria-hidden />
+                <h2 className="text-base font-semibold text-foreground">A mesa está em outra janela</h2>
+                <p className="text-[12.5px] text-muted-foreground">
+                  Você abriu o pôquer numa janela própria. Jogue por lá e use o launcher aqui — ou traga a mesa de volta.
+                </p>
+                <div className="mt-1 flex flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => void focusPopout()}>
+                    <AppWindow className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                    Mostrar a janela
+                  </Button>
+                  <Button size="sm" onClick={() => void bringBack()}>
+                    <Undo2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                    Trazer pra cá
+                  </Button>
+                </div>
+              </div>
+            </div>
           ) : table ? (
             <PokerTable onOpenRules={openRules} onOpenCash={() => setView('cash')} />
           ) : (

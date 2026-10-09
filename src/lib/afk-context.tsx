@@ -4,6 +4,7 @@ import { useAuth } from './auth-context'
 import { useSettings } from './settings-context'
 import { useSocket } from './socket-context'
 import { useVoice } from './voice-context'
+import { isPopout } from './platform'
 import { marcarFala, marcarVolta, silencioMs } from './presenca-de-fala'
 
 /**
@@ -254,7 +255,7 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
    * do botão.
    */
   React.useEffect(() => {
-    if (!socket) return
+    if (!socket || isPopout()) return
     const reassert = (): void => {
       if (afkRef.current) applyRemote('away')
     }
@@ -401,6 +402,9 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
     const minutes = settings.afkAutoMinutes
     const silenceMinutes = settings.afkSilenceMinutes
     if (!token || (minutes <= 0 && silenceMinutes <= 0)) return
+    // O relógio do AFK é um só, o da janela principal: a janela própria da
+    // mesa marcando "ausente" enquanto a principal desmarca viraria pisca-pisca.
+    if (isPopout()) return
 
     const limitMs = minutes * 60_000
     const silenceLimitMs = silenceMinutes * 60_000

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import type { HotkeyBinding, HotkeyRegistration } from '../../electron/preload/types'
 import { useSettings } from './settings-context'
+import { isPopout } from './platform'
 import { useVoice } from './voice-context'
 import { useSoundboard } from './soundboard-context'
 import { useNudge } from './nudge-context'
@@ -96,6 +97,9 @@ export function HotkeysProvider({ children }: { children: React.ReactNode }) {
       })
     }
 
+    // Atalho global é registrado UMA vez, pela janela principal; a janela
+    // própria da mesa só ouviria em dobro.
+    if (isPopout()) return
     void window.bocas.hotkeys.set(bindings).then(setRegistrations)
   }, [hotkeys])
 

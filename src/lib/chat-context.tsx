@@ -16,6 +16,7 @@ import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
+import { isPopout } from './platform'
 import { collectMentions, mentionsEveryone } from './rich-text'
 import { useCargos } from './cargos-context'
 import { marcarFala } from './presenca-de-fala'
@@ -623,6 +624,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (mentionsMe) {
         setMentions((prev) => ({ ...prev, [bucket]: (prev[bucket] ?? 0) + 1 }))
       }
+
+      // Som e balão são da janela principal; a janela própria da mesa só
+      // acompanha os contadores.
+      if (isPopout()) return
 
       const soundVolume = settingsRef.current.soundEnabled
         ? settingsRef.current.soundVolume
