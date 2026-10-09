@@ -432,6 +432,31 @@ function SlotPicker({
     }
   }
 
+  /**
+   * Mais um rolo do mesmo filamento direto neste slot — pra quem tem dois
+   * rolos iguais e quer os dois no ACE sem tirar o outro do slot dele. Rolo
+   * novo começa cheio; "Pesei" acerta depois.
+   */
+  async function cloneHere(spool: FilamentSpoolRow): Promise<void> {
+    setBusy(spool.id)
+    setError(null)
+    try {
+      await printApi.createSpool(token, {
+        material: spool.material,
+        colorName: spool.colorName,
+        colorHex: spool.colorHex,
+        brand: spool.brand ?? undefined,
+        totalGrams: spool.totalGrams,
+        slot,
+        groupId: spool.groupId ?? null
+      })
+      await onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não deu')
+      setBusy(null)
+    }
+  }
+
   const sections = [
     { id: null as string | null, name: 'Estoque geral' },
     ...groups.map((group) => ({
@@ -482,8 +507,9 @@ function SlotPicker({
               <ul className="grid gap-1 sm:grid-cols-2">
                 {section.spools.map((spool) => {
                   const here = spool.slot === slot
+                  const elsewhere = !here && spool.slot !== null
                   return (
-                    <li key={spool.id}>
+                    <li key={spool.id} className="flex items-stretch gap-1">
                       <button
                         type="button"
                         disabled={here || busy !== null}
@@ -513,6 +539,18 @@ function SlotPicker({
                         {busy === spool.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
                         {spool.low && !busy && <AlertTriangle className="h-3.5 w-3.5 text-burn" />}
                       </button>
+                      {elsewhere && (
+                        <button
+                          type="button"
+                          disabled={busy !== null}
+                          onClick={() => void cloneHere(spool)}
+                          title={`Tem mais um rolo igual? Cadastra outro aqui sem tirar o do slot ${spool.slot! + 1}`}
+                          aria-label="Outro rolo igual neste slot"
+                          className="flex shrink-0 items-center rounded-brutal border border-line bg-void/40 px-2 text-muted-foreground transition-colors hover:border-acid-dark/60 hover:text-foreground disabled:opacity-60"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </li>
                   )
                 })}
@@ -551,6 +589,9 @@ function SpoolRow({
   const [error, setError] = React.useState<string | null>(null)
   const [weighing, setWeighing] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
+  // "Outro rolo": cadastro novo já preenchido com este — pra quem tem mais
+  // de um rolo do mesmo filamento e quer os dois no ACE.
+  const [cloning, setCloning] = React.useState(false)
   const [grams, setGrams] = React.useState(String(spool.remainingGrams))
 
   const pct = spool.totalGrams > 0 ? Math.min(100, (spool.remainingGrams / spool.totalGrams) * 100) : 0
@@ -674,6 +715,16 @@ function SpoolRow({
                 <Pencil className="mr-2 h-3.5 w-3.5" />
                 Editar
               </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy || cloning}
+                title="Cadastra mais um rolo igual a este (mesmo filamento, saldo próprio)"
+                onClick={() => setCloning(true)}
+              >
+                <Plus className="mr-2 h-3.5 w-3.5" />
+                Outro rolo
+              </Button>
               {spool.status === 'active' ? (
                 <Button size="sm" variant="ghost" disabled={busy} onClick={() => void update({ status: 'empty' })}>
                   Acabou
@@ -729,6 +780,21 @@ function SpoolRow({
           onCancel={() => setEditing(false)}
         />
       )}
+
+      {canOperate && cloning && (
+        <SpoolForm
+          template={spool}
+          acceptedFilaments={acceptedFilaments}
+          groups={groups}
+          defaultGroupId={spool.groupId ?? null}
+          slotCount={slotCount}
+          onDone={async () => {
+            setCloning(false)
+            await onChanged()
+          }}
+          onCancel={() => setCloning(false)}
+        />
+      )}
     </li>
   )
 }
@@ -736,9 +802,14 @@ function SpoolRow({
 /**
  * Cadastro de rolo — ou edição, quando vem `spool`. Editando, slot e grupo
  * ficam de fora: já se trocam direto na linha do rolo.
+ *
+ * `template` é cadastro novo já preenchido com outro rolo (mesmo filamento,
+ * mais um rolo físico): cada rolo tem o seu saldo, por isso não é "um rolo
+ * em dois slots" e sim dois rolos iguais.
  */
 function SpoolForm({
   spool,
+  template,
   acceptedFilaments,
   groups,
   defaultGroupId,
@@ -747,6 +818,7 @@ function SpoolForm({
   onCancel
 }: {
   spool?: FilamentSpoolRow
+  template?: FilamentSpoolRow
   acceptedFilaments: string[]
   groups: FilamentGroupRow[]
   defaultGroupId: string | null
@@ -756,11 +828,12 @@ function SpoolForm({
 }) {
   const { token } = useAuth()
   const editing = spool !== undefined
-  const [material, setMaterial] = React.useState(spool?.material ?? acceptedFilaments[0] ?? 'PLA')
-  const [colorName, setColorName] = React.useState(spool?.colorName ?? '')
-  const [colorHex, setColorHex] = React.useState(spool?.colorHex ?? '#000000')
-  const [brand, setBrand] = React.useState(spool?.brand ?? '')
-  const [total, setTotal] = React.useState(String(spool?.totalGrams ?? 1000))
+  const base = spool ?? template
+  const [material, setMaterial] = React.useState(base?.material ?? acceptedFilaments[0] ?? 'PLA')
+  const [colorName, setColorName] = React.useState(base?.colorName ?? '')
+  const [colorHex, setColorHex] = React.useState(base?.colorHex ?? '#000000')
+  const [brand, setBrand] = React.useState(base?.brand ?? '')
+  const [total, setTotal] = React.useState(String(base?.totalGrams ?? 1000))
   const [slot, setSlot] = React.useState<string>('')
   const [groupId, setGroupId] = React.useState<string>(defaultGroupId ?? '')
   const [busy, setBusy] = React.useState(false)
@@ -888,7 +961,7 @@ function SpoolForm({
           disabled={busy || colorName.trim().length === 0}
         >
           {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {editing ? 'Salvar' : 'Cadastrar'}
+          {editing ? 'Salvar' : template ? 'Cadastrar outro rolo' : 'Cadastrar'}
         </Button>
         <Button size="sm" variant="ghost" onClick={onCancel} disabled={busy}>
           Cancelar
