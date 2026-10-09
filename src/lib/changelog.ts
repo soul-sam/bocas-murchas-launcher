@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.61.0',
+    headline: 'Mais de um rolo do mesmo filamento',
+    items: [
+      'Tem dois rolos iguais? "Outro rolo" na linha do rolo cadastra mais um já preenchido; cada rolo tem o seu saldo em gramas.',
+      'No seletor do slot, filamento que já está noutro slot ganha um "+" pra pôr outro rolo igual aqui sem tirar o de lá.'
+    ]
+  },
+  {
     version: '1.60.0',
     headline: 'Pôquer: a mesa do seu jeito',
     items: [
