@@ -296,13 +296,10 @@
 .board-casa--ativa {
   cursor: pointer;
 }
-/* Peça que dá pra pegar: a mãozinha aberta; arrastando, a fechada no app todo. */
+/* Peça que dá pra pegar: a mãozinha aberta; arrastando, a fechada (na camada
+   do arrasto, lá embaixo). */
 .board-casa--pega {
   cursor: grab;
-}
-:root.board-arrastando,
-:root.board-arrastando * {
-  cursor: grabbing !important;
 }
 .board-casa:focus-visible {
   outline: 2px solid hsl(var(--ring));
@@ -401,10 +398,48 @@
 .board-casa--alerta {
   animation: board-alerta 0.32s ease-in-out 2;
 }
-/* arrastando: a casa embaixo do cursor ganha o contorno */
-.board-casa--sob {
-  outline: 3px solid hsl(var(--foreground) / 0.75);
-  outline-offset: -3px;
+/* arrastando: a MIRA marca onde a peça cai. Um quadro só, do tamanho de uma
+   casa, que o Board leva de casa em casa pelo `transform` (sem redesenhar a
+   grade). Acima da luz e do ruído (z 1) e, por vir depois das casas no DOM,
+   também da casa de chegada (z 3: a recaptura mira justo nela); abaixo das
+   setas. Sobre um destino acende na cor do lance; fora, só o contorno. */
+.board-mira {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  display: none;
+  width: 12.5%;
+  height: 12.5%;
+  pointer-events: none;
+}
+.board-mira[data-mira] {
+  display: block;
+}
+.board-mira[data-mira='casa'] {
+  box-shadow: inset 0 0 0 3px hsl(var(--foreground) / 0.7);
+}
+.board-mira[data-mira='alvo'] {
+  background: hsl(var(--acid) / 0.22);
+  box-shadow: inset 0 0 0 4px hsl(var(--acid) / 0.9);
+}
+.board-grade--pre .board-mira[data-mira='alvo'] {
+  background: hsl(var(--destructive) / 0.22);
+  box-shadow: inset 0 0 0 4px hsl(var(--destructive) / 0.9);
+}
+/* no toque o dedo cobre a casa: um halo de duas casas em volta dela */
+.board-mira[data-toque]::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  border-radius: 999px;
+  background: hsl(var(--foreground) / 0.14);
+}
+.board-mira[data-toque][data-mira='alvo']::before {
+  background: hsl(var(--acid) / 0.24);
+}
+.board-grade--pre .board-mira[data-toque][data-mira='alvo']::before {
+  background: hsl(var(--destructive) / 0.24);
 }
 /* arrastando: a peça fica de fantasma na casa de onde saiu */
 .board-casa--origem .board-peca {
@@ -470,13 +505,21 @@
 }
 
 /* ---------- a peça arrastada ----------
-   Desenhada no <body> (portal), fora da grade: passa da borda do tabuleiro e
-   não é cortada pelo `overflow` nem presa pela contenção das casas. */
+   Uma camada na tela toda, no <body> (portal), fora da grade: a peça passa da
+   borda do tabuleiro sem ser cortada pelo `overflow` nem presa pela contenção
+   das casas, e a mão fechada vale em qualquer lugar sem reestilizar o app
+   inteiro a cada pegada (o que um `:root.x *` faria). Os ouvintes do gesto
+   estão no `window`, então a camada por cima não atrapalha nada. */
 .board-arrasto {
   position: fixed;
+  inset: 0;
+  z-index: 60;
+  cursor: grabbing;
+}
+.board-arrasto-peca {
+  position: absolute;
   left: 0;
   top: 0;
-  z-index: 60;
   display: grid;
   place-items: center;
   pointer-events: none;

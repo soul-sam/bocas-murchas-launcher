@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.63.0',
+    headline: 'Arrastar peça ficou mais fácil',
+    items: [
+      'Botão direito com a peça na mão desiste do lance: a peça volta pra casa e os pré-lances da fila caem junto. Antes o direito era ignorado e, ao soltar, o lance era jogado.',
+      'Enquanto você arrasta, a casa onde a peça vai cair acende: verde quando o lance vale (vermelho no pré-lance), só um contorno quando não vale.',
+      'Soltou perto da borda de uma casa válida, ou passou um pouco da beira do tabuleiro? O lance vale, em vez de a peça voltar.',
+      'Pegar a peça não dá mais aquele engasgo, e o tabuleiro não se redesenha a cada casa que você cruza.',
+      'No celular, a peça arrastada fica maior e a casa de destino ganha um halo, pro dedo não esconder onde ela vai cair.',
+      'Botão direito na escolha de promoção também desiste dela.'
+    ]
+  },
+  {
     version: '1.62.0',
     headline: 'Compartilhar tela de verdade',
     items: [

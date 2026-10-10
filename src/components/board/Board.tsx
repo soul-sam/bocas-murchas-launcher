@@ -23,9 +23,12 @@ import './board.css'
  * mecânica do chess.com:
  *
  *  - ARRASTAR: a peça sai da casa e segue o cursor (desenhada fora da grade,
- *    num portal no <body>, pra poder passar da borda); a casa embaixo do
- *    cursor ganha um contorno; soltar num destino joga, soltar em outro lugar
- *    devolve a peça. Soltar na própria casa deixa a peça escolhida.
+ *    num portal no <body>, pra poder passar da borda). A MIRA marca onde ela
+ *    cai: acende na cor do lance sobre um destino e é só um contorno fora
+ *    dele. O destino tem ímã: soltar perto da borda dele (ou um pouco além da
+ *    beira do tabuleiro) conta como soltar nele, e a mira já mostra isso.
+ *    Soltar longe de destino devolve a peça; na própria casa, ela continua
+ *    escolhida. O botão direito com a peça na mão cancela o arrasto.
  *  - CLICAR: clica a peça (bolinhas nos destinos, aro nas capturas) e clica o
  *    destino. Clicar a peça escolhida de novo desmarca.
  *  - PRÉ-LANCE: na vez do outro as minhas peças continuam pegáveis; o destino
@@ -71,6 +74,15 @@ const NO_PREMOVES: readonly string[] = []
 
 /** Quanto o ponteiro anda antes de virar arrasto (abaixo disso é clique). */
 const DRAG_START_PX = 4
+/**
+ * Ímã do arrasto, em casas: fora de um destino, a peça cai no destino cujo
+ * centro está mais perto que isto. A casa vizinha de lado (centro a 0,5 da
+ * borda) atrai até ~1/5 de casa pra dentro da casa errada; a do canto (0,71)
+ * quase não atrai, e o meio de uma casa errada nunca é atraído.
+ */
+const SNAP_SQUARES = 0.72
+/** No toque o dedo cobre a casa: a peça arrastada cresce pra aparecer em volta dele. */
+const TOUCH_GHOST_SCALE = 1.5
 /** Quanto o rei pisca quando a peça pega não tem saída. */
 const FLASH_MS = 700
 
@@ -100,11 +112,26 @@ interface Choice {
 interface Drag {
   from: string
   pointerId: number
+  pointerType: string
   x0: number
   y0: number
+  /** Último ponto do ponteiro (a mira se refaz nele se as regras mudarem no meio). */
+  x: number
+  y: number
   active: boolean
   /** A peça já estava escolhida: clique sem arrastar desmarca. */
   wasSelected: boolean
+  /** Destinos da peça, refeitos quando a lista de lances muda no meio do gesto. */
+  targets: Set<string>
+  targetsOf: ((square: string) => Array<{ move: string; to: string }>) | null
+}
+/** Onde a peça arrastada cai: a casa e a posição dela na tela (coluna e linha já orientadas). */
+interface Aim {
+  square: string
+  col: number
+  row: number
+  /** É destino da peça (soltar joga). */
+  target: boolean
 }
 interface Draw {
   from: string
@@ -174,14 +201,16 @@ export const Board = React.memo(function Board({
 }: BoardProps) {
   const gridRef = React.useRef<HTMLDivElement>(null)
   const ghostRef = React.useRef<HTMLDivElement>(null)
+  // A mira anda pelo estilo, direto no DOM: trocar de casa no meio do arrasto
+  // não redesenha as 64 casas.
+  const aimRef = React.useRef<HTMLDivElement>(null)
+  const aimKeyRef = React.useRef('')
   const dragRef = React.useRef<Drag | null>(null)
   const drawRef = React.useRef<Draw | null>(null)
-  const hoverRef = React.useRef<string | null>(null)
 
   const [selected, setSelected] = React.useState<string | null>(null)
   const [choice, setChoice] = React.useState<Choice | null>(null)
   const [dragFrom, setDragFrom] = React.useState<string | null>(null)
-  const [hover, setHover] = React.useState<string | null>(null)
   const [ghost, setGhost] = React.useState<Ghost | null>(null)
   const [arrows, setArrows] = React.useState<Arrow[]>([])
   const [marks, setMarks] = React.useState<Mark[]>([])
@@ -229,18 +258,25 @@ export const Board = React.memo(function Board({
   const ranks = flipped ? [...RANKS].reverse() : RANKS
 
   // O mais novo de tudo, pros ouvintes do window (que vivem mais que um render).
-  const live = React.useRef({ mode, movesFromSquare, squares, cells, game, variant, onMove, onPremove })
-  live.current = { mode, movesFromSquare, squares, cells, game, variant, onMove, onPremove }
+  const latest = { mode, movesFromSquare, squares, cells, game, variant, onMove, onPremove, premoves, onCancelPremoves }
+  const live = React.useRef(latest)
+  live.current = latest
 
   // Posição, lances ou modo novos: a escolha aberta não vale mais, e a peça
   // escolhida só continua se ainda tiver para onde ir. Arrasto em curso
   // continua: quem decide é a soltura, já com as regras novas (o adversário
-  // jogou no meio do gesto e o pré-lance vira lance).
+  // jogou no meio do gesto e o pré-lance vira lance) — e a mira se refaz
+  // com elas sem esperar o ponteiro mexer.
   const legalKey = legalMoves.join(',')
   React.useEffect(() => {
     setChoice(null)
-    if (dragRef.current?.active) return
+    const d = dragRef.current
+    if (d?.active) {
+      paintAim(dropAt(d.x, d.y, d))
+      return
+    }
     setSelected((prev) => (prev && live.current.movesFromSquare(prev).length > 0 ? prev : null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- paintAim/dropAt só leem refs
   }, [position, legalKey, mode])
 
   // Escolha aberta: o foco vai pra primeira opção e Esc fecha tudo.
@@ -274,6 +310,63 @@ export const Board = React.memo(function Board({
     return squareName(live.current.cells[row * 8 + col])
   }, [])
 
+  /**
+   * Onde a peça arrastada cai se for solta em (x, y): a casa sob o ponteiro
+   * se for destino (ou a própria origem); senão o destino mais perto dentro
+   * do ímã, que também alcança um pouco além da beira do tabuleiro. Sem
+   * destino por perto, a casa sob o ponteiro (soltar ali devolve a peça);
+   * fora do tabuleiro, nada.
+   */
+  const dropAt = (x: number, y: number, d: Drag): Aim | null => {
+    const grid = gridRef.current
+    if (!grid) return null
+    const r = grid.getBoundingClientRect()
+    const gx = ((x - r.left) / r.width) * 8
+    const gy = ((y - r.top) / r.height) * 8
+    const { cells: order, movesFromSquare: list } = live.current
+    if (d.targetsOf !== list) {
+      d.targetsOf = list
+      d.targets = new Set(list(d.from).map((o) => o.to))
+    }
+    let under: Aim | null = null
+    if (gx >= 0 && gx < 8 && gy >= 0 && gy < 8) {
+      const col = Math.min(7, Math.floor(gx))
+      const row = Math.min(7, Math.floor(gy))
+      const square = squareName(order[row * 8 + col])
+      under = { square, col, row, target: d.targets.has(square) }
+      if (under.target || square === d.from) return under
+    }
+    let best: Aim | null = null
+    let bestDist = SNAP_SQUARES
+    for (let k = 0; k < 64; k++) {
+      const square = squareName(order[k])
+      if (!d.targets.has(square)) continue
+      const col = k % 8
+      const row = Math.floor(k / 8)
+      const dist = Math.hypot(gx - col - 0.5, gy - row - 0.5)
+      if (dist < bestDist) {
+        bestDist = dist
+        best = { square, col, row, target: true }
+      }
+    }
+    return best ?? under
+  }
+
+  /** Põe a mira na casa (ou tira). Só mexe no DOM quando o lugar ou o tipo mudam. */
+  const paintAim = (aim: Aim | null): void => {
+    const key = aim ? `${aim.col}${aim.row}${aim.target ? '+' : ''}` : ''
+    if (key === aimKeyRef.current) return
+    aimKeyRef.current = key
+    const el = aimRef.current
+    if (!el) return
+    if (!aim) {
+      delete el.dataset.mira
+      return
+    }
+    el.dataset.mira = aim.target ? 'alvo' : 'casa'
+    el.style.transform = `translate(${aim.col * 100}%, ${aim.row * 100}%)`
+  }
+
   // --- jogar ---------------------------------------------------------------
   const fire = React.useCallback((move: string, how: How, m: Mode): void => {
     setSelected(null)
@@ -306,7 +399,8 @@ export const Board = React.memo(function Board({
   const impl = React.useRef({
     move: (_e: PointerEvent): void => {},
     up: (_e: PointerEvent): void => {},
-    abort: (): void => {}
+    abort: (): void => {},
+    cancel: (): void => {}
   })
   const stable = React.useRef({
     move: (e: PointerEvent): void => impl.current.move(e),
@@ -327,31 +421,49 @@ export const Board = React.memo(function Board({
     window.removeEventListener('pointercancel', s.up)
     window.removeEventListener('blur', s.abort)
   }, [])
-  React.useEffect(
-    () => () => {
-      unlisten()
-      document.documentElement.classList.remove('board-arrastando')
-    },
-    [unlisten]
-  )
+  React.useEffect(() => unlisten, [unlisten])
 
   const endDrag = (): void => {
     dragRef.current = null
-    hoverRef.current = null
     setDragFrom(null)
-    setHover(null)
     setGhost(null)
-    document.documentElement.classList.remove('board-arrastando')
+    paintAim(null)
   }
 
-  /** O botão direito solto fora do tabuleiro ainda abriria o menu do sistema. */
+  /**
+   * O botão direito que acabou de cancelar ou desenhar ainda abriria um menu
+   * (o do sistema, ou o da tela embaixo se o cursor saiu do tabuleiro). Esse
+   * menu chega quando o botão SOBE, então a trava espera por ele — até o
+   * próximo clique ou 2 s, pra não engolir o menu de outra coisa.
+   */
   const swallowNextContextMenu = (): void => {
-    const kill = (ev: Event): void => ev.preventDefault()
-    window.addEventListener('contextmenu', kill, { capture: true, once: true })
-    setTimeout(() => window.removeEventListener('contextmenu', kill, { capture: true }), 400)
+    const done = (): void => {
+      clearTimeout(timer)
+      window.removeEventListener('contextmenu', kill, true)
+      window.removeEventListener('pointerdown', done, true)
+    }
+    const kill = (ev: Event): void => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      done()
+    }
+    window.addEventListener('contextmenu', kill, true)
+    window.addEventListener('pointerdown', done, true)
+    const timer = setTimeout(done, 2000)
   }
 
   impl.current = {
+    // Botão direito com a peça na mão: ela volta pra casa, nada fica escolhido
+    // e os pré-lances da fila caem junto (no chess.com o direito cancela tudo).
+    cancel: () => {
+      unlisten()
+      endDrag()
+      setSelected(null)
+      setChoice(null)
+      const { premoves: queued, onCancelPremoves: dropQueue } = live.current
+      if (queued.length > 0) dropQueue?.()
+      swallowNextContextMenu()
+    },
     // A janela perdeu o foco no meio do gesto (alt-tab): a peça volta pra casa.
     abort: () => {
       unlisten()
@@ -365,9 +477,16 @@ export const Board = React.memo(function Board({
       }
     },
     move: (e) => {
+      const d = dragRef.current
+      // O direito apertado com o esquerdo ainda embaixo não vira pointerdown:
+      // chega aqui, como pointermove com `button` 2.
+      if (d && e.pointerId === d.pointerId && e.button === 2 && (e.buttons & 2) !== 0) {
+        impl.current.cancel()
+        return
+      }
       // Botão solto fora da janela (o pointerup não chegou): o gesto acabou.
       const held = e.pointerType !== 'mouse' || (e.buttons & (drawRef.current ? 2 : 1)) !== 0
-      if (!held && (dragRef.current || drawRef.current)) {
+      if (!held && (d || drawRef.current)) {
         impl.current.abort()
         return
       }
@@ -380,31 +499,29 @@ export const Board = React.memo(function Board({
         }
         return
       }
-      const d = dragRef.current
       if (!d || e.pointerId !== d.pointerId) return
+      d.x = e.clientX
+      d.y = e.clientY
       if (!d.active) {
         if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < DRAG_START_PX) return
         const piece = live.current.squares[squareIndex(d.from)]
         const grid = gridRef.current
         if (!piece || !grid) return
         d.active = true
+        const touch = d.pointerType === 'touch'
         setGhost({
           piece,
           light: sideIsLight(live.current.game, live.current.variant, piece.side),
-          size: grid.getBoundingClientRect().width / 8,
+          size: (grid.getBoundingClientRect().width / 8) * (touch ? TOUCH_GHOST_SCALE : 1),
           x: e.clientX,
           y: e.clientY
         })
         setDragFrom(d.from)
-        document.documentElement.classList.add('board-arrastando')
+        aimRef.current?.toggleAttribute('data-toque', touch)
       }
       const el = ghostRef.current
       if (el) el.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`
-      const over = squareAt(e.clientX, e.clientY)
-      if (over !== hoverRef.current) {
-        hoverRef.current = over
-        setHover(over)
-      }
+      paintAim(dropAt(e.clientX, e.clientY, d))
     },
     up: (e) => {
       const draw = drawRef.current
@@ -434,7 +551,8 @@ export const Board = React.memo(function Board({
       const d = dragRef.current
       if (!d || e.pointerId !== d.pointerId) return
       unlisten()
-      const target = e.type === 'pointercancel' ? null : squareAt(e.clientX, e.clientY)
+      // Cai onde a mira estava: a mesma conta, com o ímã.
+      const target = e.type === 'pointercancel' || !d.active ? null : (dropAt(e.clientX, e.clientY, d)?.square ?? null)
       const wasActive = d.active
       endDrag()
       if (wasActive) {
@@ -503,10 +621,15 @@ export const Board = React.memo(function Board({
       dragRef.current = {
         from: square,
         pointerId: e.pointerId,
+        pointerType: e.pointerType,
         x0: e.clientX,
         y0: e.clientY,
+        x: e.clientX,
+        y: e.clientY,
         active: false,
-        wasSelected: selected === square
+        wasSelected: selected === square,
+        targets: new Set(),
+        targetsOf: null
       }
       listen()
       return
@@ -667,7 +790,6 @@ export const Board = React.memo(function Board({
                   isTarget && piece && 'board-casa--ocupada',
                   checkSquare === name && 'board-casa--xeque',
                   flash === name && 'board-casa--alerta',
-                  dragFrom && hover === name && 'board-casa--sob',
                   dragFrom === name && 'board-casa--origem',
                   motion && 'board-casa--chegada'
                 )}
@@ -691,6 +813,9 @@ export const Board = React.memo(function Board({
             )
           })}
 
+          {/* A mira do arrasto: posta e tirada pelo `paintAim` (data-mira), fora do React. */}
+          <div ref={aimRef} aria-hidden className="board-mira" />
+
           {(arrows.length > 0 || preview) && (
             <svg className="board-setas" viewBox="0 0 8 8" aria-hidden focusable="false">
               {arrows.map((a) => (
@@ -713,7 +838,13 @@ export const Board = React.memo(function Board({
               style={choiceStyle}
               role="group"
               aria-label={choice.kind === 'promotion' ? 'Promover para' : 'Escolha o caminho'}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => {
+                e.stopPropagation()
+                // Botão direito na escolha desiste dela (e não marca a casa embaixo).
+                if (e.button !== 2) return
+                setChoice(null)
+                setSelected(null)
+              }}
             >
               {choice.kind === 'promotion'
                 ? PROMOTION_ORDER.map((kind) => {
@@ -764,17 +895,18 @@ export const Board = React.memo(function Board({
 
       {ghost &&
         createPortal(
-          <div
-            ref={ghostRef}
-            aria-hidden
-            className="board-arrasto"
-            style={{
-              width: ghost.size,
-              height: ghost.size,
-              transform: `translate(${ghost.x}px, ${ghost.y}px) translate(-50%, -50%)`
-            }}
-          >
-            <PieceGlyph piece={ghost.piece} light={ghost.light} />
+          <div aria-hidden className="board-arrasto">
+            <div
+              ref={ghostRef}
+              className="board-arrasto-peca"
+              style={{
+                width: ghost.size,
+                height: ghost.size,
+                transform: `translate(${ghost.x}px, ${ghost.y}px) translate(-50%, -50%)`
+              }}
+            >
+              <PieceGlyph piece={ghost.piece} light={ghost.light} />
+            </div>
           </div>,
           document.body
         )}
