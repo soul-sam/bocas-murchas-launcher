@@ -35,6 +35,10 @@ export interface CaptureGateOptions {
   /** Id da fonte (`screen:...` / `window:...`) pra readquirir sem seletor. */
   sourceId: string
   resolution: { width: number; height: number; frameRate: number }
+  /**
+   * O MESMO da publicacao (SCREEN_CONTENT_HINT): a faixa readquirida entra
+   * no lugar da original, e com VP9 'detail' trava o encoder em 5 fps.
+   */
   contentHint: 'motion' | 'detail'
   onStateChange?: (state: CaptureState) => void
   /**

@@ -27,7 +27,7 @@ import { createSpeakingDetector, type SpeakingDetector } from './speaking-detect
 import {
   SCREEN_QUALITY,
   shouldSubscribe,
-  encoderProfile,
+  screenPublishPlan,
   type ScreenQuality,
   type ScreenContent
 } from './screen-share-policy'
@@ -1822,8 +1822,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
       const withAudio = options.withAudio ?? true
       const quality = options.quality ?? '720p30'
-      const preset = SCREEN_QUALITY[quality]
-      const profile = encoderProfile(options.content ?? 'game')
+      // Codec, camadas e bitrate: ver screenPublishPlan (medido em laboratorio).
+      const plan = screenPublishPlan(quality, options.content ?? 'game')
       const muteLauncher = withAudio && (options.muteLauncher ?? true)
 
       // O main so libera getDisplayMedia se a fonte estiver marcada antes.
@@ -1839,52 +1839,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           true,
           {
             audio: withAudio ? SCREEN_AUDIO_CONSTRAINTS : false,
-            resolution: {
-              width: preset.width,
-              height: preset.height,
-              frameRate: preset.frameRate
-            },
-            // 'motion' pra jogo, 'detail' pra texto — ver encoderProfile.
-            contentHint: profile.contentHint
+            ...plan.capture
           },
           {
-            /**
-             * `screenShareEncoding`, NAO `videoEncoding`.
-             *
-             * Pra faixa de tela o livekit-client joga o `videoEncoding`
-             * fora: `computeVideoEncodings()` comeca com
-             * `if (isScreenShare) videoEncoding = options.screenShareEncoding`.
-             * Sem este campo valia o padrao do SDK
-             * (`publishDefaults.screenShareEncoding = ScreenSharePresets.h1080fps15`):
-             * 15 fps e 2.5 Mbps FIXOS, em qualquer maquina e em qualquer
-             * opcao do seletor. Era esse o teto de 15 fps. A captura sempre
-             * veio a 30/60 (o `resolution` acima vai pro getDisplayMedia);
-             * o que estava capado era o que subia pro SFU.
-             */
-            screenShareEncoding: {
-              maxBitrate: preset.maxBitrate,
-              maxFramerate: preset.frameRate
-            },
-            /**
-             * H.264 em vez do VP8 padrao do LiveKit.
-             *
-             * No Windows o Chromium codifica E decodifica H.264 na GPU (Media
-             * Foundation / D3D11); VP8 e software nos dois lados. Com VP8 o
-             * encoder de 1080p disputava os nucleos com o jogo de quem
-             * transmite, e cada espectador pagava um decodificador em
-             * software. O SFU nao transcodifica — se algum cliente nao souber
-             * H.264 o LiveKit pede o codec reserva (VP8) so pra ele.
-             */
-            videoCodec: 'h264',
-            degradationPreference: profile.degradationPreference,
-            // Duas camadas: a original e uma de metade da resolucao. No
-            // livekit-client 2.22 a camada baixa herda o fps da original
-            // (`computeDefaultScreenShareSimulcastPresets` usa
-            // `fps: fromPreset.encoding.maxFramerate`) com 1/4 do bitrate —
-            // nao os 3 fps de versoes antigas. Quem esta com o launcher em
-            // janela pequena recebe ela pelo adaptiveStream; o custo e um
-            // segundo encode em H.264 na GPU.
-            simulcast: true,
+            ...plan.publish,
             // O audio da tela e MUSICA/JOGO, nao voz: o preset da call (48k
             // mono, que serve pra fala) espremia trilha e efeito. O LiveKit
             // percebe sozinho que a faixa e estereo (channelCount 2 nas
@@ -1911,12 +1869,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           captureGateRef.current = createCaptureGate({
             room: current,
             sourceId,
-            resolution: {
-              width: preset.width,
-              height: preset.height,
-              frameRate: preset.frameRate
-            },
-            contentHint: profile.contentHint,
+            resolution: plan.capture.resolution,
+            contentHint: plan.capture.contentHint,
             onStateChange: (capture) => {
               setShareInfo((prev) => (prev ? { ...prev, capture } : prev))
             },

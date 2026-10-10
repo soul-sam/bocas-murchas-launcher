@@ -78,13 +78,16 @@ export function shouldSubscribe(
 /**
  * Presets de qualidade do compartilhamento.
  *
- * Pensados pra SFU self-hosted: o upload da VPS e o gargalo. O bitrate e o
- * TETO — o encoder desce sozinho quando a rede ou a CPU nao dao conta.
+ * O bitrate e o TETO — o encoder desce sozinho quando a rede ou a CPU nao dao
+ * conta. Os valores sao pra VP9 (ver `screenPublishPlan`): com 5 Mbps um jogo
+ * de movimento pesado ja chegava a 1428×804 a 38 fps no laboratorio; 8 Mbps e
+ * o que deixa o 1080p60 perto de 1080p de verdade. O upload de quem transmite
+ * raramente e o limite (fibra), e a VPS so repassa.
  */
 export const SCREEN_QUALITY = {
-  '720p30': { width: 1280, height: 720, frameRate: 30, maxBitrate: 1_800_000 },
-  '1080p30': { width: 1920, height: 1080, frameRate: 30, maxBitrate: 3_000_000 },
-  '1080p60': { width: 1920, height: 1080, frameRate: 60, maxBitrate: 5_000_000 }
+  '720p30': { width: 1280, height: 720, frameRate: 30, maxBitrate: 2_500_000 },
+  '1080p30': { width: 1920, height: 1080, frameRate: 30, maxBitrate: 5_000_000 },
+  '1080p60': { width: 1920, height: 1080, frameRate: 60, maxBitrate: 8_000_000 }
 } as const
 
 export type ScreenQuality = keyof typeof SCREEN_QUALITY
@@ -92,27 +95,99 @@ export type ScreenQuality = keyof typeof SCREEN_QUALITY
 /**
  * O que esta sendo transmitido muda como o encoder deve se degradar.
  *
- * - `game`: o que importa e fluidez. `contentHint: 'motion'` faz o Chromium
- *   tratar a captura como camera (encoder em modo de tempo real, sem o modo
- *   "screen content" que congela quadros pra manter nitidez) e
- *   `degradationPreference: 'balanced'` deixa ele baixar RESOLUCAO quando a
- *   CPU aperta — que e exatamente o que acontece com um jogo aberto. Com
- *   'maintain-resolution' o encoder segurava 1080p a qualquer custo e
- *   sacrificava os quadros, entao a transmissao travava E o jogo tambem.
- * - `text`: IDE, planilha, navegador. Nitidez acima de tudo.
+ * - `game`: o que importa e fluidez. `balanced` deixa o WebRTC trocar um
+ *   pouco de resolucao por quadros quando a CPU ou a rede apertam.
+ * - `text`: IDE, planilha, navegador. Nitidez acima de tudo: segura a
+ *   resolucao e sacrifica quadros.
+ *
+ * O `contentHint` NAO muda com o conteudo: e sempre 'motion' (ver
+ * `SCREEN_CONTENT_HINT`).
  */
 export type ScreenContent = 'game' | 'text'
 
 export interface EncoderProfile {
-  contentHint: 'motion' | 'detail'
   degradationPreference: 'balanced' | 'maintain-resolution'
 }
 
 export function encoderProfile(content: ScreenContent): EncoderProfile {
-  if (content === 'text') {
-    return { contentHint: 'detail', degradationPreference: 'maintain-resolution' }
+  if (content === 'text') return { degradationPreference: 'maintain-resolution' }
+  return { degradationPreference: 'balanced' }
+}
+
+/**
+ * Sempre 'motion', inclusive pra texto.
+ *
+ * Com VP9 o Chrome tem um caminho proprio pra "screen content" ('detail' /
+ * 'text') que trava em 5 fps com L1T3 — o proprio livekit-client forca
+ * 'motion' quando publica tela com codec SVC. Quem troca a faixa depois
+ * (lib/screen-capture-gate, ao retomar a captura) precisa usar o mesmo valor,
+ * senao a transmissao volta da pausa a 5 fps.
+ */
+export const SCREEN_CONTENT_HINT = 'motion' as const
+
+/**
+ * Como a tela vai pro ar. Medido, nao achado (Electron 33, RTX 3060 +
+ * Ryzen 7 5700, LiveKit local, janela de jogo animada a 1080p):
+ *
+ * - O H.264 do WebRTC no Electron e SOFTWARE (OpenH264) — o Chromium anuncia
+ *   NVENC no chrome://gpu mas nao usa no WebRTC, em perfil nenhum. Com o
+ *   OpenH264 o escalonador de qualidade do WebRTC derrubava a transmissao pra
+ *   714×402 a 15 fps, com banda e CPU sobrando.
+ * - Simulcast prendia quem assiste na camada BAIXA: o SFU nunca subia pra
+ *   1080p e a camada baixa ainda caia pra 476×268 a 15 fps. Era isso que a
+ *   galera via (e nao mudava com VP8 nem com H.264 a 30 fps).
+ * - VP9 numa camada so com 3 temporais (L1T3), mesmos 5 Mbps: 1428×804 a
+ *   38 fps, e com 12 dos 16 threads da CPU ocupados ainda 1428×804 a 27 fps
+ *   — sem mexer no fps do jogo. As camadas temporais deixam o SFU mandar 30
+ *   ou 15 fps pra quem tem internet pior, sem simulcast.
+ *
+ * VP9 e a recomendacao da propria LiveKit quando qualidade importa, e
+ * decodifica na GPU de praticamente qualquer placa de quem assiste. Quem nao
+ * decodifica VP9 (Safari antigo no site) recebe VP8: o `backupCodec` so e
+ * codificado se o SFU pedir.
+ */
+export const SCREEN_CODEC = 'vp9' as const
+
+export interface ScreenPublishPlan {
+  /** Vai pro getDisplayMedia (via setScreenShareEnabled). */
+  capture: {
+    resolution: { width: number; height: number; frameRate: number }
+    contentHint: typeof SCREEN_CONTENT_HINT
   }
-  return { contentHint: 'motion', degradationPreference: 'balanced' }
+  /** TrackPublishOptions do livekit-client. */
+  publish: {
+    videoCodec: typeof SCREEN_CODEC
+    scalabilityMode: 'L1T3'
+    simulcast: false
+    backupCodec: true
+    screenShareEncoding: { maxBitrate: number; maxFramerate: number }
+    degradationPreference: EncoderProfile['degradationPreference']
+  }
+}
+
+export function screenPublishPlan(quality: ScreenQuality, content: ScreenContent): ScreenPublishPlan {
+  const preset = SCREEN_QUALITY[quality]
+  return {
+    capture: {
+      resolution: { width: preset.width, height: preset.height, frameRate: preset.frameRate },
+      contentHint: SCREEN_CONTENT_HINT
+    },
+    publish: {
+      videoCodec: SCREEN_CODEC,
+      scalabilityMode: 'L1T3',
+      // Explicito: desde o livekit-client 2.22.3 VP9 tambem aceita
+      // simulcast, e simulcast e justamente o que prendia a camada baixa.
+      simulcast: false,
+      backupCodec: true,
+      /**
+       * `screenShareEncoding`, NAO `videoEncoding`: pra faixa de tela o
+       * livekit-client ignora o `videoEncoding` e, sem este campo, vale o
+       * padrao do SDK (h1080fps15: 15 fps e 2.5 Mbps fixos).
+       */
+      screenShareEncoding: { maxBitrate: preset.maxBitrate, maxFramerate: preset.frameRate },
+      degradationPreference: encoderProfile(content).degradationPreference
+    }
+  }
 }
 
 /**

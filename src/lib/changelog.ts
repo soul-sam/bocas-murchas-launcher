@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.62.0',
+    headline: 'Compartilhar tela de verdade',
+    items: [
+      'A tela compartilhada chega nítida: num teste com jogo pesado, quem assistia recebia 476×268 a 15 quadros por segundo; agora recebe 1080p a 38 (na opção 1080p 60fps).',
+      'A transmissão não cai mais pra imagem minúscula: ela vai numa camada só, e quem tem internet pior recebe menos quadros, não menos pixels.',
+      'O servidor de voz e tela foi atualizado e ficou mais direto: a imagem já começa na qualidade cheia em vez de subir aos poucos.',
+      'Quem nunca escolheu a qualidade agora começa em 1080p 30fps.'
+    ],
+    note: 'Quem ainda não atualizou continua transmitindo do jeito antigo até o launcher se atualizar.'
+  },
+  {
     version: '1.61.0',
     headline: 'Mais de um rolo do mesmo filamento',
     items: [

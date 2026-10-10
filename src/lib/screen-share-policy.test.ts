@@ -6,7 +6,14 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { shouldSubscribe, encoderProfile, pickFocus, hasViewers } from './screen-share-policy.ts'
+import {
+  shouldSubscribe,
+  encoderProfile,
+  pickFocus,
+  hasViewers,
+  screenPublishPlan,
+  SCREEN_QUALITY
+} from './screen-share-policy.ts'
 
 const video = (source: 'screen_share' | 'camera' | 'unknown') => ({ source, kind: 'video' as const })
 const audio = (source: 'screen_share_audio' | 'microphone' | 'unknown') => ({ source, kind: 'audio' as const })
@@ -51,14 +58,34 @@ test('fonte desconhecida: audio sim, video nao', () => {
 })
 
 test('perfil do encoder: jogo prioriza fluidez, texto prioriza nitidez', () => {
-  assert.deepEqual(encoderProfile('game'), {
-    contentHint: 'motion',
-    degradationPreference: 'balanced'
-  })
-  assert.deepEqual(encoderProfile('text'), {
-    contentHint: 'detail',
-    degradationPreference: 'maintain-resolution'
-  })
+  assert.deepEqual(encoderProfile('game'), { degradationPreference: 'balanced' })
+  assert.deepEqual(encoderProfile('text'), { degradationPreference: 'maintain-resolution' })
+})
+
+test('publicacao da tela: VP9 numa camada, sem simulcast, com VP8 de reserva', () => {
+  for (const quality of Object.keys(SCREEN_QUALITY) as Array<keyof typeof SCREEN_QUALITY>) {
+    for (const content of ['game', 'text'] as const) {
+      const plan = screenPublishPlan(quality, content)
+      const preset = SCREEN_QUALITY[quality]
+      assert.equal(plan.publish.videoCodec, 'vp9')
+      assert.equal(plan.publish.scalabilityMode, 'L1T3')
+      // Simulcast prendia quem assiste na camada baixa (476×268 a 15 fps).
+      assert.equal(plan.publish.simulcast, false)
+      assert.equal(plan.publish.backupCodec, true)
+      // Sem screenShareEncoding o SDK cai no h1080fps15 (15 fps fixos).
+      assert.deepEqual(plan.publish.screenShareEncoding, {
+        maxBitrate: preset.maxBitrate,
+        maxFramerate: preset.frameRate
+      })
+      assert.equal(plan.capture.resolution.frameRate, preset.frameRate)
+      // 'detail' com VP9 trava em 5 fps no Chrome — texto tambem vai 'motion'.
+      assert.equal(plan.capture.contentHint, 'motion')
+      assert.equal(
+        plan.publish.degradationPreference,
+        content === 'text' ? 'maintain-resolution' : 'balanced'
+      )
+    }
+  }
 })
 
 test('foco: prefere a tela de outra pessoa e respeita a escolha atual', () => {

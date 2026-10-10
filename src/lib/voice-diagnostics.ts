@@ -8,9 +8,12 @@ import type { Room } from 'livekit-client'
  *   await __voiceStats()
  *
  * O que interessa por linha:
- * - `codec`: precisa dizer H264 na tela (VP8 = software nos dois lados).
- * - `impl`: `ExternalDecoder`/`MediaFoundationVideoEncodeAccelerator` = GPU;
- *   `libvpx`/`FFmpeg`/`OpenH264` = CPU.
+ * - `codec`: VP9 na tela (VP8 so pra quem recebe o codec reserva). H264 na
+ *   tela e launcher antigo — e la era OpenH264, software.
+ * - `impl`: quem codifica a tela e `libvpx` (CPU, de proposito — ver
+ *   screenPublishPlan); quem assiste deve decodificar `ExternalDecoder`
+ *   (GPU). Encoder de GPU no WebRTC do Electron 33 nao aparece em codec
+ *   nenhum, apesar do chrome://gpu anunciar.
  * - `powerEfficient`: o Chromium confirmando que o hardware esta em uso.
  * - `limitation`: por que o encoder nao esta entregando o pedido — `cpu`
  *   e o sintoma de "o jogo travou".
@@ -124,7 +127,13 @@ export async function collectVoiceStats(room: Room): Promise<VoiceStatsRow[]> {
       }
     }
   }).engine
-  const subscriber = engine?.pcManager?.subscriber
+  /**
+   * Com servidor LiveKit novo (1.13+) o livekit-client 2.22 usa UMA conexao
+   * so ("publisher-only"): `subscriber` nem existe e o que chega tambem vem
+   * pelo `publisher`. Ler so o subscriber pra entrada deixava o raio-X sem
+   * nenhuma linha `inbound`. Por isso cada lado le os dois sentidos.
+   */
+  const subscriber = engine?.pcManager?.subscriber ?? engine?.pcManager?.publisher
   const publisher = engine?.pcManager?.publisher
 
   const rows: VoiceStatsRow[] = []

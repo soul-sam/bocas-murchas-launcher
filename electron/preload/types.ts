@@ -1099,7 +1099,9 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     // O que mudou e que agora o launcher nao entra junto na mistura.
     withAudio: true,
     muteLauncher: true,
-    quality: '720p30',
+    // Com VP9 o 1080p30 cabe em 5 Mbps sem cair de resolucao (o seletor ja o
+    // chamava de "padrao pra jogo"). So vale pra quem nunca escolheu.
+    quality: '1080p30',
     // Plataforma de jogo: fluidez e o padrao. Quem compartilha codigo troca.
     content: 'game',
     idleWhenUnwatched: true
