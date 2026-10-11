@@ -11,6 +11,7 @@ import {
   initTray,
   isQuitting,
   beginQuit,
+  confirmQuit,
   destroyTray,
   shouldCloseToTray,
   setCloseToTray,
@@ -135,12 +136,11 @@ function createWindow(): BrowserWindow {
     // nada: o `window-all-closed` so sai com `isQuitting()`, e com a
     // sobreposicao de pe ele nem dispara — sobrava um processo sem janela,
     // dono da trava de instancia unica, e o launcher nao abria mais.
+    event.preventDefault()
     if (!shouldCloseToTray()) {
-      beginQuit()
-      setImmediate(() => app.quit())
+      void confirmQuit()
       return
     }
-    event.preventDefault()
     win.hide()
   })
 

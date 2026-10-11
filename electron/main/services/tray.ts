@@ -1,4 +1,4 @@
-import { app, Menu, Tray, nativeImage } from 'electron'
+import { app, dialog, Menu, Tray, nativeImage } from 'electron'
 import path from 'node:path'
 import { getMainWindow, showMainWindow } from './main-window.js'
 
@@ -48,6 +48,43 @@ export function setCloseToTray(value: boolean): void {
 
 export function beginQuit(): void {
   quitting = true
+}
+
+/** Uma caixa de cada vez: clicar "Fechar" duas vezes nao empilha dialogos. */
+let quitDialogOpen = false
+
+/**
+ * Pergunta antes de sair de verdade. Sair derruba a chamada de voz e tudo o
+ * que esta rodando no launcher, entao um clique errado na bandeja (ou no X,
+ * sem bandeja) nao pode encerrar sem confirmar.
+ */
+export async function confirmQuit(): Promise<void> {
+  if (quitting || quitDialogOpen) return
+  quitDialogOpen = true
+  try {
+    const win = getMainWindow()
+    const opts: Electron.MessageBoxOptions = {
+      type: 'question',
+      title: 'Sair do Bocas Murchas',
+      message: 'Deseja realmente sair do launcher?',
+      detail: inVoice
+        ? 'Voce esta numa chamada de voz. Sair derruba a chamada.'
+        : 'O launcher vai fechar por completo.',
+      buttons: ['Sair', 'Cancelar'],
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true
+    }
+    const { response } =
+      win && !win.isDestroyed()
+        ? await dialog.showMessageBox(win, opts)
+        : await dialog.showMessageBox(opts)
+    if (response !== 0) return
+    beginQuit()
+    app.quit()
+  } finally {
+    quitDialogOpen = false
+  }
 }
 
 export function iconPath(): string {
@@ -101,10 +138,7 @@ function buildMenu(): Menu {
     },
     {
       label: 'Fechar launcher',
-      click: () => {
-        beginQuit()
-        app.quit()
-      }
+      click: () => void confirmQuit()
     }
   ])
 }
