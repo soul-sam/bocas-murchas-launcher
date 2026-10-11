@@ -19,6 +19,10 @@ files:
 extraResources:
   - from: build/icon.ico
     to: icon.ico
+  # Captura do som do sistema SEM o launcher (compartilhar tela com som). Ver
+  # native/process-loopback e electron/main/services/process-loopback.ts.
+  - from: build/bin/bm-loopback.exe
+    to: bm-loopback.exe
 
 asar: true
 asarUnpack:

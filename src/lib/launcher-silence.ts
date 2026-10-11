@@ -34,6 +34,12 @@
  * (`AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK` com exclusão da árvore do
  * nosso processo), que é addon nativo — outra empreitada.
  *
+ * ATUALIZAÇÃO (out/2026): essa empreitada foi feita — lib/process-loopback.ts
+ * + native/process-loopback. No Windows 10 2004+ o som do launcher (vozes
+ * inclusas) fica fora da captura e este silêncio NÃO é ligado. Tudo abaixo
+ * vale só pro caminho antigo, quando a captura por processo não está
+ * disponível.
+ *
  * ------------------------------------------------------------------
  * O QUE DÁ PRA FAZER, ENTÃO
  * ------------------------------------------------------------------

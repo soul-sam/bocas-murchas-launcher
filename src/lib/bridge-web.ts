@@ -343,6 +343,14 @@ function criarPonte(): BocasAPI {
       ],
       selectSource: async () => {},
       cancelSelection: async () => {},
+      // Captura por processo e coisa do Windows nativo: na web o som vem do
+      // proprio getDisplayMedia, como sempre.
+      loopback: {
+        supported: async () => false,
+        start: async () => ({ ok: false as const, error: 'indisponível na web' }),
+        stop: async () => {},
+        onPcm: () => () => {},
+      },
     },
 
     nudge: {

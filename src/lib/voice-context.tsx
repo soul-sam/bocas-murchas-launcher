@@ -21,6 +21,7 @@ import { playUiSound, playJoinSound } from './ui-sounds'
 import { useMembers } from './members-context'
 import { createMicProcessor, type MicProcessor } from './audio-processor'
 import { setLauncherSilenced } from './launcher-silence'
+import { startProcessLoopbackCapture, type LoopbackCapture } from './process-loopback'
 import { exposeVoiceStats } from './voice-diagnostics'
 import { createCaptureGate, type CaptureGate, type CaptureState } from './screen-capture-gate'
 import { createSpeakingDetector, type SpeakingDetector } from './speaking-detector'
@@ -609,6 +610,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     captureGateRef.current = null
   }, [])
 
+  /** Som do sistema sem o launcher (lib/process-loopback). Vive com a transmissao. */
+  const loopbackRef = React.useRef<LoopbackCapture | null>(null)
+  const dropLoopback = React.useCallback(() => {
+    loopbackRef.current?.stop()
+    loopbackRef.current = null
+  }, [])
+
   /**
    * Volume dos avisos lido por ref: os handlers do LiveKit sao registrados uma
    * vez no connect e nunca mais; se dependessem do estado, ficariam presos ao
@@ -877,6 +885,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     roomForSyncRef.current = null
     watchingRef.current = null
     dropCaptureGate()
+    dropLoopback()
     // O detector segura um AudioContext e um nó por pessoa: sair da call sem
     // desmontar isso deixaria o grafo vivo e medindo silêncio pra sempre.
     speakingRef.current?.destroy()
@@ -925,7 +934,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     selfMutedRef.current = false
 
     void window.bocas.tray.setVoiceState({ inVoice: false, micMuted: false })
-  }, [cue, dropCaptureGate])
+  }, [cue, dropCaptureGate, dropLoopback])
 
   const join = React.useCallback(
     async (target: Channel) => {
@@ -1162,6 +1171,15 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
            * bolinha vermelha ficava acesa na barra lateral dos outros — pra
            * voltar ao normal so saindo da call.
            */
+          // O LiveKit tira o audio da tela junto com a imagem; o helper que
+          // captura o som precisa parar junto.
+          if (
+            publication.source === Track.Source.ScreenShare ||
+            publication.source === Track.Source.ScreenShareAudio
+          ) {
+            dropLoopback()
+          }
+
           if (publication.source === Track.Source.ScreenShare) {
             dropCaptureGate()
             setScreenShares((prev) => prev.filter((s) => !s.isLocal))
@@ -1503,7 +1521,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       applySubscription,
       applyAllSubscriptions,
       upsertRemoteFeed,
-      dropCaptureGate
+      dropCaptureGate,
+      dropLoopback
     ]
   )
 
@@ -1824,10 +1843,18 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const quality = options.quality ?? '720p30'
       // Codec, camadas e bitrate: ver screenPublishPlan (medido em laboratorio).
       const plan = screenPublishPlan(quality, options.content ?? 'game')
-      const muteLauncher = withAudio && (options.muteLauncher ?? true)
+
+      // Som do sistema SEM o launcher: vozes da call, soundboard e avisos
+      // ficam fora da transmissao (lib/process-loopback). So se nao der
+      // (Windows antigo, navegador) cai no loopback comum do getDisplayMedia,
+      // que leva tudo — e ai vale o "launcher mudo" de lib/launcher-silence.
+      dropLoopback()
+      const loopback = withAudio ? await startProcessLoopbackCapture() : null
+      const legacyAudio = withAudio && !loopback
+      const muteLauncher = legacyAudio && (options.muteLauncher ?? true)
 
       // O main so libera getDisplayMedia se a fonte estiver marcada antes.
-      await window.bocas.screen.selectSource(sourceId, withAudio)
+      await window.bocas.screen.selectSource(sourceId, legacyAudio)
 
       // ANTES de capturar: o silencio precisa valer no primeiro quadro de
       // audio, senao o aviso de "comecou a transmitir" entra na propria
@@ -1835,10 +1862,25 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       setLauncherSilenced(muteLauncher)
 
       try {
+        if (loopback) {
+          loopbackRef.current = loopback
+          // Publicado ANTES da imagem: o feed local nasce sabendo que tem som
+          // (hasAudio e lido no LocalTrackPublished da tela).
+          await current.localParticipant.publishTrack(loopback.track, {
+            source: Track.Source.ScreenShareAudio,
+            // Musica/jogo, nao voz: estereo, sem DTX (cortaria fundo baixo)
+            // e sem RED (redundancia pensada pra fala).
+            audioPreset: SCREEN_AUDIO_PRESET[quality],
+            forceStereo: true,
+            dtx: false,
+            red: false
+          })
+        }
+
         await current.localParticipant.setScreenShareEnabled(
           true,
           {
-            audio: withAudio ? SCREEN_AUDIO_CONSTRAINTS : false,
+            audio: legacyAudio ? SCREEN_AUDIO_CONSTRAINTS : false,
             ...plan.capture
           },
           {
@@ -1881,6 +1923,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         await window.bocas.screen.cancelSelection()
+        // Som publicado e imagem recusada (cancelou, janela sumiu): nao pode
+        // ficar um audio de tela orfao no ar.
+        if (loopback) {
+          await current.localParticipant.unpublishTrack(loopback.track).catch(() => {})
+        }
+        dropLoopback()
         // Falhou no meio: o launcher nao pode ficar mudo por causa de uma
         // transmissao que nem chegou a existir.
         setLauncherSilenced(false)
@@ -1888,7 +1936,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         throw err
       }
     },
-    [dropCaptureGate]
+    [dropCaptureGate, dropLoopback]
   )
 
   const stopScreenShare = React.useCallback(async () => {
@@ -1896,6 +1944,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (!current) return
     dropCaptureGate()
     await current.localParticipant.setScreenShareEnabled(false)
+    const audioPub = current.localParticipant.getTrackPublication(Track.Source.ScreenShareAudio)
+    if (audioPub?.track) {
+      await current.localParticipant.unpublishTrack(audioPub.track).catch(() => {})
+    }
+    dropLoopback()
     setLauncherSilenced(false)
     setScreenSharing(false)
     setShareInfo(null)
@@ -1903,7 +1956,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     // palco com uma imagem congelada por um instante depois do clique.
     setScreenShares((prev) => prev.filter((s) => !s.isLocal))
     socketRef.current?.emit('screenshare:state', { active: false })
-  }, [dropCaptureGate])
+  }, [dropCaptureGate, dropLoopback])
   stopScreenShareRef.current = stopScreenShare
 
   /**

@@ -28,6 +28,10 @@ export default defineConfig({
     plugins: [react()],
     build: {
       outDir: resolve(__dirname, 'out/renderer'),
+      // Worklet de audio NUNCA embutido: viraria data: URL e o CSP do
+      // index.html (default-src 'self') recusa o addModule. O resto segue o
+      // limite padrao.
+      assetsInlineLimit: (filePath) => (filePath.includes('.worklet.') ? false : undefined),
       rollupOptions: {
         // Duas paginas: o app e a sobreposicao que aparece por cima do jogo.
         // Sao janelas diferentes (a segunda e transparente e sem foco), entao

@@ -20,6 +20,11 @@ import {
   type HotkeyBinding
 } from './services/hotkeys.js'
 import { listSources, selectSource, cancelSelection } from './services/screen-share.js'
+import {
+  isProcessLoopbackSupported,
+  startProcessLoopback,
+  stopProcessLoopback
+} from './services/process-loopback.js'
 import { shakeWindow, type NudgeOptions } from './services/nudge.js'
 import { setVoiceState, setCloseToTray } from './services/tray.js'
 import { getLolStatus, refreshLolNow, startLolWatcher, stopLolWatcher } from './services/lol.js'
@@ -330,6 +335,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('screen:cancel-selection', async () => {
     cancelSelection()
+  })
+
+  // Som do sistema SEM o launcher (vozes da call, soundboard, avisos). Ver
+  // services/process-loopback.ts.
+  ipcMain.handle('screen:loopback-start', async (e, payload: { sampleRate: number }) =>
+    startProcessLoopback(e.sender, payload.sampleRate)
+  )
+
+  ipcMain.handle('screen:loopback-supported', async () => isProcessLoopbackSupported())
+
+  ipcMain.handle('screen:loopback-stop', async () => {
+    stopProcessLoopback()
   })
 
   // ============================================

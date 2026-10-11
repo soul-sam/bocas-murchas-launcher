@@ -73,7 +73,13 @@ const api: BocasAPI = {
     listSources: () => ipcRenderer.invoke('screen:list-sources'),
     selectSource: (sourceId, withAudio) =>
       ipcRenderer.invoke('screen:select-source', { sourceId, withAudio }),
-    cancelSelection: () => ipcRenderer.invoke('screen:cancel-selection')
+    cancelSelection: () => ipcRenderer.invoke('screen:cancel-selection'),
+    loopback: {
+      supported: () => ipcRenderer.invoke('screen:loopback-supported'),
+      start: (sampleRate) => ipcRenderer.invoke('screen:loopback-start', { sampleRate }),
+      stop: () => ipcRenderer.invoke('screen:loopback-stop'),
+      onPcm: (cb) => on('screen:loopback-pcm', cb)
+    }
   },
   nudge: {
     shake: (options) => ipcRenderer.invoke('nudge:shake', options)

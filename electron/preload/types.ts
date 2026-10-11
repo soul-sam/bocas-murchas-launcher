@@ -1225,6 +1225,18 @@ export interface BocasAPI {
     /** Marque a fonte ANTES de chamar getDisplayMedia(). */
     selectSource: (sourceId: string, withAudio?: boolean) => Promise<void>
     cancelSelection: () => Promise<void>
+    /**
+     * Som do sistema SEM o proprio launcher (captura por processo do Windows).
+     * `start` falha (ok: false) fora do Windows 10 2004+ — aí quem chama cai no
+     * loopback comum. Ver electron/main/services/process-loopback.ts.
+     */
+    loopback: {
+      supported: () => Promise<boolean>
+      start: (sampleRate: number) => Promise<{ ok: true } | { ok: false; error: string }>
+      stop: () => Promise<void>
+      /** PCM float32 estereo intercalado, na taxa pedida no `start`. */
+      onPcm: (cb: (chunk: Uint8Array) => void) => () => void
+    }
   }
   nudge: {
     shake: (options?: NudgeOptions) => Promise<NudgeResult>

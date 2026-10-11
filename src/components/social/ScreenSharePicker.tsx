@@ -58,6 +58,9 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
     settings.screenShare.idleWhenUnwatched
   )
   const [filter, setFilter] = React.useState('')
+  // Captura por processo (Windows 10 2004+): o som do launcher fica de fora
+  // sozinho e o "launcher mudo" nao faz sentido. Ver lib/process-loopback.
+  const [isolated, setIsolated] = React.useState(false)
   const [starting, setStarting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -91,6 +94,10 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
     setContent(settings.screenShare.content)
     setIdleWhenUnwatched(settings.screenShare.idleWhenUnwatched)
     load(false)
+    window.bocas.screen.loopback
+      .supported()
+      .then(setIsolated)
+      .catch(() => setIsolated(false))
     // As preferencias entram de proposito fora da lista: relê-las a cada
     // mudanca de `settings` sobrescreveria o que a pessoa acabou de marcar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -273,8 +280,21 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
 
             A parte que não tem jeito (as vozes) fica escrita aqui embaixo em
             vez de virar surpresa no meio da transmissão.
+
+            Com a captura por processo (isolated) nada disso vale: o som do
+            launcher — vozes inclusas — fica fora da captura e o launcher
+            continua tocando normal. A caixa antiga sobra só pra Windows velho.
           */}
-          {withAudio && (
+          {withAudio && isolated && (
+            <p className="mt-3 flex items-start gap-1.5 rounded-brutal border border-line bg-surface-raised/60 p-2.5 text-[11.5px] leading-snug text-muted-foreground">
+              <Info className="mt-px h-3.5 w-3.5 shrink-0" />
+              <span>
+                Vai só o som do PC. As vozes da call, o soundboard e os avisos
+                do launcher ficam de fora — ninguém se escuta de volta.
+              </span>
+            </p>
+          )}
+          {withAudio && !isolated && (
             <div className="mt-3 rounded-brutal border border-line bg-surface-raised/60 p-2.5">
               <label className="flex cursor-pointer items-start gap-2 text-sm">
                 <input
@@ -304,7 +324,7 @@ export function ScreenSharePicker({ open, onClose, onConfirm }: ScreenSharePicke
                   captura pega.{' '}
                   <Hint
                     label="Por que as vozes não saem"
-                    description="O Windows entrega o áudio já misturado, sem separar por programa. Tirar só o launcher exigiria captura por processo, que o Electron ainda não expõe."
+                    description="Separar o som do launcher do resto exige a captura por processo do Windows, que só existe a partir do Windows 10 versão 2004. Neste PC ela não está disponível."
                   >
                     <span className="cursor-help underline decoration-dotted underline-offset-2">
                       por quê?
