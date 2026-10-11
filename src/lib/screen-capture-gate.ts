@@ -26,6 +26,17 @@ import { hasViewers, CAPTURE_IDLE_GRACE_MS, type SubscribedQualityLike } from '.
  *
  * Se o SDK nao expuser `engine` (mudou por dentro) ou o servidor nunca
  * mandar o sinal, nada acontece: a captura fica ligada como antes.
+ *
+ * O CANVAS OCIOSO NAO PODE VIRAR "MUDO". Faixa sem quadro e marcada `muted`
+ * pelo Chromium, e o SDK trata isso como camera que caiu: 5 s depois chama
+ * `pauseUpstream()`, que manda `mute` pro servidor. Faixa mutada no servidor
+ * nao recebe mais o sinal de assinatura do dynacast — quem voltava a
+ * assistir depois de ~20 s fora (minimizou o launcher) assinava, o
+ * transmissor nunca sabia, a captura nunca voltava e o video ficava PRETO
+ * ate a pessoa parar e compartilhar de novo. Reproduzido no laboratorio com
+ * LiveKit 1.13.9 (com 15 s fora voltava; com 2 min, nunca). Por isso o
+ * canvas entra sem o ouvinte de `mute` do SDK (`disarmMuteWatch`) e, se o
+ * upstream pausar mesmo assim, o gate desfaz na hora.
  */
 
 export type CaptureState = 'live' | 'idle'
@@ -62,6 +73,26 @@ interface EngineLike {
   off: (event: 'subscribedQualityUpdate', fn: (update: QualityUpdate) => void) => unknown
 }
 
+/** `TrackEvent.UpstreamPaused` — so tipos do livekit-client aqui (ver abaixo). */
+const UPSTREAM_PAUSED = 'upstreamPaused'
+
+interface UpstreamEventsLike {
+  on?: (event: typeof UPSTREAM_PAUSED, fn: () => void) => unknown
+  off?: (event: typeof UPSTREAM_PAUSED, fn: () => void) => unknown
+}
+
+const upstreamEvents = (video: LocalVideoTrack) => video as unknown as UpstreamEventsLike
+
+/**
+ * Tira do canvas ocioso o ouvinte de `mute` que o SDK pendura em toda faixa
+ * nova (`handleTrackMuteEvent`, campo interno do LocalTrack). Se o nome
+ * mudar, nada quebra: o `upstreamPaused` do gate segura o caso.
+ */
+function disarmMuteWatch(video: LocalVideoTrack, idle: MediaStreamTrack): void {
+  const handler = (video as unknown as { handleTrackMuteEvent?: unknown }).handleTrackMuteEvent
+  if (typeof handler === 'function') idle.removeEventListener('mute', handler as EventListener)
+}
+
 // So tipos do livekit-client: o modulo roda em `node --test` com stubs
 // (screen-capture-gate.test.ts). O valor e o de `Track.Source.ScreenShare`.
 const SCREEN_SHARE = 'screen_share' as Track.Source
@@ -91,6 +122,22 @@ export function createCaptureGate(options: CaptureGateOptions): CaptureGate {
   let destroyed = false
   /** Trocas de faixa sao serializadas: pausar e retomar nao podem se cruzar. */
   let queue: Promise<void> = Promise.resolve()
+  /** Faixa publicada que esta com o canvas ocioso (e o ouvinte abaixo). */
+  let idleVideo: LocalVideoTrack | null = null
+
+  /** O SDK pausou o upstream do canvas: desfaz, senao o servidor muta a tela. */
+  const onUpstreamPaused = (): void => {
+    if (!idleVideo || state !== 'idle') return
+    console.info('[screen] SDK pausou o upstream do canvas ocioso; desfazendo')
+    void idleVideo.resumeUpstream().catch((err) => {
+      console.warn('[screen] nao consegui retomar o upstream', err)
+    })
+  }
+
+  const unwatchIdle = (): void => {
+    if (idleVideo) upstreamEvents(idleVideo).off?.(UPSTREAM_PAUSED, onUpstreamPaused)
+    idleVideo = null
+  }
 
   const setState = (next: CaptureState): void => {
     if (state === next) return
@@ -110,7 +157,12 @@ export function createCaptureGate(options: CaptureGateOptions): CaptureGate {
     // `false` = "nao e faixa do usuario": o SDK PARA a faixa antiga (a
     // captura real) ao trocar, e vai parar esta quando a proxima entrar.
     await video.replaceTrack(idle, false)
+    disarmMuteWatch(video, idle)
+    idleVideo = video
+    upstreamEvents(video).on?.(UPSTREAM_PAUSED, onUpstreamPaused)
     setState('idle')
+    // O `mute` pode ter chegado antes do disarm (o debounce do SDK ja corre).
+    if (video.isUpstreamPaused) onUpstreamPaused()
   }
 
   const resume = async (): Promise<void> => {
@@ -147,7 +199,11 @@ export function createCaptureGate(options: CaptureGateOptions): CaptureGate {
     }
 
     track.contentHint = options.contentHint
+    unwatchIdle()
     await video.replaceTrack(track, false)
+    // Rede de seguranca: com o upstream pausado o sender fica sem faixa e o
+    // servidor segue achando que a tela esta muda.
+    if (video.isUpstreamPaused) await video.resumeUpstream()
     setState('live')
   }
 
@@ -196,6 +252,7 @@ export function createCaptureGate(options: CaptureGateOptions): CaptureGate {
       if (destroyed) return
       destroyed = true
       clearTimer()
+      unwatchIdle()
       engine?.off?.('subscribedQualityUpdate', handleUpdate)
     }
   }

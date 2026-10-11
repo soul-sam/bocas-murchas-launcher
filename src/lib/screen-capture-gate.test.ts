@@ -16,6 +16,9 @@ interface FakeTrack {
   stopped: boolean
   contentHint: string
   stop: () => void
+  muteListeners: Set<unknown>
+  addEventListener: (type: string, fn: unknown) => void
+  removeEventListener: (type: string, fn: unknown) => void
 }
 
 const makeTrack = (kind: string): FakeTrack => {
@@ -25,6 +28,13 @@ const makeTrack = (kind: string): FakeTrack => {
     contentHint: '',
     stop: () => {
       track.stopped = true
+    },
+    muteListeners: new Set(),
+    addEventListener: (type, fn) => {
+      if (type === 'mute') track.muteListeners.add(fn)
+    },
+    removeEventListener: (type, fn) => {
+      if (type === 'mute') track.muteListeners.delete(fn)
     }
   }
   return track
@@ -34,13 +44,37 @@ function setup() {
   const listeners = new Set<Listener>()
   const replaced: Array<{ track: FakeTrack; userProvided: boolean }> = []
   const real = makeTrack('real')
+  const upstreamListeners = new Set<() => void>()
+  let resumes = 0
+  // O que o SDK faz com `mute` da faixa (LocalTrack.handleTrackMuteEvent):
+  // pausa o upstream, que vira `mute` no servidor.
+  const pauseUpstream = () => {
+    if (videoTrack.isUpstreamPaused) return
+    videoTrack.isUpstreamPaused = true
+    for (const fn of upstreamListeners) fn()
+  }
   const videoTrack = {
     mediaStreamTrack: real as unknown,
+    isUpstreamPaused: false,
+    handleTrackMuteEvent: pauseUpstream,
     replaceTrack: async (track: FakeTrack, userProvided: boolean) => {
       // Mesma regra do SDK com userProvided=false: a faixa antiga para.
-      ;(videoTrack.mediaStreamTrack as FakeTrack).stop()
+      const old = videoTrack.mediaStreamTrack as FakeTrack
+      old.stop()
+      old.removeEventListener('mute', pauseUpstream)
+      track.addEventListener('mute', pauseUpstream)
       videoTrack.mediaStreamTrack = track
       replaced.push({ track, userProvided })
+    },
+    resumeUpstream: async () => {
+      resumes += 1
+      videoTrack.isUpstreamPaused = false
+    },
+    on: (event: string, fn: () => void) => {
+      if (event === 'upstreamPaused') upstreamListeners.add(fn)
+    },
+    off: (event: string, fn: () => void) => {
+      if (event === 'upstreamPaused') upstreamListeners.delete(fn)
     }
   }
   let publication: { trackSid: string; videoTrack: typeof videoTrack } | undefined = {
@@ -108,6 +142,10 @@ function setup() {
     selections,
     emit,
     listeners,
+    videoTrack,
+    pauseUpstream,
+    upstreamListeners,
+    resumeCount: () => resumes,
     setFail: (v: boolean) => {
       failAcquire = v
     },
@@ -233,5 +271,56 @@ test('publicacao acabou no meio da retomada: a faixa nova e descartada', async (
   // Sem publicacao o sinal nem chega a tentar: nada readquirido.
   assert.equal(s.acquired.length, 0)
   assert.equal(gate.state, 'idle')
+  gate.destroy()
+})
+
+test('canvas ocioso nao deixa o SDK mutar a tela no servidor', async () => {
+  const s = setup()
+  const gate = createCaptureGate(gateOptions(s.room))
+  s.emit(false)
+  await wait(40)
+  await settle()
+  assert.equal(gate.state, 'idle')
+
+  const idle = s.replaced[0].track
+  assert.equal(idle.muteListeners.size, 0, 'o ouvinte de mute do SDK saiu do canvas')
+
+  // Se o SDK pausar o upstream mesmo assim (nome interno mudou, corrida com
+  // o debounce), o gate desfaz: mutada no servidor a tela nunca mais recebe
+  // o sinal de quem volta a assistir.
+  s.pauseUpstream()
+  await settle()
+  assert.equal(s.videoTrack.isUpstreamPaused, false)
+  assert.equal(s.resumeCount(), 1)
+
+  s.emit(true)
+  await settle()
+  await settle()
+  assert.equal(gate.state, 'live')
+  assert.equal(s.upstreamListeners.size, 0, 'retomada solta o ouvinte')
+
+  // Ao vivo, pausar o upstream e assunto do SDK (captura caiu de verdade).
+  s.pauseUpstream()
+  await settle()
+  assert.equal(s.videoTrack.isUpstreamPaused, true)
+  assert.equal(s.resumeCount(), 1)
+  gate.destroy()
+})
+
+test('retomada com o upstream ja pausado: devolve o upstream junto com a captura', async () => {
+  const s = setup()
+  const gate = createCaptureGate(gateOptions(s.room))
+  s.emit(false)
+  await wait(40)
+  await settle()
+  // Gate antigo sem a guarda, ou um pause que escapou: chega na retomada assim.
+  s.upstreamListeners.clear()
+  s.videoTrack.isUpstreamPaused = true
+
+  s.emit(true)
+  await settle()
+  await settle()
+  assert.equal(gate.state, 'live')
+  assert.equal(s.videoTrack.isUpstreamPaused, false)
   gate.destroy()
 })
