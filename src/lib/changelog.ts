@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.66.0',
+    headline: 'Sair pergunta antes e o Tocando vai onde você quiser',
+    items: [
+      'Fechar o launcher pela bandeja agora pergunta se é isso mesmo. Se estiver na call, avisa que a chamada cai.',
+      'O cartão do Tocando pode ser arrastado pela capa ou pelo título pra qualquer canto da tela, e lembra onde ficou. Dois cliques devolvem pro lugar de sempre.',
+      'Criar playlist sem digitar nome funciona: ela nasce como "Playlist #N" e você renomeia depois.'
+    ]
+  },
+  {
     version: '1.65.0',
     headline: 'Transmitir com som sem eco',
     items: [
