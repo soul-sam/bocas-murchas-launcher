@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.64.1',
+    headline: 'Playlist Murcha mudou de lugar',
+    items: [
+      'As playlists saíram da barra do lado e foram pro painel de música da call: clica em "Músicas" ou "Tocando" e escolhe a aba Playlist Murcha.',
+      'As abas do painel agora vão na ordem Buscar · Fila · Playlist Murcha · Spotify.'
+    ]
+  },
+  {
     version: '1.64.0',
     headline: 'Playlist Murcha',
     items: [
