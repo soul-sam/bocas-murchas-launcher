@@ -25,6 +25,7 @@ import { openExternal } from '@/lib/rich-text'
 import { parseYouTubeUrl } from '@/lib/youtube'
 import { MusicQueue } from '@/components/music/MusicQueue'
 import { PlaylistPicker, type PickerTrack } from '@/components/music/PlaylistPicker'
+import { MurchaPlaylists } from '@/components/music/MurchaPlaylists'
 import {
   CURTIDAS,
   music as musicApi,
@@ -77,7 +78,7 @@ const LINK_POLL_TIMEOUT_MS = 3 * 60 * 1000
 const ADDED_MS = 2_500
 
 type Status = 'idle' | 'loading' | 'off' | 'error'
-type Tab = 'search' | 'library' | 'queue'
+type Tab = 'search' | 'queue' | 'playlists' | 'library'
 
 export function MusicPanel() {
   const { musicPanelOpen, musicPanelSeed, closeMusicPanel } = useOverlays()
@@ -380,20 +381,15 @@ export function MusicPanel() {
           </button>
         </div>
 
-        {/* Abas: só aparecem quando há de fato mais de uma coisa pra ver. A
-            fila vale mesmo com a busca desligada — ela não depende de chave. */}
-        {!asLink && (!searchOff || musicSession) && (
+        {/* Abas: Buscar · Fila · Playlist Murcha · Spotify. A fila só existe
+            com música no ar; o Spotify some com a busca desligada (depende da
+            chave). Fila e playlists não dependem de chave nenhuma. */}
+        {!asLink && (
           <div className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1">
             <TabButton active={tab === 'search'} onClick={() => setTab('search')}>
               <Search className="h-3 w-3" />
               Buscar
             </TabButton>
-            {!searchOff && (
-              <TabButton active={tab === 'library'} onClick={() => setTab('library')}>
-                <Library className="h-3 w-3" />
-                Spotify
-              </TabButton>
-            )}
             {musicSession && (
               <TabButton active={tab === 'queue'} onClick={() => setTab('queue')}>
                 <ListMusic className="h-3 w-3" />
@@ -401,6 +397,16 @@ export function MusicPanel() {
                 {(musicSession.queue?.length ?? 0) > 0 && (
                   <span className="font-mono tabular-nums">{musicSession.queue!.length}</span>
                 )}
+              </TabButton>
+            )}
+            <TabButton active={tab === 'playlists'} onClick={() => setTab('playlists')}>
+              <MusicIcon className="h-3 w-3" />
+              Playlist Murcha
+            </TabButton>
+            {!searchOff && (
+              <TabButton active={tab === 'library'} onClick={() => setTab('library')}>
+                <Library className="h-3 w-3" />
+                Spotify
               </TabButton>
             )}
           </div>
@@ -421,6 +427,8 @@ export function MusicPanel() {
             </p>
           ) : tab === 'queue' && musicSession ? (
             <MusicQueue session={musicSession} onSave={(track) => setSaving(track)} />
+          ) : tab === 'playlists' ? (
+            <MurchaPlaylists onSearch={() => setTab('search')} />
           ) : searchOff ? (
             <div className="px-3 py-4">
               <p className="text-sm text-foreground">A busca de música está desligada.</p>

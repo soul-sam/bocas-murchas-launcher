@@ -42,7 +42,6 @@ import { BoardPage } from '@/pages/BoardPage'
 import { GameHallPage } from '@/pages/GameHallPage'
 import { LolPage } from '@/pages/LolPage'
 import { PrintPage } from '@/pages/PrintPage'
-import { PlaylistsPage } from '@/pages/PlaylistsPage'
 import { TitleBar } from '@/components/TitleBar'
 import { DeepLink } from '@/components/DeepLink'
 import { DesktopSiteNotice } from '@/components/DesktopSiteNotice'
@@ -505,7 +504,6 @@ export function App() {
                                 O estado mora no PokerProvider, acima das
                                 rotas, então sair daqui não levanta da mesa. */}
                             <Route path="/poker" element={<PokerPage />} />
-                            <Route path="/playlists" element={<PlaylistsPage />} />
                             <Route
                               path="/impressao"
                               element={
