@@ -8,7 +8,7 @@ import {
   CornerDownLeft,
   Shield
 } from 'lucide-react'
-import { GameIcon, ShopIcon } from '@/lib/bocas-icons'
+import { GameIcon, MusicIcon, ShopIcon } from '@/lib/bocas-icons'
 import { GameIcon as GameGlyph } from './GameIcon'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/lib/chat-context'
@@ -149,6 +149,15 @@ export function QuickSwitcher() {
       icon: <GameIcon className="h-3.5 w-3.5" />,
       keywords: 'salao jogos games hub minecraft poker lol xadrez dama',
       run: () => navigate('/jogos')
+    })
+
+    list.push({
+      id: 'cmd:playlists',
+      label: 'Playlist Murcha',
+      hint: 'as playlists do grupo',
+      icon: <MusicIcon className="h-3.5 w-3.5" />,
+      keywords: 'playlist playlists musica música murcha tocar',
+      run: () => navigate('/playlists')
     })
 
     list.push({

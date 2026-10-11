@@ -20,6 +20,7 @@ import { useMembers } from '@/lib/members-context'
 import { useSettings } from '@/lib/settings-context'
 import { useVoice } from '@/lib/voice-context'
 import { NaFila } from '@/components/ui/filas'
+import { ShuffleButton } from '@/components/music/MusicQueue'
 import { useWatch, type WatchSession } from '@/lib/watch-context'
 import { openExternal } from '@/lib/rich-text'
 import { BACKUP_STEP_MS, useYoutubePlayer } from '@/lib/use-youtube-player'
@@ -315,6 +316,7 @@ function MusicBar({ session }: { session: WatchSession }) {
       <div className="pointer-events-auto w-80 max-w-full overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.7)]">
         {queueOpen && (
           <QueuePanel
+            session={session}
             queue={queue}
             onClose={() => setQueueOpen(false)}
             onRemove={(index, videoId) => void watch.queueRemove(index, videoId)}
@@ -501,10 +503,12 @@ function MusicBar({ session }: { session: WatchSession }) {
  * ImageLightbox a serem camadas próprias (ver App.tsx e lib/interaction-guard).
  */
 function QueuePanel({
+  session,
   queue,
   onClose,
   onRemove
 }: {
+  session: WatchSession
   queue: WatchSession['queue']
   onClose: () => void
   onRemove: (index: number, videoId: string) => void
@@ -516,16 +520,20 @@ function QueuePanel({
     <div className="border-b-2 border-line">
       <div className="flex items-center gap-2 px-2 py-1.5">
         <ListMusic className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <span className="text-[11.5px] text-muted-foreground">
+        <span className="min-w-0 truncate text-[11.5px] text-muted-foreground">
           {items.length === 0
             ? 'Fila vazia'
-            : `${items.length} na fila — um pedido de cada um por vez`}
+            : session.shuffle
+              ? `${items.length} na fila — aleatório`
+              : `${items.length} na fila — um pedido de cada um por vez`}
         </span>
+        <span className="ml-auto" />
+        <ShuffleButton session={session} />
         <button
           type="button"
           onClick={onClose}
           title="Fechar a fila"
-          className="ml-auto shrink-0 rounded-brutal p-0.5 text-muted-foreground transition-colors hover:text-dirty-white"
+          className="shrink-0 rounded-brutal p-0.5 text-muted-foreground transition-colors hover:text-dirty-white"
         >
           <X className="h-3.5 w-3.5" />
         </button>

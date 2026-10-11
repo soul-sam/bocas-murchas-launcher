@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.64.0',
+    headline: 'Playlist Murcha',
+    items: [
+      'Página nova na barra do lado: Playlist Murcha. Crie playlists do grupo e toque inteiras na call — com Tocar ou Aleatório.',
+      'Na busca de música, cada resultado tem um botão pra guardar numa playlist (ou criar uma nova na hora).',
+      'Clicar em "Tocando" na call agora abre a fila inteira: o que toca agora e tudo que vem depois, dá pra tirar faixa ou guardar numa playlist.',
+      'Botão Aleatório na fila: embaralha o que está esperando e sorteia a posição de cada pedido novo. Vale pra todo mundo na call.',
+      'A aba "Minhas playlists" do painel de música virou "Spotify", pra não confundir com as playlists do grupo.'
+    ],
+    note: 'Playlist é do grupo: todo mundo vê, toca e adiciona; só quem criou renomeia ou apaga.'
+  },
+  {
     version: '1.63.0',
     headline: 'Arrastar peça ficou mais fácil',
     items: [

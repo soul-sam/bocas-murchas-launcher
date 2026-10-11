@@ -147,3 +147,101 @@ export const spotify = {
     )
   }
 }
+
+// ============================================
+// PLAYLIST MURCHA
+// ============================================
+
+/**
+ * Playlist do grupo, guardada na nossa API (não no Spotify).
+ *
+ * Todo mundo vê, toca e adiciona; renomear e apagar é de quem criou; tirar
+ * uma faixa é de quem criou a playlist ou de quem botou a faixa. Ver
+ * routes/music-playlists.routes.ts na API.
+ */
+export interface MurchaPlaylist {
+  id: string
+  name: string
+  ownerId: string
+  trackCount: number
+  /** Até quatro capas, pro mosaico. */
+  covers: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MurchaPlaylistTrack {
+  id: string
+  /** Já resolvido: tocar a playlist não gasta busca no YouTube. */
+  videoId: string
+  title: string
+  artist?: string
+  artUrl?: string
+  durationMs?: number
+  spotifyId?: string
+  addedById: string
+  createdAt: string
+}
+
+export interface MurchaPlaylistFull extends MurchaPlaylist {
+  tracks: MurchaPlaylistTrack[]
+}
+
+export interface MurchaTrackInput {
+  videoId: string
+  title?: string
+  artist?: string
+  artUrl?: string
+  durationMs?: number
+  spotifyId?: string
+}
+
+export const playlists = {
+  async list(token: string): Promise<{ playlists: MurchaPlaylist[] }> {
+    return request<{ playlists: MurchaPlaylist[] }>('/music/playlists', { token })
+  },
+
+  async get(token: string, id: string): Promise<{ playlist: MurchaPlaylistFull }> {
+    return request<{ playlist: MurchaPlaylistFull }>(
+      `/music/playlists/${encodeURIComponent(id)}`,
+      { token }
+    )
+  },
+
+  async create(token: string, name: string): Promise<{ playlist: MurchaPlaylistFull }> {
+    return request<{ playlist: MurchaPlaylistFull }>('/music/playlists', {
+      token,
+      method: 'POST',
+      body: JSON.stringify({ name })
+    })
+  },
+
+  async rename(token: string, id: string, name: string): Promise<{ playlist: MurchaPlaylistFull }> {
+    return request<{ playlist: MurchaPlaylistFull }>(
+      `/music/playlists/${encodeURIComponent(id)}`,
+      { token, method: 'PATCH', body: JSON.stringify({ name }) }
+    )
+  },
+
+  async remove(token: string, id: string): Promise<void> {
+    await request(`/music/playlists/${encodeURIComponent(id)}`, { token, method: 'DELETE' })
+  },
+
+  async addTrack(
+    token: string,
+    id: string,
+    track: MurchaTrackInput
+  ): Promise<{ track: MurchaPlaylistTrack; duplicate?: boolean }> {
+    return request<{ track: MurchaPlaylistTrack; duplicate?: boolean }>(
+      `/music/playlists/${encodeURIComponent(id)}/tracks`,
+      { token, method: 'POST', body: JSON.stringify(track) }
+    )
+  },
+
+  async removeTrack(token: string, id: string, trackId: string): Promise<void> {
+    await request(
+      `/music/playlists/${encodeURIComponent(id)}/tracks/${encodeURIComponent(trackId)}`,
+      { token, method: 'DELETE' }
+    )
+  }
+}

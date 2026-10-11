@@ -60,12 +60,16 @@ export interface WatchSession extends WatchTrack {
   hostUserId: string
   queue?: WatchQueueItem[]
   mode: WatchMode
+  /** Aleatório ligado: a fila foi embaralhada e pedido novo cai em posição sorteada. */
+  shuffle?: boolean
 }
 
 export interface WatchAck {
   ok: boolean
   error?: string
   session?: WatchSession
+  /** Só no `queueMany`: quantas entraram (o resto não coube na fila). */
+  added?: number
 }
 
 interface WatchContextValue {
@@ -87,6 +91,14 @@ interface WatchContextValue {
    */
   playTrack: (track: WatchTrack, mode?: WatchMode) => Promise<WatchAck>
   queueTrack: (track: WatchTrack, mode?: WatchMode) => Promise<WatchAck>
+  /**
+   * Várias faixas num evento só (tocar uma playlist). Sem música no ar, a
+   * primeira começa e o resto vira fila. `shuffle` embaralha só as que estão
+   * chegando — não liga o aleatório da sala.
+   */
+  queueMany: (tracks: WatchTrack[], options?: { shuffle?: boolean }) => Promise<WatchAck>
+  /** Liga/desliga o aleatório da fila de música. Ligar embaralha o que está esperando. */
+  setShuffle: (on: boolean) => Promise<WatchAck>
   /** Tira da fila. O videoId confere contra corrida — ver a API. */
   queueRemove: (index: number, videoId: string) => Promise<WatchAck>
   /**
@@ -275,6 +287,17 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
     [request]
   )
 
+  const queueMany = React.useCallback(
+    (tracks: WatchTrack[], options?: { shuffle?: boolean }) =>
+      request('watch:queue:addMany', { tracks, mode: 'music', shuffle: options?.shuffle === true }),
+    [request]
+  )
+
+  const setShuffle = React.useCallback(
+    (on: boolean) => request('watch:shuffle', { on }),
+    [request]
+  )
+
   const queueRemove = React.useCallback(
     (index: number, videoId: string) => request('watch:queue:remove', { index, videoId }),
     [request]
@@ -326,6 +349,8 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
       queueAdd,
       playTrack,
       queueTrack,
+      queueMany,
+      setShuffle,
       queueRemove,
       next,
       play,
@@ -344,6 +369,8 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
       queueAdd,
       playTrack,
       queueTrack,
+      queueMany,
+      setShuffle,
       queueRemove,
       next,
       play,

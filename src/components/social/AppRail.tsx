@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LogOut, Keyboard } from 'lucide-react'
-import { ChatIcon, GameIcon, PrinterIcon, ServerIcon } from '@/lib/bocas-icons'
+import { ChatIcon, GameIcon, MusicIcon, PrinterIcon, ServerIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/avatar'
 import { resolveAssetUrl } from '@/lib/api'
@@ -150,6 +150,11 @@ export function AppRail() {
             />
           )}
         </span>
+      </RailLink>
+
+      {/* Playlist Murcha: as playlists do grupo (pages/PlaylistsPage). */}
+      <RailLink to="/playlists" label="Playlist Murcha">
+        <MusicIcon className="h-5 w-5" />
       </RailLink>
 
       {/* A impressora só existe na barra pra quem tem o cargo "Impressora

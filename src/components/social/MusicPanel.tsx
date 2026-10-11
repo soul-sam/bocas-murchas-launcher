@@ -1,11 +1,13 @@
 import * as React from 'react'
 import {
+  BookmarkPlus,
   Check,
   ChevronLeft,
   Disc3,
   Heart,
   Library,
   Link2,
+  ListMusic,
   ListPlus,
   Loader2,
   Play,
@@ -21,6 +23,8 @@ import { useWatch, type WatchTrack } from '@/lib/watch-context'
 import { useFocusTrap } from '@/lib/use-focus-trap'
 import { openExternal } from '@/lib/rich-text'
 import { parseYouTubeUrl } from '@/lib/youtube'
+import { MusicQueue } from '@/components/music/MusicQueue'
+import { PlaylistPicker, type PickerTrack } from '@/components/music/PlaylistPicker'
 import {
   CURTIDAS,
   music as musicApi,
@@ -73,7 +77,7 @@ const LINK_POLL_TIMEOUT_MS = 3 * 60 * 1000
 const ADDED_MS = 2_500
 
 type Status = 'idle' | 'loading' | 'off' | 'error'
-type Tab = 'search' | 'library'
+type Tab = 'search' | 'library' | 'queue'
 
 export function MusicPanel() {
   const { musicPanelOpen, musicPanelSeed, closeMusicPanel } = useOverlays()
@@ -101,6 +105,17 @@ export function MusicPanel() {
   const [added, setAdded] = React.useState<ReadonlySet<string>>(() => new Set())
   const [error, setError] = React.useState<string | null>(null)
   const [providerNote, setProviderNote] = React.useState<string | null>(null)
+  /** A faixa que está escolhendo playlist. Com ela, o seletor cobre o painel. */
+  const [saving, setSaving] = React.useState<PickerTrack | null>(null)
+
+  const musicSession = watch.current?.mode === 'music' ? watch.current : null
+  /**
+   * Abrir com música tocando cai na FILA: é o que o botão "Tocando" da call
+   * promete. Em ref porque a escolha é só no instante de abrir — a fila mudar
+   * com o painel aberto não pode arrancar a pessoa da busca.
+   */
+  const hasMusicRef = React.useRef(false)
+  hasMusicRef.current = musicSession !== null
 
   const panelRef = useFocusTrap<HTMLDivElement>(musicPanelOpen, closeMusicPanel)
 
@@ -151,8 +166,15 @@ export function MusicPanel() {
     setBusy(null)
     setAdded(new Set())
     setIndex(0)
-    setTab('search')
+    setSaving(null)
+    setTab(!musicPanelSeed && hasMusicRef.current ? 'queue' : 'search')
   }, [musicPanelOpen, musicPanelSeed])
+
+  // A música acabou com a aba da fila aberta: volta pra busca, que é o que
+  // sobra pra fazer.
+  React.useEffect(() => {
+    if (tab === 'queue' && !musicSession) setTab('search')
+  }, [tab, musicSession])
 
   React.useEffect(() => {
     const timer = setTimeout(() => setDebounced(term.trim()), DEBOUNCE_MS)
@@ -304,7 +326,7 @@ export function MusicPanel() {
       <div
         ref={panelRef}
         onClick={(event) => event.stopPropagation()}
-        className="card-gradient flex max-h-[74dvh] w-full max-w-lg flex-col overflow-hidden rounded-brutal border-2 border-acid-dark shadow-[0_0_50px_rgba(0,0,0,0.8)]"
+        className="card-gradient relative flex max-h-[74dvh] w-full max-w-lg flex-col overflow-hidden rounded-brutal border-2 border-acid-dark shadow-[0_0_50px_rgba(0,0,0,0.8)]"
       >
         <div className="flex shrink-0 items-center gap-2 border-b-2 border-line px-3">
           {asLink ? (
@@ -358,17 +380,29 @@ export function MusicPanel() {
           </button>
         </div>
 
-        {/* Abas: só aparecem quando há de fato duas fontes. */}
-        {!asLink && !searchOff && (
+        {/* Abas: só aparecem quando há de fato mais de uma coisa pra ver. A
+            fila vale mesmo com a busca desligada — ela não depende de chave. */}
+        {!asLink && (!searchOff || musicSession) && (
           <div className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1">
             <TabButton active={tab === 'search'} onClick={() => setTab('search')}>
               <Search className="h-3 w-3" />
               Buscar
             </TabButton>
-            <TabButton active={tab === 'library'} onClick={() => setTab('library')}>
-              <Library className="h-3 w-3" />
-              Minhas playlists
-            </TabButton>
+            {!searchOff && (
+              <TabButton active={tab === 'library'} onClick={() => setTab('library')}>
+                <Library className="h-3 w-3" />
+                Spotify
+              </TabButton>
+            )}
+            {musicSession && (
+              <TabButton active={tab === 'queue'} onClick={() => setTab('queue')}>
+                <ListMusic className="h-3 w-3" />
+                Fila
+                {(musicSession.queue?.length ?? 0) > 0 && (
+                  <span className="font-mono tabular-nums">{musicSession.queue!.length}</span>
+                )}
+              </TabButton>
+            )}
           </div>
         )}
 
@@ -385,6 +419,8 @@ export function MusicPanel() {
               Link reconhecido. <span className="text-foreground">Enter</span> toca agora;{' '}
               <span className="text-foreground">Shift+Enter</span> manda pra fila.
             </p>
+          ) : tab === 'queue' && musicSession ? (
+            <MusicQueue session={musicSession} onSave={(track) => setSaving(track)} />
           ) : searchOff ? (
             <div className="px-3 py-4">
               <p className="text-sm text-foreground">A busca de música está desligada.</p>
@@ -398,6 +434,7 @@ export function MusicPanel() {
               busyId={busy}
               addedIds={added}
               onPick={(track, queue) => void pick(track, queue)}
+              onSave={(track) => setSaving(track)}
               onQueueMany={async (tracks) => {
                 for (const track of tracks) {
                   const ok = await send(
@@ -429,6 +466,7 @@ export function MusicPanel() {
                   onHover={() => setIndex(position)}
                   onPlay={() => void pick(track, false)}
                   onQueue={() => void pick(track, true)}
+                  onSave={() => setSaving(track)}
                 />
               ))}
             </ol>
@@ -449,6 +487,8 @@ export function MusicPanel() {
             {error}
           </p>
         )}
+
+        {saving && <PlaylistPicker track={saving} onClose={() => setSaving(null)} />}
 
         {(tab === 'search' || asLink) && (
           <div className="flex shrink-0 items-center gap-1.5 border-t-2 border-line p-2">
@@ -521,11 +561,14 @@ function TabButton({
 function SpotifyLibrary({
   busyId,
   onPick,
+  onSave,
   onQueueMany,
   addedIds
 }: {
   busyId: string | null
   onPick: (track: MusicResult, queue: boolean) => void
+  /** "Adicionar à playlist" de uma faixa. */
+  onSave: (track: MusicResult) => void
   /** Devolve false se a sala recusou (fila cheia, sem call). */
   onQueueMany: (tracks: MusicResult[]) => Promise<boolean>
   /** Quem acabou de entrar na fila, pro mesmo sinal da busca. */
@@ -770,6 +813,7 @@ function SpotifyLibrary({
                   onHover={() => {}}
                   onPlay={() => onPick(track, false)}
                   onQueue={() => onPick(track, true)}
+                  onSave={() => onSave(track)}
                 />
               ))}
             </ol>
@@ -864,7 +908,8 @@ function ResultRow({
   added,
   onHover,
   onPlay,
-  onQueue
+  onQueue,
+  onSave
 }: {
   track: MusicResult
   active: boolean
@@ -874,6 +919,8 @@ function ResultRow({
   onHover: () => void
   onPlay: () => void
   onQueue: () => void
+  /** Abre o seletor de Playlist Murcha (existentes ou nova). */
+  onSave?: () => void
 }) {
   return (
     <li
@@ -934,6 +981,17 @@ function ResultRow({
         hover: um sinal que só aparece com o mouse em cima não confirma nada
         pra quem já moveu o cursor pro próximo resultado.
       */}
+      {onSave && (
+        <button
+          type="button"
+          onClick={onSave}
+          title="Adicionar à playlist"
+          className="flex shrink-0 items-center rounded-brutal p-1 text-muted-foreground opacity-0 transition-opacity hover:text-acid focus:opacity-100 group-hover:opacity-100"
+        >
+          <BookmarkPlus className="h-4 w-4" />
+        </button>
+      )}
+
       <button
         type="button"
         onClick={onQueue}
