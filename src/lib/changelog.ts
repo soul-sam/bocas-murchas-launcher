@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.65.0',
+    headline: 'Transmitir com som sem eco',
+    items: [
+      'Compartilhar a tela com som agora leva só o som do PC: as vozes da call, o soundboard, os avisos e a música do launcher ficam de fora. Ninguém mais se escuta de volta.',
+      'O launcher não fica mais mudo enquanto você transmite: você continua ouvindo tudo normal.',
+      'O som do jogo continua indo junto, inclusive Minecraft e LoL abertos pelo launcher.'
+    ],
+    note: 'Precisa do Windows 10 versão 2004 ou mais novo. Em Windows mais antigo continua o jeito anterior.'
+  },
+  {
     version: '1.64.2',
     headline: 'Guardar na playlist sem esperar',
     items: [
