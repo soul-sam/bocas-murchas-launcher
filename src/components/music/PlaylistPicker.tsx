@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import {
-  music as musicApi,
   playlists as playlistsApi,
   type MurchaPlaylist,
   type MusicResult
@@ -19,8 +18,8 @@ import {
  * Um popover em portal ficaria fora da armadilha e o Tab fugia dele.
  *
  * A faixa pode chegar sem `videoId` (resultado de busca que o grupo nunca
- * tocou). Aí ela passa pelo /music/resolve ANTES de entrar na playlist — a
- * playlist guarda o vídeo pronto, e tocar ela inteira depois não gasta cota.
+ * tocou) e entra assim mesmo: guardar não passa pelo YouTube e não tem limite
+ * de tempo. O vídeo é procurado na hora de tocar (ver MurchaPlaylists).
  */
 
 /** A faixa a guardar: resultado da busca (pode faltar o vídeo) ou faixa já tocando. */
@@ -67,31 +66,19 @@ export function PlaylistPicker({
     }
   }, [token, user?.id])
 
-  /** Garante o vídeo. Já resolvida (ou link colado) não gasta nada. */
-  const ensureVideo = async (): Promise<PickerTrack | null> => {
-    if (track.videoId) return track
-    if (!token || !track.spotifyId) return null
-    const { track: resolved } = await musicApi.resolve(token, track.spotifyId)
-    return resolved.videoId ? resolved : null
-  }
-
   const addTo = async (playlist: MurchaPlaylist): Promise<void> => {
     if (!token || busy) return
     setBusy(playlist.id)
     setError(null)
     try {
-      const ready = await ensureVideo()
-      if (!ready?.videoId) {
-        setError('Não achei essa no YouTube, então não dá pra guardar.')
-        return
-      }
+      // Vai como está, com ou sem vídeo: guardar não passa pelo YouTube.
       await playlistsApi.addTrack(token, playlist.id, {
-        videoId: ready.videoId,
-        title: ready.title,
-        artist: ready.artist,
-        artUrl: ready.artUrl,
-        durationMs: ready.durationMs,
-        spotifyId: ready.spotifyId
+        videoId: track.videoId,
+        title: track.title,
+        artist: track.artist,
+        artUrl: track.artUrl,
+        durationMs: track.durationMs,
+        spotifyId: track.spotifyId
       })
       setDone(playlist.id)
       onAdded?.(playlist)

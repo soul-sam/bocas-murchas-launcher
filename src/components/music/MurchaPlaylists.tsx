@@ -219,33 +219,79 @@ function PlaylistDetail({
   const inCall = voice.connected
   const tracks = playlist.tracks
 
-  const toTrack = (track: MurchaPlaylistTrack): WatchTrack => ({
+  const toTrack = (track: MurchaPlaylistTrack & { videoId: string }): WatchTrack => ({
     videoId: track.videoId,
     title: track.title,
     artist: track.artist,
     artUrl: track.artUrl
   })
 
+  /**
+   * Garante o vídeo das faixas que vão tocar. Guardar não passa pelo YouTube
+   * (não tem limite de tempo), então a busca do vídeo que falta acontece aqui
+   * — sob a cota diária do grupo. Devolve as que dá pra tocar, na mesma ordem.
+   */
+  const withVideos = async (
+    wanted: MurchaPlaylistTrack[]
+  ): Promise<(MurchaPlaylistTrack & { videoId: string })[]> => {
+    const missing = wanted.filter((t) => !t.videoId && t.spotifyId).map((t) => t.id)
+    let current = wanted
+    if (token && missing.length > 0) {
+      let quota = false
+      let failed = 0
+      for (let i = 0; i < missing.length && !quota; i += 50) {
+        const page = await playlistsApi.resolve(token, playlist.id, missing.slice(i, i + 50))
+        setPlaylist(page.playlist)
+        quota = page.quota
+        failed += page.failed
+        const fresh = new Map(page.playlist.tracks.map((t) => [t.id, t]))
+        current = current.map((t) => fresh.get(t.id) ?? t)
+      }
+      if (quota) setError('A busca do YouTube gastou a cota do dia — só as que já tinham vídeo vão tocar.')
+      else if (failed > 0)
+        setError(`${failed} ${failed === 1 ? 'música não foi achada' : 'músicas não foram achadas'} no YouTube.`)
+    }
+    return current.filter((t): t is MurchaPlaylistTrack & { videoId: string } => !!t.videoId)
+  }
+
   /** Manda a playlist pra call. Aleatório embaralha AQUI, a lista inteira, antes do corte. */
   const playAll = async (shuffle: boolean): Promise<void> => {
     if (sending || tracks.length === 0) return
     setSending(shuffle ? 'shuffle' : 'play')
     setError(null)
-    const ordered = shuffle ? shuffled(tracks) : tracks
-    const ack = await watch.queueMany(ordered.slice(0, SEND_MAX).map(toTrack))
-    setSending(null)
-    if (!ack.ok) {
-      setError(ack.error ?? 'Não deu.')
-      return
+    try {
+      const ordered = shuffle ? shuffled(tracks) : tracks
+      const ready = await withVideos(ordered.slice(0, SEND_MAX))
+      if (ready.length === 0) return
+      const ack = await watch.queueMany(ready.map(toTrack))
+      if (!ack.ok) {
+        setError(ack.error ?? 'Não deu.')
+        return
+      }
+      const added = ack.added ?? 0
+      setNote(
+        added === 0
+          ? 'A fila está cheia.'
+          : `${added} ${added === 1 ? 'música foi' : 'músicas foram'} pra call${
+              added < ready.length ? ' — o resto não coube na fila' : ''
+            }.`
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não deu.')
+    } finally {
+      setSending(null)
     }
-    const added = ack.added ?? 0
-    setNote(
-      added === 0
-        ? 'A fila está cheia.'
-        : `${added} ${added === 1 ? 'música foi' : 'músicas foram'} pra call${
-            added < tracks.length ? ' — o resto não coube na fila' : ''
-          }.`
-    )
+  }
+
+  /** Tocar agora / botar na fila uma faixa só. */
+  const sendOne = async (track: MurchaPlaylistTrack, queue: boolean): Promise<void> => {
+    try {
+      const [ready] = await withVideos([track])
+      if (!ready) return
+      await (queue ? watch.queueTrack(toTrack(ready)) : watch.playTrack(toTrack(ready)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não deu.')
+    }
   }
 
   const removeTrack = async (track: MurchaPlaylistTrack): Promise<void> => {
@@ -415,7 +461,7 @@ function PlaylistDetail({
                 <button
                   type="button"
                   disabled={!inCall}
-                  onClick={() => void watch.playTrack(toTrack(track))}
+                  onClick={() => void sendOne(track, false)}
                   title={inCall ? 'Tocar agora' : 'Entra numa call primeiro'}
                   className="flex min-w-0 flex-1 items-center gap-2.5 text-left disabled:cursor-default"
                 >
@@ -446,7 +492,7 @@ function PlaylistDetail({
                 <button
                   type="button"
                   disabled={!inCall}
-                  onClick={() => void watch.queueTrack(toTrack(track))}
+                  onClick={() => void sendOne(track, true)}
                   title={inCall ? 'Botar na fila' : 'Entra numa call primeiro'}
                   className="shrink-0 rounded-brutal p-1 text-muted-foreground opacity-0 transition-opacity hover:text-acid focus:opacity-100 disabled:hidden group-hover:opacity-100"
                 >

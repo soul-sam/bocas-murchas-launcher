@@ -172,8 +172,11 @@ export interface MurchaPlaylist {
 
 export interface MurchaPlaylistTrack {
   id: string
-  /** Já resolvido: tocar a playlist não gasta busca no YouTube. */
-  videoId: string
+  /**
+   * Vazio = guardada sem passar pelo YouTube (guardar não tem limite). O
+   * vídeo é procurado na hora de tocar: `playlists.resolve`.
+   */
+  videoId?: string
   title: string
   artist?: string
   artUrl?: string
@@ -187,8 +190,9 @@ export interface MurchaPlaylistFull extends MurchaPlaylist {
   tracks: MurchaPlaylistTrack[]
 }
 
+/** Precisa do vídeo OU da faixa do Spotify (o vídeo vem depois). */
 export interface MurchaTrackInput {
-  videoId: string
+  videoId?: string
   title?: string
   artist?: string
   artUrl?: string
@@ -235,6 +239,21 @@ export const playlists = {
     return request<{ track: MurchaPlaylistTrack; duplicate?: boolean }>(
       `/music/playlists/${encodeURIComponent(id)}/tracks`,
       { token, method: 'POST', body: JSON.stringify(track) }
+    )
+  },
+
+  /**
+   * Procura o vídeo das faixas guardadas sem ele. Gasta a cota diária do
+   * grupo; `quota: true` = acabou, o que já tinha vídeo toca normal.
+   */
+  async resolve(
+    token: string,
+    id: string,
+    trackIds: string[]
+  ): Promise<{ playlist: MurchaPlaylistFull; failed: number; quota: boolean }> {
+    return request<{ playlist: MurchaPlaylistFull; failed: number; quota: boolean }>(
+      `/music/playlists/${encodeURIComponent(id)}/resolve`,
+      { token, method: 'POST', body: JSON.stringify({ trackIds }) }
     )
   },
 

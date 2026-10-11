@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.64.2',
+    headline: 'Guardar na playlist sem esperar',
+    items: [
+      'Guardar música na Playlist Murcha não tem mais limite de tempo: pode clicar em quantas quiser, uma atrás da outra, sem o "Calma pra escolher música".',
+      'A música guardada que o grupo nunca tocou procura o vídeo no YouTube na hora de tocar a playlist.'
+    ]
+  },
+  {
     version: '1.64.1',
     headline: 'Playlist Murcha mudou de lugar',
     items: [
