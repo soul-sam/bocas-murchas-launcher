@@ -327,7 +327,13 @@ export function MusicPanel() {
       <div
         ref={panelRef}
         onClick={(event) => event.stopPropagation()}
-        className="card-gradient relative flex max-h-[74dvh] w-full max-w-lg flex-col overflow-hidden rounded-brutal border-2 border-acid-dark shadow-[0_0_50px_rgba(0,0,0,0.8)]"
+        className={cn(
+          'card-gradient relative flex max-h-[74dvh] w-full max-w-lg flex-col overflow-hidden rounded-brutal border-2 border-acid-dark shadow-[0_0_50px_rgba(0,0,0,0.8)]',
+          // O seletor de playlist cobre o painel (absolute inset-0) e herdava a
+          // altura da aba de baixo: com a fila curta cabiam "Nova playlist" e
+          // duas playlists, e parecia que so dava pra ter duas.
+          saving && 'h-[74dvh]'
+        )}
       >
         <div className="flex shrink-0 items-center gap-2 border-b-2 border-line px-3">
           {asLink ? (

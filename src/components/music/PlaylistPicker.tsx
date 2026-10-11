@@ -93,8 +93,8 @@ export function PlaylistPicker({
   }
 
   const create = async (): Promise<void> => {
-    const clean = name.trim()
-    if (!token || !clean || busy) return
+    const clean = name.trim() || defaultPlaylistName(list, user?.id)
+    if (!token || busy) return
     setBusy('new')
     setError(null)
     try {
@@ -160,7 +160,7 @@ export function PlaylistPicker({
             />
             <button
               type="submit"
-              disabled={!name.trim() || busy !== null}
+              disabled={busy !== null}
               className="flex shrink-0 items-center gap-1.5 rounded-brutal border-2 border-acid bg-acid/10 px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20 disabled:opacity-40"
             >
               {busy === 'new' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
@@ -223,6 +223,18 @@ export function PlaylistPicker({
       )}
     </div>
   )
+}
+
+/**
+ * Nome de quem clica "Criar" sem digitar nada: "Playlist #3" se a pessoa já
+ * tem duas. Botão apagado esperando nome parecia limite de playlists.
+ */
+export function defaultPlaylistName(
+  list: MurchaPlaylist[] | null,
+  userId: string | undefined
+): string {
+  const mine = (list ?? []).filter((p) => p.ownerId === userId).length
+  return `Playlist #${mine + 1}`
 }
 
 /**

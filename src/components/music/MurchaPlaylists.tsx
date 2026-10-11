@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { useVoice } from '@/lib/voice-context'
 import { useWatch, type WatchTrack } from '@/lib/watch-context'
-import { PlaylistCover } from '@/components/music/PlaylistPicker'
+import { PlaylistCover, defaultPlaylistName } from '@/components/music/PlaylistPicker'
 import { shuffled } from '@/lib/playlist-utils'
 import {
   playlists as playlistsApi,
@@ -57,8 +57,10 @@ export function MurchaPlaylists({ onSearch }: { onSearch: () => void }) {
   }, [load])
 
   const create = async (): Promise<void> => {
-    const clean = name.trim()
-    if (!token || !clean || creating) return
+    // Sem nome também cria: o botão apagado esperando texto parecia limite de
+    // playlists. Renomeia depois, dentro dela.
+    const clean = name.trim() || defaultPlaylistName(list, user?.id)
+    if (!token || creating) return
     setCreating(true)
     setError(null)
     try {
@@ -104,7 +106,7 @@ export function MurchaPlaylists({ onSearch }: { onSearch: () => void }) {
         />
         <button
           type="submit"
-          disabled={!name.trim() || creating}
+          disabled={creating}
           className="flex shrink-0 items-center gap-1.5 rounded-brutal border-2 border-acid bg-acid/10 px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20 disabled:opacity-40"
         >
           {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}

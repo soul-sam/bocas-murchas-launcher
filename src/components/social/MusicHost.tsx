@@ -19,7 +19,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { useSettings } from '@/lib/settings-context'
 import { useVoice } from '@/lib/voice-context'
-import { NaFila } from '@/components/ui/filas'
+import { Arrastavel } from '@/components/ui/arrastavel'
 import { ShuffleButton } from '@/components/music/MusicQueue'
 import { useWatch, type WatchSession } from '@/lib/watch-context'
 import { openExternal } from '@/lib/rich-text'
@@ -308,11 +308,13 @@ function MusicBar({ session }: { session: WatchSession }) {
         />
       </div>
 
-      {/* A BARRA — na fila do canto (components/ui/filas.tsx), não mais
+      {/* A BARRA — nasce na fila do canto (components/ui/filas.tsx), não mais
           ancorada sozinha em `bottom-4 right-4`, que era o mesmo ponto e o
           mesmo z do toast de XP. No celular a fila a estica de borda a borda:
-          320px fixos são 89% de um aparelho de 360. */}
-      <NaFila fila="canto" ordem={20}>
+          320px fixos são 89% de um aparelho de 360. Agarrando pela capa e
+          título, vai pra onde a pessoa quiser (ver ui/arrastavel.tsx). */}
+      <Arrastavel chave="bm.musica.posicao" ordem={20}>
+      {(alca) => (
       <div className="pointer-events-auto w-80 max-w-full overflow-hidden rounded-brutal border-2 border-acid-dark bg-void shadow-[0_0_30px_rgba(0,0,0,0.7)]">
         {queueOpen && (
           <QueuePanel
@@ -324,7 +326,12 @@ function MusicBar({ session }: { session: WatchSession }) {
         )}
 
         {blocked ? (
-          <div className="flex flex-col gap-2 p-3">
+          <div
+            onPointerDown={alca.onPointerDown}
+            onDoubleClick={alca.onDoubleClick}
+            title={alca.title}
+            className={cn('flex flex-col gap-2 p-3', alca.className)}
+          >
             <p className="text-sm text-foreground">{errorInfo?.title}</p>
             <p className="text-xs text-muted-foreground">{errorInfo?.body}</p>
             <div className="flex items-center gap-1.5">
@@ -359,7 +366,12 @@ function MusicBar({ session }: { session: WatchSession }) {
         ) : (
           <>
             {/* Capa, título, quem pediu */}
-            <div className="flex items-center gap-2 p-2">
+            <div
+              onPointerDown={alca.onPointerDown}
+              onDoubleClick={alca.onDoubleClick}
+              title={alca.title}
+              className={cn('flex touch-none items-center gap-2 p-2', alca.className)}
+            >
               <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-brutal border border-line bg-surface-raised">
                 <img src={art} alt="" className="h-full w-full object-cover" />
                 {!player.ready && (
@@ -488,7 +500,8 @@ function MusicBar({ session }: { session: WatchSession }) {
           </p>
         )}
       </div>
-      </NaFila>
+      )}
+      </Arrastavel>
     </>
   )
 }
