@@ -530,6 +530,9 @@ export function MessageComposer({
       case 'egg':
         emitEgg({ type: 'run', effect: command.effect, seed: command.seed })
         break
+      case 'eggCommand':
+        emitEgg({ type: 'command', id: command.id })
+        break
       case 'drop':
         if (user?.role !== 'admin' || !onDrop) return false
         onDrop(command.seed)
@@ -595,8 +598,11 @@ export function MessageComposer({
     // "/perguntar", "/resumo", "/sortear"… viram "@bocasbot …" e seguem como
     // mensagem comum (ver slash-commands.ts).
     const eggText = typed && !image && !file ? rewriteEggCommand(typed) : null
-    if (eggText) emitEgg({ type: 'run', effect: 'f' })
-    const text = (typed && (rewriteBotCommand(typed) ?? eggText)) || typed
+    if (eggText) emitEgg(eggText.event)
+    // Ovos de mensagem comum: só a boca, ou o "gg ez" que ninguém deveria mandar.
+    if (!image && !file && typed === '👄') emitEgg({ type: 'found', id: 'beijo-murcho' })
+    if (!image && !file && /^gg\s*ez[.!]*$/i.test(typed)) emitEgg({ type: 'found', id: 'gg-ez' })
+    const text = (typed && (rewriteBotCommand(typed) ?? eggText?.text)) || typed
 
     setSending(true)
     setError(null)

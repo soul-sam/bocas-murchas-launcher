@@ -19,6 +19,7 @@ const LOGO_JOKES: Record<number, { title: string; body?: string }> = {
 }
 const LOGO_IDLE_MS = 5_000
 const LOGO_TARGET = 100
+const LOGO_TARGET_PRO = 500
 /** Cliques rápidos em "Murchas" que abrem o caderninho de ovos. */
 const NOTEBOOK_CLICKS = 5
 
@@ -58,6 +59,11 @@ export function TitleBar() {
     if (clicks.count === LOGO_TARGET) {
       emitEgg({ type: 'toast', title: '100 cliques', body: 'Você é persistente demais.' })
       emitEgg({ type: 'found', id: 'pica-pau' })
+    }
+    // Não zera nos 100: o Pica-Pau Profissional é seguir até 500 sem parar.
+    if (clicks.count === LOGO_TARGET_PRO) {
+      emitEgg({ type: 'toast', title: '500 cliques', body: 'Isso já é um problema.' })
+      emitEgg({ type: 'found', id: 'pica-pau-pro' })
       clicks.count = 0
     }
   }

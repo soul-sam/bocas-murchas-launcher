@@ -7,16 +7,25 @@ import { playUiSound, type UiSound } from '@/lib/ui-sounds'
 import { ApiError } from '@/lib/api'
 import { isWeb } from '@/lib/platform'
 import { eggs } from '@/lib/easter-eggs/api'
-import { emitEgg, onEgg, setTitleDecor, useTitleDecor, type EggEffect } from '@/lib/easter-eggs/bus'
-import { clockNow, deadHour, decorFor, newYear, shootingStarTime } from '@/lib/easter-eggs/clock'
+import {
+  emitEgg,
+  onEgg,
+  setTitleDecor,
+  useTitleDecor,
+  type EggCommandId,
+  type EggEffect
+} from '@/lib/easter-eggs/bus'
+import { TIMED_EGGS, clockNow, deadHour, decorFor, newYear, shootingStarTime } from '@/lib/easter-eggs/clock'
 import {
   BUFFER_SIZE,
+  FOUND_SEQUENCES,
   completedSequence,
   isTypingTarget,
   normalizeKey
 } from '@/lib/easter-eggs/sequences'
 import { EggNotebook } from './EggNotebook'
 import { DecorButton } from './DecorButton'
+import { useEggWatchers } from './useEggWatchers'
 import { Fireworks, MatrixRain } from './canvases'
 import '@/styles/easter-eggs.css'
 
@@ -70,6 +79,42 @@ const JOKE: Partial<Record<EggEffect, { title: string; body?: string }>> = {
   virada: { title: 'Feliz ano novo murcho', body: 'Mais um ano sem ninguém ter consertado a impressora.' }
 }
 
+/**
+ * Comandos de barra que só respondem (out/2026). Devolve o recado e se o ovo
+ * vale: no /sorte, só 1 em 100 vale — o resto é "não foi dessa vez".
+ */
+function commandReply(id: EggCommandId): { title: string; body?: string; found: boolean } {
+  const pick = <T,>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)]
+  switch (id) {
+    case 'ff':
+      return { title: 'Rendição recusada', body: '1 voto a favor, 4 contra. Joga aí.', found: true }
+    case 'ping':
+      return { title: 'Pong!', found: true }
+    case 'socorro':
+      return { title: 'Ninguém vem.', body: 'Mas o Bocas Bot viu.', found: true }
+    case 'dado':
+      return { title: `🎲 Saiu ${1 + Math.floor(Math.random() * 6)}`, found: true }
+    case 'moeda':
+      return { title: `🪙 ${pick(['Cara', 'Coroa'])}`, found: true }
+    case 'quarenta-e-dois':
+      return { title: '42', body: 'Agora só falta descobrir a pergunta.', found: true }
+    case 'cafe':
+      return { title: '☕ Cafezinho', body: 'Sem açúcar, que nem a vida.', found: true }
+    case 'rickroll':
+      return { title: 'Never gonna give you up', body: 'Never gonna let you down…', found: true }
+    case 'beijo':
+      return { title: 'Muah 💋', body: 'Beijo mandado. Pra você mesmo.', found: true }
+    case 'hello':
+      return { title: 'Olá, mundo!', found: true }
+    case 'colher':
+      return { title: 'Não existe colher.', found: true }
+    case 'sorte':
+      return Math.random() < 0.01
+        ? { title: '🍀 Trevo de quatro folhas!', body: 'Uma em cem. Vai jogar na loteria.', found: true }
+        : { title: 'Não foi dessa vez.', body: 'A sorte é de 1 em 100. Tenta de novo.', found: false }
+  }
+}
+
 interface Running {
   effect: EggEffect
   seed?: string
@@ -109,6 +154,18 @@ export function EggLayer() {
       claimed.current.delete(id)
     })
   }, [])
+
+  /** Ovo sem efeito próprio: registra e dá o recado, uma vez por sessão. */
+  const found = React.useCallback(
+    (id: string, title: string, body?: string): void => {
+      if (claimed.current.has(id)) return
+      claim(id)
+      pushToast({ kind: 'info', title, body })
+    },
+    [claim, pushToast]
+  )
+
+  useEggWatchers(found)
 
   const sound = React.useCallback((name: UiSound): void => {
     const { soundEnabled, soundVolume } = settingsRef.current
@@ -150,6 +207,12 @@ export function EggLayer() {
           case 'found':
             claim(event.id)
             break
+          case 'command': {
+            const reply = commandReply(event.id)
+            if (reply.found) claim(event.id)
+            pushToast({ kind: 'info', title: reply.title, body: reply.body })
+            break
+          }
           case 'notebook':
             setNotebookOpen(true)
             claim('caderninho')
@@ -176,12 +239,15 @@ export function EggLayer() {
       buffer.length = 0
       // Pelo barramento, e não `run()` direto: a TitleBar também escuta (o
       // "murcho" murcha a boca dela).
-      if (done === 'notebook') emitEgg({ type: 'notebook' })
-      else emitEgg({ type: 'run', effect: done })
+      // As de recado (FOUND_SEQUENCES) só registram; as outras tocam efeito.
+      const reply = FOUND_SEQUENCES[done]
+      if (reply) found(done, reply.title, reply.body)
+      else if (done === 'notebook') emitEgg({ type: 'notebook' })
+      else if (done === 'konami' || done === 'murcho' || done === 'iddqd') emitEgg({ type: 'run', effect: done })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [found])
 
   // Relógio: enfeite da barra, estrela cadente, hora morta e virada.
   const shown = React.useRef(new Set<string>())
@@ -206,6 +272,7 @@ export function EggLayer() {
         claim('hora-morta')
       }
       if (newYear(now) && once(`virada-${now.hour}`)) run('virada')
+      for (const egg of TIMED_EGGS) if (egg.test(now)) found(egg.id, egg.title, egg.body)
     }
     tick()
     const timer = window.setInterval(tick, 10_000)
@@ -213,7 +280,7 @@ export function EggLayer() {
       window.clearInterval(timer)
       setTitleDecor(null)
     }
-  }, [claim, run])
+  }, [claim, run, found])
 
   React.useEffect(() => {
     if (!dark) return

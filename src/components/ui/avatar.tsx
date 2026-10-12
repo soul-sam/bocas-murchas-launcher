@@ -219,6 +219,8 @@ export function UserAvatar({
 
   return (
     <div
+      // De quem é a foto: o ovo "Narciso" conta cliques na própria (components/easter-eggs/useEggWatchers.ts).
+      data-avatar-of={userId ?? memberId}
       className={cn(
         'relative shrink-0',
         abrirPerfil && 'cursor-pointer transition-opacity hover:opacity-80'

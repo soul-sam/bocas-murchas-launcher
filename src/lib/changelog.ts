@@ -51,7 +51,9 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       'Pôquer: uma conquista para cada mão com que você ganhar o showdown, da carta alta ao royal flush. O royal flush agora é Murcho Supremo.',
       'Cada prêmio do recap de domingo tem conquista de 1, 5 e 15 vitórias.',
       'Loja: Primeira Compra, Freguês, Cliente VIP, Kit Supremo (ter os 7 itens supremos) e "Eu quero, eu posso!" (ter a lojinha inteira).',
-      'Impressora, cutucadas, clipes, sinal de fumaça e gorjeta ganharam degraus até o épico. A vaquinha ganhou Dono do Servidor, por 6 meses ajudando com a conta.'
+      'Impressora, cutucadas, clipes, sinal de fumaça e gorjeta ganharam degraus até o épico. A vaquinha ganhou Dono do Servidor, por 6 meses ajudando com a conta.',
+      'Mais 46 ovos escondidos pelo launcher, e um ovo Murcho Supremo pra quem achar todos. O caderninho tem as dicas.',
+      'Conquistas de caçador de ovos: Farejador, Caçador de Ovos, Arqueólogo e Quebra-Cabeça.'
     ],
     note: 'Quem já tinha chegado nos números ganha as conquistas novas sozinho, sem aviso. Algumas conquistas mudaram de raridade, e ninguém perde as que já tem. As músicas contam a partir desta versão.'
   },

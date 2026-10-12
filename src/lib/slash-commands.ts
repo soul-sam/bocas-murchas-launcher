@@ -7,7 +7,7 @@
  * perde mensagem por causa de uma barra no começo.
  */
 
-import type { EggEffect } from './easter-eggs/bus'
+import type { EggCommandId, EggEffect, EggEvent } from './easter-eggs/bus'
 
 export type SlashCommand =
   | { kind: 'poll' }
@@ -32,6 +32,8 @@ export type SlashCommand =
   | { kind: 'announce'; seed: string }
   /** Easter-egg: efeito só na tela de quem mandou. Fora do SLASH_HELP de propósito. */
   | { kind: 'egg'; effect: EggEffect; seed: string }
+  /** Easter-egg que só responde com um recado na tela de quem mandou (out/2026). */
+  | { kind: 'eggCommand'; id: EggCommandId }
 
 /**
  * Comandos escondidos (components/easter-eggs). NÃO entram no SLASH_HELP: o
@@ -49,7 +51,24 @@ const EGG_COMMANDS: Record<string, EggEffect> = {
   barrelroll: 'girar'
 }
 
-const ALIASES: Record<string, Exclude<SlashCommand['kind'], 'egg'>> = {
+/** Os que só dão um recado. Mesma regra: fora do SLASH_HELP, nada vai pro chat. */
+const EGG_REPLY_COMMANDS: Record<string, EggCommandId> = {
+  ff: 'ff',
+  ping: 'ping',
+  socorro: 'socorro',
+  dado: 'dado',
+  moeda: 'moeda',
+  '42': 'quarenta-e-dois',
+  cafe: 'cafe',
+  café: 'cafe',
+  rickroll: 'rickroll',
+  beijo: 'beijo',
+  hello: 'hello',
+  colher: 'colher',
+  sorte: 'sorte'
+}
+
+const ALIASES: Record<string, Exclude<SlashCommand['kind'], 'egg' | 'eggCommand'>> = {
   enquete: 'poll',
   poll: 'poll',
   votacao: 'poll',
@@ -113,13 +132,17 @@ const ALIASES: Record<string, Exclude<SlashCommand['kind'], 'egg'>> = {
 }
 
 export function parseSlashCommand(text: string): SlashCommand | null {
-  const match = /^\/([\p{L}]+)(?:\s+([\s\S]*))?$/u.exec(text.trim())
+  // Letra OU número: "/42" é ovo.
+  const match = /^\/([\p{L}\p{N}]+)(?:\s+([\s\S]*))?$/u.exec(text.trim())
   if (!match) return null
 
   const seed = (match[2] ?? '').trim()
 
   const egg = EGG_COMMANDS[match[1].toLowerCase()]
   if (egg) return { kind: 'egg', effect: egg, seed }
+
+  const reply = EGG_REPLY_COMMANDS[match[1].toLowerCase()]
+  if (reply) return { kind: 'eggCommand', id: reply }
 
   const kind = ALIASES[match[1].toLowerCase()]
   if (!kind) return null
@@ -196,11 +219,27 @@ export function rewriteBotCommand(text: string): string | null {
 }
 
 /**
- * "/f" vira um "F" no chat (e a chuva de F na tela de quem mandou, disparada
- * pelo compositor). Qualquer outra coisa: null, segue o caminho normal.
+ * Ovos que FALAM no chat: o comando vira o texto da mensagem, e o compositor
+ * avisa a camada (`event`). "/f" vira "F" (e a chuva de F na tela de quem
+ * mandou); "/shrug" põe o ¯\_(ツ)_/¯ no fim do que veio depois. Qualquer outra
+ * coisa: null, segue o caminho normal.
  */
-export function rewriteEggCommand(text: string): string | null {
-  return /^\/f$/i.test(text.trim()) ? 'F' : null
+const EGG_TEXT_COMMANDS: Record<string, { text: (seed: string) => string; event: EggEvent; bare?: true }> = {
+  // `bare`: só o comando sozinho. "/f alguma coisa" segue como texto normal.
+  f: { text: () => 'F', event: { type: 'run', effect: 'f' }, bare: true },
+  gg: { text: () => 'GG', event: { type: 'found', id: 'gg' }, bare: true },
+  shrug: { text: (seed) => `${seed} ¯\\_(ツ)_/¯`.trim(), event: { type: 'found', id: 'shrug' } },
+  tableflip: { text: (seed) => `${seed} (╯°□°)╯︵ ┻━┻`.trim(), event: { type: 'found', id: 'tableflip' } },
+  unflip: { text: (seed) => `${seed} ┬─┬ノ( º _ ºノ)`.trim(), event: { type: 'found', id: 'unflip' } }
+}
+
+export function rewriteEggCommand(text: string): { text: string; event: EggEvent } | null {
+  const match = /^\/([a-z]+)(?:\s+([\s\S]*))?$/i.exec(text.trim())
+  const command = match ? EGG_TEXT_COMMANDS[match[1].toLowerCase()] : undefined
+  if (!match || !command) return null
+  const seed = (match[2] ?? '').trim()
+  if (command.bare && seed) return null
+  return { text: command.text(seed), event: command.event }
 }
 
 /** Lista pro autocompletar quando a pessoa digita "/" */

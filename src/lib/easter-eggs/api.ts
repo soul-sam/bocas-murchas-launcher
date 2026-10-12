@@ -2,7 +2,7 @@ import { request } from '../api'
 
 /** Easter-eggs na API (src/routes/gamification.routes.ts, catálogo em lib/gamification/easter-eggs.ts). */
 
-export type EggRarity = 'common' | 'rare' | 'epic' | 'legendary'
+export type EggRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'supreme'
 
 export interface EggClaim {
   /** true só na primeira vez que a pessoa acha. */

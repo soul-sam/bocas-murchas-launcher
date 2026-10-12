@@ -28,11 +28,32 @@ export type EggEffect =
   | 'girar'
   | 'virada'
 
+/**
+ * Comandos de barra escondidos que só respondem com um recado (out/2026). O
+ * id é o mesmo do ovo na API; quem decide o recado (e se paga, no /sorte) é a
+ * camada.
+ */
+export type EggCommandId =
+  | 'ff'
+  | 'ping'
+  | 'socorro'
+  | 'dado'
+  | 'moeda'
+  | 'quarenta-e-dois'
+  | 'cafe'
+  | 'rickroll'
+  | 'beijo'
+  | 'hello'
+  | 'colher'
+  | 'sorte'
+
 export type EggEvent =
   /** Tocar um efeito e registrar o ovo de mesmo nome. */
   | { type: 'run'; effect: EggEffect; seed?: string }
   /** Registrar um ovo sem efeito próprio (quem chamou já fez a graça). */
   | { type: 'found'; id: string }
+  /** Comando de barra escondido que responde com um recado. */
+  | { type: 'command'; id: EggCommandId }
   /** Abrir o caderninho de ovos. */
   | { type: 'notebook' }
   /** Recado passageiro — pra quem vive fora da casca e não alcança os toasts. */

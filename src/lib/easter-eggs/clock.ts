@@ -65,6 +65,31 @@ export function deadHour(now: ClockParts): boolean {
   return at(now, 3, 33)
 }
 
+/**
+ * Ovos de out/2026 que valem só por estar com o launcher aberto na hora (ou no
+ * dia) certa. A API confere com o relógio dela (`when`, com 2 min de folga).
+ */
+export const TIMED_EGGS: ReadonlyArray<{
+  id: string
+  test: (now: ClockParts) => boolean
+  title: string
+  body?: string
+}> = [
+  { id: 'escadinha', test: (n) => at(n, 12, 34), title: '12:34', body: 'Um, dois, três, quatro.' },
+  { id: 'meia-noite', test: (n) => at(n, 0, 0), title: 'Meia-noite', body: 'Virou o dia. Vai dormir.' },
+  { id: 'patinhos', test: (n) => at(n, 22, 22), title: '22:22', body: 'Dois patinhos na lagoa.' },
+  { id: 'pi', test: (n) => at(n, 3, 14), title: '3:14', body: 'π da madrugada.' },
+  { id: 'star-wars', test: (n) => n.month === 5 && n.day === 4, title: 'May the 4th', body: 'Que a força esteja com você.' },
+  { id: 'namorados', test: (n) => n.month === 6 && n.day === 12, title: 'Dia dos Namorados', body: 'E você aqui no launcher.' },
+  { id: 'arraia', test: (n) => n.month === 6 && n.day === 24, title: 'Arraiá', body: 'Olha a cobra! É mentira.' },
+  { id: 'dia-do-gamer', test: (n) => n.month === 8 && n.day === 29, title: 'Dia do Gamer', body: 'Hoje pode jogar sem culpa.' },
+  { id: 'criancas', test: (n) => n.month === 10 && n.day === 12, title: 'Dia das Crianças', body: 'A criança murcha que mora em você agradece.' },
+  { id: 'bissexto', test: (n) => n.month === 2 && n.day === 29, title: '29 de fevereiro', body: 'Esse dia quase não existe.' },
+  { id: 'pi-perfeito', test: (n) => n.month === 3 && n.day === 14 && at(n, 1, 59), title: '3,14159', body: 'Pi perfeito. Um minuto por ano.' },
+  { id: 'onze-onze-onze', test: (n) => n.month === 11 && n.day === 11 && at(n, 11, 11), title: '11/11 11:11', body: 'Faz quatro pedidos.' },
+  { id: 'azar-dobrado', test: (n) => n.weekday === 5 && n.day === 13 && at(n, 13, 13), title: 'Sexta 13, 13:13', body: 'Azar em dobro. Ou sorte.' }
+]
+
 /** Primeiros minutos do ano. */
 export function newYear(now: ClockParts): boolean {
   return now.month === 1 && now.day === 1 && now.hour === 0 && now.minute < 15
