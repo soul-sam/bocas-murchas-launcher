@@ -4,6 +4,15 @@ import { LogOut, Keyboard } from 'lucide-react'
 import { ChatIcon, GameIcon, PrinterIcon, ServerIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { resolveAssetUrl } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useBoard } from '@/lib/board-context'
@@ -27,6 +36,7 @@ import { ArenaRail } from './ArenaRail'
  */
 export function AppRail() {
   const { logout } = useAuth()
+  const [confirmLogout, setConfirmLogout] = React.useState(false)
   const { unread, mentions, dmChannels, conversations, textChannels, activeChannelId, setActiveChannel } =
     useChat()
   const { toggleShortcuts, openUserMenu, openCosts } = useOverlays()
@@ -271,13 +281,38 @@ export function AppRail() {
         aria-label="Sair da conta"
         // Último ícone da barra, colado nos atalhos: fácil de clicar sem
         // querer, e sair derruba a call e pede login de novo.
-        onClick={() => {
-          if (window.confirm('Deseja realmente sair da conta?')) void logout()
-        }}
+        onClick={() => setConfirmLogout(true)}
         className="alvo-dedo rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
       >
         <LogOut className="h-4 w-4" />
       </button>
+
+      <Dialog open={confirmLogout} onOpenChange={setConfirmLogout}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Sair da conta?</DialogTitle>
+            <DialogDescription>
+              A call cai e o launcher volta pra tela de login.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmLogout(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setConfirmLogout(false)
+                void logout()
+              }}
+            >
+              <LogOut className="mr-1.5 h-4 w-4" />
+              Sair
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </nav>
   )
 }
