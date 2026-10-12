@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.67.0',
+    headline: 'Aposta no TFT paga pela colocação',
+    items: [
+      'No TFT a aposta é em top 4 ou bot 4, e o launcher agora lê a colocação no fim da partida.',
+      'Top 4 paga pela colocação: 1º 2x, 2º 1,5x, 3º 1,25x, 4º devolve, 5º 0,75x, 6º 0,5x, 7º e 8º perdem tudo. Bot 4 é o espelho: 8º paga 2x, 1º e 2º perdem tudo.',
+      'O bônus de grupo agora só liga com 4 ou mais pessoas apostando na mesma partida.',
+      'Os cartões de aposta mostram quanto cada um ganhou ou perdeu, e "devolvida" quando a aposta só voltou.'
+    ],
+    note: 'Partida de TFT só paga pela colocação com o launcher atualizado de quem está jogando. Sem isso, a aposta é devolvida como antes.'
+  },
+  {
     version: '1.66.0',
     headline: 'Sair pergunta antes e o Tocando vai onde você quiser',
     items: [

@@ -10,8 +10,11 @@ import {
   formatCompact,
   type MatchPlayer,
   type SelfWagerBoard,
+  GROUP_BONUS_MIN_BETTORS,
   JACKPOT_MIN_BETTORS,
   groupBonusPreview,
+  isTftQueue,
+  tftOddsText,
   type WagerGroupBonus,
   type WagerHouse,
   type WagerPool,
@@ -115,6 +118,7 @@ export function BetPopover({
     .filter(Boolean)
     .join(' · ')
   const others = (game.players ?? []).filter((p) => p.userId !== game.session.userId)
+  const tft = isTftQueue(game.session.queue)
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={false}>
@@ -136,7 +140,7 @@ export function BetPopover({
 
         <SquadNote players={others} className="mb-2" />
 
-        <PoolBars pool={game.pool} bonus={game.groupBonus} house={game.house} className="mb-3" />
+        <PoolBars pool={game.pool} bonus={game.groupBonus} house={game.house} tft={tft} className="mb-3" />
 
         {game.myWager ? (
           <p className="rounded-brutal border border-burn/40 bg-burn/[0.06] px-2 py-1.5 text-xs text-foreground">
@@ -145,9 +149,7 @@ export function BetPopover({
             <span className={game.myWager.prediction === 'win' ? 'text-acid' : 'text-destructive'}>
               {game.myWager.self
                 ? 'você mesmo'
-                : game.myWager.prediction === 'win'
-                  ? 'vitória'
-                  : 'derrota'}
+                : sideLabel(game.myWager.prediction, tft)}
             </span>
             {others.length > 0 ? ' nessa partida — vale pro grupo todo.' : '.'}
           </p>
@@ -164,6 +166,7 @@ export function BetPopover({
                 max={ownBoard.self.maxAmount}
                 closesAt={ownBoard.self.closesAt}
                 self={ownBoard.self}
+                tft={tft}
                 onPlaced={() => setOpen(false)}
               />
             </>
@@ -182,6 +185,7 @@ export function BetPopover({
               closesAt={game.self.closesAt}
               self={game.self}
               groupBonus={game.groupBonus}
+              tft={tft}
               onPlaced={() => setOpen(false)}
             />
           ) : (
@@ -201,12 +205,19 @@ export function BetPopover({
             max={game.maxAmount}
             closesAt={game.closesAt}
             groupBonus={game.groupBonus}
+            tft={tft}
             onPlaced={() => setOpen(false)}
           />
         )}
       </PopoverContent>
     </Popover>
   )
+}
+
+/** O lado do palpite em texto: vitória/derrota, ou top 4/bot 4 no TFT. */
+export function sideLabel(prediction: string, tft?: boolean): string {
+  if (tft) return prediction === 'win' ? 'top 4' : 'bot 4'
+  return prediction === 'win' ? 'vitória' : 'derrota'
 }
 
 /**
@@ -254,12 +265,15 @@ export function PoolBars({
   pool,
   bonus,
   house,
+  tft,
   className
 }: {
   pool: WagerPool
   bonus?: WagerGroupBonus
   /** Cofre da casa: mostra o pote acumulado que a partida pode levar. */
   house?: WagerHouse
+  /** Partida de TFT: os lados são top 4 × bot 4. */
+  tft?: boolean
   className?: string
 }) {
   const win = Math.max(0, pool?.win ?? 0)
@@ -272,10 +286,10 @@ export function PoolBars({
       <div className="mb-1 flex items-center justify-between font-mono text-[11px] uppercase tracking-widest">
         <span className="flex items-center gap-1 text-acid-text">
           <TrendingUp className="h-2.5 w-2.5" />
-          vitória · {formatCompact(win)}
+          {sideLabel('win', tft)} · {formatCompact(win)}
         </span>
         <span className="flex items-center gap-1 text-destructive">
-          {formatCompact(loss)} · derrota
+          {formatCompact(loss)} · {sideLabel('loss', tft)}
           <TrendingDown className="h-2.5 w-2.5" />
         </span>
       </div>
@@ -297,7 +311,7 @@ export function PoolBars({
           <Users className="h-2.5 w-2.5" />
           {bonus.percent > 0
             ? `bônus de grupo +${bonus.percent}% · ${bonus.bettors} apostando`
-            : 'mais alguém apostando = +15% pra quem acertar'}
+            : `${GROUP_BONUS_MIN_BETTORS}+ apostando = bônus pra quem acertar`}
         </p>
       )}
       {house && house.jackpot > 0 && (
@@ -334,6 +348,7 @@ export function BetForm({
   closesAt,
   self,
   groupBonus,
+  tft,
   onPlaced,
   className
 }: {
@@ -350,6 +365,11 @@ export function BetForm({
   self?: SelfWagerBoard
   /** Bônus de grupo de agora, pra prévia contar com a própria aposta. */
   groupBonus?: WagerGroupBonus
+  /**
+   * Partida de TFT: os lados viram top 4 / bot 4 e o retorno sai da colocação
+   * (até 2x), inclusive em si mesmo — a odd da winrate não vale ali.
+   */
+  tft?: boolean
   onPlaced?: () => void
   className?: string
 }) {
@@ -391,7 +411,7 @@ export function BetForm({
     }
   }
 
-  const payout = self ? Math.round(value * self.odds.multiplier) : value * 2
+  const payout = tft ? value * 2 : self ? Math.round(value * self.odds.multiplier) : value * 2
   // Quem abre o formulário ainda não apostou: a aposta dele é mais uma pessoa.
   const bonus = groupBonusPreview(value, (groupBonus?.bettors ?? 0) + 1)
 
@@ -402,12 +422,14 @@ export function BetForm({
           <h3 className="flex items-center justify-between font-mono text-[11px] font-normal uppercase tracking-widest">
             <span className="flex items-center gap-1 text-acid-text">
               <TrendingUp className="h-2.5 w-2.5" />
-              sua vitória
+              {tft ? 'seu top 4' : 'sua vitória'}
             </span>
-            <span className="text-burn">{self.odds.multiplier.toFixed(2)}x</span>
+            <span className="text-burn">{tft ? 'até 2x' : `${self.odds.multiplier.toFixed(2)}x`}</span>
           </h3>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-            {self.odds.sample > 0
+            {tft
+              ? 'Paga pela colocação, igual pra todo mundo.'
+              : self.odds.sample > 0
               ? `${self.odds.wins}/${self.odds.sample} vitórias recentes — quanto melhor você joga, menos a aposta paga.`
               : 'Sem histórico ainda: paga o dobro, com teto menor.'}
           </p>
@@ -420,7 +442,7 @@ export function BetForm({
             onClick={() => setPrediction('win')}
             icon={<TrendingUp className="h-3 w-3" />}
           >
-            vitória
+            {sideLabel('win', tft)}
           </SideButton>
           <SideButton
             active={prediction === 'loss'}
@@ -428,7 +450,7 @@ export function BetForm({
             onClick={() => setPrediction('loss')}
             icon={<TrendingDown className="h-3 w-3" />}
           >
-            derrota
+            {sideLabel('loss', tft)}
           </SideButton>
         </div>
       )}
@@ -497,9 +519,16 @@ export function BetForm({
         </span>
       </div>
 
+      {tft && (
+        <p className="text-center font-mono text-[11px] leading-snug text-muted-foreground">
+          {tftOddsText(self ? 'win' : prediction)}
+        </p>
+      )}
+
       {valid && (
         <p className="text-center font-mono text-[11px] text-muted-foreground">
-          se ganhar volta <span className="text-acid-text">{payout}</span>
+          {tft ? 'volta até ' : 'se ganhar volta '}
+          <span className="text-acid-text">{payout}</span>
           {bonus > 0 && (
             <span
               className="text-burn"
@@ -508,7 +537,7 @@ export function BetForm({
               {' '}+ {bonus} do grupo
             </span>
           )}
-          {self && <span className="text-muted-foreground"> · perde tudo se não ganhar</span>}
+          {self && !tft && <span className="text-muted-foreground"> · perde tudo se não ganhar</span>}
         </p>
       )}
 
@@ -549,7 +578,7 @@ export function BetForm({
       >
         {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <MurchosIcon className="h-3 w-3" />}
         apostar {valid ? value : '—'} em{' '}
-        {self ? 'mim' : prediction === 'win' ? 'vitória' : 'derrota'}
+        {self ? 'mim' : sideLabel(prediction, tft)}
       </button>
     </div>
   )

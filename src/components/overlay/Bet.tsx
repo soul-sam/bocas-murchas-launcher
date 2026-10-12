@@ -87,6 +87,7 @@ export function BetComposer({
   closesAt,
   now,
   windowMs,
+  tft,
   onBet,
   className
 }: {
@@ -105,6 +106,11 @@ export function BetComposer({
   now: number
   /** Tamanho da janela de aposta, pra barra do botão. */
   windowMs: number
+  /**
+   * Partida de TFT: os lados viram top 4 / bot 4 e o retorno sai da colocação
+   * (1º 2x … 4º devolve … 7º e 8º perdem), inclusive em si mesmo.
+   */
+  tft?: boolean
   onBet: (side: BetSide, amount: number) => void
   className?: string
 }) {
@@ -147,8 +153,10 @@ export function BetComposer({
   const left = countdown(closesAt, now)
   const fraction = windowLeft(closesAt, now, windowMs)
   const chosen: BetSide = mode.kind === 'self' ? 'win' : side
-  const payout = mode.kind === 'self' ? Math.round(amount * mode.multiplier) : amount * 2
+  const payout = mode.kind === 'self' && !tft ? Math.round(amount * mode.multiplier) : amount * 2
   const bonus = groupBonusPreview(amount, bettors + 1)
+  const sideName = (s: BetSide): string =>
+    tft ? (s === 'win' ? 'top 4' : 'bot 4') : s === 'win' ? 'vitória' : 'derrota'
 
   const total = (pool?.win ?? 0) + (pool?.loss ?? 0)
   const winShare = total > 0 ? Math.round(((pool?.win ?? 0) / total) * 100) : null
@@ -165,14 +173,23 @@ export function BetComposer({
         <div className="flex items-center justify-between rounded-brutal border border-acid-dark/60 bg-acid/10 px-2.5 py-1.5 text-[11.5px]">
           <span className="flex items-center gap-1.5 font-medium text-acid-text">
             <TrendingUp className="h-3.5 w-3.5" aria-hidden />
-            sua vitória
+            {tft ? 'seu top 4' : 'sua vitória'}
           </span>
-          <span
-            className="font-mono font-bold tabular-nums text-burn"
-            title="Quanto cada murcho apostado volta se você ganhar. Sai da sua winrate recente."
-          >
-            {mode.multiplier.toFixed(2).replace('.', ',')}x
-          </span>
+          {tft ? (
+            <span
+              className="font-mono font-bold tabular-nums text-burn"
+              title="1º 2x · 2º 1,5x · 3º 1,25x · 4º devolve · 5º 0,75x · 6º 0,5x · 7º e 8º perdem"
+            >
+              até 2x
+            </span>
+          ) : (
+            <span
+              className="font-mono font-bold tabular-nums text-burn"
+              title="Quanto cada murcho apostado volta se você ganhar. Sai da sua winrate recente."
+            >
+              {mode.multiplier.toFixed(2).replace('.', ',')}x
+            </span>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-1" role="group" aria-label="Lado da aposta">
@@ -183,7 +200,7 @@ export function BetComposer({
             onClick={() => setSide('win')}
             icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden />}
           >
-            vitória
+            {sideName('win')}
           </SideButton>
           <SideButton
             active={side === 'loss'}
@@ -192,7 +209,7 @@ export function BetComposer({
             onClick={() => setSide('loss')}
             icon={<TrendingDown className="h-3.5 w-3.5" aria-hidden />}
           >
-            derrota
+            {sideName('loss')}
           </SideButton>
         </div>
       )}
@@ -216,20 +233,20 @@ export function BetComposer({
 
           <div className="flex items-center justify-between gap-2 text-[11.5px] leading-tight text-muted-foreground">
             <p className="min-w-0 truncate">
-              volta{' '}
+              volta{tft ? ' até' : ''}{' '}
               <span className="font-mono font-semibold tabular-nums text-acid-text">{payout}</span>
               {bonus > 0 ? (
                 <span
                   className="text-burn"
-                  title="Bônus de grupo: +15% por pessoa a mais apostando na partida, até 5. Sai do cofre da casa."
+                  title="Bônus de grupo: com 4 ou mais apostando na partida, +15% por pessoa além da primeira, até 5. Sai do cofre da casa."
                 >
                   {' '}
                   +{bonus} do grupo
                 </span>
               ) : (
-                <span title="Com mais alguém apostando na mesma partida, quem acerta ganha +15% por pessoa, até 5.">
+                <span title="Com 4 ou mais pessoas apostando na mesma partida, quem acerta ganha +15% por pessoa além da primeira, até 5.">
                   {' '}
-                  · +15% se mais alguém apostar
+                  · bônus com 4+ apostando
                 </span>
               )}
             </p>
@@ -259,7 +276,7 @@ export function BetComposer({
             )}
             <span>
               Apostar <span className="font-mono tabular-nums">{amount}</span> em{' '}
-              {mode.kind === 'self' ? 'mim' : chosen === 'win' ? 'vitória' : 'derrota'}
+              {mode.kind === 'self' ? 'mim' : sideName(chosen)}
             </span>
             {/* A janela esvaziando, dentro do próprio botão: quem está com o
                 mouse em cima dele vê quanto tempo ainda tem sem desviar o olho. */}

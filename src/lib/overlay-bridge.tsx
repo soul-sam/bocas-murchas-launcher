@@ -9,7 +9,7 @@ import type {
   OverlayVoice
 } from '../../electron/preload/types'
 import { ApiError } from './api'
-import { WAGER_MIN } from './api-gamification'
+import { WAGER_MIN, isTftQueue } from './api-gamification'
 import { queueLabel, useActivity } from './activity-context'
 import { useAuth } from './auth-context'
 import { useClips } from './clip-context'
@@ -144,6 +144,7 @@ export function OverlayBridge(): null {
         // o dicionário mora no contexto de presença, e arrastar aquele arquivo
         // pra dentro da outra janela traria os contextos todos junto.
         queue: queueLabel(game.session.queue ?? undefined),
+        tft: isTftQueue(game.session.queue),
         pool: game.pool,
         myWager: game.myWager,
         closesAt: Date.parse(game.closesAt),
@@ -164,6 +165,7 @@ export function OverlayBridge(): null {
     return {
       champion: lol.champion,
       queue: queueLabel(lol.queue),
+      tft: isTftQueue(lol.queue),
       since: lol.phaseSince,
       pool: myBoard?.pool ?? { win: 0, loss: 0 },
       bettors: myBoard?.bets.length ?? 0,

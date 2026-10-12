@@ -1050,6 +1050,8 @@ export interface GameSessionSummary {
   deaths?: number | null
   assists?: number | null
   durationSec?: number | null
+  /** Colocação no TFT (1–8). */
+  placement?: number | null
   messageId?: string | null
 }
 
@@ -1088,6 +1090,8 @@ export const games = {
       durationSec: number
       champion?: string
       queue?: string
+      /** Colocação no TFT (1–8): o servidor paga as apostas por ela. */
+      placement?: number
       data?: unknown
       /** Riot IDs (nome#tag) dos aliados — o servidor resolve quem é do grupo. */
       teammateRiotIds?: string[]

@@ -198,3 +198,99 @@ export function eogToResult(block: EogStatsBlock, fallback: EogFallback): LolGam
     endedAt: Date.now()
   }
 }
+
+// ---------------- TFT ----------------
+
+/**
+ * FIM DE PARTIDA DO TFT (`/lol-end-of-game/v1/tft-eog-stats`).
+ *
+ * O TFT nao preenche o eog-stats-block do LoL — ou preenche sem `WIN`, que
+ * nem existe num jogo de oito sem time. Esperando so aquele bloco, toda
+ * partida de TFT saia `unknown` e toda aposta nela era devolvida. Aqui vale a
+ * COLOCACAO (1 a 8): top 4 e vitoria, bot 4 e derrota, e o servidor paga as
+ * apostas pela colocacao.
+ *
+ * A forma do bloco nao e documentada. A colocacao costuma vir em
+ * `localPlayer.ffaStanding`; o leitor aceita os outros nomes que ja vimos e
+ * procura o jogador local na lista de `players` se o `localPlayer` vier vazio.
+ */
+export interface TftEogPlayer {
+  puuid?: string
+  isLocalPlayer?: boolean
+  ffaStanding?: number
+  placement?: number
+  standing?: number
+  [key: string]: unknown
+}
+
+export interface TftEogBlock {
+  gameId?: number
+  queueId?: number
+  gameLength?: number
+  localPlayer?: TftEogPlayer
+  players?: TftEogPlayer[]
+  [key: string]: unknown
+}
+
+function standingOf(player: TftEogPlayer | undefined): number | undefined {
+  for (const value of [player?.ffaStanding, player?.placement, player?.standing]) {
+    if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 8) return value
+  }
+  return undefined
+}
+
+/** Colocacao do jogador local, ou undefined se o bloco nao diz. */
+export function tftPlacementOf(block: unknown, puuid?: string): number | undefined {
+  if (!block || typeof block !== 'object') return undefined
+  const b = block as TftEogBlock
+  const direct = standingOf(b.localPlayer)
+  if (direct !== undefined) return direct
+  const me = (b.players ?? []).find(
+    (p) => p?.isLocalPlayer || (puuid !== undefined && p?.puuid === puuid) ||
+      (b.localPlayer?.puuid !== undefined && p?.puuid === b.localPlayer.puuid)
+  )
+  return standingOf(me)
+}
+
+/** Fila de TFT pelo modo que o cliente declara ou pela chave de fila. */
+export function isTftGame(queue?: string, gameMode?: string): boolean {
+  if (gameMode && gameMode.toUpperCase().includes('TFT')) return true
+  if (!queue) return false
+  if (queue.startsWith('tft')) return true
+  const id = /^queue_(\d+)$/.exec(queue)
+  return id ? Number(id[1]) >= 1090 && Number(id[1]) <= 1299 : false
+}
+
+export function tftEogToResult(
+  block: TftEogBlock,
+  placement: number,
+  fallback: EogFallback & { startedAt: number }
+): LolGameResult {
+  const now = Date.now()
+  const gameLength =
+    typeof block.gameLength === 'number' && block.gameLength > 0
+      ? Math.round(block.gameLength)
+      : Math.max(0, Math.round((now - fallback.startedAt) / 1000))
+  return {
+    gameId: typeof block.gameId === 'number' && block.gameId > 0 ? block.gameId : undefined,
+    queue:
+      typeof block.queueId === 'number' && block.queueId >= 0
+        ? queueName(block.queueId)
+        : fallback.queue,
+    result: placement <= 4 ? 'win' : 'loss',
+    placement,
+    champion: fallback.champion,
+    kills: 0,
+    deaths: 0,
+    assists: 0,
+    durationSec: gameLength,
+    // O bloco do TFT carrega o tabuleiro de oito jogadores; pro servidor vai
+    // so o que identifica a partida e a colocacao.
+    raw: {
+      gameMode: 'TFT',
+      placement,
+      ...(fallback.queueLabel ? { queueName: fallback.queueLabel } : {})
+    },
+    endedAt: now
+  }
+}

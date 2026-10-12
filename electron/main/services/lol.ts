@@ -21,7 +21,15 @@ import {
   mapGameflowPhase,
   queueName
 } from './lol-client.js'
-import { eogToResult, isUsableEogBlock, type EogStatsBlock } from './lol-eog.js'
+import {
+  eogToResult,
+  isTftGame,
+  isUsableEogBlock,
+  tftEogToResult,
+  tftPlacementOf,
+  type EogStatsBlock,
+  type TftEogBlock
+} from './lol-eog.js'
 import { syncOverlayWithLol } from './overlay.js'
 
 /**
@@ -863,12 +871,49 @@ function blockMatches(s: Session, game: PendingGame, block: EogStatsBlock): bool
 
 async function resolveEog(s: Session, game: PendingGame, gen: number): Promise<void> {
   const deadline = Date.now() + EOG_MAX_WAIT_MS
+  const tft = isTftGame(game.queue, game.gameMode)
+  let tftShapeLogged = false
   while (
     gen === generation &&
     session === s &&
     resolvingKey === game.key &&
     Date.now() < deadline
   ) {
+    // TFT tem fim de jogo proprio, com a colocacao (ver lol-eog.ts). O
+    // eog-stats-block do LoL nao diz nada util ali.
+    if (tft) {
+      try {
+        const block = await lcuGet<TftEogBlock>(s.creds, '/lol-end-of-game/v1/tft-eog-stats')
+        const sameGame =
+          !game.gameId || typeof block?.gameId !== 'number' || block.gameId === game.gameId
+        const placement = sameGame ? tftPlacementOf(block, s.me?.puuid) : undefined
+        if (placement !== undefined) {
+          emitResult(
+            game,
+            tftEogToResult(block, placement, {
+              queue: game.queue,
+              champion: game.champion,
+              queueLabel: game.queueLabel,
+              gameMode: game.gameMode,
+              startedAt: game.startedAt
+            })
+          )
+          return
+        }
+        if (sameGame && block && !tftShapeLogged) {
+          // Formato novo da Riot: deixa no log o que veio, pra ajustar o leitor.
+          tftShapeLogged = true
+          console.warn(
+            `[lol] tft-eog-stats sem colocacao; chaves: ${Object.keys(block).join(',')}; ` +
+              `localPlayer: ${Object.keys(block.localPlayer ?? {}).join(',')}`
+          )
+        }
+      } catch {
+        // 404 ate o bloco existir.
+      }
+      await sleep(EOG_INTERVAL_MS)
+      continue
+    }
     try {
       const block = await lcuGet<unknown>(s.creds, '/lol-end-of-game/v1/eog-stats-block')
       if (isUsableEogBlock(block) && blockMatches(s, game, block)) {

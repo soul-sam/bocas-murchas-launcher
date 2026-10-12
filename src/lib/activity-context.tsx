@@ -305,6 +305,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         durationSec: lastResult.durationSec,
         champion: lastResult.champion,
         queue: lastResult.queue,
+        placement: lastResult.placement,
         data: lastResult.raw,
         teammateRiotIds: lastResult.teammates?.map((t) => t.riotId),
         postCard: settings.lol.postGameCard

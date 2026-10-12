@@ -11,13 +11,14 @@ import {
   type WagerBet,
   type WagerCardMeta,
   type WagerPool,
+  isTftQueue,
   nameStyle
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { useGamification } from '@/lib/gamification-context'
 import { queueLabel } from '@/lib/activity-context'
-import { BetForm, PoolBars } from '@/components/social/BetPopover'
+import { BetForm, PoolBars, sideLabel } from '@/components/social/BetPopover'
 import { formatElapsed } from '@/components/social/ActivityLine'
 import { cn } from '@/lib/utils'
 import { NameEmoji } from '@/components/social/NameEmoji'
@@ -40,6 +41,16 @@ const RESULT_LABEL: Record<string, string> = {
   unknown: 'Encerrada'
 }
 
+/** Título do resultado. No TFT: "Top 4 · 3º lugar" em vez de "Venceu". */
+function resultLabel(meta: WagerCardMeta, tft: boolean): string {
+  const result = meta.result ?? 'unknown'
+  if (tft && (result === 'win' || result === 'loss')) {
+    const side = result === 'win' ? 'Top 4' : 'Bot 4'
+    return meta.placement ? `${side} · ${meta.placement}º lugar` : side
+  }
+  return RESULT_LABEL[result] ?? 'Encerrada'
+}
+
 // Relogio compartilhado (para com a janela escondida): ver lib/use-now.
 
 export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
@@ -48,6 +59,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
   const { liveGames, profile } = useGamification()
 
   const settled = !!metadata.settled
+  const tft = metadata.tft ?? isTftQueue(metadata.queue)
   const live = React.useMemo(
     () => (settled ? undefined : liveGames.find((g) => g.session.id === metadata.sessionId)),
     [liveGames, metadata.sessionId, settled]
@@ -120,7 +132,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
                     : 'text-muted-foreground'
               }
             >
-              {RESULT_LABEL[metadata.result ?? 'unknown'] ?? 'Encerrada'}
+              {resultLabel(metadata, tft)}
             </span>
           </span>
         ) : (
@@ -140,6 +152,9 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
               const paid = payouts.find((p) => p.userId === bet.userId)
               const payout = paid?.payout
               const bonus = paid?.bonus ?? 0
+              // O que a aposta RENDEU, não o que voltou: devolução (remake,
+              // inconclusiva, 4º no TFT) volta o valor e não é ganho nenhum.
+              const net = payout === undefined ? 0 : payout - bet.amount
               return (
                 <li key={`${bet.userId}-${index}`} className="flex items-center gap-1">
                   <span style={nameStyle(who?.profileColor)}>
@@ -150,14 +165,28 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
                     className={bet.prediction === 'win' ? 'text-acid' : 'text-destructive'}
                     title={bet.self ? 'apostou na própria vitória' : undefined}
                   >
-                    {bet.amount} {bet.self ? 'EM SI' : bet.prediction === 'win' ? 'W' : 'L'}
+                    {bet.amount}{' '}
+                    {bet.self
+                      ? 'EM SI'
+                      : tft
+                        ? sideLabel(bet.prediction, true).toUpperCase()
+                        : bet.prediction === 'win'
+                          ? 'W'
+                          : 'L'}
                   </span>
                   {settled && payout !== undefined && (
                     <span
-                      className={cn('font-bold', payout > 0 ? 'text-acid' : 'text-destructive')}
-                      title={bonus > 0 ? `inclui +${bonus} de bônus de grupo` : undefined}
+                      className={cn(
+                        'font-bold',
+                        net > 0 ? 'text-acid' : net < 0 ? 'text-destructive' : 'text-muted-foreground'
+                      )}
+                      title={
+                        bonus > 0
+                          ? `voltaram ${payout}, com +${bonus} de bônus de grupo`
+                          : `voltaram ${payout}`
+                      }
                     >
-                      {payout > 0 ? `+${payout}` : `−${bet.amount}`}
+                      {net > 0 ? `+${net}` : net < 0 ? `−${-net}` : 'devolvida'}
                       {bonus > 0 && <span className="font-normal text-burn"> (+{bonus} grupo)</span>}
                     </span>
                   )}
@@ -197,6 +226,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
         pool={pool}
         bonus={settled ? undefined : (live?.groupBonus ?? metadata.groupBonus)}
         house={settled ? undefined : live?.house}
+        tft={tft}
         className="mt-2"
       />
 
@@ -227,6 +257,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
             coins={profile?.coins ?? 0}
             max={live?.maxAmount}
             groupBonus={live?.groupBonus ?? metadata.groupBonus}
+            tft={tft}
             closesAt={Number.isFinite(closesAtMs) ? new Date(closesAtMs).toISOString() : undefined}
           />
         </div>
@@ -242,11 +273,13 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
         <p className="mt-2 rounded-brutal border border-burn/40 bg-burn/[0.06] px-2 py-1 text-xs text-foreground">
           Você apostou <span className="font-mono text-burn">{myBet.amount}</span> em{' '}
           <span className={myBet.prediction === 'win' ? 'text-acid' : 'text-destructive'}>
-            {myBet.self ? 'você mesmo' : myBet.prediction === 'win' ? 'vitória' : 'derrota'}
+            {myBet.self ? 'você mesmo' : sideLabel(myBet.prediction, tft)}
           </span>
           {myBet.self && (
             <>
-              {' '}— volta <span className="font-mono text-acid">{myBet.potential}</span> se ganhar
+              {' '}— volta {tft && 'até '}
+              <span className="font-mono text-acid">{myBet.potential}</span>
+              {!tft && ' se ganhar'}
             </>
           )}
           .

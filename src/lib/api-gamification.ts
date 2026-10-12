@@ -329,8 +329,9 @@ export interface WagerPool {
 }
 
 /**
- * Bônus de grupo: cada apostador distinto além do primeiro na mesma partida
- * soma 15% do valor no prêmio de quem acertar, até +60% (5 pessoas).
+ * Bônus de grupo: com `GROUP_BONUS_MIN_BETTORS` ou mais apostadores distintos
+ * na mesma partida, cada um além do primeiro soma 15% do valor no prêmio de
+ * quem acertar, até +60% (5 pessoas).
  */
 export interface WagerGroupBonus {
   bettors: number
@@ -350,13 +351,41 @@ export interface WagerHouse {
 /** Quantos apostadores distintos a partida precisa pra disputar o pote. */
 export const JACKPOT_MIN_BETTORS = 4
 
+/** Abaixo disso não tem bônus de grupo (espelho de WAGER_GROUP_BONUS.minBettors). */
+export const GROUP_BONUS_MIN_BETTORS = 4
+
 /**
- * Espelho de `groupBonusFor` do servidor (WAGER_GROUP_BONUS): +15% do valor
- * por apostador além do primeiro, até 5 pessoas, teto de 200 por aposta.
+ * APOSTA EM TFT — espelho de TFT_WAGER do servidor. Palpite `win` = top 4,
+ * `loss` = bot 4; o retorno sai da colocação (índice 0 = 1º lugar no top 4,
+ * 8º lugar no bot 4).
+ */
+export const TFT_MULTIPLIERS = [2, 1.5, 1.25, 1, 0.75, 0.5, 0, 0] as const
+
+/** Fila de TFT pela chave que o launcher grava (`tft`, ou `queue_1090`–`queue_1299`). */
+export function isTftQueue(queue?: string | null): boolean {
+  if (!queue) return false
+  if (queue.startsWith('tft')) return true
+  const id = /^queue_(\d+)$/.exec(queue)
+  return id ? Number(id[1]) >= 1090 && Number(id[1]) <= 1299 : false
+}
+
+/** "1º 2x · 2º 1,5x …" — a tabela do palpite, em texto curto. */
+export function tftOddsText(prediction: 'win' | 'loss'): string {
+  return TFT_MULTIPLIERS.map((m, i) => {
+    const place = prediction === 'loss' ? 8 - i : i + 1
+    return `${place}º ${String(m).replace('.', ',')}x`
+  }).join(' · ')
+}
+
+/**
+ * Espelho de `groupBonusFor` do servidor (WAGER_GROUP_BONUS): só a partir de
+ * 4 apostando, +15% do valor por apostador além do primeiro, até 5 pessoas,
+ * teto de 200 por aposta.
  * Só pra PRÉVIA — o servidor conta de novo na liquidação, e o bônus sai do
  * cofre da casa, então pode vir menor se o fundo estiver baixo.
  */
 export function groupBonusPreview(amount: number, bettors: number): number {
+  if (Math.floor(bettors) < GROUP_BONUS_MIN_BETTORS) return 0
   const extra = Math.max(0, Math.min(5, Math.floor(bettors)) - 1)
   return Math.min(200, Math.max(0, Math.round((amount * extra * 15) / 100)))
 }
@@ -457,6 +486,8 @@ export interface GameCardMeta {
   userId: string
   game: 'lol' | 'minecraft'
   result: 'win' | 'loss' | 'remake' | 'unknown'
+  /** Colocação no TFT (1–8). Presente = partida de TFT. */
+  placement?: number | null
   queue?: string | null
   champion?: string | null
   kills?: number
@@ -523,6 +554,10 @@ export interface WagerCardMeta {
   bets: WagerBet[]
   settled: boolean
   result?: 'win' | 'loss' | 'remake' | 'unknown'
+  /** Partida de TFT: palpite é top 4 / bot 4 e paga pela colocação. */
+  tft?: boolean
+  /** Colocação final no TFT (1–8), no cartão liquidado. */
+  placement?: number | null
   /** `bonus` = parte do payout que veio do bônus de grupo. */
   payouts?: { userId: string; payout: number; bonus?: number }[]
   /** Pote pago nessa partida (dividido igualmente entre `winners`). */

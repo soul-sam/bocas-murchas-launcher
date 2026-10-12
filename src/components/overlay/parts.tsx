@@ -51,13 +51,14 @@ export function joinNames(names: string[]): string {
 }
 
 /**
- * Prévia do bônus de grupo: +15% do valor por apostador além do primeiro, até
- * 5 pessoas, teto de 200 por aposta. Cópia enxuta do `groupBonusPreview` de
+ * Prévia do bônus de grupo: só a partir de 4 apostando, +15% do valor por
+ * apostador além do primeiro, até 5 pessoas, teto de 200 por aposta. Cópia enxuta do `groupBonusPreview` de
  * lib/api-gamification — ver o cabeçalho do arquivo pra por que não importar
  * de lá. Só prévia: o servidor conta de novo na liquidação, e o bônus sai do
  * cofre da casa, então pode vir menor se o fundo estiver baixo.
  */
 export function groupBonusPreview(amount: number, bettors: number): number {
+  if (Math.floor(bettors) < 4) return 0
   const extra = Math.max(0, Math.min(5, Math.floor(bettors)) - 1)
   return Math.min(200, Math.max(0, Math.round((amount * extra * 15) / 100)))
 }
@@ -289,10 +290,13 @@ export function Hint({ children }: { children: React.ReactNode }) {
 export function PoolBar({
   pool,
   thick,
+  tft,
   className
 }: {
   pool: { win: number; loss: number }
   thick?: boolean
+  /** TFT: os lados são top 4 × bot 4. */
+  tft?: boolean
   className?: string
 }) {
   const win = Math.max(0, pool?.win ?? 0)
@@ -306,10 +310,10 @@ export function PoolBar({
         <span className="flex items-center gap-1 text-acid-text">
           <TrendingUp className="h-3 w-3" aria-hidden />
           <span className="font-mono font-semibold">{compact(win)}</span>
-          <span className="text-muted-foreground">vitória</span>
+          <span className="text-muted-foreground">{tft ? 'top 4' : 'vitória'}</span>
         </span>
         <span className="flex items-center gap-1 text-destructive">
-          <span className="text-muted-foreground">derrota</span>
+          <span className="text-muted-foreground">{tft ? 'bot 4' : 'derrota'}</span>
           <span className="font-mono font-semibold">{compact(loss)}</span>
           <TrendingDown className="h-3 w-3" aria-hidden />
         </span>

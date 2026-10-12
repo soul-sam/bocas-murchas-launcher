@@ -428,7 +428,7 @@ function MyGameCard({
           </p>
         ) : (
           <>
-            <PoolBar pool={game.pool} thick />
+            <PoolBar pool={game.pool} tft={game.tft} thick />
             <p className="mt-1.5 text-center text-[11.5px] text-muted-foreground">
               {game.bettors === 0
                 ? left
@@ -469,9 +469,9 @@ function SelfBet({
         <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-acid" aria-hidden />
         <span>
           Você apostou <span className="font-mono font-semibold text-acid-text">{game.myWager.amount}</span>{' '}
-          em você — volta{' '}
-          <span className="font-mono font-semibold text-acid-text">{game.myWager.potential}</span> se
-          ganhar.
+          em você — volta{game.tft ? ' até' : ''}{' '}
+          <span className="font-mono font-semibold text-acid-text">{game.myWager.potential}</span>
+          {game.tft ? ', pela colocação.' : ' se ganhar.'}
         </span>
       </p>
     )
@@ -493,6 +493,7 @@ function SelfBet({
         closesAt={self.closesAt}
         now={now}
         windowMs={SELF_WINDOW_MS}
+        tft={game.tft}
         onBet={(_side, amount) =>
           send({ type: 'bet', sessionId: self.sessionId, prediction: 'win', amount })
         }
@@ -643,7 +644,7 @@ function TargetRow({
         </p>
       )}
 
-      <PoolBar pool={target.pool} className="mt-2.5" />
+      <PoolBar pool={target.pool} tft={target.tft} className="mt-2.5" />
 
       {target.myWager ? (
         <p className="mt-2.5 flex items-start gap-2 rounded-brutal border border-acid-dark/60 bg-acid/10 px-2.5 py-1.5 text-[11.5px] leading-snug text-foreground">
@@ -654,7 +655,13 @@ function TargetRow({
             <span
               className={target.myWager.prediction === 'win' ? 'text-acid-text' : 'text-destructive'}
             >
-              {target.myWager.prediction === 'win' ? 'vitória' : 'derrota'}
+              {target.tft
+                ? target.myWager.prediction === 'win'
+                  ? 'top 4'
+                  : 'bot 4'
+                : target.myWager.prediction === 'win'
+                  ? 'vitória'
+                  : 'derrota'}
             </span>
             {target.squad.length > 0 ? ' — vale pro grupo todo.' : '.'}
           </span>
@@ -677,6 +684,7 @@ function TargetRow({
           closesAt={target.closesAt}
           now={now}
           windowMs={TARGET_WINDOW_MS}
+          tft={target.tft}
           onBet={(prediction, amount) =>
             send({ type: 'bet', sessionId: target.sessionId, prediction, amount })
           }

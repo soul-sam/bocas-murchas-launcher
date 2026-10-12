@@ -93,7 +93,9 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
       icon={<GameIcon className={cn('h-3.5 w-3.5', resultColor)} />}
       title={
         <span className={resultColor}>
-          {RESULT_LABEL[result]}
+          {metadata.placement && (result === 'win' || result === 'loss')
+            ? `${metadata.placement}º lugar · ${result === 'win' ? 'top 4' : 'bot 4'}`
+            : RESULT_LABEL[result]}
           {queue && <span className="text-muted-foreground"> · {queue}</span>}
           {isMinecraft && !queue && <span className="text-muted-foreground"> · Minecraft</span>}
         </span>
@@ -123,7 +125,8 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
                 <ul className="mt-0.5 space-y-0.5">
                   {wagers.slice(0, 5).map((wager, index) => {
                     const who = byId[wager.userId]
-                    const won = wager.payout > 0
+                    // O que a aposta rendeu: devolução (remake, 4º no TFT) não é ganho.
+                    const net = (wager.payout ?? 0) - wager.amount
                     return (
                       <li key={`${wager.userId}-${index}`} className="flex items-center gap-1.5 normal-case">
                         <span
@@ -134,10 +137,22 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
                         </span>
                         <NameEmoji id={who?.emoji} id2={who?.emoji2} />
                         <span className="text-muted-foreground">
-                          {wager.amount} em {wager.prediction === 'win' ? 'vitória' : 'derrota'}
+                          {wager.amount} em{' '}
+                          {metadata.placement
+                            ? wager.prediction === 'win'
+                              ? 'top 4'
+                              : 'bot 4'
+                            : wager.prediction === 'win'
+                              ? 'vitória'
+                              : 'derrota'}
                         </span>
-                        <span className={cn('ml-auto shrink-0', won ? 'text-acid' : 'text-destructive')}>
-                          {won ? `+${wager.payout}` : `−${wager.amount}`}
+                        <span
+                          className={cn(
+                            'ml-auto shrink-0',
+                            net > 0 ? 'text-acid' : net < 0 ? 'text-destructive' : 'text-muted-foreground'
+                          )}
+                        >
+                          {net > 0 ? `+${net}` : net < 0 ? `−${-net}` : 'devolvida'}
                         </span>
                       </li>
                     )

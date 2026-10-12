@@ -362,6 +362,8 @@ export interface LolGameResult {
   gameId?: number
   queue?: string
   result: 'win' | 'loss' | 'remake' | 'unknown'
+  /** Colocacao final no TFT (1-8). So em partida de TFT. */
+  placement?: number
   champion?: string
   kills: number
   deaths: number
@@ -547,6 +549,8 @@ export interface OverlayBetTarget {
   queue?: string
   pool: { win: number; loss: number }
   myWager: { prediction: 'win' | 'loss'; amount: number } | null
+  /** Partida de TFT: lados top 4 / bot 4, retorno pela colocacao. */
+  tft?: boolean
   /** Epoch ms do fim da janela de aposta (5 min do inicio da partida). */
   closesAt: number
   /** Teto pessoal de quem esta apostando — sobe de 50 a 5000 conforme aposta. */
@@ -572,6 +576,8 @@ export interface OverlayMyGame {
   bettors: number
   /** O servidor ainda nao registrou a partida (sem sessao, sem pool). */
   pending: boolean
+  /** Partida de TFT: a aposta em mim e no top 4 e paga pela colocacao. */
+  tft?: boolean
   /** Epoch ms em que as apostas em mim fecham; 0 quando ainda nao da pra saber. */
   closesAt: number
   /**
