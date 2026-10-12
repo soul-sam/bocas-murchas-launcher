@@ -64,7 +64,7 @@ export function NameEmoji({
     >
       {slots.map((s, i) =>
         s.id === SUPREME_IDS.emoji ? (
-          <SupremeMouth key={i} className="h-[1em] w-[1.6em]" animated={animated} />
+          <SupremeMouth key={i} className="h-[1em] w-[1.6em]" animated={animated} kiss />
         ) : (
           <span key={i}>{s.glyph}</span>
         )

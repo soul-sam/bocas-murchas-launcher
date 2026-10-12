@@ -317,39 +317,25 @@
 }
 
 /* ===== Murcho Supremo ===== */
-/* Aura: halo nas 2 cores girando ATRÁS do nome + faíscas. O texto não é
-   tocado (com gradiente ele já é pintado por .name-gradient): tudo é
-   pseudo-elemento/irmão com z-index negativo dentro do isolation. Fica
-   inline (não precisa de inline-block).
-   A caixa do halo fica PARADA em volta do nome; o que gira é o ângulo do
-   conic (propriedade registrada, mesma técnica do anel da moldura). Girar a
-   caixa com transform fazia a pílula borrada varrer as linhas vizinhas.
-   Dentro de `truncate` (overflow hidden: palco da call, linhas de membro) o
-   halo é cortado na borda do contêiner — aceito de propósito: o miolo atrás
-   do texto continua visível e o gradiente do texto não depende da aura;
-   padding extra mexeria no layout de todo lugar que mostra nome. */
-@property --supreme-aura-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+/* Aura: só faíscas nas 2 cores subindo do nome (o gradiente que flui é do
+   .name-flow). Não tem mais halo borrado atrás do texto (out/2026: ficava
+   uma pílula manchada em volta do nome). O texto não é tocado; as faíscas
+   são irmãs posicionadas dentro do isolation. */
 .fx-supreme { position: relative; isolation: isolate; }
-.fx-supreme::before {
-  content: ''; position: absolute; inset: -0.35em -0.6em; z-index: -1; border-radius: 999px;
-  background: conic-gradient(from var(--supreme-aura-angle), var(--fx-c, #fff), var(--fx-c2, var(--fx-c, #fff)), var(--fx-c, #fff));
-  filter: blur(10px); opacity: 0.45;
-  animation: supreme-aura 5s linear infinite;
-}
-@keyframes supreme-aura { to { --supreme-aura-angle: 360deg; } }
 .fx-supreme .fx-spark {
   position: absolute; bottom: 0; width: 3px; height: 3px; border-radius: 50%;
-  background: var(--fx-c2, var(--fx-c, #fff)); opacity: 0; pointer-events: none;
+  background: var(--fx-c, #fff); opacity: 0; pointer-events: none;
   animation: supreme-spark 2.4s ease-out infinite;
 }
+.fx-supreme .fx-spark:nth-of-type(even) { background: var(--fx-c2, var(--fx-c, #fff)); }
 @keyframes supreme-spark {
   0% { transform: translateY(0) scale(1); opacity: 0; }
   20% { opacity: 1; }
   100% { transform: translateY(-1.4em) scale(0.3); opacity: 0; }
 }
-.fx-supreme.fx-static::before, .fx-supreme.fx-static .fx-spark { animation: none; }
+.fx-supreme.fx-static .fx-spark { animation: none; }
 
-/* Moldura: anel nas 2 cores girando (mesmos 5s da aura) + boca no topo.
+/* Moldura: anel nas 2 cores girando + fone nas "orelhas" + boca embaixo.
    O anel fica DENTRO da caixa (o avatar/webcam tem overflow hidden, então
    um anel por fora seria cortado). A máscara é um "contorno" (content-box
    XOR border-box), que serve pra círculo e retângulo (webcam); por isso o
@@ -369,20 +355,66 @@
 @keyframes supreme-ring { to { --supreme-a: 360deg; } }
 /* Avatar pequeno / lista de membros: anel parado (muitas fotos ao mesmo tempo). */
 .frame-supreme.frame-supreme-static::before { animation: none; }
-.frame-supreme-ring {
-  border: 0 !important;
-  position: absolute; left: 50%; top: 0; z-index: 3; width: 42%; max-width: 28px;
-  transform: translate(-50%, -55%); pointer-events: none;
-  filter: drop-shadow(0 0 4px var(--fx-c2, var(--fx-c, #fff)));
+/* Enfeites da moldura (irmãos do avatar, no invólucro sem overflow).
+   Contorno escuro de 1px nos 4 lados, mesma técnica da coroa lendária: sem
+   ele a boca e o fone sumiam em cima de foto clara/rosa. `border: 0` porque
+   o seletor [class*='frame-'] daria borda neles. */
+.frame-supreme-ring, .frame-supreme-band, .frame-supreme-cup {
+  --supreme-outline: color-mix(in oklab, var(--fx-c2, var(--fx-c, #ff3d8b)) 15%, black);
+  border: 0 !important; position: absolute; pointer-events: none;
 }
+.frame-supreme-ring, .frame-supreme-cup {
+  filter:
+    drop-shadow(1px 0 0 var(--supreme-outline))
+    drop-shadow(-1px 0 0 var(--supreme-outline))
+    drop-shadow(0 1px 0 var(--supreme-outline))
+    drop-shadow(0 -1px 0 var(--supreme-outline));
+}
+/* Boca: centrada na borda de BAIXO. */
+.frame-supreme-ring {
+  left: 50%; bottom: 0; z-index: 4; width: 42%; max-width: 28px;
+  transform: translate(-50%, 50%);
+}
+/* Fone: arco do topo até o meio da altura, conchas centradas no meio. */
+.frame-supreme-band { left: -4%; width: 108%; top: -26%; height: 76%; z-index: 3; overflow: visible; }
+.frame-supreme-cup {
+  top: 50%; height: 36%; aspect-ratio: 0.62; z-index: 3; border-radius: 40%;
+  background: linear-gradient(180deg, var(--fx-c, #ff6fd8), var(--fx-c2, #ff3d8b));
+}
+.frame-supreme-cup-l { left: 0; transform: translate(-62%, -50%); }
+.frame-supreme-cup-r { right: 0; transform: translate(62%, -50%); }
+
 .supreme-mouth-anim { animation: supreme-murcha 4s ease-in-out infinite; transform-origin: 50% 50%; }
 .supreme-mouth-anim .supreme-mouth-shine { animation: supreme-shine 3s ease-in-out infinite; }
 @keyframes supreme-murcha { 0%, 85%, 100% { scale: 1 1; } 90% { scale: 1.08 0.82; } }
 @keyframes supreme-shine { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.8; } }
+
+/* Emoji Boca Suprema: murcha, faz biquinho e manda um beijo (coração). */
+.supreme-mouth-kiss .supreme-mouth-lips {
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: supreme-kiss-lips 4s ease-in-out infinite;
+}
+.supreme-mouth-kiss .supreme-mouth-shine { animation: supreme-shine 3s ease-in-out infinite; }
+.supreme-mouth-kiss .supreme-mouth-heart {
+  transform-box: fill-box; transform-origin: 50% 50%; opacity: 0;
+  animation: supreme-kiss-heart 4s ease-out infinite;
+}
+@keyframes supreme-kiss-lips {
+  0%, 20%, 50%, 100% { scale: 1 1; }
+  26% { scale: 1.08 0.82; }
+  58%, 68% { scale: 0.78 1.14; }
+}
+@keyframes supreme-kiss-heart {
+  0%, 62% { opacity: 0; transform: translate(-8px, 3px) scale(0.3); }
+  68% { opacity: 1; transform: translate(-4px, 0) scale(0.8); }
+  100% { opacity: 0; transform: translate(4px, -12px) scale(1.15); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .fx-supreme::before, .fx-supreme .fx-spark, .frame-supreme::before,
-  .supreme-mouth-anim, .supreme-mouth-anim .supreme-mouth-shine { animation: none; }
-  .fx-supreme .fx-spark { display: none; }
+  .fx-supreme .fx-spark, .frame-supreme::before,
+  .supreme-mouth-anim, .supreme-mouth-anim .supreme-mouth-shine,
+  .supreme-mouth-kiss .supreme-mouth-lips, .supreme-mouth-kiss .supreme-mouth-shine { animation: none; }
+  .fx-supreme .fx-spark, .supreme-mouth-kiss .supreme-mouth-heart { display: none; }
 }
 
 /* ============================================

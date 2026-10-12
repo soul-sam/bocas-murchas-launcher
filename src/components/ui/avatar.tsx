@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { cosmeticKey, tintStyle } from '@/lib/api-gamification'
 import { useOverlaysOptional } from '@/lib/overlay-context'
 import { useMembersOptional } from '@/lib/members-context'
-import { SupremeMouth } from '@/components/ui/SupremeMouth'
+import { SupremeHeadphones, SupremeMouth } from '@/components/ui/SupremeMouth'
 import '@/styles/effects.css'
 
 export const Avatar = React.forwardRef<
@@ -111,7 +111,14 @@ export function frameNeedsRing(frame: string | null | undefined): boolean {
 export function FrameRing({ frame, small = false }: { frame: string | null | undefined; small?: boolean }) {
   const ring = frameRing(frame)
   if (ring === 'fire') return <span aria-hidden className="frame-fire-ring" />
-  if (ring === 'supreme') return <SupremeMouth className="frame-supreme-ring" animated={!small} />
+  if (ring === 'supreme')
+    return (
+      <>
+        {/* Fone fica de fora no avatar pequeno: o arco de 3px engolia a foto. */}
+        {!small && <SupremeHeadphones />}
+        <SupremeMouth className="frame-supreme-ring" animated={!small} />
+      </>
+    )
   return null
 }
 

@@ -37,7 +37,7 @@ import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { TitleTag } from '@/lib/cosmetic-icons'
 import { parseGradient } from '@/lib/name-gradient'
-import { needsColors, ownedNameColors, supremeColorSample, type OwnedColor } from '@/lib/supreme-shop'
+import { needsColors, ownedNameColors, type OwnedColor } from '@/lib/supreme-shop'
 import { SupremeColorPicker } from './supreme/SupremeColorPicker'
 import { SupremeThemePicker } from './supreme/SupremeThemePicker'
 import { SupremeSoundEditor } from './supreme/SupremeSoundEditor'
@@ -70,6 +70,9 @@ const TABS: { type: CosmeticType; label: string; Icon: typeof Tag }[] = [
   { type: 'emoji', label: 'Emojis', Icon: Smile },
   { type: 'joinSound', label: 'Sons', Icon: Volume2 }
 ]
+
+/** Amostra da Cor Suprema na prateleira: amarelo + rosa. */
+const SUPREME_SAMPLE = ['#ffc53d', '#ff6fd8'] as const
 
 const RARITY_ORDER: Record<string, number> = { common: 0, rare: 1, epic: 2, legendary: 3, supreme: 4 }
 
@@ -582,23 +585,24 @@ function ItemTile({
             </span>
           </span>
         )}
-        {item.id === SUPREME_IDS.color &&
-          (() => {
-            // Sem hex: amostra em gradiente (o atual, ou o que dá pra montar).
-            const [a, b] = supremeColorSample(me.gradient, ownedColors)
-            return (
-              <span className="flex min-w-0 items-center gap-2">
-                <span
-                  aria-hidden
-                  className="h-5 w-5 shrink-0 rounded-full border border-line-strong"
-                  style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}
-                />
-                <span className="name-gradient truncate font-display text-base" style={nameStyle(null, `${a},${b}`)}>
-                  {me.name}
-                </span>
-              </span>
-            )
-          })()}
+        {item.id === SUPREME_IDS.color && (
+          // Vitrine fixa em amarelo + rosa: com as cores da pessoa (às vezes
+          // parecidas) a amostra lia como cor única. A bolinha é metade de
+          // cada, sem degradê, pra deixar claro que são DUAS cores.
+          <span className="flex min-w-0 items-center gap-2">
+            <span
+              aria-hidden
+              className="h-5 w-5 shrink-0 rounded-full border border-line-strong"
+              style={{ background: `linear-gradient(135deg, ${SUPREME_SAMPLE[0]} 50%, ${SUPREME_SAMPLE[1]} 50%)` }}
+            />
+            <span
+              className="name-gradient truncate font-display text-base"
+              style={nameStyle(null, SUPREME_SAMPLE.join(','))}
+            >
+              {me.name}
+            </span>
+          </span>
+        )}
         {item.type === 'title' && (
           <TitleTag
             titleId={item.id}
