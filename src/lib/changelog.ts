@@ -42,6 +42,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.69.0',
+    headline: 'Murcho Supremo: a raridade acima do lendário',
+    items: [
+      'Nova raridade na lojinha: Murcho Supremo. Cada item custa 25.000 murchos, e tem um de cada categoria.',
+      'Cor Suprema: mistura duas cores de nome que você já tem num gradiente. Com a Aura Suprema equipada, as cores fluem pelo nome.',
+      'Aura Suprema: um brilho nas suas duas cores girando atrás do nome, com faíscas subindo.',
+      'Moldura Suprema: anel nas suas cores com uma boca no topo, no lugar da coroa.',
+      'Título Murcho Supremo e o emoji Boca Suprema, que é animado.',
+      'Áudio Supremo: escolha um som do soundboard ou envie um arquivo, recorte 2 segundos e ele toca quando você entra ou sai da call. Dá pra usar o mesmo áudio nos dois ou um diferente pra cada, e os 3 últimos ficam guardados.',
+      'Tema Murcho Supremo: claro ou escuro, nas duas cores que você escolher.'
+    ],
+    note: 'A Cor Suprema e o tema só podem ser comprados por quem já tem 2 cores de nome. O Áudio Supremo só toca na call com ele equipado.'
+  },
+  {
     version: '1.68.3',
     headline: 'Sair pergunta antes',
     items: ['O botão de sair da barra da esquerda agora pergunta se você quer mesmo sair da conta.']
