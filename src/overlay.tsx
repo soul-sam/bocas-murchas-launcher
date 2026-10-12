@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { OverlayPage } from './pages/OverlayPage'
 import './styles/globals.css'
+import { DEFAULT_SUPREME_THEME, supremeThemeVars, type SupremeThemeConfig } from './lib/supreme-theme'
 
 /**
  * Ponto de entrada da JANELA DA SOBREPOSIÇÃO (overlay.html) — a que fica por
@@ -24,8 +25,18 @@ import './styles/globals.css'
 // Esta é outra janela: precisa aplicar o dela. Lido na montagem E a cada
 // gravação — a sobreposição vive o dia inteiro, e o tema trocado na Lojinha
 // só apareceria aqui depois de minimizar ou reiniciar.
-const applyTheme = (settings: { theme: string }): void => {
-  document.documentElement.dataset.theme = settings.theme
+const applyTheme = (settings: { theme: string; supremeTheme?: SupremeThemeConfig }): void => {
+  const root = document.documentElement
+  root.dataset.theme = settings.theme
+  // Murcho Supremo: modo + 2 cores viram atributo e variáveis (igual ao settings-context).
+  const keys = Object.keys(supremeThemeVars(DEFAULT_SUPREME_THEME))
+  if (settings.theme !== 'supremo' || !settings.supremeTheme) {
+    delete root.dataset.themeMode
+    for (const k of keys) root.style.removeProperty(k)
+    return
+  }
+  root.dataset.themeMode = settings.supremeTheme.mode
+  for (const [k, v] of Object.entries(supremeThemeVars(settings.supremeTheme))) root.style.setProperty(k, v)
 }
 void window.bocas.settings
   .get()

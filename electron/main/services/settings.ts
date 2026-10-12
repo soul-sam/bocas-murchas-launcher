@@ -259,6 +259,12 @@ function normalizeUserVolumes(
   return volumes
 }
 
+function isSupremeTheme(v: unknown): v is LauncherSettings['supremeTheme'] {
+  const o = v as Record<string, unknown> | null
+  const hex = (x: unknown): boolean => typeof x === 'string' && /^#[0-9A-Fa-f]{6}$/.test(x)
+  return !!o && (o.mode === 'light' || o.mode === 'dark') && hex(o.c1) && hex(o.c2)
+}
+
 function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
   const maxRamMb = clampRam(raw.maxRamMb ?? DEFAULTS.maxRamMb)
   const rawMin = raw.minRamMb ?? DEFAULTS.minRamMb
@@ -275,6 +281,7 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     settingsRevision: SETTINGS_REVISION,
     theme,
     boardSkin: isBoardSkin(raw.boardSkin) ? raw.boardSkin : DEFAULTS.boardSkin,
+    supremeTheme: isSupremeTheme(raw.supremeTheme) ? raw.supremeTheme : DEFAULTS.supremeTheme,
     poolSkin: isPoolSkin(raw.poolSkin) ? raw.poolSkin : DEFAULTS.poolSkin,
     maxRamMb,
     minRamMb,

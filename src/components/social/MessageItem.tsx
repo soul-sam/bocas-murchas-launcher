@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { THEME_LABEL } from '../../../electron/preload/types'
+import { themeIsLight } from '../../../electron/preload/types'
 import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react'
 import {
   Reply,
@@ -111,7 +111,7 @@ export function MessageItem({
   const { openUserMenu, openLightbox } = useOverlays()
   const { settings } = useSettings()
   // Seletor de emoji e de terceiros: recebe claro/escuro conforme o tema.
-  const pickerTheme = THEME_LABEL[settings.theme].light ? Theme.LIGHT : Theme.DARK
+  const pickerTheme = themeIsLight(settings.theme, settings.supremeTheme) ? Theme.LIGHT : Theme.DARK
   const { emojis, byName } = useEmojis()
   const [draft, setDraft] = React.useState(message.content)
   const [copied, setCopied] = React.useState(false)

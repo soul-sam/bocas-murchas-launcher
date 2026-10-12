@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { DEFAULT_SETTINGS, type LauncherSettings } from '../../electron/preload/types'
+import { supremeThemeVars } from './supreme-theme'
 
 interface SettingsContextValue {
   /**
@@ -42,6 +43,19 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     document.documentElement.dataset.theme = settings.theme
   }, [settings.theme])
+
+  // Tema Murcho Supremo: modo e as 2 cores escolhidas viram atributo + variáveis no <html>.
+  React.useEffect(() => {
+    const root = document.documentElement
+    const vars = Object.keys(supremeThemeVars(DEFAULT_SETTINGS.supremeTheme))
+    if (settings.theme !== 'supremo') {
+      delete root.dataset.themeMode
+      for (const k of vars) root.style.removeProperty(k)
+      return
+    }
+    root.dataset.themeMode = settings.supremeTheme.mode
+    for (const [k, v] of Object.entries(supremeThemeVars(settings.supremeTheme))) root.style.setProperty(k, v)
+  }, [settings.theme, settings.supremeTheme])
 
   // A cor do tabuleiro segue o mesmo caminho: board.css troca as casas por
   // `data-board-skin`, e todo tabuleiro (mesa, saguão, cartas) acompanha.

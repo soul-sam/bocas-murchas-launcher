@@ -25,6 +25,7 @@ import { useActivity } from './activity-context'
 import { playUiSound, type UiSound } from './ui-sounds'
 import { isPopout } from './platform'
 import { DEFAULT_SETTINGS, isShopThemeId } from '../../electron/preload/types'
+import { DEFAULT_SUPREME_THEME } from './supreme-theme'
 import { XpToasts } from '@/components/social/XpToast'
 
 /**
@@ -285,6 +286,26 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     const mine = shop.items.some((item) => item.owned && cosmeticTheme(item) === settings.theme)
     if (!mine) void updateSettings({ theme: DEFAULT_SETTINGS.theme })
   }, [shop, settings.theme, updateSettings])
+
+  // As 2 cores do Murcho Supremo saem das cores de nome que a pessoa TEM. Se o
+  // catálogo (já carregado) diz que uma delas não é dela, as duas voltam pro par
+  // padrão — mesma razão do tema acima: o arquivo de configurações não pode ser
+  // um jeito de usar cor sem ter. Só roda com o catálogo na mão, senão um boot
+  // frio zeraria a escolha antes de saber o que a pessoa possui.
+  React.useEffect(() => {
+    if (!shop || settings.theme !== 'supremo') return
+    const { c1, c2 } = settings.supremeTheme
+    if (c1 === DEFAULT_SUPREME_THEME.c1 && c2 === DEFAULT_SUPREME_THEME.c2) return
+    const owned = new Set<string>()
+    for (const item of shop.items) {
+      const hex = item.data?.color
+      if (item.owned && item.type === 'nameColor' && typeof hex === 'string') owned.add(hex.toLowerCase())
+    }
+    if (owned.has(c1.toLowerCase()) && owned.has(c2.toLowerCase())) return
+    void updateSettings({
+      supremeTheme: { ...settings.supremeTheme, c1: DEFAULT_SUPREME_THEME.c1, c2: DEFAULT_SUPREME_THEME.c2 }
+    })
+  }, [shop, settings.theme, settings.supremeTheme, updateSettings])
 
   const catalog = React.useMemo(() => {
     const map: Record<string, ShopItem> = {}

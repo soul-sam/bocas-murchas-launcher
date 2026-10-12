@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { THEME_LABEL } from '../../../electron/preload/types'
+import { themeIsLight } from '../../../electron/preload/types'
 import { useSettings } from '@/lib/settings-context'
 import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react'
 import {
@@ -64,7 +64,8 @@ const initialOptions = (): OptionDraft[] => [blankOption(), blankOption()]
 export function PollComposer() {
   // O seletor de emoji e de terceiros e nao le os tokens: recebe claro/escuro
   // conforme o tema ativo.
-  const pickerTheme = THEME_LABEL[useSettings().settings.theme].light ? Theme.LIGHT : Theme.DARK
+  const { settings: themeSettings } = useSettings()
+  const pickerTheme = themeIsLight(themeSettings.theme, themeSettings.supremeTheme) ? Theme.LIGHT : Theme.DARK
   const { pollComposerOpen: open, closePollComposer } = useOverlays()
   const { token } = useAuth()
   const { targetId, setTargetId, options: targetOptions, suggested } = useCardTarget('enquetes')

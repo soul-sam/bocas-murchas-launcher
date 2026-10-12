@@ -4,7 +4,7 @@ import { Eye, Film, Loader2, Search, Smile, Sparkles, Sticker as StickerIcon, Vo
 import { UserAvatar } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Hint } from '@/components/ui/tooltip'
-import { THEME_LABEL } from '../../../electron/preload/types'
+import { themeIsLight } from '../../../electron/preload/types'
 import { resolveAssetUrl } from '@/lib/api'
 import type { PokerReaction, ReactionInput, TableView, Watcher } from '@/lib/api-poker'
 import { gifs as gifsApi, isProviderOff, type Gif } from '@/lib/api-gifs'
@@ -271,7 +271,7 @@ function EmojiTab({ onPick }: { onPick: (emoji: string) => void }) {
           <EmojiPicker
             width="100%"
             height={238}
-            theme={THEME_LABEL[settings.theme]?.light ? Theme.LIGHT : Theme.DARK}
+            theme={themeIsLight(settings.theme, settings.supremeTheme) ? Theme.LIGHT : Theme.DARK}
             emojiStyle={EmojiStyle.NATIVE}
             lazyLoadEmojis
             skinTonesDisabled

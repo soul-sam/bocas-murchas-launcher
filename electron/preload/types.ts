@@ -750,6 +750,7 @@ export type ShopThemeId =
   | 'ouro-negro'
   | 'lavanda'
   | 'aurora'
+  | 'supremo'
 export type ThemeId = FreeThemeId | ShopThemeId
 
 export const FREE_THEME_IDS: readonly FreeThemeId[] = ['grafite', 'meia-noite', 'roxo', 'papel', 'acido-claro']
@@ -763,7 +764,8 @@ export const SHOP_THEME_IDS: readonly ShopThemeId[] = [
   'toquio',
   'ouro-negro',
   'lavanda',
-  'aurora'
+  'aurora',
+  'supremo'
 ]
 export const THEME_IDS: readonly ThemeId[] = [...FREE_THEME_IDS, ...SHOP_THEME_IDS]
 
@@ -782,7 +784,14 @@ export const THEME_LABEL: Record<ThemeId, { name: string; hint: string; light: b
   toquio: { name: 'Tóquio Neon', hint: 'Preto-violeta com rosa-choque e ciano.', light: false },
   'ouro-negro': { name: 'Ouro Negro', hint: 'Preto absoluto com ouro. Sem neon.', light: false },
   lavanda: { name: 'Lavanda', hint: 'Claro em lilás com violeta.', light: true },
-  aurora: { name: 'Aurora Murcha', hint: 'Céu polar com aurora que se mexe devagar.', light: false }
+  aurora: { name: 'Aurora Murcha', hint: 'Céu polar com aurora que se mexe devagar.', light: false },
+  // O `light` real vem de settings.supremeTheme.mode (ver themeIsLight).
+  supremo: { name: 'Murcho Supremo', hint: 'Claro ou escuro, nas suas duas cores.', light: false }
+}
+
+/** Tema claro? O Supremo decide pelo modo escolhido; os outros, pela tabela. */
+export function themeIsLight(theme: ThemeId, supreme: { mode: 'light' | 'dark' }): boolean {
+  return theme === 'supremo' ? supreme.mode === 'light' : THEME_LABEL[theme].light
 }
 
 export function isThemeId(value: unknown): value is ThemeId {
@@ -837,6 +846,8 @@ export interface LauncherSettings {
   theme: ThemeId
   /** Cor das casas do tabuleiro (ver BoardSkin). */
   boardSkin: BoardSkin
+  /** Tema Murcho Supremo: modo e 2 cores (escolhidas entre as cores de nome possuídas). */
+  supremeTheme: { mode: 'light' | 'dark'; c1: string; c2: string }
   /** Pano, acabamento e bordas da mesa de bilhar (ver PoolSkin). */
   poolSkin: PoolSkin
   maxRamMb: number
@@ -1039,6 +1050,7 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   settingsRevision: SETTINGS_REVISION,
   theme: 'roxo',
   boardSkin: 'tema',
+  supremeTheme: { mode: 'dark', c1: '#FF6FD8', c2: '#8B5CF6' },
   poolSkin: DEFAULT_POOL_SKIN,
   maxRamMb: 4096,
   minRamMb: 1024,

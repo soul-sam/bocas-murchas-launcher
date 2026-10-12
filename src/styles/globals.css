@@ -187,7 +187,13 @@
     --name-shadow: 0 0 1px rgb(0 0 0), 0 0 2px rgb(0 0 0 / 0.8), 0 1px 3px rgb(0 0 0 / 0.6);
   }
 
-  :is([data-theme='papel'], [data-theme='acido-claro'], [data-theme='cafe'], [data-theme='lavanda'])
+  :is(
+      [data-theme='papel'],
+      [data-theme='acido-claro'],
+      [data-theme='cafe'],
+      [data-theme='lavanda'],
+      [data-theme='supremo'][data-theme-mode='light']
+    )
     img[src$='bocas-murchas-transp.png'] {
     content: url('../assets/bocas-murchas-claro.svg');
   }
@@ -534,6 +540,77 @@
       radial-gradient(55% 45% at 20% 10%, rgb(0 255 128 / 0.14), transparent 70%),
       radial-gradient(50% 45% at 80% 30%, rgb(140 80 255 / 0.14), transparent 70%),
       radial-gradient(45% 40% at 55% 95%, rgb(0 200 255 / 0.08), transparent 70%);
+  }
+
+  /* ---------- Murcho Supremo — claro ou escuro, nas 2 cores da pessoa ----------
+     Os tokens são tripletos HSL, então color-mix de hex não alimenta isto: o
+     settings-context/overlay (lib/supreme-theme.ts, supremeThemeVars) escreve
+     no <html> --theme-c1/c2 (hex), e as versões em tripleto usadas aqui:
+     -hsl (cor), -text-hsl (4,5:1, pra texto), -on-hsl (texto sobre a cor),
+     -dim-hsl (cor diluída no fundo) e -rgb (halo). Os fallbacks são o par
+     padrão (rosa/roxo), pro ThemeSwatch, que não tem as variáveis de si.
+     Sem data-theme-mode vale o escuro. --background daqui == SUPREME_BG. */
+  [data-theme='supremo'] {
+    --luz:
+      radial-gradient(120% 80% at 0% 0%, hsl(var(--theme-c1-hsl, 316 100% 71.8%) / 0.14), transparent 60%),
+      radial-gradient(120% 80% at 100% 100%, hsl(var(--theme-c2-hsl, 258 90% 66.3%) / 0.14), transparent 60%);
+    color-scheme: dark;
+    --background: 257 28% 4.9%;       /* #0B0910 = SUPREME_BG.dark */
+    --depth-2: 257 26% 6.5%;
+    --depth-3: 257 24% 8.5%;
+    --foreground: 270 35% 95%;
+    --card: 257 24% 9%;
+    --card-foreground: 270 35% 95%;
+    --popover: 257 24% 9%;
+    --popover-foreground: 270 35% 95%;
+    --primary: var(--theme-c1-hsl, 316 100% 71.8%);
+    --primary-foreground: var(--theme-c1-on-hsl, 0 0% 4%);
+    --secondary: var(--theme-c2-dim-hsl, 258 40% 22%);
+    --secondary-foreground: 270 35% 95%;
+    --muted: 257 20% 13%;
+    --muted-foreground: 261 13% 68%;
+    --accent: var(--theme-c2-hsl, 258 90% 66.3%);
+    --accent-foreground: var(--theme-c2-on-hsl, 0 0% 4%);
+    --destructive: 6 79% 71%;
+    --destructive-foreground: 0 0% 4%;
+    --border: 257 18% 17%;
+    --border-strong: 257 16% 25%;
+    --input: 257 20% 13%;
+    --ring: var(--theme-c1-hsl, 316 100% 71.8%);
+
+    --acid: var(--theme-c1-hsl, 316 100% 71.8%);
+    --acid-dark: var(--theme-c1-dim-hsl, 316 40% 24%);
+    --acid-light: var(--theme-c1-hsl, 316 100% 71.8%);
+    --acid-text: var(--theme-c1-text-hsl, 316 100% 71.8%);
+    --neon-rgb: var(--theme-c1-rgb, 255 111 216);
+    --burn: var(--theme-c2-text-hsl, 258 90% 66.3%);
+    --burn-dark: var(--theme-c2-dim-hsl, 258 40% 22%);
+  }
+  [data-theme='supremo'][data-theme-mode='light'] {
+    --luz:
+      radial-gradient(120% 80% at 0% 0%, hsl(var(--theme-c1-hsl, 316 100% 71.8%) / 0.1), transparent 60%),
+      radial-gradient(120% 80% at 100% 100%, hsl(var(--theme-c2-hsl, 258 90% 66.3%) / 0.1), transparent 60%);
+    color-scheme: light;
+    --background: 264 33% 97.1%;      /* #F7F5FA = SUPREME_BG.light */
+    --depth-2: 264 33% 98%;
+    --depth-3: 264 30% 99%;
+    --foreground: 267 25% 9.5%;
+    --card: 0 0% 100%;
+    --card-foreground: 267 25% 9.5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 267 25% 9.5%;
+    --secondary: var(--theme-c2-dim-hsl, 258 40% 90%);
+    --secondary-foreground: 267 25% 9.5%;
+    --muted: 264 25% 93%;
+    --muted-foreground: 267 10% 38%;
+    --destructive: 5 80% 36%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 264 20% 88%;
+    --border-strong: 264 16% 78%;
+    --input: 0 0% 100%;
+    --acid-dark: var(--theme-c1-dim-hsl, 316 40% 85%);
+    --burn-dark: var(--theme-c2-dim-hsl, 258 40% 85%);
+    --name-shadow: 0 0 1px rgb(0 0 0), 0 0 2px rgb(0 0 0 / 0.8), 0 1px 3px rgb(0 0 0 / 0.6);
   }
 
   * { @apply border-border; }
