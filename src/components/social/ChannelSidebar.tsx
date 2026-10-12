@@ -53,6 +53,7 @@ import { OpenPartiesStrip } from './OpenPartiesStrip'
 import { SmokeStrip } from './SmokeStrip'
 import { SoundboardPopover } from './SoundboardPopover'
 import { ConnectionBars } from './ConnectionBars'
+import { useGamesWithoutIcon } from './GameIcon'
 import { AlcaDeLargura } from '@/components/ui/alca'
 import { toqueLongo } from '@/lib/toque-longo'
 import { podeCompartilharTela } from '@/lib/platform'
@@ -106,6 +107,8 @@ export function ChannelSidebar({
   const { open: openSettings, settings } = useSettings()
   const { pttActive } = useHotkeys()
   const { openUserMenu, openQuickSwitcher, openAdmin, openScreenPicker } = useOverlays()
+  // Aviso pro admin: jogo favorito de alguém sem ícone próprio (ver AdminPanel).
+  const gamesMissingIcon = useGamesWithoutIcon().length
   const {
     view,
     sidebarIsDrawer,
@@ -729,7 +732,17 @@ export function ChannelSidebar({
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onOpenProfile}>Editar perfil</DropdownMenuItem>
             {user?.role === 'admin' && (
-              <DropdownMenuItem onSelect={openAdmin}>Painel admin</DropdownMenuItem>
+              <DropdownMenuItem onSelect={openAdmin}>
+                Painel admin
+                {gamesMissingIcon > 0 && (
+                  <span
+                    className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground"
+                    title={`${gamesMissingIcon} jogo(s) sem ícone`}
+                  >
+                    {gamesMissingIcon} sem ícone
+                  </span>
+                )}
+              </DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>

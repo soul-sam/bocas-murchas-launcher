@@ -10,7 +10,7 @@ import {
   Upload,
   X
 } from 'lucide-react'
-import { GameIcon as BocasGameIcon, ShopIcon } from '@/lib/bocas-icons'
+import { ShopIcon } from '@/lib/bocas-icons'
 import {
   Dialog,
   DialogContent,
@@ -668,7 +668,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                         .filter((g) => !GAME_CATALOG.some((c) => c.key === g))
                         .map((game) => (
                           <Chip key={game} on onClick={() => toggleGame(game)} title="Tirar da lista">
-                            <BocasGameIcon className="h-3.5 w-3.5" />
+                            <GameIcon game={game} className="h-3.5 w-3.5" />
                             {gameLabel(game)}
                             <X className="h-3 w-3" />
                           </Chip>
