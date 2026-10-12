@@ -7,7 +7,6 @@ import {
   cosmeticSound,
   cosmeticEmoji,
   cosmeticTheme,
-  formatCompact,
   RARITY_COLOR,
   RARITY_GLYPH,
   RARITY_LABEL,
@@ -288,7 +287,10 @@ export function ShopModal() {
               title="Seu saldo"
             >
               <MurchosIcon className="h-4 w-4" />
-              {formatCompact(coins)}
+              {/* Completo, nunca abreviado: na loja o saldo é comparado com o
+                  preço, e "25k" de 24.6k arredondado parecia dar pra comprar
+                  o item de 25.000. */}
+              <span className="tabular-nums">{coins.toLocaleString('pt-BR')}</span>
               <span className="text-[11.5px] opacity-70">murchos</span>
             </div>
           </div>
