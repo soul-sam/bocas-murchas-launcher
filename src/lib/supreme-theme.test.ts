@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { contrastRatio, ensureContrast, hexToHslTriplet, supremeThemeVars } from './supreme-theme.ts'
+import { SUPREME_BG, contrastRatio, ensureContrast, hexToHslTriplet, supremeThemeVars } from './supreme-theme.ts'
 
 test('contraste conhecido', () => {
   assert.ok(Math.abs(contrastRatio('#000000', '#ffffff') - 21) < 0.01)
@@ -39,5 +39,27 @@ test('texto do tema tem 4,5:1 e o rótulo do botão é legível', () => {
   for (const k of ['--theme-c1', '--theme-c2']) {
     const on = light[`${k}-on-hsl`] === '0 0% 4%' ? '#0a0a0a' : '#ffffff'
     assert.ok(contrastRatio(on, light[k]) >= 4.5, k)
+  }
+})
+
+/** Tripleto "H S% L%" de volta pra hex, só pra conferir contraste. */
+function tripletToHex(t: string): string {
+  const [h, s, l] = t.split(' ').map((x) => parseFloat(x))
+  const sat = s / 100
+  const lig = l / 100
+  const f = (n: number): number => {
+    const k = (n + h / 30) % 12
+    return lig - sat * Math.min(lig, 1 - lig) * Math.max(-1, Math.min(k - 3, 9 - k, 1))
+  }
+  return '#' + [f(0), f(8), f(4)].map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join('')
+}
+
+test('-text-hsl chega a 4,5:1 contra o fundo nos dois modos', () => {
+  for (const mode of ['dark', 'light'] as const) {
+    const v = supremeThemeVars({ mode, c1: '#FFF59D', c2: '#1F8BFF' })
+    for (const k of ['--theme-c1-text-hsl', '--theme-c2-text-hsl']) {
+      // tolerância pelo arredondamento do tripleto
+      assert.ok(contrastRatio(tripletToHex(v[k]), SUPREME_BG[mode]) >= 4.4, `${mode} ${k}`)
+    }
   }
 })

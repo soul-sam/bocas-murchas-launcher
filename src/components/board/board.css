@@ -42,15 +42,17 @@
   --board-casa-escura: color-mix(in oklab, rgb(var(--neon-rgb)) 30%, hsl(var(--depth-3)));
   --board-filete: hsl(var(--burn) / 0.6);
 }
-/* Temas claros: papel, acido-claro, cafe, lavanda. */
+/* Temas claros: papel, acido-claro, cafe, lavanda, supremo (modo claro). */
 :root[data-theme='papel'],
 :root[data-theme='acido-claro'],
 :root[data-theme='cafe'],
 :root[data-theme='lavanda'],
+:root[data-theme='supremo'][data-theme-mode='light'],
 [data-theme='papel'],
 [data-theme='acido-claro'],
 [data-theme='cafe'],
-[data-theme='lavanda'] {
+[data-theme='lavanda'],
+[data-theme='supremo'][data-theme-mode='light'] {
   --board-casa-clara: color-mix(in oklab, hsl(var(--background)) 72%, hsl(var(--burn)));
   --board-casa-escura: color-mix(in oklab, rgb(var(--neon-rgb)) 34%, hsl(0 0% 46%));
 }
