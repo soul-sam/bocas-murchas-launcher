@@ -1205,7 +1205,7 @@ function StyleTile({
           )}
           {item.type === 'emoji' && (
             <>
-              <NameEmoji id={item.id} glyph={cosmeticEmoji(item)} className="text-xl" />
+              <NameEmoji id={item.id} glyph={cosmeticEmoji(item)} gradient={me.gradient} className="text-xl" />
               <span className="truncate text-sm">{item.name}</span>
             </>
           )}

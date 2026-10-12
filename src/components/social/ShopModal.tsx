@@ -26,6 +26,7 @@ import { useMembers } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useGamification } from '@/lib/gamification-context'
 import { useSettings } from '@/lib/settings-context'
+import { supremeThemeVars } from '@/lib/supreme-theme'
 import { playJoinSound } from '@/lib/ui-sounds'
 import { ThemeSwatch } from '@/components/ThemeSwatch'
 import { DEFAULT_SETTINGS } from '../../../electron/preload/types'
@@ -35,6 +36,11 @@ import { GiftPanel } from './GiftPanel'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { TitleTag } from '@/lib/cosmetic-icons'
+import { parseGradient } from '@/lib/name-gradient'
+import { needsColors, ownedNameColors, type OwnedColor } from '@/lib/supreme-shop'
+import { SupremeColorPicker } from './supreme/SupremeColorPicker'
+import { SupremeThemePicker } from './supreme/SupremeThemePicker'
+import { SupremeSoundEditor } from './supreme/SupremeSoundEditor'
 
 /**
  * LOJINHA — gastar murchos em tema do launcher, cor e título, efeito de nome,
@@ -69,7 +75,7 @@ const RARITY_ORDER: Record<string, number> = { common: 0, rare: 1, epic: 2, lege
 
 export function ShopModal() {
   const { shopOpen: open, closeShop: close } = useOverlays()
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const { byId } = useMembers()
   const { shop, loadShop, buy, equip, profile, catalog, pushToast } = useGamification()
   const { settings, update: updateSettings } = useSettings()
@@ -164,6 +170,7 @@ export function ShopModal() {
         (RARITY_ORDER[a.rarity] ?? 0) - (RARITY_ORDER[b.rarity] ?? 0) ||
         a.price - b.price
     )
+  const ownedColors = ownedNameColors(shop?.items ?? [])
   const hasSecondEmoji = !!shop?.items.some((item) => item.id === EMOJI_SLOT_2 && item.owned)
 
   // Prévia: item sob o mouse ganha do equipado, mas só no slot dele.
@@ -217,6 +224,15 @@ export function ShopModal() {
       setError(err instanceof Error ? err.message : 'Não deu pra equipar agora.')
     } finally {
       setBusy(null)
+    }
+  }
+
+  const handleEquipColors = async (colors: [string, string]): Promise<void> => {
+    setError(null)
+    try {
+      await equip('nameColor', SUPREME_IDS.color, undefined, colors)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não deu pra equipar agora.')
     }
   }
 
@@ -381,6 +397,9 @@ export function ShopModal() {
                   item={item}
                   me={{ name: me.displayName, avatar: resolveAssetUrl(me.avatar), color, gradient: me.profileGradient }}
                   coins={coins}
+                  ownedColors={ownedColors}
+                  token={token}
+                  onEquipColors={handleEquipColors}
                   busy={busy === item.id}
                   confirming={confirming === item.id}
                   onHover={() => setHovered(item)}
@@ -444,6 +463,9 @@ function ItemTile({
   item,
   me,
   coins,
+  ownedColors,
+  token,
+  onEquipColors,
   busy,
   confirming,
   onHover,
@@ -459,6 +481,10 @@ function ItemTile({
   item: ShopItem
   me: { name: string; avatar?: string; color: string; gradient?: string | null }
   coins: number
+  /** Cores de nome que eu tenho: a Cor e o Tema Supremos só usam essas. */
+  ownedColors: OwnedColor[]
+  token: string | null
+  onEquipColors: (colors: [string, string]) => Promise<void>
   busy: boolean
   confirming: boolean
   onHover: () => void
@@ -478,6 +504,12 @@ function ItemTile({
   const rarity = RARITY_COLOR[tier] ?? RARITY_COLOR.common
   const style = RARITY_STYLE[tier] ?? RARITY_STYLE.common
   const affordable = coins >= item.price
+  const blockedByColors = needsColors(item.id, ownedColors.length)
+  const { settings } = useSettings()
+  const supremeCfg = settings.supremeTheme
+  const [configuring, setConfiguring] = React.useState(false)
+  const configurable =
+    item.owned && (item.id === SUPREME_IDS.color || item.id === SUPREME_IDS.theme || (item.id === SUPREME_IDS.sound && !!token))
 
   return (
     <div
@@ -487,6 +519,7 @@ function ItemTile({
          pra borda verde porque ai o que importa e o estado, nao o tier. */
       className={cn(
         'flex flex-col gap-2.5 rounded-brutal border bg-void/60 p-3 transition-colors',
+        configuring && 'col-span-full',
         item.rarity === 'supreme' && 'rarity-supreme-card',
         item.equipped ? 'border-acid' : 'hover:border-border'
       )}
@@ -505,7 +538,12 @@ function ItemTile({
       >
         {item.type === 'theme' &&
           (cosmeticTheme(item) ? (
-            <ThemeSwatch theme={cosmeticTheme(item)!} className="h-full rounded-brutal border-0" />
+            <ThemeSwatch
+              theme={cosmeticTheme(item)!}
+              mode={item.id === SUPREME_IDS.theme ? supremeCfg.mode : undefined}
+              style={item.id === SUPREME_IDS.theme ? (supremeThemeVars(supremeCfg) as React.CSSProperties) : undefined}
+              className="h-full rounded-brutal border-0"
+            />
           ) : (
             <span className="px-2 text-center text-[11px] leading-snug text-muted-foreground">
               tema de uma versão mais nova — atualiza o launcher
@@ -555,7 +593,7 @@ function ItemTile({
             >
               {me.name}
             </span>
-            <NameEmoji id={item.id} glyph={cosmeticEmoji(item)} className="text-xl" />
+            <NameEmoji id={item.id} glyph={cosmeticEmoji(item)} gradient={me.gradient} className="text-xl" />
           </span>
         )}
         {item.type === 'emojiSlot' && (
@@ -709,16 +747,18 @@ function ItemTile({
           // so no passo de confirmar, que por construcao e um de cada vez.
           <button
             type="button"
-            disabled={!affordable || busy}
+            disabled={!affordable || blockedByColors || busy}
             onClick={onAskBuy}
             title={
-              affordable
+              blockedByColors
+                ? 'Precisa de 2 cores de nome'
+                : affordable
                 ? `Comprar por ${item.price.toLocaleString('pt-BR')} murchos`
                 : `Faltam ${(item.price - coins).toLocaleString('pt-BR')} murchos`
             }
             className={cn(
               'flex flex-1 items-center justify-center gap-1.5 rounded-brutal border px-2 py-1.5 text-xs font-semibold transition-colors',
-              affordable
+              affordable && !blockedByColors
                 ? 'border-acid-dark text-acid hover:bg-acid/15'
                 : 'cursor-not-allowed border-border text-muted-foreground opacity-60'
             )}
@@ -742,6 +782,35 @@ function ItemTile({
           </button>
         )}
       </div>
+      {!item.owned && blockedByColors && (
+        <p className="text-[11.5px] text-muted-foreground">Precisa de 2 cores de nome</p>
+      )}
+      {configurable && (
+        <>
+          <button
+            type="button"
+            onClick={() => setConfiguring((v) => !v)}
+            aria-expanded={configuring}
+            className="rounded-brutal border border-line px-2 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:border-acid/60 hover:text-acid"
+          >
+            {configuring ? 'Fechar' : 'Configurar'}
+          </button>
+          {configuring && (
+            <div className="border-t border-line pt-2">
+              {item.id === SUPREME_IDS.color && (
+                <SupremeColorPicker
+                  ownedColors={ownedColors}
+                  current={parseGradient(me.gradient)}
+                  onEquip={onEquipColors}
+                  name={me.name}
+                />
+              )}
+              {item.id === SUPREME_IDS.theme && <SupremeThemePicker ownedColors={ownedColors} />}
+              {item.id === SUPREME_IDS.sound && token && <SupremeSoundEditor token={token} />}
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

@@ -924,12 +924,14 @@ export const gamification = {
     token: string,
     type: CosmeticType,
     cosmeticId: string | null,
-    slot?: 1 | 2
+    slot?: 1 | 2,
+    /** Só pra `namecolor:supremo`: as duas cores do gradiente (donas da pessoa). */
+    colors?: [string, string]
   ): Promise<{ user: import('./api').AuthUser }> {
     return request('/gamification/equip', {
       method: 'POST',
       token,
-      body: JSON.stringify({ type, cosmeticId, slot })
+      body: JSON.stringify({ type, cosmeticId, slot, colors })
     })
   },
 

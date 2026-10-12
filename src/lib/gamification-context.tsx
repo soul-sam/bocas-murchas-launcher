@@ -87,7 +87,7 @@ interface GamificationContextValue {
   /** Presente: debita meu saldo, o item vai pra `toUserId`. */
   gift: (cosmeticId: string, toUserId: string, message?: string) => Promise<GiftResult>
   /** `slot` 2 só vale pra emoji (precisa do item `emojiSlot:2`). */
-  equip: (type: CosmeticType, cosmeticId: string | null, slot?: 1 | 2) => Promise<void>
+  equip: (type: CosmeticType, cosmeticId: string | null, slot?: 1 | 2, colors?: [string, string]) => Promise<void>
   /** Texto de um cosmético (título) pelo id; cai no id "limpo" se o catálogo não chegou. */
   cosmeticName: (id: string | null | undefined) => string | null
   /** Glifo de um cosmético de emoji pelo id (`emoji:oculos` → 😎); null sem catálogo. */
@@ -405,9 +405,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   )
 
   const equip = React.useCallback(
-    async (type: CosmeticType, cosmeticId: string | null, slot?: 1 | 2) => {
+    async (type: CosmeticType, cosmeticId: string | null, slot?: 1 | 2, colors?: [string, string]) => {
       if (!token) throw new ApiError(401, 'Sem sessão')
-      const res = await api.equip(token, type, cosmeticId, slot)
+      const res = await api.equip(token, type, cosmeticId, slot, colors)
       if (res.user) applyUser(res.user)
 
       // Emoji tem dois slots e vestir num pode tirar do outro: a verdade é o

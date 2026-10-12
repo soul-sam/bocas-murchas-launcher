@@ -1,3 +1,4 @@
+import type * as React from 'react'
 import { cn } from '@/lib/utils'
 import type { ThemeId } from '../../electron/preload/types'
 
@@ -12,11 +13,25 @@ import type { ThemeId } from '../../electron/preload/types'
  * É a mesma amostra na Lojinha, na aba Estilo do perfil e nas Configurações:
  * a pessoa reconhece o tema pela miniatura em qualquer lugar.
  */
-export function ThemeSwatch({ theme, className }: { theme: ThemeId; className?: string }) {
+export function ThemeSwatch({
+  theme,
+  className,
+  mode,
+  style
+}: {
+  theme: ThemeId
+  className?: string
+  /** Só no Tema Supremo: claro/escuro escolhido (sem isto vale o escuro). */
+  mode?: 'light' | 'dark'
+  /** Variáveis de tema extras (Tema Supremo: `supremeThemeVars`). */
+  style?: React.CSSProperties
+}) {
   return (
     <span
       aria-hidden
       data-theme={theme}
+      data-theme-mode={mode}
+      style={style}
       className={cn(
         'relative flex h-10 w-full overflow-hidden rounded-[4px] border border-border bg-background text-foreground',
         className
