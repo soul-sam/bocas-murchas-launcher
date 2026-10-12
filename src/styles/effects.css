@@ -339,7 +339,6 @@
   100% { transform: translateY(-1.4em) scale(0.3); opacity: 0; }
 }
 .fx-supreme.fx-static::before, .fx-supreme.fx-static .fx-spark { animation: none; }
-.fx-supreme.fx-static .fx-spark { display: none; }
 
 /* Moldura: anel nas 2 cores girando (mesmos 5s da aura) + boca no topo.
    O anel fica DENTRO da caixa (o avatar/webcam tem overflow hidden, então
@@ -359,6 +358,8 @@
   animation: supreme-ring 5s linear infinite;
 }
 @keyframes supreme-ring { to { --supreme-a: 360deg; } }
+/* Avatar pequeno / lista de membros: anel parado (muitas fotos ao mesmo tempo). */
+.frame-supreme.frame-supreme-static::before { animation: none; }
 .frame-supreme-ring {
   border: 0 !important;
   position: absolute; left: 50%; top: 0; z-index: 3; width: 42%; max-width: 28px;
@@ -367,7 +368,7 @@
 }
 .supreme-mouth-anim { animation: supreme-murcha 4s ease-in-out infinite; transform-origin: 50% 50%; }
 .supreme-mouth-anim .supreme-mouth-shine { animation: supreme-shine 3s ease-in-out infinite; }
-@keyframes supreme-murcha { 0%, 85%, 100% { transform: translate(-50%, -55%) scale(1, 1); } 90% { transform: translate(-50%, -55%) scale(1.08, 0.82); } }
+@keyframes supreme-murcha { 0%, 85%, 100% { scale: 1 1; } 90% { scale: 1.08 0.82; } }
 @keyframes supreme-shine { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.8; } }
 @media (prefers-reduced-motion: reduce) {
   .fx-supreme::before, .fx-supreme .fx-spark, .frame-supreme::before,

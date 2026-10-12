@@ -205,6 +205,7 @@ function Group({
                     ringColor={member.profileColor}
                     frame={member.avatarFrame}
                     frameColor={member.profileColor}
+                    frameStatic
                     className="h-7 w-7"
                   />
 

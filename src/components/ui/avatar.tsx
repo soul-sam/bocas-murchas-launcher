@@ -154,7 +154,8 @@ export function UserAvatar({
   memberId,
   fallbackClassName,
   frameColor,
-  frameGradient
+  frameGradient,
+  frameStatic
 }: {
   src?: string
   name: string
@@ -178,6 +179,8 @@ export function UserAvatar({
   frameColor?: string | null
   /** Cor Suprema de quem é a foto (`profileGradient`); vence `frameColor`. Sem ela vale a do membro de `userId`/`memberId`. */
   frameGradient?: string | null
+  /** Moldura parada (anel e boca sem animação): listas com muitas fotos. Avatar <32px já é parado sozinho. */
+  frameStatic?: boolean
   /**
    * Estilo extra no avatar. Existe pro tamanho vindo de MEDIÇÃO, e não de
    * classe: na call o avatar acompanha o tamanho do card, que é calculado em
@@ -197,6 +200,8 @@ export function UserAvatar({
   const member = useMembersOptional()?.byId[userId ?? memberId ?? '']
   const wornFrame = frame !== undefined ? frame : member?.avatarFrame
   const frameStyle = frameClass(wornFrame)
+  const small = isSmallAvatar(className, style)
+  const still = frameStatic || small
   /**
    * Opcional de propósito: este componente é de `ui/` e pode ser desenhado
    * fora da árvore autenticada (onde o OverlayProvider não existe). Ver
@@ -235,10 +240,10 @@ export function UserAvatar({
         : {})}
     >
       {/* Coroa (lendária) ou boca (suprema) da moldura, por cima da borda (z-index no CSS). */}
-      <FrameRing frame={wornFrame} small={isSmallAvatar(className, style)} />
+      <FrameRing frame={wornFrame} small={still} />
 
       <Avatar
-        className={cn(className, frameStyle, speaking && 'ring-2 ring-acid')}
+        className={cn(className, frameStyle, still && 'frame-supreme-static', speaking && 'ring-2 ring-acid')}
         style={{
           ...(ringColor && !speaking && !frameStyle ? { borderColor: ringColor } : {}),
           ...style
