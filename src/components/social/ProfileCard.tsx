@@ -378,7 +378,7 @@ export function ProfileBody({
   const activity = member.isOnline ? activityOf(member.id) : undefined
   const title = cosmeticName(member.title)
   const cargos = cargosOf(member.id)
-  const inMatch = !isSelf && activity?.phase === 'in-progress'
+  const inMatch = !isSelf && activity?.game === 'lol' && activity.phase === 'in-progress'
   const sponsor = member.sponsorId ? byId[member.sponsorId] : undefined
   const since = formatSince(member.createdAt)
 

@@ -17,7 +17,8 @@ import {
   Wrench,
   XCircle
 } from 'lucide-react'
-import { PrinterIcon } from '@/lib/bocas-icons'
+import { GameIcon as BocasGameIcon, PrinterIcon } from '@/lib/bocas-icons'
+import { useGamesWithoutIcon } from '@/components/social/GameIcon'
 import { useAuth } from '@/lib/auth-context'
 import { useSoundboard } from '@/lib/soundboard-context'
 import {
@@ -62,53 +63,83 @@ import { cn } from '@/lib/utils'
  */
 export function AdminPanel() {
   return (
-    <Tabs defaultValue="convites" className="flex min-h-0 flex-1 flex-col">
-      <TabsList>
-        <TabsTrigger value="convites">
-          <Ticket className="mr-1.5 inline h-3 w-3" />
-          Convites
-        </TabsTrigger>
-        <TabsTrigger value="membros">
-          <Users className="mr-1.5 inline h-3 w-3" />
-          Membros
-        </TabsTrigger>
-        <TabsTrigger value="cargos">
-          <BadgeCheck className="mr-1.5 inline h-3 w-3" />
-          Cargos
-        </TabsTrigger>
-        <TabsTrigger value="impressora">
-          <PrinterIcon className="mr-1.5 inline h-3 w-3" />
-          Impressora
-        </TabsTrigger>
-        <TabsTrigger value="sons">
-          <Volume2 className="mr-1.5 inline h-3 w-3" />
-          Sons
-        </TabsTrigger>
-        <TabsTrigger value="ferramentas">
-          <Wrench className="mr-1.5 inline h-3 w-3" />
-          Ferramentas
-        </TabsTrigger>
-      </TabsList>
+    <>
+      <MissingGameIconsNotice />
+      <Tabs defaultValue="convites" className="flex min-h-0 flex-1 flex-col">
+        <TabsList>
+          <TabsTrigger value="convites">
+            <Ticket className="mr-1.5 inline h-3 w-3" />
+            Convites
+          </TabsTrigger>
+          <TabsTrigger value="membros">
+            <Users className="mr-1.5 inline h-3 w-3" />
+            Membros
+          </TabsTrigger>
+          <TabsTrigger value="cargos">
+            <BadgeCheck className="mr-1.5 inline h-3 w-3" />
+            Cargos
+          </TabsTrigger>
+          <TabsTrigger value="impressora">
+            <PrinterIcon className="mr-1.5 inline h-3 w-3" />
+            Impressora
+          </TabsTrigger>
+          <TabsTrigger value="sons">
+            <Volume2 className="mr-1.5 inline h-3 w-3" />
+            Sons
+          </TabsTrigger>
+          <TabsTrigger value="ferramentas">
+            <Wrench className="mr-1.5 inline h-3 w-3" />
+            Ferramentas
+          </TabsTrigger>
+        </TabsList>
+  
+        <TabsContent value="convites" className="pr-1">
+          <InvitesTab />
+        </TabsContent>
+        <TabsContent value="membros" className="pr-1">
+          <MembersTab />
+        </TabsContent>
+        <TabsContent value="cargos" className="pr-1">
+          <CargosTab />
+        </TabsContent>
+        <TabsContent value="impressora" className="pr-1">
+          <PrinterTab />
+        </TabsContent>
+        <TabsContent value="sons" className="pr-1">
+          <SoundsTab />
+        </TabsContent>
+        <TabsContent value="ferramentas" className="pr-1">
+          <ToolsTab />
+        </TabsContent>
+      </Tabs>
+    </>
+  )
+}
 
-      <TabsContent value="convites" className="pr-1">
-        <InvitesTab />
-      </TabsContent>
-      <TabsContent value="membros" className="pr-1">
-        <MembersTab />
-      </TabsContent>
-      <TabsContent value="cargos" className="pr-1">
-        <CargosTab />
-      </TabsContent>
-      <TabsContent value="impressora" className="pr-1">
-        <PrinterTab />
-      </TabsContent>
-      <TabsContent value="sons" className="pr-1">
-        <SoundsTab />
-      </TabsContent>
-      <TabsContent value="ferramentas" className="pr-1">
-        <ToolsTab />
-      </TabsContent>
-    </Tabs>
+/**
+ * Jogo que alguém marcou no perfil e que ainda cai no controle genérico.
+ * O ícone se registra à mão em components/social/GameIcon.tsx (GAME_ICON, ou
+ * GAME_ALIAS quando é outro nome de um jogo que já tem ícone).
+ */
+function MissingGameIconsNotice() {
+  const missing = useGamesWithoutIcon()
+  if (missing.length === 0) return null
+
+  return (
+    <div className="mb-3 shrink-0 rounded-brutal border-2 border-border bg-muted/30 px-3 py-2">
+      <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
+        <BocasGameIcon className="h-3.5 w-3.5" />
+        {missing.length === 1 ? '1 jogo sem ícone' : `${missing.length} jogos sem ícone`}
+      </p>
+      <ul className="mt-1 space-y-0.5 text-[11.5px] text-muted-foreground">
+        {missing.map((item) => (
+          <li key={item.game}>
+            <span className="text-foreground">{item.label}</span>{' '}
+            <code className="font-mono">{item.game}</code> — {item.people.join(', ')}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
