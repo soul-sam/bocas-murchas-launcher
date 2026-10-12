@@ -725,7 +725,12 @@ export function MessageComposer({
         setSlashIndex((prev) => (prev - 1 + slashSuggestions.length) % slashSuggestions.length)
         return
       }
-      const exact = slashSuggestions.some((item) => item.command === content.trim())
+      // Comando que já existe por inteiro também conta, mesmo fora da lista:
+      // "/f" (ovo) é prefixo de "/fumaca" e o Enter trocava um pelo outro.
+      const exact =
+        slashSuggestions.some((item) => item.command === content.trim()) ||
+        parseSlashCommand(content) !== null ||
+        rewriteEggCommand(content) !== null
       if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey && !ponteiroGrosso && !exact)) {
         e.preventDefault()
         const item = slashSuggestions[slashIndex] ?? slashSuggestions[0]
