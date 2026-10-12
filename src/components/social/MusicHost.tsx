@@ -26,6 +26,7 @@ import { openExternal } from '@/lib/rich-text'
 import { BACKUP_STEP_MS, useYoutubePlayer } from '@/lib/use-youtube-player'
 import {
   YT_STATE,
+  isDeadVideoError,
   playerErrorInfo,
   playerVolume,
   youtubeThumbnail,
@@ -261,6 +262,29 @@ function MusicBar({ session }: { session: WatchSession }) {
     muted,
     onEnded: () => void advance(session.videoId, player.timeRef.current)
   })
+
+  /**
+   * A FAIXA NÃO TOCA MAIS — pula sozinho.
+   *
+   * Vídeo removido, privado ou que não deixa embutir dá erro em todas as
+   * máquinas ao mesmo tempo. Mesma fila de reservas do `advance` (a vez 0
+   * avisa na hora), e o `broken` faz o servidor tirar o vídeo da fila e das
+   * playlists do grupo — senão a mesma faixa morta voltava toda vez que
+   * alguém tocasse a playlist. Erro passageiro (ver isDeadVideoError) segue
+   * esperando a mão de alguém na barra.
+   */
+  const deadVideo = isDeadVideoError(player.errorCode)
+  const watchRef = React.useRef(watch)
+  watchRef.current = watch
+  React.useEffect(() => {
+    if (!deadVideo || driverRank < 0) return
+    const brokenVideoId = session.videoId
+    const timer = setTimeout(() => {
+      if (sessionRef.current?.videoId !== brokenVideoId) return
+      void watchRef.current.next(brokenVideoId, true)
+    }, driverRank * BACKUP_STEP_MS)
+    return () => clearTimeout(timer)
+  }, [deadVideo, driverRank, session.videoId])
 
   const queue = session.queue ?? []
   const host = byId[session.hostUserId]

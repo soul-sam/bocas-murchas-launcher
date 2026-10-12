@@ -244,15 +244,21 @@ function PlaylistDetail({
     if (token && missing.length > 0) {
       let quota = false
       let failed = 0
+      let removed = 0
       for (let i = 0; i < missing.length && !quota; i += 50) {
         const page = await playlistsApi.resolve(token, playlist.id, missing.slice(i, i + 50))
         setPlaylist(page.playlist)
         quota = page.quota
         failed += page.failed
+        removed += page.removed ?? 0
         const fresh = new Map(page.playlist.tracks.map((t) => [t.id, t]))
         current = current.map((t) => fresh.get(t.id) ?? t)
       }
       if (quota) setError('A busca do YouTube gastou a cota do dia — só as que já tinham vídeo vão tocar.')
+      else if (removed > 0)
+        setError(
+          `${removed} ${removed === 1 ? 'música não foi achada no YouTube e saiu' : 'músicas não foram achadas no YouTube e saíram'} da playlist.`
+        )
       else if (failed > 0)
         setError(`${failed} ${failed === 1 ? 'música não foi achada' : 'músicas não foram achadas'} no YouTube.`)
     }

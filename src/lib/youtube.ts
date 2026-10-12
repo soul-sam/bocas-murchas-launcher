@@ -273,6 +273,18 @@ const PLAYER_ERROR: Record<number, { title: string; body: string }> = {
   }
 }
 
+/**
+ * Erros que não passam tentando de novo: id inválido, vídeo removido/privado,
+ * embutir bloqueado. A música da call pula sozinha e tira o vídeo das
+ * playlists. O 5 (engasgo do player) e o 153 (bug do launcher) ficam de fora:
+ * o vídeo pode estar bom, e apagar faixa boa da playlist não tem volta.
+ */
+const DEAD_VIDEO_ERRORS = new Set([2, 100, 101, 150])
+
+export function isDeadVideoError(code: number | null | undefined): boolean {
+  return typeof code === 'number' && DEAD_VIDEO_ERRORS.has(code)
+}
+
 /** Código desconhecido ainda ganha um texto: melhor o número do que nada. */
 export function playerErrorInfo(
   code: number | null | undefined

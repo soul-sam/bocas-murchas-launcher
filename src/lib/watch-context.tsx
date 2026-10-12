@@ -108,8 +108,11 @@ interface WatchContextValue {
    * aviso de fim que chega atrasado (porque o cliente da frente estava
    * com o player parado) não pula uma música a mais — o servidor vê que
    * a sala já passou e não faz nada. O botão de pular na mão não manda.
+   *
+   * `broken` = a faixa não toca mais (erro definitivo do player): o
+   * servidor pula, tira o vídeo da fila e das playlists do grupo.
    */
-  next: (afterVideoId?: string) => Promise<WatchAck>
+  next: (afterVideoId?: string, broken?: boolean) => Promise<WatchAck>
   play: (positionSec: number) => Promise<WatchAck>
   pause: (positionSec: number) => Promise<WatchAck>
   seek: (positionSec: number) => Promise<WatchAck>
@@ -304,8 +307,8 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
   )
 
   const next = React.useCallback(
-    (afterVideoId?: string) =>
-      request('watch:next', afterVideoId ? { afterVideoId } : undefined),
+    (afterVideoId?: string, broken?: boolean) =>
+      request('watch:next', afterVideoId ? { afterVideoId, ...(broken ? { broken: true } : {}) } : undefined),
     [request]
   )
   const play = React.useCallback((positionSec: number) => request('watch:play', { positionSec }), [request])

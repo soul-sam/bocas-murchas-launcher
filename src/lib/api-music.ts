@@ -250,8 +250,8 @@ export const playlists = {
     token: string,
     id: string,
     trackIds: string[]
-  ): Promise<{ playlist: MurchaPlaylistFull; failed: number; quota: boolean }> {
-    return request<{ playlist: MurchaPlaylistFull; failed: number; quota: boolean }>(
+  ): Promise<{ playlist: MurchaPlaylistFull; failed: number; removed?: number; quota: boolean }> {
+    return request<{ playlist: MurchaPlaylistFull; failed: number; removed?: number; quota: boolean }>(
       `/music/playlists/${encodeURIComponent(id)}/resolve`,
       { token, method: 'POST', body: JSON.stringify({ trackIds }) }
     )
