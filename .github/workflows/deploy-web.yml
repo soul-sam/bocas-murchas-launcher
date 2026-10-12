@@ -26,12 +26,11 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SSH_PASSPHRASE: ${{ secrets.SSH_PASSPHRASE }}
           SSH_WEB_DIR: ${{ secrets.SSH_WEB_DIR }}
         run: |
           set -e
           faltando=0
-          for v in SSH_HOST SSH_USER SSH_PORT SSH_PRIVATE_KEY SSH_PASSPHRASE SSH_WEB_DIR; do
+          for v in SSH_HOST SSH_USER SSH_PORT SSH_PRIVATE_KEY SSH_WEB_DIR; do
             if [ -z "${!v}" ]; then
               echo "Falta o segredo: $v" >&2
               faltando=1
@@ -79,8 +78,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          password: ${{ secrets.SSH_PASSPHRASE }}
-          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          # So a chave (ver o passo de envio).
           script_stop: true
           script: |
             set -e
@@ -101,14 +99,12 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # O NOME DO SEGREDO MENTE: `SSH_PASSPHRASE` guarda a SENHA DO
-          # USUARIO, nao a frase-secreta da chave. Por isso vai em `password`
-          # — e e por `password` que a autenticacao passa de verdade. Vai
-          # tambem em `passphrase` so pra espelhar o deploy do repositorio do
-          # site, que e o que comprovadamente funciona nesta VPS. So com
-          # `passphrase` o login falha.
-          password: ${{ secrets.SSH_PASSPHRASE }}
-          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          # SO A CHAVE. Ela nao tem frase-secreta: passar `passphrase` faz o
+          # ParsePrivateKey falhar ("key is not password protected") e a chave
+          # e descartada em silencio. Ate 11/10/2026 isso passava despercebido
+          # porque o login caia na senha (`password`); naquela noite a VPS
+          # ganhou `PasswordAuthentication no` e o deploy morreu com "attempted
+          # methods [none]". A chave publica ja esta no authorized_keys.
           source: "site.tar.gz,nginx.web.conf,docker-compose.web.yml"
           target: ${{ secrets.SSH_WEB_DIR }}
 
@@ -119,9 +115,6 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # `SSH_PASSPHRASE` guarda a SENHA DO USUARIO (ver o passo de envio).
-          password: ${{ secrets.SSH_PASSPHRASE }}
-          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           # ATENCAO: com script_stop, QUALQUER comando que devolva != 0 mata o
           # script na hora. Tudo que pode legitimamente falhar (container que
           # ainda nao existe, diretorio vazio) leva `|| true`.
