@@ -1,7 +1,7 @@
 import * as React from 'react'
 import type { Track } from 'livekit-client'
 import { Maximize2, MicOff, Minimize2, MonitorUp, Video, Volume2, VolumeX } from 'lucide-react'
-import { UserAvatar, frameClass, frameNeedsRing } from '@/components/ui/avatar'
+import { UserAvatar, frameClass, FrameRing } from '@/components/ui/avatar'
 import { tintStyle, nameStyle, nameGradientClass, SUPREME_IDS } from '@/lib/api-gamification'
 import { VOICE_VOLUME_MAX } from '@/lib/participant-volume'
 import { cn } from '@/lib/utils'
@@ -182,6 +182,7 @@ function useTileGrid(count: number): {
 function Framed({
   frame,
   frameColor,
+  frameGradient,
   speaking,
   className,
   wrapperClassName,
@@ -193,6 +194,8 @@ function Framed({
   large?: boolean
   /** Cor comprada da pessoa: a moldura sai nela (branca sem cor). */
   frameColor?: string | null
+  /** Cor Suprema da pessoa (`profileGradient`): vence `frameColor`. */
+  frameGradient?: string | null
   speaking?: boolean
   className?: string
   /**
@@ -213,8 +216,8 @@ function Framed({
   const style = speaking ? frameClass(frame) : undefined
 
   return (
-    <div className={cn('relative min-w-0', wrapperClassName)} style={style ? tintStyle(frameColor) : undefined}>
-      {speaking && frameNeedsRing(frame) && <span aria-hidden className="frame-fire-ring" />}
+    <div className={cn('relative min-w-0', wrapperClassName)} style={style ? tintStyle(frameColor, frameGradient) : undefined}>
+      {speaking && <FrameRing frame={frame} />}
       <div
         className={cn(
           'relative overflow-hidden rounded-brutal border-2 bg-black transition-colors',
@@ -382,6 +385,7 @@ function CameraTile({
       <Framed
         frame={member?.avatarFrame}
         frameColor={member?.profileColor}
+        frameGradient={member?.profileGradient}
         speaking={participant.isSpeaking}
         wrapperClassName="h-full w-full"
         large
@@ -479,6 +483,7 @@ function AvatarTile({
           speaking={participant.isSpeaking}
           frame={participant.isSpeaking ? member?.avatarFrame : null}
           frameColor={member?.profileColor}
+          frameGradient={member?.profileGradient}
           className="frame-fire-lg border-2"
           style={
             avatarPx
@@ -610,6 +615,7 @@ export function ParticipantChip({
           <Framed
             frame={member?.avatarFrame}
             frameColor={member?.profileColor}
+            frameGradient={member?.profileGradient}
             speaking={participant.isSpeaking}
             className="h-7 w-12"
           >
@@ -628,6 +634,7 @@ export function ParticipantChip({
           speaking={participant.isSpeaking}
           frame={participant.isSpeaking ? member?.avatarFrame : null}
           frameColor={member?.profileColor}
+          frameGradient={member?.profileGradient}
           className="h-6 w-6"
         />
       )}

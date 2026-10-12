@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { cosmeticKey, tintStyle } from '@/lib/api-gamification'
 import { useOverlaysOptional } from '@/lib/overlay-context'
 import { useMembersOptional } from '@/lib/members-context'
+import { SupremeMouth } from '@/components/ui/SupremeMouth'
 import '@/styles/effects.css'
 
 export const Avatar = React.forwardRef<
@@ -72,7 +73,9 @@ const FRAME_STYLES: Record<string, string> = {
   amethyst: 'frame-amethyst',
   'violet-neon': 'frame-violet-neon',
   // lendária (fogo, a única animada)
-  fire: 'frame-fire'
+  fire: 'frame-fire',
+  // suprema (gradiente girando + boca)
+  supreme: 'frame-supreme'
 }
 
 export const AVATAR_FRAME_KEYS = Object.keys(FRAME_STYLES)
@@ -94,8 +97,35 @@ export function frameClass(frame: string | null | undefined): string | undefined
   return key ? FRAME_STYLES[key] : undefined
 }
 
+/** Qual enfeite a moldura põe por cima da borda: a coroa (fogo) ou a boca (suprema). */
+export function frameRing(frame: string | null | undefined): 'fire' | 'supreme' | null {
+  const key = cosmeticKey(frame)
+  return key === 'fire' || key === 'supreme' ? key : null
+}
+
 export function frameNeedsRing(frame: string | null | undefined): boolean {
-  return cosmeticKey(frame) === 'fire'
+  return frameRing(frame) !== null
+}
+
+/** O irmão posicionado sobre a borda. `small` (<32px) tira a animação da boca. */
+export function FrameRing({ frame, small = false }: { frame: string | null | undefined; small?: boolean }) {
+  const ring = frameRing(frame)
+  if (ring === 'fire') return <span aria-hidden className="frame-fire-ring" />
+  if (ring === 'supreme') return <SupremeMouth className="frame-supreme-ring" animated={!small} />
+  return null
+}
+
+/**
+ * Avatar pequeno (<32px)? Lê o tamanho da classe Tailwind (`h-N`/`w-N`/`size-N`,
+ * N*4px) ou `[Npx]`, e do `style` quando vem medido. Sem pista, não é pequeno.
+ */
+function isSmallAvatar(className: string | undefined, style: React.CSSProperties | undefined): boolean {
+  const fromStyle = [style?.width, style?.height].find((v): v is number => typeof v === 'number')
+  if (fromStyle !== undefined) return fromStyle < 32
+  const m = className?.match(/(?:^|\s)(?:size|h|w)-(?:\[(\d+)px\]|(\d+(?:\.\d+)?))(?=\s|$)/)
+  if (!m) return false
+  const px = m[1] ? Number(m[1]) : Number(m[2]) * 4
+  return px < 32
 }
 
 /**
@@ -123,7 +153,8 @@ export function UserAvatar({
   userId,
   memberId,
   fallbackClassName,
-  frameColor
+  frameColor,
+  frameGradient
 }: {
   src?: string
   name: string
@@ -145,6 +176,8 @@ export function UserAvatar({
    * Sem ela vale `ringColor`; sem as duas, a moldura sai branca.
    */
   frameColor?: string | null
+  /** Cor Suprema de quem é a foto (`profileGradient`); vence `frameColor`. Sem ela vale a do membro de `userId`/`memberId`. */
+  frameGradient?: string | null
   /**
    * Estilo extra no avatar. Existe pro tamanho vindo de MEDIÇÃO, e não de
    * classe: na call o avatar acompanha o tamanho do card, que é calculado em
@@ -179,7 +212,7 @@ export function UserAvatar({
         abrirPerfil && 'cursor-pointer transition-opacity hover:opacity-80'
       )}
       // A cor fica no invólucro: herda pra borda e pra coroa, que é irmã.
-      style={frameStyle ? tintStyle(frameColor ?? ringColor ?? member?.profileColor) : undefined}
+      style={frameStyle ? tintStyle(frameColor ?? ringColor ?? member?.profileColor, frameGradient ?? member?.profileGradient) : undefined}
       {...(abrirPerfil
         ? {
             role: 'button' as const,
@@ -201,8 +234,8 @@ export function UserAvatar({
           }
         : {})}
     >
-      {/* Coroa da moldura lendária, por cima da borda (z-index no CSS). */}
-      {frameNeedsRing(wornFrame) && <span aria-hidden className="frame-fire-ring" />}
+      {/* Coroa (lendária) ou boca (suprema) da moldura, por cima da borda (z-index no CSS). */}
+      <FrameRing frame={wornFrame} small={isSmallAvatar(className, style)} />
 
       <Avatar
         className={cn(className, frameStyle, speaking && 'ring-2 ring-acid')}

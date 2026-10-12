@@ -30,7 +30,7 @@ const EFFECT_CLASS: Record<string, string> = {
   shadow: 'fx-shadow',
   // lendário (fogo, animado)
   fire: 'fx-fire',
-  // Murcho Supremo (Aura Suprema; o desenho vem na Task 8)
+  // Murcho Supremo (Aura Suprema, ver styles/effects.css)
   supreme: 'fx-supreme'
 }
 
@@ -82,6 +82,12 @@ export function NameEffect({
       data-text={effectClass === 'fx-glow' ? text : undefined}
     >
       {children}
+      {/* Faíscas da Aura Suprema (só animada: na lista de membros ficam de fora). */}
+      {effectClass === 'fx-supreme' &&
+        animated &&
+        [8, 24, 42, 60, 76, 92].map((left, i) => (
+          <span key={i} aria-hidden className="fx-spark" style={{ left: `${left}%`, animationDelay: `${i * 0.4}s` }} />
+        ))}
     </span>
   )
 }
