@@ -204,6 +204,9 @@ export interface AuthUser {
   emoji2?: string | null
   /** Som de entrar/sair do canal de voz (id `sound:*`); todo mundo no canal ouve. */
   joinSound?: string | null
+  profileGradient?: string | null
+  joinSoundUrl?: string | null
+  leaveSoundUrl?: string | null
   /** Riot ID lido do cliente do LoL. */
   riotGameName?: string | null
   riotTagLine?: string | null

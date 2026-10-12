@@ -358,3 +358,37 @@
 :where([class*='fx-']) {
   text-shadow: none;
 }
+
+/* Card Murcho Supremo: borda prisma girando. Só transform/opacity animam.
+   O fundo interno é o mesmo do ItemTile (--background, via bg-void). */
+.rarity-supreme-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.rarity-supreme-card::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  z-index: -2;
+  background: conic-gradient(#ff6fd8, #ffc53d, #6affc8, #3fc1ff, #d0a2ff, #ff6fd8);
+  animation: supreme-spin 8s linear infinite;
+}
+.rarity-supreme-card::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border-radius: inherit;
+  background: hsl(var(--background));
+}
+@keyframes supreme-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rarity-supreme-card::before {
+    animation: none;
+  }
+}

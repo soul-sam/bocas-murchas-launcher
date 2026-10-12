@@ -63,7 +63,7 @@ const TABS: { type: CosmeticType; label: string; Icon: typeof Tag }[] = [
   { type: 'joinSound', label: 'Sons', Icon: Volume2 }
 ]
 
-const RARITY_ORDER: Record<string, number> = { common: 0, rare: 1, epic: 2, legendary: 3 }
+const RARITY_ORDER: Record<string, number> = { common: 0, rare: 1, epic: 2, legendary: 3, supreme: 4 }
 
 export function ShopModal() {
   const { shopOpen: open, closeShop: close } = useOverlays()
@@ -479,6 +479,7 @@ function ItemTile({
          pra borda verde porque ai o que importa e o estado, nao o tier. */
       className={cn(
         'flex flex-col gap-2.5 rounded-brutal border bg-void/60 p-3 transition-colors',
+        item.rarity === 'supreme' && 'rarity-supreme-card',
         item.equipped ? 'border-acid' : 'hover:border-border'
       )}
       style={

@@ -27,7 +27,18 @@ import { isShopThemeId, type ShopThemeId } from '../../electron/preload/types'
 // TIPOS
 // ============================================
 
-export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'supreme'
+
+/** Espelho de rules.ts (API). */
+export const SUPREME_IDS = {
+  color: 'namecolor:supremo',
+  effect: 'effect:supreme',
+  frame: 'frame:supreme',
+  title: 'title:murcho-supremo',
+  sound: 'sound:supremo',
+  theme: 'theme:supremo',
+  emoji: 'emoji:boca-suprema'
+} as const
 
 /**
  * `nameColor` é a cor do nome. Equipa pelo /equip como os outros, mas não
@@ -112,7 +123,8 @@ export const TITLE_RARITY: Record<string, Rarity> = {
   'boca-de-ouro': 'epic',
   carry: 'epic',
   veterano: 'epic',
-  'boca-murcha': 'legendary'
+  'boca-murcha': 'legendary',
+  'murcho-supremo': 'supreme'
 }
 
 export function titleRarity(titleId: string | null | undefined): Rarity {
@@ -661,7 +673,8 @@ export const RARITY_LABEL: Record<Rarity, string> = {
   common: 'comum',
   rare: 'raro',
   epic: 'épico',
-  legendary: 'lendário'
+  legendary: 'lendário',
+  supreme: 'Murcho Supremo'
 }
 
 /**
@@ -683,7 +696,8 @@ export const RARITY_COLOR: Record<Rarity, string> = {
   common: '#9AA3A0',
   rare: '#3FC1FF',
   epic: '#D0A2FF',
-  legendary: '#FFC53D'
+  legendary: '#FFC53D',
+  supreme: '#FF6FD8'
 }
 
 /**
@@ -694,7 +708,8 @@ export const RARITY_GLYPH: Record<Rarity, string> = {
   common: '○',
   rare: '◆',
   epic: '✦',
-  legendary: '★'
+  legendary: '★',
+  supreme: '♛'
 }
 
 /**
@@ -714,7 +729,9 @@ export const RARITY_STYLE: Record<Rarity, { ring: string; wash: string; glow: st
     ring: 'rgba(255, 197, 61, 0.55)',
     wash: 'rgba(255, 197, 61, 0.12)',
     glow: '0 0 20px rgba(255, 197, 61, 0.16), inset 0 1px 0 rgba(255, 197, 61, 0.14)'
-  }
+  },
+  /* O anel de verdade é a borda prisma da classe CSS .rarity-supreme-card. */
+  supreme: { ring: 'transparent', wash: 'rgba(255, 111, 216, 0.10)', glow: '0 0 24px rgba(255, 111, 216, 0.22)' }
 }
 
 export const METRIC_LABEL: Record<LeaderboardMetric, string> = {
