@@ -28,8 +28,11 @@ import {
  * playlist". Trocar de aba desmonta isto, então voltar pra cá já relê tudo.
  */
 
-/** Teto do `watch:queue:addMany` (ADD_MANY_MAX em realtime/watch.ts na API). */
-const SEND_MAX = 100
+/**
+ * Teto do `watch:queue:addMany` (ADD_MANY_MAX em realtime/watch.ts na API):
+ * o tamanho máximo da playlist, então ela vai inteira.
+ */
+const SEND_MAX = 500
 
 export function MurchaPlaylists({ onSearch }: { onSearch: () => void }) {
   const { token, user } = useAuth()

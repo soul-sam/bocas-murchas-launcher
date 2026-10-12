@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.68.1',
+    headline: 'Fila de música sem limite',
+    items: [
+      'A fila de música não para mais em 100: dá pra pôr quantas músicas quiser.',
+      'Tocar uma playlist manda ela inteira pra call, não só as 100 primeiras.'
+    ]
+  },
+  {
     version: '1.68.0',
     headline: 'Voz e som da tela com volumes separados',
     items: [
