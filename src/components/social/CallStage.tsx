@@ -2,7 +2,7 @@ import * as React from 'react'
 import type { Track } from 'livekit-client'
 import { Maximize2, MicOff, Minimize2, MonitorUp, Video, Volume2, VolumeX } from 'lucide-react'
 import { UserAvatar, frameClass, frameNeedsRing } from '@/components/ui/avatar'
-import { tintStyle, nameStyle } from '@/lib/api-gamification'
+import { tintStyle, nameStyle, nameGradientClass, SUPREME_IDS } from '@/lib/api-gamification'
 import { VOICE_VOLUME_MAX } from '@/lib/participant-volume'
 import { cn } from '@/lib/utils'
 import { resolveAssetUrl } from '@/lib/api'
@@ -253,8 +253,9 @@ function ParticipantName({
       <NameEffect
         effect={member?.nameEffect}
         color={member?.profileColor}
-        className="truncate"
-        style={nameStyle(member?.profileColor)}
+        gradient={member?.profileGradient}
+        className={cn('truncate', nameGradientClass(member?.profileGradient, member?.nameEffect === SUPREME_IDS.effect))}
+        style={nameStyle(member?.profileColor, member?.profileGradient)}
       >
         {member?.displayName ?? participant.name}
       </NameEffect>

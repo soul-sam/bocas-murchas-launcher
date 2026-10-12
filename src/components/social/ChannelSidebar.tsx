@@ -56,7 +56,7 @@ import { ConnectionBars } from './ConnectionBars'
 import { AlcaDeLargura } from '@/components/ui/alca'
 import { toqueLongo } from '@/lib/toque-longo'
 import { podeCompartilharTela } from '@/lib/platform'
-import { nameStyle } from '@/lib/api-gamification'
+import { nameStyle, nameGradientClass, SUPREME_IDS } from '@/lib/api-gamification'
 
 /**
  * Sem "Invisível". O servidor nunca honrou essa escolha: quem tem socket
@@ -490,7 +490,12 @@ export function ChannelSidebar({
                               <NameEffect
                                 effect={member?.nameEffect}
                                 color={member?.profileColor}
-                                className="truncate"
+                                gradient={member?.profileGradient}
+                                className={cn(
+                                  'truncate',
+                                  nameGradientClass(member?.profileGradient, member?.nameEffect === SUPREME_IDS.effect)
+                                )}
+                                style={nameStyle(member?.profileColor, member?.profileGradient)}
                               >
                                 {occupant.displayName}
                               </NameEffect>
@@ -693,7 +698,12 @@ export function ChannelSidebar({
                   className="flex items-center gap-1 text-xs font-medium"
                   style={nameStyle(user?.profileColor)}
                 >
-                  <span className="truncate">{user?.displayName}</span>
+                  <span
+                    className={cn('truncate', nameGradientClass(user?.profileGradient, user?.nameEffect === SUPREME_IDS.effect))}
+                    style={user?.profileGradient ? nameStyle(user?.profileColor, user?.profileGradient) : undefined}
+                  >
+                    {user?.displayName}
+                  </span>
                   <NameEmoji id={user?.emoji} id2={user?.emoji2} />
                 </span>
                 {myActivity ? (

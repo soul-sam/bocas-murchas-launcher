@@ -16,7 +16,9 @@ import {
   type LeaderboardEntry,
   type LeaderboardMetric,
   type LeaderboardPeriod,
-  nameStyle
+  nameStyle,
+  nameGradientClass,
+  SUPREME_IDS
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useLayout } from '@/lib/layout-context'
@@ -367,7 +369,13 @@ function PodiumSlot({ entry, metric, tall }: { entry: LeaderboardEntry; metric: 
         className="mt-1.5 flex w-full min-w-0 items-center justify-center gap-0.5 text-xs leading-tight"
         style={nameStyle(color)}
       >
-        <NameEffect effect={member?.nameEffect} color={color} className="truncate">
+        <NameEffect
+          effect={member?.nameEffect}
+          color={color}
+          gradient={member?.profileGradient}
+          className={cn('truncate', nameGradientClass(member?.profileGradient, member?.nameEffect === SUPREME_IDS.effect))}
+          style={nameStyle(color, member?.profileGradient)}
+        >
           {name}
         </NameEffect>
         <NameEmoji id={member?.emoji} id2={member?.emoji2} />
@@ -422,7 +430,13 @@ function Rows({ entries, metric }: { entries: LeaderboardEntry[]; metric: Leader
               className="h-6 w-6"
             />
             <span className="flex min-w-0 flex-1 items-center gap-1 text-sm" style={nameStyle(color)}>
-              <NameEffect effect={member?.nameEffect} color={color} className="truncate">
+              <NameEffect
+                effect={member?.nameEffect}
+                color={color}
+                gradient={member?.profileGradient}
+                className={cn('truncate', nameGradientClass(member?.profileGradient, member?.nameEffect === SUPREME_IDS.effect))}
+                style={nameStyle(color, member?.profileGradient)}
+              >
                 {name}
               </NameEffect>
               <NameEmoji id={member?.emoji} id2={member?.emoji2} />

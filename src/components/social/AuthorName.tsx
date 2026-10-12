@@ -5,7 +5,7 @@ import { useGamification } from '@/lib/gamification-context'
 import { TitleTag } from '@/lib/cosmetic-icons'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
-import { nameStyle } from '@/lib/api-gamification'
+import { nameStyle, nameGradientClass, SUPREME_IDS } from '@/lib/api-gamification'
 
 /**
  * Nome de quem escreveu, como aparece no cabeçalho da mensagem.
@@ -22,6 +22,7 @@ export function AuthorName({
   userId,
   displayName,
   color,
+  gradient,
   className,
   style,
   onContextMenu
@@ -29,6 +30,8 @@ export function AuthorName({
   userId: string
   displayName: string
   color?: string
+  /** `profileGradient` do autor (Cor Suprema); vem de quem chama, junto da cor. */
+  gradient?: string | null
   className?: string
   style?: React.CSSProperties
   onContextMenu?: (event: React.MouseEvent) => void
@@ -47,9 +50,10 @@ export function AuthorName({
           lendário é raro, e congelado ele parecia não ter sido comprado. */}
       <NameEffect
         effect={member?.nameEffect}
-        className={cn(className)}
+        className={cn(className, nameGradientClass(gradient, member?.nameEffect === SUPREME_IDS.effect))}
         color={color}
-        style={{ ...nameStyle(color), ...style }}
+        gradient={gradient}
+        style={{ ...nameStyle(color, gradient), ...style }}
       >
         {displayName}
       </NameEffect>

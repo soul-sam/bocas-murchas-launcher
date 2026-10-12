@@ -29,7 +29,9 @@ const EFFECT_CLASS: Record<string, string> = {
   arcane: 'fx-arcane',
   shadow: 'fx-shadow',
   // lendário (fogo, animado)
-  fire: 'fx-fire'
+  fire: 'fx-fire',
+  // Murcho Supremo (Aura Suprema; o desenho vem na Task 8)
+  supreme: 'fx-supreme'
 }
 
 export const NAME_EFFECT_KEYS = Object.keys(EFFECT_CLASS)
@@ -41,7 +43,8 @@ export function NameEffect({
   style,
   title,
   animated = true,
-  color
+  color,
+  gradient
 }: {
   effect: string | null | undefined
   /**
@@ -51,6 +54,8 @@ export function NameEffect({
    * continua vindo de quem chama.
    */
   color?: string | null
+  /** `profileGradient` (Cor Suprema): vence a cor sólida e pinta as duas pontas do efeito. */
+  gradient?: string | null
   children: React.ReactNode
   className?: string
   style?: React.CSSProperties
@@ -67,7 +72,7 @@ export function NameEffect({
   const key = cosmeticKey(effect)
   const effectClass = key ? EFFECT_CLASS[key] : undefined
   const text = typeof children === 'string' ? children : undefined
-  const tint = effectClass ? tintStyle(color) : undefined
+  const tint = effectClass ? tintStyle(color, gradient) : undefined
 
   return (
     <span

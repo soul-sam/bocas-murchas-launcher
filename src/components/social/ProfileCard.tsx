@@ -13,7 +13,13 @@ import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Hint } from '@/components/ui/tooltip'
 import { parseFavoriteGames, parseLinks, resolveAssetUrl } from '@/lib/api'
-import { formatCompact, type GamificationProfile, nameStyle } from '@/lib/api-gamification'
+import {
+  formatCompact,
+  type GamificationProfile,
+  nameStyle,
+  nameGradientClass,
+  SUPREME_IDS
+} from '@/lib/api-gamification'
 import { BadgeChip, TitleTag } from '@/lib/cosmetic-icons'
 import { useOverlaysOptional } from '@/lib/overlay-context'
 import { CargoChip } from '@/lib/cargo-icons'
@@ -440,6 +446,7 @@ export function ProfileBody({
           username={member.username}
           pronouns={member.pronouns}
           color={color}
+          gradient={member.profileGradient}
           nameEffect={member.nameEffect}
           emoji={member.emoji}
           emoji2={member.emoji2}
@@ -586,6 +593,7 @@ export function ProfileIdentity({
   username,
   pronouns,
   color,
+  gradient,
   nameEffect,
   emoji,
   emoji2,
@@ -601,6 +609,8 @@ export function ProfileIdentity({
   username: string
   pronouns?: string | null
   color: string | null
+  /** `profileGradient` (Cor Suprema); vence a cor sólida no nome. */
+  gradient?: string | null
   nameEffect?: string | null
   emoji?: string | null
   emoji2?: string | null
@@ -627,7 +637,16 @@ export function ProfileIdentity({
             caixa, e a Anton desenha acima da linha. Nos efeitos de degradê
             (texto pintado pelo fundo) a parte de fora da caixa nem é
             pintada — o topo das letras sumia. */}
-        <NameEffect effect={nameEffect} color={color} className="-my-[0.2em] min-w-0 truncate py-[0.2em]">
+        <NameEffect
+          effect={nameEffect}
+          color={color}
+          gradient={gradient}
+          className={cn(
+            '-my-[0.2em] min-w-0 truncate py-[0.2em]',
+            nameGradientClass(gradient, nameEffect === SUPREME_IDS.effect)
+          )}
+          style={nameStyle(color, gradient)}
+        >
           {name}
         </NameEffect>
         <NameEmoji id={emoji} id2={emoji2} size="md" />

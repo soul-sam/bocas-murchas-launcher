@@ -16,7 +16,7 @@ import { useCargos, type Cargo } from '@/lib/cargos-context'
 import { CargoIcon } from '@/lib/cargo-icons'
 import { CustomEmojiImg } from './CustomEmojiImg'
 import { toqueLongo } from '@/lib/toque-longo'
-import { nameStyle } from '@/lib/api-gamification'
+import { nameStyle, nameGradientClass, SUPREME_IDS } from '@/lib/api-gamification'
 
 /**
  * Desenha a arvore que o lib/rich-text.ts produz.
@@ -38,7 +38,7 @@ const JumboContext = React.createContext(false)
 
 interface Lookups {
   /** username (e primeiro nome) em minusculas -> pessoa. */
-  users: Map<string, { id: string; displayName: string; color?: string | null }>
+  users: Map<string, { id: string; displayName: string; color?: string | null; gradient?: string | null; nameEffect?: string | null }>
   /** nome do canal em minusculas -> id. */
   channels: Map<string, string>
   /** token de mencao -> cargo. Vem pronto do cargos-context. */
@@ -62,13 +62,15 @@ export function RichTextProvider({ children }: { children: React.ReactNode }) {
   const { byMentionToken, myCargoIds } = useCargos()
 
   const value = React.useMemo<Lookups>(() => {
-    const users = new Map<string, { id: string; displayName: string; color?: string | null }>()
+    const users = new Map<string, { id: string; displayName: string; color?: string | null; gradient?: string | null; nameEffect?: string | null }>()
 
     for (const member of members) {
       const entry = {
         id: member.id,
         displayName: member.displayName,
-        color: member.profileColor
+        color: member.profileColor,
+        gradient: member.profileGradient,
+        nameEffect: member.nameEffect
       }
       if (member.username) users.set(member.username.toLowerCase(), entry)
       // "@Fulano de Tal" nao casa (tem espaco), mas "@Fulano" sim.
@@ -233,10 +235,17 @@ function InlineNodes({ nodes }: { nodes: InlineNode[] }) {
                 type="button"
                 onContextMenu={(event) => hit && openUserMenu(event, hit.id)}
                 {...toqueLongo((event) => hit && openUserMenu(event, hit.id))}
-                className="rounded-[3px] bg-acid/15 px-1 font-medium text-acid transition-colors hover:bg-acid/25"
+                className={cn(
+                  'rounded-[3px] bg-acid/15 px-1 font-medium text-acid transition-colors hover:bg-acid/25',
+                  nameGradientClass(hit?.gradient, hit?.nameEffect === SUPREME_IDS.effect)
+                )}
                 style={
-                  hit?.color
-                    ? { ...nameStyle(hit.color), backgroundColor: `${hit.color}22` }
+                  hit?.color || hit?.gradient
+                    ? {
+                        ...nameStyle(hit.color, hit.gradient),
+                        // O fundo continua na cor A: o gradiente é só o texto.
+                        ...(hit.color ? { backgroundColor: `${hit.color}22` } : null)
+                      }
                     : undefined
                 }
               >

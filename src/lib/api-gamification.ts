@@ -1,5 +1,6 @@
 import type * as React from 'react'
 import { request, type GameSessionSummary } from './api'
+import { gradientStyle, parseGradient } from './name-gradient'
 import { isShopThemeId, type ShopThemeId } from '../../electron/preload/types'
 
 /**
@@ -88,15 +89,28 @@ export function cosmeticTint(color: string | null | undefined): string | null {
  * `--name-shadow` (globals.css, só nos claros) dá contorno sem mudar a cor.
  * Sem cor comprada devolve undefined: o nome herda a cor de texto do tema.
  */
-export function nameStyle(color: string | null | undefined): React.CSSProperties | undefined {
+export function nameStyle(
+  color: string | null | undefined,
+  gradient?: string | null
+): React.CSSProperties | undefined {
+  const pair = parseGradient(gradient)
+  if (pair) return { ...gradientStyle(pair), textShadow: 'none' }
   const tint = cosmeticTint(color)
   return tint ? { color: tint, textShadow: 'var(--name-shadow)' } : undefined
 }
 
 /** `style` com a cor dos cosméticos, pra espalhar num elemento (ou nada). */
-export function tintStyle(color: string | null | undefined): React.CSSProperties | undefined {
+export function tintStyle(color: string | null | undefined, gradient?: string | null): React.CSSProperties | undefined {
+  const pair = parseGradient(gradient)
+  if (pair) return { '--fx-c': pair[0], '--fx-c2': pair[1] } as React.CSSProperties
   const tint = cosmeticTint(color)
-  return tint ? ({ '--fx-c': tint } as React.CSSProperties) : undefined
+  return tint ? ({ '--fx-c': tint, '--fx-c2': tint } as React.CSSProperties) : undefined
+}
+
+/** Classe que acompanha `nameStyle` quando há gradiente: recorta o fundo no texto. */
+export function nameGradientClass(gradient: string | null | undefined, flowing: boolean): string | undefined {
+  if (!parseGradient(gradient)) return undefined
+  return flowing ? 'name-gradient name-flow' : 'name-gradient'
 }
 
 /**

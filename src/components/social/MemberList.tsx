@@ -20,7 +20,7 @@ import { BetPopover } from './BetPopover'
 import { AwayBadge, StatusText } from './AwayBadge'
 import { toqueLongo } from '@/lib/toque-longo'
 import { BotBadge } from './BotBadge'
-import { nameStyle } from '@/lib/api-gamification'
+import { nameStyle, nameGradientClass } from '@/lib/api-gamification'
 
 /**
  * Lista de membros.
@@ -213,7 +213,14 @@ function Group({
                       className="flex items-center gap-1 truncate text-sm"
                       style={nameStyle(member.profileColor)}
                     >
-                      <NameEffect animated={false} effect={member.nameEffect} color={member.profileColor} className="truncate">
+                      <NameEffect
+                        animated={false}
+                        effect={member.nameEffect}
+                        color={member.profileColor}
+                        gradient={member.profileGradient}
+                        className={cn('truncate', nameGradientClass(member.profileGradient, false))}
+                        style={nameStyle(member.profileColor, member.profileGradient)}
+                      >
                         {member.displayName}
                       </NameEffect>
                       <NameEmoji id={member.emoji} id2={member.emoji2} />

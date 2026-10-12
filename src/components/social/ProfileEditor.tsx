@@ -53,7 +53,9 @@ import {
   type CosmeticType,
   type Rarity,
   type ShopItem,
-  nameStyle
+  nameStyle,
+  nameGradientClass,
+  SUPREME_IDS
 } from '@/lib/api-gamification'
 import { ThemeSwatch } from '@/components/ThemeSwatch'
 import { DEFAULT_SETTINGS, type ThemeId } from '../../../electron/preload/types'
@@ -453,6 +455,7 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                   username={user?.username ?? ''}
                   pronouns={pronouns.trim() || null}
                   color={color}
+                  gradient={user?.profileGradient}
                   nameEffect={user?.nameEffect}
                   emoji={user?.emoji}
                   emoji2={user?.emoji2}
@@ -1090,7 +1093,8 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
                   me={{
                     name: me?.displayName ?? '??',
                     avatar: resolveAssetUrl(me?.avatar),
-                    color: me?.profileColor ?? null
+                    color: me?.profileColor ?? null,
+                    gradient: me?.profileGradient
                   }}
                   onToggle={() => void setSlot(slot.type, item.id === equippedId ? null : item, slot.slot)}
                   onPreviewSound={
@@ -1143,7 +1147,7 @@ function StyleTile({
   on: boolean
   busy: boolean
   disabled: boolean
-  me: { name: string; avatar?: string; color: string | null }
+  me: { name: string; avatar?: string; color: string | null; gradient?: string | null }
   onToggle: () => void
   onPreviewSound?: (phase: 'join' | 'leave') => void
 }) {
@@ -1182,7 +1186,15 @@ function StyleTile({
               className="truncate font-display text-base leading-none"
               style={nameStyle(me.color)}
             >
-              <NameEffect effect={item.id} color={me.color}>{me.name}</NameEffect>
+              <NameEffect
+                effect={item.id}
+                color={me.color}
+                gradient={me.gradient}
+                className={nameGradientClass(me.gradient, item.id === SUPREME_IDS.effect)}
+                style={nameStyle(me.color, me.gradient)}
+              >
+                {me.name}
+              </NameEffect>
             </span>
           )}
           {item.type === 'avatarFrame' && (

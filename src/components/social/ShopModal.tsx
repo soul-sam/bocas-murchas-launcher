@@ -17,7 +17,9 @@ import {
   type ShopItem,
   DEFAULT_NAME_COLOR,
   EMOJI_SLOT_2,
-  nameStyle
+  nameStyle,
+  nameGradientClass,
+  SUPREME_IDS
 } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
@@ -270,7 +272,13 @@ export function ShopModal() {
           />
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 font-display text-base leading-tight" style={nameStyle(previewColor)}>
-              <NameEffect effect={previewEffect} color={previewColor} className="truncate">
+              <NameEffect
+                effect={previewEffect}
+                color={previewColor}
+                gradient={me.profileGradient}
+                className={cn('truncate', nameGradientClass(me.profileGradient, previewEffect === SUPREME_IDS.effect))}
+                style={nameStyle(previewColor, me.profileGradient)}
+              >
                 {me.displayName}
               </NameEffect>
               <NameEmoji glyph={previewEmoji} glyph2={previewEmoji2} size="md" />
@@ -371,7 +379,7 @@ export function ShopModal() {
                 <ItemTile
                   key={item.id}
                   item={item}
-                  me={{ name: me.displayName, avatar: resolveAssetUrl(me.avatar), color }}
+                  me={{ name: me.displayName, avatar: resolveAssetUrl(me.avatar), color, gradient: me.profileGradient }}
                   coins={coins}
                   busy={busy === item.id}
                   confirming={confirming === item.id}
@@ -449,7 +457,7 @@ function ItemTile({
   emojiSlots
 }: {
   item: ShopItem
-  me: { name: string; avatar?: string; color: string }
+  me: { name: string; avatar?: string; color: string; gradient?: string | null }
   coins: number
   busy: boolean
   confirming: boolean
@@ -525,7 +533,15 @@ function ItemTile({
         )}
         {item.type === 'nameEffect' && (
           <span className="truncate font-display text-base" style={nameStyle(me.color)}>
-            <NameEffect effect={item.id} color={me.color}>{me.name}</NameEffect>
+            <NameEffect
+              effect={item.id}
+              color={me.color}
+              gradient={me.gradient}
+              className={nameGradientClass(me.gradient, item.id === SUPREME_IDS.effect)}
+              style={nameStyle(me.color, me.gradient)}
+            >
+              {me.name}
+            </NameEffect>
           </span>
         )}
         {item.type === 'avatarFrame' && (
@@ -533,13 +549,23 @@ function ItemTile({
         )}
         {item.type === 'emoji' && (
           <span className="flex items-center gap-1.5 truncate font-display text-sm" style={nameStyle(me.color)}>
-            <span className="truncate">{me.name}</span>
+            <span
+              className={cn('truncate', nameGradientClass(me.gradient, false))}
+              style={me.gradient ? nameStyle(me.color, me.gradient) : undefined}
+            >
+              {me.name}
+            </span>
             <NameEmoji glyph={cosmeticEmoji(item)} className="text-xl" />
           </span>
         )}
         {item.type === 'emojiSlot' && (
           <span className="flex items-center gap-1.5 truncate font-display text-sm" style={nameStyle(me.color)}>
-            <span className="truncate">{me.name}</span>
+            <span
+              className={cn('truncate', nameGradientClass(me.gradient, false))}
+              style={me.gradient ? nameStyle(me.color, me.gradient) : undefined}
+            >
+              {me.name}
+            </span>
             <NameEmoji glyph="😀" glyph2="🎉" className="text-xl" />
           </span>
         )}

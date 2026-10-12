@@ -392,3 +392,14 @@
     animation: none;
   }
 }
+
+/* Cor Suprema: o gradiente vem no style (nameStyle); a classe recorta no texto. */
+.name-gradient {
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+}
+/* Flui só com a Aura Suprema. */
+.name-flow { animation: name-flow 6s linear infinite; }
+@keyframes name-flow { from { background-position: 0% 0; } to { background-position: 200% 0; } }
+@media (prefers-reduced-motion: reduce) { .name-flow { animation: none; } }

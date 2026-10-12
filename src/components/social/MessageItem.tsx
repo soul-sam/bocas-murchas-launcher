@@ -324,6 +324,7 @@ export function MessageItem({
               userId={message.author.id}
               displayName={message.author.displayName}
               color={color}
+              gradient={author?.profileGradient}
               onContextMenu={(event) => openUserMenu(event, message.author.id)}
               {...toqueLongo((event) => openUserMenu(event, message.author.id))}
               className="shrink-0 cursor-default font-display text-xs uppercase tracking-wide hover:underline"
@@ -351,6 +352,7 @@ export function MessageItem({
                   userId={message.author.id}
                   displayName={message.author.displayName}
                   color={color}
+                  gradient={author?.profileGradient}
                   onContextMenu={(event) => openUserMenu(event, message.author.id)}
                   {...toqueLongo((event) => openUserMenu(event, message.author.id))}
                   className="cursor-default font-display text-sm leading-tight hover:underline"
