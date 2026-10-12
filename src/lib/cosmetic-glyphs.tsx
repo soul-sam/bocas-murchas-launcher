@@ -361,3 +361,6 @@ export function Glyph({
     </svg>
   )
 }
+
+// Pentakill em dobro (2+ na mesma partida): a mesma caveira coroada.
+BADGE_GLYPH['pentakill-duplo'] ??= BADGE_GLYPH.pentakill

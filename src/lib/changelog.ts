@@ -42,6 +42,25 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.70.2',
+    headline: 'Conquistas até o Murcho Supremo',
+    items: [
+      'Toda conquista agora paga murchos e XP pela raridade: comum 10, rara 25, épica 50, lendária 100 e Murcho Supremo 250.',
+      'Pentakill em Dobro: conquista Murcho Supremo pra quem fizer 2 ou mais pentakills na mesma partida.',
+      'As conquistas agora também chegam ao Murcho Supremo, a raridade acima do lendário. Elas valem 160 pontos no placar de colecionador.',
+      'Quase toda conquista de contagem virou uma escada, do comum ao supremo: XP, horas e dias seguidos de call, mensagens, sons do soundboard e apostas certas.',
+      'Conquistas novas de música: elas contam as músicas que você põe pra tocar na call.',
+      'Pôquer: uma conquista para cada mão com que você ganhar o showdown, da carta alta ao royal flush. O royal flush agora é Murcho Supremo.',
+      'Cada prêmio do recap de domingo tem conquista de 1, 5 e 15 vitórias.',
+      'Loja: Primeira Compra, Freguês, Cliente VIP, Kit Supremo (ter os 7 itens supremos) e "Eu quero, eu posso!" (ter a lojinha inteira).',
+      'Impressora, cutucadas, clipes, sinal de fumaça e gorjeta ganharam degraus até o épico. A vaquinha ganhou Dono do Servidor, por 6 meses ajudando com a conta.',
+      'Mais 46 ovos escondidos pelo launcher, e um ovo Murcho Supremo pra quem achar todos. O caderninho tem as dicas.',
+      'Conquistas de caçador de ovos: Farejador, Caçador de Ovos, Arqueólogo e Quebra-Cabeça.',
+      'Playlist: música que não toca mais (vídeo apagado, privado ou que não deixa tocar fora do YouTube) pula sozinha e sai da playlist. Música sem vídeo no YouTube também sai na hora de tocar.'
+    ],
+    note: 'As conquistas que você já tinha são pagas uma vez, automaticamente. A conquista Royal Flush agora se chama Royal Straight Flush. Quem já tinha chegado nos números ganha as conquistas novas sozinho, sem aviso. Algumas conquistas mudaram de raridade, e ninguém perde as que já tem. As músicas contam a partir desta versão.'
+  },
+  {
     version: '1.70.1',
     headline: 'Conquistas até o Murcho Supremo',
     items: [
