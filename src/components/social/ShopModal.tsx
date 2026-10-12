@@ -27,7 +27,8 @@ import { useOverlays } from '@/lib/overlay-context'
 import { useGamification } from '@/lib/gamification-context'
 import { useSettings } from '@/lib/settings-context'
 import { supremeThemeVars } from '@/lib/supreme-theme'
-import { playJoinSound } from '@/lib/ui-sounds'
+import { playDecodedBuffer, playJoinSound } from '@/lib/ui-sounds'
+import { decodeAudio } from '@/lib/supreme-audio-browser'
 import { ThemeSwatch } from '@/components/ThemeSwatch'
 import { DEFAULT_SETTINGS } from '../../../electron/preload/types'
 import { cn } from '@/lib/utils'
@@ -37,7 +38,7 @@ import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { TitleTag } from '@/lib/cosmetic-icons'
 import { parseGradient } from '@/lib/name-gradient'
-import { needsColors, ownedNameColors, type OwnedColor } from '@/lib/supreme-shop'
+import { needsColors, ownedNameColors, supremeColorSample, type OwnedColor } from '@/lib/supreme-shop'
 import { SupremeColorPicker } from './supreme/SupremeColorPicker'
 import { SupremeThemePicker } from './supreme/SupremeThemePicker'
 import { SupremeSoundEditor } from './supreme/SupremeSoundEditor'
@@ -154,6 +155,22 @@ export function ShopModal() {
   // vai ouvir de verdade. Slider em zero: a prévia toca baixinho mesmo assim,
   // senão a prateleira parece quebrada.
   const previewVolume = settings.soundEnabled && settings.voiceCueVolume > 0 ? settings.voiceCueVolume : 0.4
+
+  // Áudio Supremo não tem síntese: a prévia toca o que a pessoa enviou.
+  const previewSupreme = async (phase: 'join' | 'leave'): Promise<void> => {
+    const url = phase === 'join' ? me.joinSoundUrl : me.leaveSoundUrl
+    if (!url) {
+      pushToast({ kind: 'info', title: 'Envie seu áudio em Configurar' })
+      return
+    }
+    try {
+      const res = await fetch(resolveAssetUrl(url) ?? url)
+      if (!res.ok) throw new Error('fetch')
+      playDecodedBuffer(await decodeAudio(await res.arrayBuffer()), previewVolume)
+    } catch {
+      pushToast({ kind: 'error', title: 'Não deu pra tocar seu áudio' })
+    }
+  }
   const coins = profile?.coins ?? shop?.coins ?? 0
 
   // O segundo slot de emoji mora na aba Emojis, na frente da prateleira.
@@ -424,9 +441,11 @@ export function ShopModal() {
                       : undefined
                   }
                   onPreview={
-                    item.type === 'joinSound'
-                      ? (phase) => playJoinSound(cosmeticSound(item), phase, previewVolume)
-                      : undefined
+                    item.id === SUPREME_IDS.sound
+                      ? (phase) => void previewSupreme(phase)
+                      : item.type === 'joinSound'
+                        ? (phase) => playJoinSound(cosmeticSound(item), phase, previewVolume)
+                        : undefined
                   }
                 />
               ))}
@@ -549,7 +568,7 @@ function ItemTile({
               tema de uma versão mais nova — atualiza o launcher
             </span>
           ))}
-        {item.type === 'nameColor' && (
+        {item.type === 'nameColor' && item.id !== SUPREME_IDS.color && (
           <span className="flex min-w-0 items-center gap-2">
             <span
               aria-hidden
@@ -561,6 +580,23 @@ function ItemTile({
             </span>
           </span>
         )}
+        {item.id === SUPREME_IDS.color &&
+          (() => {
+            // Sem hex: amostra em gradiente (o atual, ou o que dá pra montar).
+            const [a, b] = supremeColorSample(me.gradient, ownedColors)
+            return (
+              <span className="flex min-w-0 items-center gap-2">
+                <span
+                  aria-hidden
+                  className="h-5 w-5 shrink-0 rounded-full border border-line-strong"
+                  style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}
+                />
+                <span className="name-gradient truncate font-display text-base" style={nameStyle(null, `${a},${b}`)}>
+                  {me.name}
+                </span>
+              </span>
+            )
+          })()}
         {item.type === 'title' && (
           <TitleTag
             titleId={item.id}

@@ -1,5 +1,7 @@
 import { SUPREME_IDS } from './supreme-ids.ts'
 import type { SupremeSoundState } from './api-supreme-sound.ts'
+import { DEFAULT_SUPREME_THEME } from './supreme-theme.ts'
+import { parseGradient } from './name-gradient.ts'
 
 export interface OwnedColor {
   id: string
@@ -51,4 +53,32 @@ export function recentSounds(state: SupremeSoundState | null) {
  */
 export function syncUseSame(next: Pick<SupremeSoundState, 'joinSoundUrl' | 'leaveSoundUrl'>, prev: boolean): boolean {
   return deriveUseSame(next) || (prev && !next.joinSoundUrl && !next.leaveSoundUrl)
+}
+
+/**
+ * Cores do Tema Supremo contra o que a pessoa tem (`owned`: hex minúsculos).
+ * Cada cor vale sozinha: se é dela OU é o padrão daquela posição, fica. Só a
+ * que não é nenhum dos dois volta pro padrão. null = nada a mudar.
+ */
+export function coherentSupremeColors(
+  colors: { c1: string; c2: string },
+  owned: Set<string>
+): { c1: string; c2: string } | null {
+  const ok = (hex: string, fallback: string): boolean =>
+    hex.toLowerCase() === fallback.toLowerCase() || owned.has(hex.toLowerCase())
+  const c1 = ok(colors.c1, DEFAULT_SUPREME_THEME.c1) ? colors.c1 : DEFAULT_SUPREME_THEME.c1
+  const c2 = ok(colors.c2, DEFAULT_SUPREME_THEME.c2) ? colors.c2 : DEFAULT_SUPREME_THEME.c2
+  return c1 === colors.c1 && c2 === colors.c2 ? null : { c1, c2 }
+}
+
+/**
+ * Amostra da Cor Suprema na prateleira: o gradiente que a pessoa usa; senão
+ * as 2 primeiras cores dela (o que ela poderia montar); senão o rosa→roxo
+ * da raridade.
+ */
+export function supremeColorSample(gradient: string | null | undefined, owned: OwnedColor[]): [string, string] {
+  const mine = parseGradient(gradient)
+  if (mine) return mine
+  if (owned.length >= 2) return [owned[0].color, owned[1].color]
+  return [DEFAULT_SUPREME_THEME.c1, DEFAULT_SUPREME_THEME.c2]
 }

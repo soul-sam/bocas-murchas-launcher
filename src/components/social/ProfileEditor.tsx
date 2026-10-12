@@ -73,6 +73,9 @@ import { GAME_CATALOG, GameIcon, gameLabel } from './GameIcon'
 import { GifPicker } from './GifPicker'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
+import { SupremeColorPicker } from './supreme/SupremeColorPicker'
+import { ownedNameColors, supremeColorSample, type OwnedColor } from '@/lib/supreme-shop'
+import { parseGradient } from '@/lib/name-gradient'
 import { ProfileHero, ProfileIdentity } from './ProfileCard'
 
 /**
@@ -948,6 +951,8 @@ function equippedOf(
     case 'joinSound':
       return user.joinSound ?? null
     case 'nameColor': {
+      // Com gradiente, o `profileColor` é só a cor A de reserva: a vestida é a Suprema.
+      if (parseGradient(user.profileGradient) && items.some((i) => i.id === SUPREME_IDS.color)) return SUPREME_IDS.color
       const current = (user.profileColor ?? '').toLowerCase()
       return items.find((i) => (colorOf(i) ?? '').toLowerCase() === current)?.id ?? null
     }
@@ -1013,6 +1018,14 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
         : equip(type, item?.id ?? null, slot)
     )
   const hasSecondEmoji = owned.some((i) => i.id === EMOJI_SLOT_2)
+  // Cor Suprema não equipa sem as 2 cores: o tile abre o configurador aqui.
+  const [supremeOpen, setSupremeOpen] = React.useState(false)
+  const ownedColors = ownedNameColors(items)
+  const equipSupremeColors = (colors: [string, string]): Promise<void> =>
+    run(SUPREME_IDS.color, async () => {
+      await equip('nameColor', SUPREME_IDS.color, undefined, colors)
+      setSupremeOpen(false)
+    })
 
   if (loading && !shop) {
     return (
@@ -1096,7 +1109,12 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
                     color: me?.profileColor ?? null,
                     gradient: me?.profileGradient
                   }}
-                  onToggle={() => void setSlot(slot.type, item.id === equippedId ? null : item, slot.slot)}
+                  ownedColors={ownedColors}
+                  onToggle={() =>
+                    item.id === SUPREME_IDS.color && item.id !== equippedId
+                      ? setSupremeOpen((v) => !v)
+                      : void setSlot(slot.type, item.id === equippedId ? null : item, slot.slot)
+                  }
                   onPreviewSound={
                     item.type === 'joinSound'
                       ? (phase) => playJoinSound(cosmeticSound(item), phase, previewVolume)
@@ -1105,6 +1123,16 @@ function StyleTab({ me, onOpenShop }: { me: AuthUser | null; onOpenShop: () => v
                 />
               ))}
             </div>
+            {slot.type === 'nameColor' && supremeOpen && (
+              <div className="rounded-brutal border border-line bg-void/60 p-3">
+                <SupremeColorPicker
+                  ownedColors={ownedColors}
+                  current={parseGradient(me?.profileGradient)}
+                  onEquip={equipSupremeColors}
+                  name={me?.displayName ?? '??'}
+                />
+              </div>
+            )}
           </section>
         )
       })}
@@ -1140,6 +1168,7 @@ function StyleTile({
   busy,
   disabled,
   me,
+  ownedColors,
   onToggle,
   onPreviewSound
 }: {
@@ -1148,6 +1177,7 @@ function StyleTile({
   busy: boolean
   disabled: boolean
   me: { name: string; avatar?: string; color: string | null; gradient?: string | null }
+  ownedColors: OwnedColor[]
   onToggle: () => void
   onPreviewSound?: (phase: 'join' | 'leave') => void
 }) {
@@ -1178,6 +1208,22 @@ function StyleTile({
               </span>
             </>
           )}
+          {item.id === SUPREME_IDS.color &&
+            (() => {
+              const [a, b] = supremeColorSample(me.gradient, ownedColors)
+              return (
+                <>
+                  <span
+                    aria-hidden
+                    className="h-5 w-5 shrink-0 rounded-full border border-line-strong"
+                    style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}
+                  />
+                  <span className="name-gradient truncate text-sm font-medium" style={nameStyle(null, `${a},${b}`)}>
+                    {item.name}
+                  </span>
+                </>
+              )
+            })()}
           {item.type === 'title' && (
             <TitleTag titleId={item.id} name={item.name} tooltip={item.name} className="px-1.5 text-xs leading-5" />
           )}

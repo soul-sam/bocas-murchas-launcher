@@ -1,6 +1,8 @@
 import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { resolveAssetUrl } from '@/lib/api'
+import { useAuth } from '@/lib/auth-context'
+import { SUPREME_IDS } from '@/lib/supreme-ids'
 import { supremeSoundApi, type SupremeSlot, type SupremeSoundState } from '@/lib/api-supreme-sound'
 import { decodeAudio } from '@/lib/supreme-audio-browser'
 import { deriveUseSame, recentSounds, soundByUrl, syncUseSame } from '@/lib/supreme-shop'
@@ -15,6 +17,7 @@ const SLOT_LABEL: Record<SupremeSlot, string> = { join: 'Entrada', leave: 'Saíd
 /** Áudio Supremo: 2s da própria pessoa pra entrada e pra saída da call. */
 export function SupremeSoundEditor({ token }: { token: string }) {
   const { settings } = useSettings()
+  const { user } = useAuth()
   const { sounds: board } = useSoundboard()
   const [state, setState] = React.useState<SupremeSoundState | null>(null)
   const [editing, setEditing] = React.useState<{ slot: SupremeSlot; buffer: AudioBuffer; label: string } | null>(null)
@@ -115,6 +118,11 @@ export function SupremeSoundEditor({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col gap-3">
+      {user?.joinSound !== SUPREME_IDS.sound && (
+        <p className="rounded-brutal border border-line bg-void px-2 py-1.5 text-xs text-muted-foreground">
+          Equipe o Áudio Supremo pra tocar na call
+        </p>
+      )}
       <label className="flex items-center gap-2 text-xs text-foreground">
         <input type="checkbox" checked={useSame} onChange={(e) => void toggleSame(e.target.checked)} />
         Usar mesmo áudio para entrada e saída

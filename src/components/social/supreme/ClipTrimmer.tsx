@@ -22,6 +22,9 @@ export function ClipTrimmer({
   const [start, setStart] = React.useState(0)
   const [busy, setBusy] = React.useState(false)
   const [previewError, setPreviewError] = React.useState(false)
+  const [confirmError, setConfirmError] = React.useState<string | null>(null)
+  // Arquivo sem nenhuma amostra: não tem o que recortar nem enviar.
+  const empty = buffer.length === 0 || dur <= 0
   const volume = settings.soundEnabled && settings.voiceCueVolume > 0 ? settings.voiceCueVolume : 0.4
 
   // Prévia pelo mesmo caminho dos sons da interface (AudioContext), sem <audio> com blob.
@@ -58,9 +61,11 @@ export function ClipTrimmer({
       <p className="text-[11.5px] text-muted-foreground">
         {start.toFixed(2)}s – {(start + win).toFixed(2)}s
       </p>
+      {empty && <p className="text-xs text-destructive">Esse arquivo é áudio vazio — escolha outro.</p>}
       {previewError && <p className="text-xs text-destructive">Não deu pra ouvir esse trecho.</p>}
+      {confirmError && <p className="text-xs text-destructive">{confirmError}</p>}
       <div className="flex gap-2">
-        <Button size="sm" variant="ghost" onClick={() => void preview()}>
+        <Button size="sm" variant="ghost" disabled={empty} onClick={() => void preview()}>
           Ouvir
         </Button>
         <Button size="sm" variant="ghost" onClick={onCancel}>
@@ -68,11 +73,29 @@ export function ClipTrimmer({
         </Button>
         <Button
           size="sm"
-          disabled={busy}
+          disabled={busy || empty}
           onClick={async () => {
             setBusy(true)
+            setConfirmError(null)
+            // Recorte falhando não pode sumir em silêncio; erro de envio quem
+            // mostra é o editor (onConfirm), mas um throw dele também cai aqui.
+            let wav: Blob
             try {
-              await onConfirm(await renderSupremeClip(buffer, start))
+              wav = await renderSupremeClip(buffer, start)
+            } catch {
+              setConfirmError('Não deu pra preparar esse trecho — tente outro arquivo.')
+              setBusy(false)
+              return
+            }
+            if (wav.size <= 44) {
+              setConfirmError('Esse trecho é áudio vazio — escolha outro.')
+              setBusy(false)
+              return
+            }
+            try {
+              await onConfirm(wav)
+            } catch (e) {
+              setConfirmError(e instanceof Error ? e.message : 'Falha ao enviar')
             } finally {
               setBusy(false)
             }
