@@ -42,6 +42,11 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.68.3',
+    headline: 'Sair pergunta antes',
+    items: ['O botão de sair da barra da esquerda agora pergunta se você quer mesmo sair da conta.']
+  },
+  {
     version: '1.68.1',
     headline: 'Fila de música sem limite',
     items: [

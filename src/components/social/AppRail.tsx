@@ -269,7 +269,11 @@ export function AppRail() {
         type="button"
         title="Sair da conta"
         aria-label="Sair da conta"
-        onClick={() => void logout()}
+        // Último ícone da barra, colado nos atalhos: fácil de clicar sem
+        // querer, e sair derruba a call e pede login de novo.
+        onClick={() => {
+          if (window.confirm('Deseja realmente sair da conta?')) void logout()
+        }}
         className="alvo-dedo rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
       >
         <LogOut className="h-4 w-4" />
