@@ -12,6 +12,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { ChatIcon, ProfileIcon } from '@/lib/bocas-icons'
+import { VOICE_VOLUME_MAX } from '@/lib/participant-volume'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -193,7 +194,7 @@ export function UserContextMenu() {
                 <input
                   type="range"
                   min={0}
-                  max={2}
+                  max={VOICE_VOLUME_MAX}
                   step={0.05}
                   value={volume}
                   onChange={(e) => voice.setUserVolume(userId, Number(e.target.value))}

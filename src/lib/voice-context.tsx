@@ -1,5 +1,12 @@
 import * as React from 'react'
 import {
+  SCREEN_VOLUME_MAX,
+  VOICE_VOLUME_MAX,
+  clampScreenVolume,
+  clampVoiceVolume,
+  effectiveVolume as mixVolume
+} from './participant-volume'
+import {
   Room,
   RoomEvent,
   Track,
@@ -206,12 +213,16 @@ interface VoiceContextValue {
   /** Detalhes da SUA transmissao. Null quando voce nao esta compartilhando. */
   shareInfo: ScreenShareInfo | null
 
-  /** userId -> volume 0..2 (1 = normal). So contem quem foi ajustado. */
+  /** userId -> volume da VOZ 0..3 (1 = normal). So contem quem foi ajustado. */
   userVolumes: Record<string, number>
-  /** Volume de UMA pessoa, 0..2. Persiste no settings.json. */
+  /** Volume da voz de UMA pessoa, 0..3. Persiste no settings.json. */
   setUserVolume: (identity: string, volume: number) => void
-  /** Volume atual de uma pessoa (1 quando nunca foi mexido). */
+  /** Volume atual da voz de uma pessoa (1 quando nunca foi mexido). */
   userVolume: (identity: string) => number
+  /** Volume do SOM DA TELA de uma pessoa, 0..2. Independente da voz. */
+  setScreenVolume: (identity: string, volume: number) => void
+  /** Volume atual do som da tela de uma pessoa (1 quando nunca foi mexido). */
+  screenVolume: (identity: string) => number
 
   join: (channel: Channel) => Promise<void>
   leave: () => Promise<void>
@@ -316,9 +327,13 @@ function readMetadata(participant: Participant): { displayName?: string; avatar?
  * O audio da tela e outra faixa (ScreenShareAudio) — sem passar por aqui o
  * slider e o ensurdecer nao valiam pro som do jogo de quem transmite.
  */
-function setParticipantVolume(participant: RemoteParticipant, volume: number): void {
-  participant.setVolume(volume, Track.Source.Microphone)
-  participant.setVolume(volume, Track.Source.ScreenShareAudio)
+function setParticipantVolume(
+  participant: RemoteParticipant,
+  voice: number,
+  screen: number
+): void {
+  participant.setVolume(voice, Track.Source.Microphone)
+  participant.setVolume(screen, Track.Source.ScreenShareAudio)
 }
 
 /**
@@ -680,13 +695,21 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const [userVolumes, setUserVolumes] = React.useState<Record<string, number>>(
     settings.userVolumes
   )
+  /** Som da tela por pessoa — mesmo ciclo da voz, mapa separado. */
+  const [screenVolumes, setScreenVolumes] = React.useState<Record<string, number>>(
+    settings.screenVolumes
+  )
 
   const pendingVolumesRef = React.useRef<Record<string, number>>({})
+  const pendingScreenRef = React.useRef<Record<string, number>>({})
 
   // Chegou versao nova do arquivo: o que ainda nao foi gravado tem prioridade.
   React.useEffect(() => {
     setUserVolumes({ ...settings.userVolumes, ...pendingVolumesRef.current })
   }, [settings.userVolumes])
+  React.useEffect(() => {
+    setScreenVolumes({ ...settings.screenVolumes, ...pendingScreenRef.current })
+  }, [settings.screenVolumes])
 
   /**
    * Tambem por ref, pelo mesmo motivo do cue: o handler de TrackSubscribed e
@@ -695,17 +718,42 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
    */
   const userVolumesRef = React.useRef(userVolumes)
   userVolumesRef.current = userVolumes
+  const screenVolumesRef = React.useRef(screenVolumes)
+  screenVolumesRef.current = screenVolumes
 
   const masterVolumeRef = React.useRef(1)
   masterVolumeRef.current = settings.voice.outputVolume
 
   /** Volume que o LiveKit deve receber: ajuste da pessoa x geral x ensurdecido. */
   const effectiveVolume = React.useCallback((identity: string): number => {
-    if (deafenedRef.current) return 0
-    const own = userVolumesRef.current[identity]
-    const perUser = Number.isFinite(own) ? own : 1
-    return Math.max(0, Math.min(2, perUser * masterVolumeRef.current))
+    return mixVolume({
+      perUser: userVolumesRef.current[identity],
+      master: masterVolumeRef.current,
+      deafened: deafenedRef.current,
+      max: VOICE_VOLUME_MAX
+    })
   }, [])
+
+  /** Idem pro som da tela, com o mapa e o teto dele. */
+  const effectiveScreenVolume = React.useCallback((identity: string): number => {
+    return mixVolume({
+      perUser: screenVolumesRef.current[identity],
+      master: masterVolumeRef.current,
+      deafened: deafenedRef.current,
+      max: SCREEN_VOLUME_MAX
+    })
+  }, [])
+
+  const applyParticipant = React.useCallback(
+    (participant: RemoteParticipant) => {
+      setParticipantVolume(
+        participant,
+        effectiveVolume(participant.identity),
+        effectiveScreenVolume(participant.identity)
+      )
+    },
+    [effectiveVolume, effectiveScreenVolume]
+  )
 
   /** Reaplica tudo na sala. Chamado quando um slider mexe ou o deafen troca. */
   const applyVolumes = React.useCallback(() => {
@@ -713,9 +761,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (!current) return
 
     for (const participant of current.remoteParticipants.values()) {
-      setParticipantVolume(participant, effectiveVolume(participant.identity))
+      applyParticipant(participant)
     }
-  }, [effectiveVolume])
+  }, [applyParticipant])
 
   const userVolume = React.useCallback(
     (identity: string): number => {
@@ -723,6 +771,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       return Number.isFinite(value) ? value : 1
     },
     [userVolumes]
+  )
+
+  const screenVolume = React.useCallback(
+    (identity: string): number => {
+      const value = screenVolumes[identity]
+      return Number.isFinite(value) ? value : 1
+    },
+    [screenVolumes]
   )
 
   /**
@@ -737,27 +793,51 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
   const flushUserVolumes = React.useCallback(() => {
     const pending = pendingVolumesRef.current
+    const pendingScreen = pendingScreenRef.current
     pendingVolumesRef.current = {}
+    pendingScreenRef.current = {}
     flushTimerRef.current = null
-    if (Object.keys(pending).length > 0) void updateSettings({ userVolumes: pending })
+    const patch: { userVolumes?: Record<string, number>; screenVolumes?: Record<string, number> } = {}
+    if (Object.keys(pending).length > 0) patch.userVolumes = pending
+    if (Object.keys(pendingScreen).length > 0) patch.screenVolumes = pendingScreen
+    if (Object.keys(patch).length > 0) void updateSettings(patch)
   }, [updateSettings])
+
+  const scheduleFlush = React.useCallback(() => {
+    if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
+    flushTimerRef.current = setTimeout(flushUserVolumes, 400)
+  }, [flushUserVolumes])
 
   const setUserVolume = React.useCallback(
     (identity: string, volume: number) => {
-      const clamped = Math.max(0, Math.min(2, volume))
+      const clamped = clampVoiceVolume(volume)
 
       // A ref antes de tudo: o som muda neste instante, sem esperar render.
       const next = { ...userVolumesRef.current, [identity]: clamped }
       userVolumesRef.current = next
       const participant = roomRef.current?.remoteParticipants.get(identity)
-      if (participant) setParticipantVolume(participant, effectiveVolume(identity))
+      if (participant) applyParticipant(participant)
       setUserVolumes(next)
 
       pendingVolumesRef.current[identity] = clamped
-      if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
-      flushTimerRef.current = setTimeout(flushUserVolumes, 400)
+      scheduleFlush()
     },
-    [effectiveVolume, flushUserVolumes]
+    [applyParticipant, scheduleFlush]
+  )
+
+  const setScreenVolume = React.useCallback(
+    (identity: string, volume: number) => {
+      const clamped = clampScreenVolume(volume)
+      const next = { ...screenVolumesRef.current, [identity]: clamped }
+      screenVolumesRef.current = next
+      const participant = roomRef.current?.remoteParticipants.get(identity)
+      if (participant) applyParticipant(participant)
+      setScreenVolumes(next)
+
+      pendingScreenRef.current[identity] = clamped
+      scheduleFlush()
+    },
+    [applyParticipant, scheduleFlush]
   )
 
   // Fechar o app no meio do arrasto nao pode jogar o ajuste fora.
@@ -773,7 +853,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   // Mudanca de volume geral (ou vinda de outra janela) tambem reaplica.
   React.useEffect(() => {
     applyVolumes()
-  }, [applyVolumes, userVolumes, settings.voice.outputVolume])
+  }, [applyVolumes, userVolumes, screenVolumes, settings.voice.outputVolume])
 
   React.useEffect(() => {
     const sink = document.createElement('div')
@@ -1212,7 +1292,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
               element.setAttribute('data-identity', participant.identity)
               // Ja entra no volume certo: quem chegou depois de eu abaixar o
               // volume dele voltava no padrao ao republicar o microfone.
-              setParticipantVolume(participant, effectiveVolume(participant.identity))
+              applyParticipant(participant)
               audioSinkRef.current?.appendChild(element)
 
               // Derivação da faixa pro medidor de voz — é o que faz o anel
@@ -2278,6 +2358,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       userVolumes,
       setUserVolume,
       userVolume,
+      setScreenVolume,
+      screenVolume,
       join,
       leave,
       toggleMic,
@@ -2314,6 +2396,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       userVolumes,
       setUserVolume,
       userVolume,
+      setScreenVolume,
+      screenVolume,
       join,
       leave,
       toggleMic,

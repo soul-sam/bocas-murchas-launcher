@@ -875,6 +875,11 @@ export interface LauncherSettings {
    * mesmo `identity` do participante no LiveKit.
    */
   userVolumes: Record<string, number>
+  /**
+   * Volume do SOM DA TELA por pessoa: userId -> 0..2. Separado do da voz
+   * porque quem transmite jogo alto fica inaudível com um botão só.
+   */
+  screenVolumes: Record<string, number>
   soundboardVolume: number
   /** Volume (0..1) dos sons de alguém entrar/sair da call. */
   voiceCueVolume: number
@@ -1131,6 +1136,7 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     mutedChannels: []
   },
   userVolumes: {},
+  screenVolumes: {},
   soundboardVolume: 0.7,
   // Os mp3 já vêm normalizados no talo; metade é o suficiente pra notar sem
   // assustar quem está de fone.

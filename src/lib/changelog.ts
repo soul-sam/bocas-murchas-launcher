@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.68.0',
+    headline: 'Voz e som da tela com volumes separados',
+    items: [
+      'Quem transmite a tela tem dois volumes: a voz (na fileira da call e no menu da pessoa) e o som da tela (no botão da transmissão). Um não mexe no outro.',
+      'O volume da voz agora vai até 300%. O som da tela continua até 200%.'
+    ],
+    note: 'O ajuste que você já tinha vale só pra voz. O som da tela de cada um começa em 100%.'
+  },
+  {
     version: '1.67.0',
     headline: 'Aposta no TFT paga pela colocação',
     items: [

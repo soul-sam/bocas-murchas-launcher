@@ -135,6 +135,7 @@ function fundir(atual: LauncherSettings, patch: Partial<LauncherSettings>): Laun
     screenShare: { ...atual.screenShare, ...(patch.screenShare ?? {}) },
     music: { ...atual.music, ...(patch.music ?? {}) },
     userVolumes: { ...atual.userVolumes, ...(patch.userVolumes ?? {}) },
+    screenVolumes: { ...atual.screenVolumes, ...(patch.screenVolumes ?? {}) },
     // `dock` nasceu depois (19/09): quem gravou no site antes disso tem um
     // `overlay` sem ele, e o raso trazia esse objeto velho por cima do padrão
     // — `overlay.dock.side` estourava e a aba Sobreposição deixava a tela preta.

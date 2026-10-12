@@ -3,6 +3,7 @@ import type { Track } from 'livekit-client'
 import { Maximize2, MicOff, Minimize2, MonitorUp, Video, Volume2, VolumeX } from 'lucide-react'
 import { UserAvatar, frameClass, frameNeedsRing } from '@/components/ui/avatar'
 import { tintStyle, nameStyle } from '@/lib/api-gamification'
+import { VOICE_VOLUME_MAX } from '@/lib/participant-volume'
 import { cn } from '@/lib/utils'
 import { resolveAssetUrl } from '@/lib/api'
 import type { VoiceParticipant } from '@/lib/voice-context'
@@ -315,11 +316,11 @@ function VolumeControl({
       <input
         type="range"
         min={0}
-        max={2}
+        max={VOICE_VOLUME_MAX}
         step={0.05}
         value={volume}
         onChange={(event) => onVolume(Number(event.target.value))}
-        // O duplo clique volta pro padrao: com o maximo em 200% acertar
+        // O duplo clique volta pro padrao: com o maximo em 300% acertar
         // exatamente 100% arrastando e chato.
         onDoubleClick={() => onVolume(1)}
         title={`Volume de ${participant.name}: ${Math.round(volume * 100)}% (2 cliques volta pro padrão)`}

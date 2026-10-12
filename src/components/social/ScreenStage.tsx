@@ -1,5 +1,6 @@
 import * as React from 'react'
 import type { Track } from 'livekit-client'
+import { SCREEN_VOLUME_MAX } from '@/lib/participant-volume'
 import {
   Maximize2,
   Minimize2,
@@ -370,7 +371,7 @@ const FocusedFeed = React.memo(function FocusedFeed({
             <input
               type="range"
               min={0}
-              max={2}
+              max={SCREEN_VOLUME_MAX}
               step={0.05}
               value={volume}
               onChange={(event) => onVolume(Number(event.target.value))}
@@ -380,8 +381,10 @@ const FocusedFeed = React.memo(function FocusedFeed({
                 event.stopPropagation()
                 onVolume(1)
               }}
-              title={`Volume de ${feed.name}: ${Math.round(volume * 100)}%`}
-              aria-label={`Volume de ${feed.name}`}
+              // So o SOM DA TELA: a voz de quem transmite tem o slider dela
+              // na fileira da call / menu da pessoa.
+              title={`Som da tela de ${feed.name}: ${Math.round(volume * 100)}%`}
+              aria-label={`Som da tela de ${feed.name}`}
               className={cn('mini-slider w-20', muted && 'is-muted')}
             />
           </div>
@@ -499,8 +502,8 @@ export function ScreenStage({
         onStop={() => void voice.stopScreenShare()}
         onWatch={() => voice.watchScreen(focused.identity)}
         onUnwatch={() => voice.unwatchScreen(focused.identity)}
-        volume={voice.userVolume(focused.identity)}
-        onVolume={(value) => voice.setUserVolume(focused.identity, value)}
+        volume={voice.screenVolume(focused.identity)}
+        onVolume={(value) => voice.setScreenVolume(focused.identity, value)}
       />
 
       {others.length > 0 && (

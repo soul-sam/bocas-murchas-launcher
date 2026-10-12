@@ -237,8 +237,13 @@ function normalizeDock(
 }
 
 /** Volume por pessoa: 0..2. Entrada porca (string, NaN, negativo) e descartada. */
+/**
+ * @param max teto da fonte: voz vai a 3 (mic baixo e o caso comum), som da
+ * tela a 2. Ver src/lib/participant-volume.ts.
+ */
 function normalizeUserVolumes(
-  raw: Record<string, number> | undefined
+  raw: Record<string, number> | undefined,
+  max: number
 ): Record<string, number> {
   const volumes: Record<string, number> = {}
   if (!raw || typeof raw !== 'object') return volumes
@@ -248,7 +253,7 @@ function normalizeUserVolumes(
     if (!userId || !Number.isFinite(volume)) continue
     // 1 e o padrao — nao vale guardar linha por pessoa que nunca foi ajustada.
     if (volume === 1) continue
-    volumes[userId] = Math.max(0, Math.min(2, volume))
+    volumes[userId] = Math.max(0, Math.min(max, volume))
   }
 
   return volumes
@@ -290,7 +295,8 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     chat: normalizeChat(raw.chat),
     screenShare: normalizeScreenShare(raw.screenShare),
     music: normalizeMusic(raw.music),
-    userVolumes: normalizeUserVolumes(raw.userVolumes),
+    userVolumes: normalizeUserVolumes(raw.userVolumes, 3),
+    screenVolumes: normalizeUserVolumes(raw.screenVolumes, 2),
     soundboardVolume: clamp(Number(raw.soundboardVolume), 0, 1, DEFAULTS.soundboardVolume),
     voiceCueVolume: clamp(Number(raw.voiceCueVolume), 0, 1, DEFAULTS.voiceCueVolume),
     nudgeOptOut: raw.nudgeOptOut ?? DEFAULTS.nudgeOptOut,
@@ -410,7 +416,8 @@ async function writeSettings(input: SettingsPatch): Promise<LauncherSettings> {
     music: { ...current.music, ...(patch.music ?? {}) },
     // Merge por pessoa: ajustar o volume de UM nao pode apagar o dos outros.
     // Voltar alguem pro 1 remove a chave no normalize logo abaixo.
-    userVolumes: { ...current.userVolumes, ...(patch.userVolumes ?? {}) }
+    userVolumes: { ...current.userVolumes, ...(patch.userVolumes ?? {}) },
+    screenVolumes: { ...current.screenVolumes, ...(patch.screenVolumes ?? {}) }
   }
 
   const next = normalize(merged)
