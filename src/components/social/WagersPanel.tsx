@@ -134,7 +134,7 @@ export function WagersPanel() {
             <div className="rounded-brutal border border-line bg-void/60 px-3 py-5 text-center">
               <p className="text-xs text-foreground">Ninguém em partida agora.</p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Quando alguém do grupo entrar numa partida de LoL ou Minecraft, ela aparece aqui com a
+                Quando alguém do grupo entrar numa partida de LoL, ela aparece aqui com a
                 aposta aberta.
               </p>
             </div>
@@ -370,7 +370,7 @@ function HowItWorks() {
       </h4>
       <ul className="space-y-1.5 text-xs leading-snug text-muted-foreground">
         <li>
-          Alguém do grupo entra em partida de LoL ou Minecraft e a aposta abre por{' '}
+          Alguém do grupo entra em partida de LoL e a aposta abre por{' '}
           <span className="text-foreground">{minutes} minutos</span>.
         </li>
         <li>

@@ -179,7 +179,8 @@ function Group({
            * o 5-stack inteiro está na seção "Em call", e é justamente neles
            * que a galera quer apostar.
            */
-          const canBet = activity?.phase === 'in-progress' && member.id !== user?.id
+          const canBet =
+            activity?.game === 'lol' && activity.phase === 'in-progress' && member.id !== user?.id
 
           return (
             // O gatilho do perfil e o de apostar são IRMÃOS, não pai e filho:
