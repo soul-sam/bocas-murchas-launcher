@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { deriveUseSame, needsColors, ownedNameColors, recentSounds } from './supreme-shop.ts'
+import { deriveUseSame, needsColors, ownedNameColors, recentSounds, syncUseSame } from './supreme-shop.ts'
 
 test('cor e tema supremos pedem 2 cores', () => {
   assert.equal(needsColors('namecolor:supremo', 1), true)
@@ -25,4 +25,20 @@ test('mesmo áudio e recentes', () => {
   const mk = (id: string, inUse: boolean) => ({ id, url: id, label: id, durationMs: 1, brokenAt: null, inUse })
   const st = { joinSoundUrl: null, leaveSoundUrl: null, sounds: [mk('1', true), mk('2', false), mk('3', false), mk('4', false), mk('5', false)] }
   assert.deepEqual(recentSounds(st).map((s) => s.id), ['2', '3', '4'])
+})
+
+test('hex repetido (qualquer caixa) conta uma vez', () => {
+  const items = [
+    { id: 'a', name: 'A', type: 'nameColor', owned: true, data: { color: '#FF0000' } },
+    { id: 'b', name: 'B', type: 'nameColor', owned: true, data: { color: '#ff0000' } }
+  ]
+  assert.equal(ownedNameColors(items).length, 1)
+})
+
+test('syncUseSame acompanha o estado e mantém marcado sem áudios', () => {
+  assert.equal(syncUseSame({ joinSoundUrl: '/x', leaveSoundUrl: '/y' }, true), false)
+  assert.equal(syncUseSame({ joinSoundUrl: '/x', leaveSoundUrl: '/x' }, false), true)
+  assert.equal(syncUseSame({ joinSoundUrl: null, leaveSoundUrl: null }, true), true)
+  assert.equal(syncUseSame({ joinSoundUrl: null, leaveSoundUrl: null }, false), false)
+  assert.equal(syncUseSame({ joinSoundUrl: null, leaveSoundUrl: '/y' }, true), false)
 })

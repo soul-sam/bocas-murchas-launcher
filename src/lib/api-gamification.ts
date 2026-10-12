@@ -30,16 +30,8 @@ import { isShopThemeId, type ShopThemeId } from '../../electron/preload/types'
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'supreme'
 
-/** Espelho de rules.ts (API). */
-export const SUPREME_IDS = {
-  color: 'namecolor:supremo',
-  effect: 'effect:supreme',
-  frame: 'frame:supreme',
-  title: 'title:murcho-supremo',
-  sound: 'sound:supremo',
-  theme: 'theme:supremo',
-  emoji: 'emoji:boca-suprema'
-} as const
+import { SUPREME_IDS } from './supreme-ids'
+export { SUPREME_IDS }
 
 /**
  * `nameColor` é a cor do nome. Equipa pelo /equip como os outros, mas não

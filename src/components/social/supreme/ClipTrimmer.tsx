@@ -21,12 +21,18 @@ export function ClipTrimmer({
   const win = Math.min(SUPREME_CLIP_SEC, dur)
   const [start, setStart] = React.useState(0)
   const [busy, setBusy] = React.useState(false)
+  const [previewError, setPreviewError] = React.useState(false)
   const volume = settings.soundEnabled && settings.voiceCueVolume > 0 ? settings.voiceCueVolume : 0.4
 
   // Prévia pelo mesmo caminho dos sons da interface (AudioContext), sem <audio> com blob.
   const preview = async (): Promise<void> => {
-    const wav = await renderSupremeClip(buffer, start)
-    playDecodedBuffer(await decodeAudio(await wav.arrayBuffer()), volume)
+    try {
+      const wav = await renderSupremeClip(buffer, start)
+      playDecodedBuffer(await decodeAudio(await wav.arrayBuffer()), volume)
+      setPreviewError(false)
+    } catch {
+      setPreviewError(true)
+    }
   }
   return (
     <div className="flex flex-col gap-2">
@@ -52,6 +58,7 @@ export function ClipTrimmer({
       <p className="text-[11.5px] text-muted-foreground">
         {start.toFixed(2)}s – {(start + win).toFixed(2)}s
       </p>
+      {previewError && <p className="text-xs text-destructive">Não deu pra ouvir esse trecho.</p>}
       <div className="flex gap-2">
         <Button size="sm" variant="ghost" onClick={() => void preview()}>
           Ouvir

@@ -699,7 +699,14 @@ function ItemTile({
           <button
             type="button"
             disabled={busy}
-            onClick={item.equipped ? onUnequip : onEquip}
+            onClick={
+              item.equipped
+                ? onUnequip
+                : item.id === SUPREME_IDS.color
+                  ? // Cor Suprema precisa das 2 cores: o configurador equipa.
+                    () => setConfiguring(true)
+                  : onEquip
+            }
             className={cn(
               'flex flex-1 items-center justify-center gap-1.5 rounded-brutal border px-2 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50',
               item.equipped

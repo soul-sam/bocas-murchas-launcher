@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { resolveAssetUrl } from '@/lib/api'
 import { supremeSoundApi, type SupremeSlot, type SupremeSoundState } from '@/lib/api-supreme-sound'
 import { decodeAudio } from '@/lib/supreme-audio-browser'
-import { deriveUseSame, recentSounds, soundByUrl } from '@/lib/supreme-shop'
+import { deriveUseSame, recentSounds, soundByUrl, syncUseSame } from '@/lib/supreme-shop'
 import { useSoundboard } from '@/lib/soundboard-context'
 import { useSettings } from '@/lib/settings-context'
 import { playDecodedBuffer } from '@/lib/ui-sounds'
@@ -75,7 +75,9 @@ export function SupremeSoundEditor({ token }: { token: string }) {
   // Troca o estado local pelo devolvido; em erro o slot continua com o anterior.
   const run = async (op: () => Promise<SupremeSoundState>): Promise<boolean> => {
     try {
-      setState(await op())
+      const next = await op()
+      setState(next)
+      setUseSame((prev) => syncUseSame(next, prev))
       setError(null)
       return true
     } catch (e) {
@@ -95,7 +97,12 @@ export function SupremeSoundEditor({ token }: { token: string }) {
   }
 
   if (editing) {
-    return <ClipTrimmer buffer={editing.buffer} onConfirm={confirm} onCancel={() => setEditing(null)} />
+    return (
+      <div className="flex flex-col gap-2">
+        <ClipTrimmer buffer={editing.buffer} onConfirm={confirm} onCancel={() => setEditing(null)} />
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    )
   }
 
   const slots: { slot: SupremeSlot; url: string | null }[] = useSame
