@@ -265,7 +265,7 @@ function ParticipantName({
       {/* Ordem combinada em todo canto que mostra alguém: Nome · emoji ·
           Título. O emoji é cosmético COMPRADO — conteúdo que a pessoa
           escolheu, não enfeite da interface — por isso continua emoji. */}
-      <NameEmoji id={member?.emoji} id2={member?.emoji2} size={emojiSize} />
+      <NameEmoji id={member?.emoji} id2={member?.emoji2} gradient={member?.profileGradient} size={emojiSize} />
 
       {participant.isLocal && (
         <span className="shrink-0 text-[11.5px] text-muted-foreground">(você)</span>

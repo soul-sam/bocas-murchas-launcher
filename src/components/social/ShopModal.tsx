@@ -281,7 +281,7 @@ export function ShopModal() {
               >
                 {me.displayName}
               </NameEffect>
-              <NameEmoji glyph={previewEmoji} glyph2={previewEmoji2} size="md" />
+              <NameEmoji id={hovered?.type === 'emoji' ? hovered.id : me.emoji} glyph={previewEmoji} id2={me.emoji2} glyph2={previewEmoji2} size="md" gradient={me.profileGradient} />
               {/* Mesma classe da prateleira: a prévia tem que ser IGUAL ao
                   item que a pessoa está olhando, senão parece outro título. */}
               {previewTitle && (
@@ -555,7 +555,7 @@ function ItemTile({
             >
               {me.name}
             </span>
-            <NameEmoji glyph={cosmeticEmoji(item)} className="text-xl" />
+            <NameEmoji id={item.id} glyph={cosmeticEmoji(item)} className="text-xl" />
           </span>
         )}
         {item.type === 'emojiSlot' && (

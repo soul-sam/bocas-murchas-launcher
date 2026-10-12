@@ -61,7 +61,7 @@ export function AuthorName({
       {/* O emoji ao lado do nome e cosmetico COMPRADO: e conteudo que a
           pessoa escolheu, nao enfeite da interface — por isso continua emoji
           mesmo com os icones no resto. */}
-      <NameEmoji id={member?.emoji} id2={member?.emoji2} />
+      <NameEmoji id={member?.emoji} id2={member?.emoji2} gradient={member?.profileGradient} />
 
       {title && <TitleTag titleId={member?.title} name={title} />}
     </span>

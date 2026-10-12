@@ -135,7 +135,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
                         >
                           {who?.displayName ?? 'alguém'}
                         </span>
-                        <NameEmoji id={who?.emoji} id2={who?.emoji2} />
+                        <NameEmoji id={who?.emoji} id2={who?.emoji2} gradient={who?.profileGradient} />
                         <span className="text-muted-foreground">
                           {wager.amount} em{' '}
                           {metadata.placement
@@ -182,7 +182,7 @@ export function GameResultCard({ message, metadata }: CardProps<GameCardMeta>) {
             <span className="truncate font-display text-sm" style={nameStyle(playerColor)}>
               {playerName}
             </span>
-            <NameEmoji id={player?.emoji} id2={player?.emoji2} />
+            <NameEmoji id={player?.emoji} id2={player?.emoji2} gradient={player?.profileGradient} />
             {metadata.champion && (
               <span className="truncate text-[11.5px] text-muted-foreground">
                 de {metadata.champion}

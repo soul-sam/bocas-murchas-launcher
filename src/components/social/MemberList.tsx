@@ -224,7 +224,7 @@ function Group({
                       >
                         {member.displayName}
                       </NameEffect>
-                      <NameEmoji id={member.emoji} id2={member.emoji2} />
+                      <NameEmoji id={member.emoji} id2={member.emoji2} gradient={member.profileGradient} animated={false} />
                       {member.role === 'admin' && (
                         <Shield className="h-3 w-3 shrink-0 text-burn" aria-label="admin" />
                       )}

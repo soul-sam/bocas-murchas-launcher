@@ -500,7 +500,7 @@ export function ChannelSidebar({
                                 {occupant.displayName}
                               </NameEffect>
                             </span>
-                            <NameEmoji id={memberById[occupant.id]?.emoji} id2={memberById[occupant.id]?.emoji2} />
+                            <NameEmoji id={memberById[occupant.id]?.emoji} id2={memberById[occupant.id]?.emoji2} gradient={memberById[occupant.id]?.profileGradient} />
                             {away && (
                               <Coffee
                                 className="h-3 w-3 shrink-0 text-burn"
@@ -704,7 +704,7 @@ export function ChannelSidebar({
                   >
                     {user?.displayName}
                   </span>
-                  <NameEmoji id={user?.emoji} id2={user?.emoji2} />
+                  <NameEmoji id={user?.emoji} id2={user?.emoji2} gradient={user?.profileGradient} />
                 </span>
                 {myActivity ? (
                   <ActivityLine activity={myActivity} />

@@ -108,7 +108,7 @@ export function DayRecapCard({ message, metadata }: CardProps<DayRecap>) {
                     style={nameStyle(color)}
                   >
                     <span className="truncate">{name}</span>
-                    <NameEmoji id={who?.emoji} id2={who?.emoji2} />
+                    <NameEmoji id={who?.emoji} id2={who?.emoji2} gradient={who?.profileGradient} />
                   </span>
                 </span>
                 <span className="shrink-0 text-[11.5px] text-muted-foreground">{h.label}</span>

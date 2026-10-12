@@ -378,7 +378,7 @@ function PodiumSlot({ entry, metric, tall }: { entry: LeaderboardEntry; metric: 
         >
           {name}
         </NameEffect>
-        <NameEmoji id={member?.emoji} id2={member?.emoji2} />
+        <NameEmoji id={member?.emoji} id2={member?.emoji2} gradient={member?.profileGradient} />
       </span>
       <span className="font-mono text-[11.5px] font-bold" style={{ color: medal }}>
         {formatMetricValue(metric, entry.value)}
@@ -439,7 +439,7 @@ function Rows({ entries, metric }: { entries: LeaderboardEntry[]; metric: Leader
               >
                 {name}
               </NameEffect>
-              <NameEmoji id={member?.emoji} id2={member?.emoji2} />
+              <NameEmoji id={member?.emoji} id2={member?.emoji2} gradient={member?.profileGradient} />
             </span>
             <span className="shrink-0 font-mono text-[11.5px] text-burn">
               {formatMetricValue(metric, entry.value)}

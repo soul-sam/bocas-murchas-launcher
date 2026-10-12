@@ -76,7 +76,7 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                     <span style={nameStyle(who?.profileColor)}>
                       {who?.displayName ?? 'alguém'}
                     </span>
-                    <NameEmoji id={who?.emoji} id2={who?.emoji2} />
+                    <NameEmoji id={who?.emoji} id2={who?.emoji2} gradient={who?.profileGradient} />
                   </li>
                 )
               })}
@@ -115,7 +115,7 @@ export function RecapCard({ message, metadata }: CardProps<RecapCardMeta>) {
                       </span>
                       <span className="flex items-center gap-1 font-display text-sm leading-tight" style={nameStyle(color)}>
                         <span className="truncate">{name}</span>
-                        <NameEmoji id={who?.emoji} id2={who?.emoji2} />
+                        <NameEmoji id={who?.emoji} id2={who?.emoji2} gradient={who?.profileGradient} />
                       </span>
                     </span>
                     {/* Só o `label`: ele JÁ traz o número formatado pelo

@@ -240,7 +240,7 @@ function RankRow({ row, rank, mode }: { row: Row; rank: number; mode: Mode }) {
               <NameEffect effect={member?.nameEffect} color={color} className="truncate">
                 {name}
               </NameEffect>
-              <NameEmoji id={member?.emoji} id2={member?.emoji2} />
+              <NameEmoji id={member?.emoji} id2={member?.emoji2} gradient={member?.profileGradient} />
             </span>
             {/* Vitórias × derrotas numa barra só: devolução fica de fora. */}
             {row.decided > 0 && (

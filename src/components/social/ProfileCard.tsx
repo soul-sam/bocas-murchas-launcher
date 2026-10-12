@@ -649,7 +649,7 @@ export function ProfileIdentity({
         >
           {name}
         </NameEffect>
-        <NameEmoji id={emoji} id2={emoji2} size="md" />
+        <NameEmoji id={emoji} id2={emoji2} size="md" gradient={gradient} />
         {role === 'admin' && (
           <Hint label="Admin do servidor">
             <Shield

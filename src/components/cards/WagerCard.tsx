@@ -160,7 +160,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
                   <span style={nameStyle(who?.profileColor)}>
                     {who?.displayName ?? 'alguém'}
                   </span>
-                  <NameEmoji id={who?.emoji} id2={who?.emoji2} />
+                  <NameEmoji id={who?.emoji} id2={who?.emoji2} gradient={who?.profileGradient} />
                   <span
                     className={bet.prediction === 'win' ? 'text-acid' : 'text-destructive'}
                     title={bet.self ? 'apostou na própria vitória' : undefined}
@@ -213,7 +213,7 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1 font-display text-sm leading-tight" style={nameStyle(color)}>
             <span className="truncate">{name}</span>
-            <NameEmoji id={player?.emoji} id2={player?.emoji2} />
+            <NameEmoji id={player?.emoji} id2={player?.emoji2} gradient={player?.profileGradient} />
           </p>
           <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
             <GameIcon className="h-2.5 w-2.5 shrink-0" />
