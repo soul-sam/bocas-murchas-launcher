@@ -36,9 +36,18 @@ import { nameStyle, nameGradientClass, SUPREME_IDS } from '@/lib/api-gamificatio
  */
 const JumboContext = React.createContext(false)
 
+/** Pessoa citável por @menção. */
+interface MentionUser {
+  id: string
+  displayName: string
+  color?: string | null
+  gradient?: string | null
+  nameEffect?: string | null
+}
+
 interface Lookups {
   /** username (e primeiro nome) em minusculas -> pessoa. */
-  users: Map<string, { id: string; displayName: string; color?: string | null; gradient?: string | null; nameEffect?: string | null }>
+  users: Map<string, MentionUser>
   /** nome do canal em minusculas -> id. */
   channels: Map<string, string>
   /** token de mencao -> cargo. Vem pronto do cargos-context. */
@@ -62,7 +71,7 @@ export function RichTextProvider({ children }: { children: React.ReactNode }) {
   const { byMentionToken, myCargoIds } = useCargos()
 
   const value = React.useMemo<Lookups>(() => {
-    const users = new Map<string, { id: string; displayName: string; color?: string | null; gradient?: string | null; nameEffect?: string | null }>()
+    const users = new Map<string, MentionUser>()
 
     for (const member of members) {
       const entry = {
@@ -235,21 +244,21 @@ function InlineNodes({ nodes }: { nodes: InlineNode[] }) {
                 type="button"
                 onContextMenu={(event) => hit && openUserMenu(event, hit.id)}
                 {...toqueLongo((event) => hit && openUserMenu(event, hit.id))}
-                className={cn(
-                  'rounded-[3px] bg-acid/15 px-1 font-medium text-acid transition-colors hover:bg-acid/25',
-                  nameGradientClass(hit?.gradient, hit?.nameEffect === SUPREME_IDS.effect)
-                )}
+                className="rounded-[3px] bg-acid/15 px-1 font-medium text-acid transition-colors hover:bg-acid/25"
+                // A pílula (botão) segue sólida na cor A; o gradiente só pinta o
+                // texto, no span de dentro (background-clip apagaria o fundo).
                 style={
-                  hit?.color || hit?.gradient
-                    ? {
-                        ...nameStyle(hit.color, hit.gradient),
-                        // O fundo continua na cor A: o gradiente é só o texto.
-                        ...(hit.color ? { backgroundColor: `${hit.color}22` } : null)
-                      }
+                  hit?.color
+                    ? { ...nameStyle(hit.color), backgroundColor: `${hit.color}22` }
                     : undefined
                 }
               >
-                @{hit?.displayName ?? node.username}
+                <span
+                  className={nameGradientClass(hit?.gradient, hit?.nameEffect === SUPREME_IDS.effect)}
+                  style={hit?.gradient ? nameStyle(hit.color, hit.gradient) : undefined}
+                >
+                  @{hit?.displayName ?? node.username}
+                </span>
               </button>
             )
           }
