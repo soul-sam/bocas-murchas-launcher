@@ -142,6 +142,110 @@ export const BADGE_GLYPH: Record<string, ReactNode> = {
   'faxina-de-mesa': <path d="M3.5 18.5h17M6 18.5l8-10 3.5 3-8 7M14 8.5l3-4 3.5 3-3 4" />,
   // caixa com a peça
   encomendeiro: <path d="M3.5 8 12 3.5 20.5 8v8.5L12 20.5 3.5 16.5ZM3.5 8 12 12.5 20.5 8M12 12.5v8" />,
+
+  // ---- escadas novas (out/2026, nível Murcho Supremo) ----
+  // Cada família tem UMA arte, repetida em todos os degraus (ver
+  // LADDER_FAMILIES abaixo): o que separa "Mil" de "Meio Milhão" é a cor da
+  // raridade e o nome, como no resto do app. Aqui ficam só as famílias que
+  // ainda não tinham desenho nenhum.
+
+  // nota dupla — músicas postas no "Tocando"
+  'pede-uma-ai': (
+    <>
+      <path d="M9 17V5.5l10-2V15" />
+      <circle cx="6.5" cy="17" r="2.5" />
+      <circle cx="16.5" cy="15" r="2.5" />
+    </>
+  ),
+  // claquete — clipes da call
+  cineasta: <path d="M3.5 9.5h17v11h-17ZM3.5 9.5 5 4l15.5-.5-1 5.5M8.5 4.5l1.5 4.5M14 4l1.5 5" />,
+  // nuvem de fumaça subindo
+  fumaceiro: <path d="M6.5 20.5h10a3.5 3.5 0 0 0 0-7 4.5 4.5 0 0 0-8.5-1A4 4 0 0 0 6.5 20.5ZM11 8.5q-2-2.5 0-5M15 9q2-2 0-4.5" />,
+  // relógio com o tique de "apareci"
+  pontual: (
+    <>
+      <circle cx="12" cy="13" r="7.5" />
+      <path d="M12 9v4l2.5 2M9.5 3.5h5" />
+    </>
+  ),
+  // moeda com brilho — gorjeta
+  'mao-aberta': (
+    <>
+      <circle cx="11" cy="13" r="7.5" />
+      <path d="M11 9.5v7M9 11h3.5a1.5 1.5 0 0 1 0 3H9M18.5 3.5v3M17 5h3" />
+    </>
+  ),
+  // duas cartas abertas — mãos do pôquer
+  'poker-quadra': <path d="M4 7.5 10 5l3.5 12-6 2.5ZM13 4.5h6.5v13H13M7.5 11.5l1 3M16 9v4" />,
+  // pilha de fichas — potes do pôquer
+  'poker-tubarao': (
+    <>
+      <ellipse cx="12" cy="6.5" rx="7.5" ry="3" />
+      <path d="M4.5 6.5v5c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-5M4.5 11.5v5c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-5" />
+    </>
+  ),
+  // sacola de compras — lojinha
+  'primeira-compra': <path d="M5 8.5h14l-1 12H6ZM9 8.5V7a3 3 0 0 1 6 0v1.5M9.5 13h5" />,
+  // sacola coroada — Kit Supremo e "Eu quero, eu posso!"
+  'kit-supremo': <path d="M5 10.5h14l-1 10H6ZM9 10.5V9a3 3 0 0 1 6 0v1.5M7.5 6.5 6.5 3l3 1.5L12 2.5l2.5 2 3-1.5-1 3.5" />,
+  // servidor em rack — vaquinha da hospedagem
+  'paga-boleto': <path d="M4.5 4.5h15v6h-15ZM4.5 13.5h15v6h-15ZM8 7.5h1M8 16.5h1M13 7.5h3M13 16.5h3" />,
+}
+
+/**
+ * Degraus das escadas (API: lib/gamification/ladders.ts) -> badge cuja arte
+ * eles repetem. Badge que já tinha desenho próprio (`maratonista`, `dj`…)
+ * continua com o dela; só quem está aqui herda.
+ */
+const LADDER_FAMILIES: Record<string, readonly string[]> = {
+  'cem-mil-xp': ['mil-xp', 'dez-mil-xp', 'meio-caminho-xp'],
+  'mil-horas': ['semana-em-call', 'mes-em-call', 'meio-ano-em-call'],
+  'streak-7': ['streak-3'],
+  'streak-call-180': ['streak-call-365'],
+  'tagarela-1000': ['puxa-papo', 'falante', 'matraca'],
+  'boca-de-ouro': ['boca-que-nao-murcha'],
+  dj: ['botao-facil', 'sonoplasta', 'efeito-especial', 'lenda-do-soundboard'],
+  'pede-uma-ai': ['dono-do-aux', 'radio-murcha', 'curador', 'dj-residente'],
+  cutucador: ['cutucada-de-leve', 'dedo-nervoso'],
+  cineasta: ['primeiro-clipe', 'diretor', 'clipe-da-semana', 'recap-clipe-5', 'recap-clipe-15'],
+  fumaceiro: ['alguem'],
+  'mao-aberta': [
+    'gentileza',
+    'generoso',
+    'patrocinado',
+    'valeu-a-pena',
+    'caiu-no-gosto',
+    'mecenas-da-semana',
+    'recap-mecenas-5',
+    'recap-mecenas-15'
+  ],
+  sortudo: ['palpite-certo', 'vidente', 'banca-quebrada', 'apostador-nato'],
+  'poker-quadra': [
+    'poker-carta-alta',
+    'poker-um-par',
+    'poker-dois-pares',
+    'poker-trinca',
+    'poker-sequencia',
+    'poker-flush',
+    'poker-full-house',
+    'poker-straight-flush',
+    'poker-royal',
+    'poker-primeira-mesa',
+    'poker-sete-dois',
+    'poker-all-in'
+  ],
+  'poker-tubarao': ['poker-primeiro-pote', 'poker-mao-quente', 'poker-pote-gordo'],
+  'cem-horas': ['dez-horas', 'cinquenta-horas'],
+  'quilo-de-plastico': ['carretel-aberto', 'tres-quilos'],
+  'faxina-de-mesa': ['mao-amiga', 'zelador-da-mesa'],
+  encomendeiro: ['primeira-encomenda', 'empreiteiro'],
+  'primeira-compra': ['fregues', 'cliente-vip'],
+  'kit-supremo': ['eu-quero-eu-posso'],
+  'paga-boleto': ['sustenta-o-role', 'dono-do-servidor']
+}
+
+for (const [from, ids] of Object.entries(LADDER_FAMILIES)) {
+  for (const id of ids) BADGE_GLYPH[id] ??= BADGE_GLYPH[from]
 }
 
 // ============================================
@@ -186,6 +290,17 @@ export const AWARD_GLYPH: Record<string, ReactNode> = {
   corujao: <path d="M4 3.5 8 6h8l4-2.5V15l-4 5H8l-4-5ZM7.5 10.5h2M14.5 10.5h2M10.5 15l1.5 1.5 1.5-1.5" />,
   // ascensão de xp
   campeao_xp: <path d="M9 15.5v-6H5l7-6 7 6h-4v6M4 20.5h7v-3h9" />,
+}
+
+/**
+ * Escadas do recap (out/2026): todo prêmio vira badge de 1×, 5× e 15×, com a
+ * MESMA arte do prêmio. Ids da API (lib/gamification/ladders.ts): os seis
+ * prêmios que não tinham badge ganham `recap-<prêmio>`; os degraus de cima são
+ * `recap-<prêmio>-5` e `-15`, com o prêmio em kebab-case.
+ */
+for (const key of Object.keys(AWARD_GLYPH)) {
+  const slug = key.replace(/_/g, '-')
+  for (const id of [`recap-${slug}`, `recap-${slug}-5`, `recap-${slug}-15`]) BADGE_GLYPH[id] ??= AWARD_GLYPH[key]
 }
 
 // ============================================

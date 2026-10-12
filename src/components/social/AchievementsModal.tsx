@@ -667,7 +667,10 @@ function Collectors({ board, meId }: { board: AchievementsBoard; meId: string })
   const { byId } = useMembers()
   const { openProfile } = useOverlays()
   const top = board.collectors[0]?.points ?? 1
-  const rarities: Rarity[] = ['common', 'rare', 'epic', 'legendary']
+  // Só os tiers que a API pesa: API anterior ao Murcho Supremo não manda `supreme`.
+  const rarities = (['common', 'rare', 'epic', 'legendary', 'supreme'] as Rarity[]).filter(
+    (r) => board.weights[r] != null
+  )
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_260px]">
