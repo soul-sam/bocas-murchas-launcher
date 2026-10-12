@@ -499,6 +499,21 @@ export function playJoinSound(sound: string | null | undefined, phase: 'join' | 
   return true
 }
 
+/** Toca um áudio já decodificado (Áudio Supremo) no mesmo AudioContext dos avisos. */
+export function playDecodedBuffer(buffer: AudioBuffer, volume: number): boolean {
+  if (volume <= 0) return false
+  const audio = audioContext()
+  if (!audio) return false
+  wake(audio)
+  const src = audio.createBufferSource()
+  const gain = audio.createGain()
+  gain.gain.value = volume
+  src.buffer = buffer
+  src.connect(gain).connect(audio.destination)
+  src.start()
+  return true
+}
+
 /**
  * Um AudioContext só, reaproveitado.
  *

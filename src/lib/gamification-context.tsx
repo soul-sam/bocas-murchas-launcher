@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { ApiError } from './api'
+import { ApiError, resolveAssetUrl } from './api'
+import { supremeSoundApi } from './api-supreme-sound'
 import {
   WAGER_PAYOUT_MULTIPLIER,
   gamification as api,
@@ -180,6 +181,52 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const dismissToast = React.useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
+
+  // Áudio Supremo do próprio usuário quebrado. Um aviso por URL por sessão:
+  // a checagem ao abrir e o evento do socket não duplicam. `ttlMs: 0` faria o
+  // toast sumir na hora (until = agora), então vai o maior prazo razoável.
+  const warnedSoundsRef = React.useRef(new Set<string>())
+  const warnBrokenSound = React.useCallback(
+    (which: string, url?: string) => {
+      const key = url ?? which
+      if (warnedSoundsRef.current.has(key)) return
+      warnedSoundsRef.current.add(key)
+      pushToast({
+        kind: 'info',
+        title: `Seu Áudio Supremo de ${which} não está carregando`,
+        body: 'Envie de novo na lojinha (Áudio Supremo).',
+        ttlMs: 10 * 60_000
+      })
+    },
+    [pushToast]
+  )
+
+  // Ao abrir: confere os próprios áudios (marcados pelo servidor ou que não baixam).
+  React.useEffect(() => {
+    if (!token || !user?.id) return
+    let cancelled = false
+    void (async () => {
+      const state = await supremeSoundApi.list(token).catch(() => null)
+      if (!state || cancelled) return
+      const check = async (url: string | null, which: string) => {
+        if (!url) return
+        const row = state.sounds.find((s) => s.url === url)
+        const ok =
+          !row?.brokenAt &&
+          (await fetch(resolveAssetUrl(url) ?? url).then((r) => r.ok).catch(() => false))
+        if (!ok && !cancelled) warnBrokenSound(which, url)
+      }
+      if (state.joinSoundUrl && state.joinSoundUrl === state.leaveSoundUrl) {
+        await check(state.joinSoundUrl, 'entrada e saída')
+      } else {
+        await check(state.joinSoundUrl, 'entrada')
+        await check(state.leaveSoundUrl, 'saída')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token, user?.id, warnBrokenSound])
 
   // Um timer só, mirando o toast que vence primeiro. Re-arma a cada mudança.
   React.useEffect(() => {
@@ -613,7 +660,11 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       void loadShop()
     }
 
+    const handleSupremeBroken = (data: { url?: string }): void =>
+      warnBrokenSound('entrada/saída', data?.url)
+
     socket.on('gamification:gift', handleGift)
+    socket.on('gamification:supremeSoundBroken', handleSupremeBroken)
     socket.on('gamification:xp', handleXp)
     socket.on('gamification:levelup', handleLevelUp)
     socket.on('gamification:badge', handleBadge)
@@ -625,8 +676,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       socket.off('gamification:badge', handleBadge)
       socket.off('gamification:coins', handleCoins)
       socket.off('gamification:gift', handleGift)
+      socket.off('gamification:supremeSoundBroken', handleSupremeBroken)
     }
-  }, [socket, pushToast, sound, scheduleRefresh, loadShop])
+  }, [socket, pushToast, warnBrokenSound, sound, scheduleRefresh, loadShop])
 
   React.useEffect(
     () => () => {

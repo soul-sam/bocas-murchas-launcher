@@ -20,11 +20,14 @@ import {
   type TrackPublication,
   type ConnectionQuality
 } from 'livekit-client'
-import { livekit, type Channel } from './api'
+import { livekit, resolveAssetUrl, type Channel } from './api'
 import { useAuth } from './auth-context'
 import { useSocket } from './socket-context'
 import { useSettings } from './settings-context'
-import { playUiSound, playJoinSound } from './ui-sounds'
+import { playUiSound, playJoinSound, playDecodedBuffer } from './ui-sounds'
+import { createSoundCache } from './supreme-sound-cache'
+import { supremeSoundApi, supremeSoundUrl } from './api-supreme-sound'
+import { decodeAudio } from './supreme-audio-browser'
 import { useMembers } from './members-context'
 import { createMicProcessor, type MicProcessor } from './audio-processor'
 import { setLauncherSilenced } from './launcher-silence'
@@ -676,13 +679,50 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const myJoinSoundRef = React.useRef<string | null | undefined>(user?.joinSound)
   myJoinSoundRef.current = (user && membersRef.current[user.id]?.joinSound) ?? user?.joinSound
 
+  // Áudios Supremos decodificados (OfflineAudioContext: não abre saída de
+  // áudio). Vive enquanto o provider viver; token/user só mudam no login.
+  const tokenRef = React.useRef(token)
+  tokenRef.current = token
+  const userIdRef = React.useRef(user?.id)
+  userIdRef.current = user?.id
+  const supremeCache = React.useMemo(
+    () =>
+      createSoundCache({
+        load: async (url) => {
+          const res = await fetch(resolveAssetUrl(url) ?? url)
+          if (!res.ok) throw new Error(String(res.status))
+          return decodeAudio(await res.arrayBuffer())
+        },
+        report: (ownerId, url) => {
+          // o dono descobre pela checagem própria ao abrir
+          if (ownerId === userIdRef.current || !tokenRef.current) return
+          void supremeSoundApi.report(tokenRef.current, ownerId, url).catch(() => {})
+        }
+      }),
+    []
+  )
+
+  // Pré-carrega os áudios de quem tem: são poucos KB e a call é pequena.
+  React.useEffect(() => {
+    for (const m of Object.values(byId)) {
+      for (const phase of ['join', 'leave'] as const) {
+        const url = supremeSoundUrl(m, phase)
+        if (url) supremeCache.preload(url, m.id)
+      }
+    }
+  }, [byId, supremeCache])
+
   const voiceCue = React.useCallback(
     (phase: 'join' | 'leave', identity?: string) => {
-      const sound = identity ? membersRef.current[identity]?.joinSound : myJoinSoundRef.current
+      const member = identity ? membersRef.current[identity] : user ? membersRef.current[user.id] : undefined
+      const url = supremeSoundUrl(member, phase)
+      const buffer = url ? supremeCache.get(url) : null
+      if (buffer && playDecodedBuffer(buffer, voiceCueVolumeRef.current)) return
+      const sound = identity ? member?.joinSound : myJoinSoundRef.current
       if (sound && playJoinSound(sound, phase, voiceCueVolumeRef.current)) return
       cue(phase === 'join' ? 'voice-join' : 'voice-leave')
     },
-    [cue]
+    [cue, supremeCache, user]
   )
 
   /**
