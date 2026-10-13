@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.71.0',
+    headline: 'Truco e cacheta na mesa',
+    items: [
+      'Truco: paulista (com vira) ou mineiro (manilha fixa), 1x1 ou em duplas. Truco, seis, nove e doze com o grito na mesa, mão de onze (ou de dez no mineiro), mão de ferro no escuro e carta coberta.',
+      'Cacheta: de 2 a 6 jogadores, cada um por si. Compre do monte ou do lixo, arrume a mão arrastando as cartas (ou no Organizar) e bata com 9 ou com 10. Quem chega a zero sai; o último de pé leva.',
+      'As duas mesas têm o mesmo jeito do pôquer: feltro, cartas voando do baralho, relógio no avatar, plateia, reações e figurinhas. Dá pra abrir em outra janela.',
+      'Valendo murchos ou amistosa: cada um casa o mesmo valor quando a partida começa, e quem ganha leva o bolo (a dupla divide). Levantar no meio da partida é abandonar.',
+      'Cada mesa nova vira um card no canal de jogos. Entre pelo Salão de jogos, pelo Ctrl+K ou digitando /truco e /cacheta.',
+      'Conquistas novas: Doze!, Mão de Ferro, Virada, Capote, Bateu com Dez, Batida de Mão, Invicto e mais.'
+    ]
+  },
+  {
     version: '1.70.2',
     headline: 'Conquistas até o Murcho Supremo',
     items: [

@@ -42,6 +42,7 @@ import { useCargos, type Cargo } from '@/lib/cargos-context'
 import { CargoIcon } from '@/lib/cargo-icons'
 import { useOverlays } from '@/lib/overlay-context'
 import { usePoker } from '@/lib/poker-context'
+import { useCartas } from '@/lib/cartas-context'
 import { useLayout } from '@/lib/layout-context'
 import { parseSlashCommand, rewriteBotCommand, rewriteEggCommand, SLASH_HELP } from '@/lib/slash-commands'
 import { emitEgg } from '@/lib/easter-eggs/bus'
@@ -131,6 +132,7 @@ export function MessageComposer({
     openWrapped
   } = useOverlays()
   const { goToPoker } = usePoker()
+  const { goTo: goToCartas } = useCartas()
   // Os painéis da Arena ficam na coluna da direita desta mesma tela.
   const { openLeaderboard, openWagers, openRecap } = useLayout()
   const { emojis } = useEmojis()
@@ -504,6 +506,10 @@ export function MessageComposer({
         break
       case 'poker':
         goToPoker()
+        break
+      case 'truco':
+      case 'cacheta':
+        goToCartas(command.kind)
         break
       case 'recap':
         openRecap()

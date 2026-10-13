@@ -16,6 +16,7 @@ import {
 import { resolveAssetUrl } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useBoard } from '@/lib/board-context'
+import { useCartas } from '@/lib/cartas-context'
 import { useChat } from '@/lib/chat-context'
 import { statusOf, useMembers } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
@@ -47,7 +48,9 @@ export function AppRail() {
   const { byId: memberById } = useMembers()
   const { view, setView, isPhone } = useLayout()
   const { can } = useCargos()
-  const { myTurn } = useBoard()
+  const { myTurn: boardTurn } = useBoard()
+  const { myTurn: cartasTurn } = useCartas()
+  const myTurn = boardTurn || cartasTurn
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -91,7 +94,7 @@ export function AppRail() {
   const dmActive = activeChannelId?.startsWith('dm:') === true
   // O Salão é a casa de todas as telas de jogo: o ícone fica aceso em
   // qualquer uma delas, não só em `/jogos`.
-  const onGames = ['/jogos', '/jogo', '/poker', '/lol', '/xadrez', '/dama'].includes(pathname)
+  const onGames = ['/jogos', '/jogo', '/poker', '/truco', '/cacheta', '/lol', '/xadrez', '/dama'].includes(pathname)
 
   // Voltar pro servidor tem que cair no canal em que a pessoa estava, não num
   // canal qualquer — por isso guardamos o último canal não-DM visitado.
@@ -151,7 +154,7 @@ export function AppRail() {
       <RailLink to="/jogos" label="Salão de jogos" forceActive={onGames}>
         <span className="relative flex">
           <GameIcon className="h-5 w-5" />
-          {/* Sua vez numa partida de xadrez ou dama. */}
+          {/* Sua vez numa partida de xadrez, dama, truco ou cacheta. */}
           {myTurn && (
             <span
               role="status"

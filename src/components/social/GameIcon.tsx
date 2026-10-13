@@ -74,10 +74,28 @@ const PristonIcon = gameSvg([
   'M8 8Q4 6 2 8q2 1 3 3 1-1 3-1M16 8q4-2 6 0-2 1-3 3-1-1-3-1'
 ])
 
+// Truco: as três cartas na mão, em leque, com um ouro no meio.
+const TrucoIcon = gameSvg([
+  'M9.5 4h5a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z',
+  'M8.5 7.2 5.3 8.1a1 1 0 0 0-.7 1.2l2.4 8.8a1 1 0 0 0 1.2.7l.3-.1',
+  'M15.5 7.2l3.2.9a1 1 0 0 1 .7 1.2l-2.4 8.8a1 1 0 0 1-1.2.7l-.3-.1',
+  'M12 8.5l1.5 2.5-1.5 2.5-1.5-2.5Z'
+])
+
+// Cacheta: a mão aberta em escada, as cartas espiando umas atrás das outras.
+const CachetaIcon = gameSvg([
+  'M12 6h7a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z',
+  'M11 5H9a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h2',
+  'M8 4H6a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h2',
+  'M15.5 13h.01'
+])
+
 const GAME_ICON: Record<string, IconComponent> = {
   lol: Swords,
   minecraft: Pickaxe,
   poker: Spade,
+  truco: TrucoIcon,
+  cacheta: CachetaIcon,
   // Xadrez e dama: as chaves são os valores de BoardGame (lib/api-board.ts).
   chess: Crown,
   draughts: CircleDot,
@@ -105,6 +123,8 @@ const GAME_ICON: Record<string, IconComponent> = {
  */
 const GAME_ALIAS: [RegExp, string][] = [
   [/^xadrez$/, 'chess'],
+  [/^(truco|truco-paulista|truco-mineiro)$/, 'truco'],
+  [/^(cacheta|caxeta|pife)$/, 'cacheta'],
   [/^damas?$/, 'draughts'],
   [/^(bilhar|sinuca|8-?ball(-pool)?)$/, 'pool'],
   [/^(league-of-legends|tft)$/, 'lol'],
@@ -181,6 +201,8 @@ const GAME_LABEL: Record<string, string> = {
   chess: 'Xadrez',
   draughts: 'Dama',
   pool: 'Bilhar',
+  truco: 'Truco',
+  cacheta: 'Cacheta',
   ...Object.fromEntries(
     GAME_CATALOG.map((game) => [game.key, game.label])
   )

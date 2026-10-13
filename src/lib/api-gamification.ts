@@ -618,6 +618,10 @@ export const WAGER_PAYOUT_MULTIPLIER = 2
  * o toast mostra isto. Chave desconhecida cai no próprio texto da chave.
  */
 const XP_REASON_LABEL: Record<string, string> = {
+  truco_match: 'partida de truco',
+  truco_win: 'venceu no truco',
+  cacheta_match: 'partida de cacheta',
+  cacheta_win: 'venceu na cacheta',
   message: 'mensagem',
   reaction: 'reação',
   reaction_received: 'reação recebida',
@@ -667,6 +671,14 @@ export function xpReasonLabel(reason: string | undefined | null): string {
     if (kind === 'cashout') return 'levantou da mesa de pôquer'
     if (kind === 'refund') return 'devolução da mesa de pôquer'
     return 'pôquer'
+  }
+  // Truco e cacheta (API: lib/cartas/table.ts) — `cartas:<stake|win|refund>:<partida>`.
+  if (reason.startsWith('cartas:')) {
+    const kind = reason.split(':')[1]
+    if (kind === 'stake') return 'casou numa partida de cartas'
+    if (kind === 'win') return 'levou o bolo nas cartas'
+    if (kind === 'refund') return 'devolução de partida de cartas'
+    return 'truco e cacheta'
   }
   if (reason.startsWith('levelup:')) {
     const level = reason.slice('levelup:'.length)

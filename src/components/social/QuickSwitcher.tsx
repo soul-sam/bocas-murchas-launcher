@@ -17,6 +17,7 @@ import { useSettings } from '@/lib/settings-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useLayout } from '@/lib/layout-context'
 import { usePoker } from '@/lib/poker-context'
+import { useCartas } from '@/lib/cartas-context'
 import { useBoard } from '@/lib/board-context'
 import { useAuth } from '@/lib/auth-context'
 import { ChannelGlyph } from './ChannelGlyph'
@@ -82,6 +83,7 @@ export function QuickSwitcher() {
     openAdmin
   } = useOverlays()
   const { goToPoker } = usePoker()
+  const { goTo: goToCartas } = useCartas()
   const { goToBoard } = useBoard()
   const { user } = useAuth()
   const { textChannels, voiceChannels, setActiveChannel } = useChat()
@@ -147,7 +149,7 @@ export function QuickSwitcher() {
       label: 'Salão de jogos',
       hint: 'todos os jogos',
       icon: <GameIcon className="h-3.5 w-3.5" />,
-      keywords: 'salao jogos games hub minecraft poker lol xadrez dama',
+      keywords: 'salao jogos games hub minecraft poker truco cacheta lol xadrez dama',
       run: () => navigate('/jogos')
     })
 
@@ -276,6 +278,24 @@ export function QuickSwitcher() {
     })
 
     list.push({
+      id: 'cmd:truco',
+      label: 'Truco',
+      hint: 'paulista ou mineiro',
+      icon: <GameGlyph game="truco" className="h-3.5 w-3.5" />,
+      keywords: 'truco paulista mineiro cartas mesa dupla manilha zap seis nove doze',
+      run: () => goToCartas('truco')
+    })
+
+    list.push({
+      id: 'cmd:cacheta',
+      label: 'Cacheta',
+      hint: 'bate quem fecha a mão',
+      icon: <GameGlyph game="cacheta" className="h-3.5 w-3.5" />,
+      keywords: 'cacheta caxeta pife cartas mesa trinca sequencia curinga bater',
+      run: () => goToCartas('cacheta')
+    })
+
+    list.push({
       id: 'cmd:achievements',
       label: ARENA_LABEL.achievements,
       hint: 'badges e raridade',
@@ -332,6 +352,7 @@ export function QuickSwitcher() {
     openShop,
     openAchievements,
     goToPoker,
+    goToCartas,
     goToBoard,
     openLeaderboard,
     openWagers,

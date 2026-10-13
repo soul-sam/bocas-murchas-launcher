@@ -36,10 +36,10 @@ export function isDesktop(): boolean {
  * "só a mesa": sem barra de ícones, sem chat, sem jukebox, sem atalhos.
  * `null` na janela principal e na web.
  */
-export function popoutKind(): 'poker' | null {
+export function popoutKind(): 'poker' | 'truco' | 'cacheta' | null {
   if (typeof window === 'undefined' || isWeb()) return null
   const kind = new URLSearchParams(window.location.search).get('janela')
-  return kind === 'poker' ? kind : null
+  return kind === 'poker' || kind === 'truco' || kind === 'cacheta' ? kind : null
 }
 
 /** Esta janela é a janela própria de uma tela (não a principal). */

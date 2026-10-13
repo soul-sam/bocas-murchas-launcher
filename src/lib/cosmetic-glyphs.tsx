@@ -190,6 +190,14 @@ export const BADGE_GLYPH: Record<string, ReactNode> = {
   'kit-supremo': <path d="M5 10.5h14l-1 10H6ZM9 10.5V9a3 3 0 0 1 6 0v1.5M7.5 6.5 6.5 3l3 1.5L12 2.5l2.5 2 3-1.5-1 3.5" />,
   // servidor em rack — vaquinha da hospedagem
   'paga-boleto': <path d="M4.5 4.5h15v6h-15ZM4.5 13.5h15v6h-15ZM8 7.5h1M8 16.5h1M13 7.5h3M13 16.5h3" />,
+  // três cartas em leque com um ouro no meio — truco
+  'truco-doze': (
+    <path d="M9.5 4h5a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM8.5 7.2 5.3 8.1a1 1 0 0 0-.7 1.2l2.4 8.8a1 1 0 0 0 1.2.7M15.5 7.2l3.2.9a1 1 0 0 1 .7 1.2l-2.4 8.8a1 1 0 0 1-1.2.7M12 8.5l1.5 2.5-1.5 2.5-1.5-2.5Z" />
+  ),
+  // a mão aberta em escada — cacheta
+  'cacheta-dez': (
+    <path d="M12 6h7a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1ZM11 5H9a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h2M8 4H6a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h2M15.5 13h.01" />
+  ),
 }
 
 /**
@@ -235,6 +243,8 @@ const LADDER_FAMILIES: Record<string, readonly string[]> = {
     'poker-all-in'
   ],
   'poker-tubarao': ['poker-primeiro-pote', 'poker-mao-quente', 'poker-pote-gordo'],
+  'truco-doze': ['truco-primeira', 'truco-vitoria', 'truco-ferro', 'truco-virada', 'truco-capote'],
+  'cacheta-dez': ['cacheta-primeira', 'cacheta-campeao', 'cacheta-de-mao', 'cacheta-invicto'],
   'cem-horas': ['dez-horas', 'cinquenta-horas'],
   'quilo-de-plastico': ['carretel-aberto', 'tres-quilos'],
   'faxina-de-mesa': ['mao-amiga', 'zelador-da-mesa'],

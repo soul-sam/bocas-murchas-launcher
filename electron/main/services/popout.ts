@@ -46,6 +46,9 @@ function broadcastState(): void {
   }
 }
 
+/** O nome da janela na barra de tarefas. */
+const TITLE: Record<PopoutKind, string> = { poker: 'Pôquer', truco: 'Truco', cacheta: 'Cacheta' }
+
 function urlFor(kind: PopoutKind, tableId: string | null): { route: string; query: Record<string, string> } {
   const search = tableId ? `?mesa=${encodeURIComponent(tableId)}` : ''
   return { route: `/${kind}${search}`, query: { janela: kind } }
@@ -73,7 +76,7 @@ function create(kind: PopoutKind, tableId: string | null): BrowserWindow {
     frame: false,
     backgroundColor: '#0B0B0B',
     autoHideMenuBar: true,
-    title: 'Bocas Murchas — Pôquer',
+    title: `Bocas Murchas — ${TITLE[kind]}`,
     icon: iconPath(),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.mjs'),

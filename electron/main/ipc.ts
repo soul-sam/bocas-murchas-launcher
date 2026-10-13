@@ -268,7 +268,10 @@ export function registerIpcHandlers(): void {
 
   // A mesa em outra janela (ver services/popout.ts).
   ipcMain.handle('popout:open', (_e, payload: { kind: PopoutKind; tableId?: string | null }) =>
-    openPopout(payload?.kind ?? 'poker', payload?.tableId ?? null)
+    openPopout(
+      payload?.kind === 'truco' || payload?.kind === 'cacheta' ? payload.kind : 'poker',
+      payload?.tableId ?? null
+    )
   )
   ipcMain.handle('popout:close', () => {
     closePopout()

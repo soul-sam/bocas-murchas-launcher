@@ -7,7 +7,7 @@
  * contextos já entregam (`activities` do socket, `tables` do poker).
  */
 
-export type HallGame = 'minecraft' | 'poker' | 'lol' | 'chess' | 'draughts' | 'pool'
+export type HallGame = 'minecraft' | 'poker' | 'truco' | 'cacheta' | 'lol' | 'chess' | 'draughts' | 'pool'
 
 /** Membros com atividade publicada naquele jogo, em qualquer fase. */
 export function countByActivity(
@@ -28,6 +28,11 @@ export function countPokerPlayers(tables: Array<{ players: Array<{ userId: strin
     for (const player of table.players) seen.add(player.userId)
   }
   return seen.size
+}
+
+/** Pessoas sentadas nas mesas de um jogo de cartas (truco ou cacheta). */
+export function countCartasPlayers(tables: Array<{ game: string; players: Array<{ userId: string }> }>, game: string): number {
+  return countPokerPlayers(tables.filter((t) => t.game === game))
 }
 
 export function onlineLabel(count: number): string {

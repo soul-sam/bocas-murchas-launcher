@@ -17,6 +17,7 @@ import { MemoryCard } from './MemoryCard'
 import { ClipCard } from './ClipCard'
 import { PrintCard } from './PrintCard'
 import { PokerCard } from './PokerCard'
+import { CartasCard } from './CartasCard'
 
 /**
  * REGISTRO DE CARTÕES.
@@ -59,7 +60,8 @@ const REGISTRY: Record<string, CardComponent> = {
   memory: MemoryCard,
   clip: ClipCard,
   print: PrintCard,
-  poker: PokerCard
+  poker: PokerCard,
+  cartas: CartasCard
 }
 
 export function hasCard(message: ChatMessage): boolean {

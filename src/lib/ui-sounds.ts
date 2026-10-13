@@ -52,6 +52,14 @@ export type UiSound =
   | 'poker-flip'
   | 'poker-shuffle'
   /**
+   * Truco e cacheta: o grito (TRUCO!, SEIS!…) — um acorde seco e alto, de
+   * quem bate na mesa; a carta batida no feltro (o tapa do truco); e as duas
+   * batidas de nó de dedo de quem bate na cacheta.
+   */
+  | 'cartas-truco'
+  | 'cartas-mesa'
+  | 'cartas-bate'
+  /**
    * Xadrez e dama, no vocabulário do chess.com: o meu lance e o do outro
    * (timbres diferentes), captura, roque, xeque, promoção, pré-lance
    * marcado, começo e fim da partida, pouco tempo e lance proibido.
@@ -317,6 +325,20 @@ const CUES: Partial<Record<UiSound, Cue>> = {
       { freq: C6, at: 0.21, dur: 0.2 }
     ]
   },
+  // TRUCO! Duas pancadas graves com um acorde em cima: a mão na mesa e o
+  // grito. Precisa assustar um pouquinho — é o momento do jogo.
+  'cartas-truco': {
+    volume: 0.85,
+    cutoff: 3200,
+    type: 'triangle',
+    notes: [
+      { freq: 130.81, at: 0, dur: 0.09 },
+      { freq: 130.81, at: 0.11, dur: 0.12 },
+      { freq: E5, at: 0.11, dur: 0.22, gain: 0.55 },
+      { freq: G5, at: 0.11, dur: 0.22, gain: 0.45 },
+      { freq: C6, at: 0.13, dur: 0.26, gain: 0.35 }
+    ]
+  },
   // Xadrez e dama: a peça pousando na casa — um toque curto e grave, madeira
   // em madeira. Toca a cada lance dos dois lados; é quase nada.
   'board-move': {
@@ -576,7 +598,7 @@ export function playUiSound(name: UiSound, volume: number): void {
   if (isLauncherSilenced()) return
   // Na janela própria da mesa só os sons DA MESA tocam: mensagem, menção,
   // cutucada e afins já tocam na janela principal — em dobro vira eco.
-  if (isPopout() && !name.startsWith('poker-')) return
+  if (isPopout() && !name.startsWith('poker-') && !name.startsWith('cartas-')) return
 
   const noise = NOISE_CUES[name]
   const cue = CUES[name]
@@ -632,6 +654,22 @@ const NOISE_CUES: Partial<Record<UiSound, NoiseCue>> = {
     ]
   },
   'poker-shuffle': { volume: 0.55, hits: riffle() },
+  // A carta do truco batida no feltro: um "tap" grave com o estalo do papel.
+  'cartas-mesa': {
+    volume: 0.6,
+    hits: [
+      { at: 0, dur: 0.05, freq: 380, q: 0.8 },
+      { at: 0, dur: 0.03, freq: 2600, q: 1.1, gain: 0.45 }
+    ]
+  },
+  // Bateu (cacheta): duas batidas de nó de dedo na madeira.
+  'cartas-bate': {
+    volume: 0.75,
+    hits: [
+      { at: 0, dur: 0.06, freq: 300, q: 0.9 },
+      { at: 0.16, dur: 0.07, freq: 280, q: 0.9 }
+    ]
+  },
   // Bilhar: o taco na branca — o estalo do couro e o baque da madeira.
   'pool-cue': { volume: 0.6, hits: [{ at: 0, dur: 0.035, freq: 1800, q: 1.2 }, { at: 0, dur: 0.05, freq: 320, q: 0.8, gain: 0.5 }] },
   // Bola em bola: clique de resina, agudo e curtíssimo. O volume vem da velocidade.

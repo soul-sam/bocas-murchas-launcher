@@ -1167,7 +1167,7 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
 }
 
 /** Telas que sabem viver em janela própria (ver main/services/popout.ts). */
-export type PopoutKind = 'poker'
+export type PopoutKind = 'poker' | 'truco' | 'cacheta'
 
 export interface PopoutState {
   open: boolean

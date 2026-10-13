@@ -21,6 +21,9 @@ export type SlashCommand =
   | { kind: 'wagers' }
   /** O pôquer (saguão, ou a mesa em que a pessoa está). */
   | { kind: 'poker' }
+  /** Truco e cacheta (o saguão do jogo, ou a mesa em que a pessoa está). */
+  | { kind: 'truco' }
+  | { kind: 'cacheta' }
   | { kind: 'recap' }
   | { kind: 'suggestion' }
   | { kind: 'printRequest' }
@@ -107,6 +110,11 @@ const ALIASES: Record<string, Exclude<SlashCommand['kind'], 'egg' | 'eggCommand'
   pôquer: 'poker',
   holdem: 'poker',
   cartas: 'poker',
+  truco: 'truco',
+  trucar: 'truco',
+  cacheta: 'cacheta',
+  caxeta: 'cacheta',
+  pife: 'cacheta',
   recap: 'recap',
   semana: 'recap',
   fumaca: 'smoke',
@@ -160,6 +168,10 @@ export function parseSlashCommand(text: string): SlashCommand | null {
       return { kind: 'wagers' }
     case 'poker':
       return { kind: 'poker' }
+    case 'truco':
+      return { kind: 'truco' }
+    case 'cacheta':
+      return { kind: 'cacheta' }
     case 'recap':
       return { kind: 'recap' }
     case 'suggestion':
@@ -253,6 +265,8 @@ export const SLASH_HELP: Array<{ command: string; hint: string }> = [
   { command: '/ranking', hint: 'Quem lidera a semana (e desde sempre)' },
   { command: '/apostas', hint: 'Partidas ao vivo pra apostar murchos' },
   { command: '/poker', hint: "Mesas de Texas Hold'em: murchos, ou valendo até R$ 20" },
+  { command: '/truco', hint: 'Truco paulista ou mineiro, 1x1 ou em duplas' },
+  { command: '/cacheta', hint: 'Cacheta de 2 a 6: quem bate primeiro, o último de pé leva' },
   { command: '/loja', hint: 'Abrir a lojinha' },
   { command: '/conquistas', hint: 'Todas as badges, quem tem cada uma e o placar de colecionador' },
   { command: '/recap', hint: 'O recap da semana e as anteriores' },

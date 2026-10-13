@@ -8,7 +8,7 @@ import { UpdaterProvider } from '@/lib/updater-context'
 import { SettingsProvider } from '@/lib/settings-context'
 import { ServerStatusProvider } from '@/lib/server-status-context'
 import { SocketProvider } from '@/lib/socket-context'
-import { isPopout, isWeb } from '@/lib/platform'
+import { isPopout, isWeb, popoutKind } from '@/lib/platform'
 import { useVisualViewport } from '@/lib/use-visual-viewport'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { FilasProvider } from '@/components/ui/filas'
@@ -24,6 +24,7 @@ import { LayoutProvider, useLayout } from '@/lib/layout-context'
 import { ActivityProvider } from '@/lib/activity-context'
 import { PartyProvider } from '@/lib/party-context'
 import { PokerProvider } from '@/lib/poker-context'
+import { CartasProvider } from '@/lib/cartas-context'
 import { BoardProvider } from '@/lib/board-context'
 import { SmokeProvider } from '@/lib/smoke-context'
 import { ClipProvider } from '@/lib/clip-context'
@@ -38,6 +39,7 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { HomePage } from '@/pages/HomePage'
 import { SocialPage } from '@/pages/SocialPage'
 import { PokerPage } from '@/pages/PokerPage'
+import { CartasPage } from '@/pages/CartasPage'
 import { BoardPage } from '@/pages/BoardPage'
 import { GameHallPage } from '@/pages/GameHallPage'
 import { LolPage } from '@/pages/LolPage'
@@ -166,7 +168,8 @@ function AuthedShell() {
   // gamificação…); o que não pode existir em dobro — jukebox, sobreposição,
   // ovos, atalhos globais, AFK — se desliga sozinho por `isPopout()`.
   if (isPopout()) {
-    if (location.pathname !== '/poker') return <Navigate to="/poker" replace />
+    const home = `/${popoutKind() ?? 'poker'}`
+    if (location.pathname !== home) return <Navigate to={home} replace />
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         <Outlet />
@@ -392,6 +395,9 @@ function AuthedLayout() {
                                 AuthedShell porque a barra de ícones mostra "sua
                                 vez" e o card do chat lê o saguão. */}
                             <PokerProvider>
+                            {/* Truco e cacheta: o mesmo desenho do pôquer, num
+                                contexto só pros dois jogos de cartas de mesa. */}
+                            <CartasProvider>
                               <BoardProvider>
                               <SmokeProvider>
                               <WatchProvider>
@@ -411,6 +417,7 @@ function AuthedLayout() {
                               </WatchProvider>
                               </SmokeProvider>
                               </BoardProvider>
+                            </CartasProvider>
                             </PokerProvider>
                             </PartyProvider>
                             </CostsProvider>
@@ -504,6 +511,9 @@ export function App() {
                                 O estado mora no PokerProvider, acima das
                                 rotas, então sair daqui não levanta da mesa. */}
                             <Route path="/poker" element={<PokerPage />} />
+                            {/* Truco e cacheta: uma tela cada, a mesma casca. */}
+                            <Route path="/truco" element={<CartasPage game="truco" />} />
+                            <Route path="/cacheta" element={<CartasPage game="cacheta" />} />
                             <Route
                               path="/impressao"
                               element={

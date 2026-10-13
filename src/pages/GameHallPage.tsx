@@ -1,16 +1,17 @@
 import { useNavigate } from 'react-router-dom'
 import { GameIcon as HallIcon } from '@/lib/bocas-icons'
-import { countBoardPeople, countByActivity, countPokerPlayers } from '@/lib/game-hall'
+import { countBoardPeople, countByActivity, countCartasPlayers, countPokerPlayers } from '@/lib/game-hall'
 import { isWeb } from '@/lib/platform'
 import { useBoard } from '@/lib/board-context'
 import { usePoker } from '@/lib/poker-context'
+import { useCartas } from '@/lib/cartas-context'
 import { useSocket } from '@/lib/socket-context'
 import { GameCard } from '@/components/games/GameCard'
 
 /**
  * SALÃO DE JOGOS — a porta de todos os jogos do launcher.
  *
- * Cada jogo continua na sua tela (`/jogo`, `/poker`, `/lol`, `/xadrez`, `/dama`); aqui só se vê
+ * Cada jogo continua na sua tela (`/jogo`, `/poker`, `/truco`, `/cacheta`, `/lol`, `/xadrez`, `/dama`); aqui só se vê
  * quem está em quê e se entra. A contagem vem do que os contextos já sabem —
  * presença de jogo (socket) e saguões do pôquer, do xadrez e da dama — então esta tela não busca
  * nada na API. Regras de contagem em lib/game-hall.ts.
@@ -20,6 +21,7 @@ export function GameHallPage() {
   const { activities } = useSocket()
   const { tables, goToPoker } = usePoker()
   const { tables: boardTables, goToBoard } = useBoard()
+  const { tables: cartasTables, goTo: goToCartas } = useCartas()
 
   return (
     <div className="flex-1 overflow-auto">
@@ -48,6 +50,20 @@ export function GameHallPage() {
             subtitle="Texas Hold'em valendo murchos"
             online={countPokerPlayers(tables)}
             onEnter={() => goToPoker()}
+          />
+          <GameCard
+            game="truco"
+            title="Truco"
+            subtitle="Paulista ou mineiro, 1x1 ou em duplas"
+            online={countCartasPlayers(cartasTables, 'truco')}
+            onEnter={() => goToCartas('truco')}
+          />
+          <GameCard
+            game="cacheta"
+            title="Cacheta"
+            subtitle="De 2 a 6, o último de pé leva o bolo"
+            online={countCartasPlayers(cartasTables, 'cacheta')}
+            onEnter={() => goToCartas('cacheta')}
           />
           <GameCard
             game="lol"

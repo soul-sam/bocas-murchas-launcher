@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Hint } from '@/components/ui/tooltip'
 import { themeIsLight } from '../../../electron/preload/types'
 import { resolveAssetUrl } from '@/lib/api'
-import type { PokerReaction, ReactionInput, TableView, Watcher } from '@/lib/api-poker'
+import type { PokerAck, PokerReaction, ReactionInput, Watcher } from '@/lib/api-poker'
 import { gifs as gifsApi, isProviderOff, type Gif } from '@/lib/api-gifs'
 import { useAuth } from '@/lib/auth-context'
 import { useEmojis } from '@/lib/emoji-context'
@@ -47,6 +47,29 @@ type Tab = 'emoji' | 'emote' | 'sticker' | 'sound' | 'gif'
 // O painel
 // ---------------------------------------------------------------------------
 
+/**
+ * O mínimo da mesa que o painel de reações precisa: o id (pra mandar) e os
+ * lugares (pra mirar). O pôquer passa a TableView dele; o truco e a cacheta,
+ * a deles.
+ */
+export interface ReactionTable {
+  id: string
+  mySeat: number | null
+  seats: ReadonlyArray<{ index: number; userId: string; displayName: string; avatar: string | null } | null>
+}
+
+/**
+ * De onde o painel manda a reação e lê o "calar sons". Sem provedor, é o
+ * pôquer; a mesa de cartas (truco, cacheta) embrulha o painel com o dela.
+ */
+export interface ReactionApi {
+  react: (tableId: string, input: ReactionInput) => Promise<Pick<PokerAck, 'ok' | 'error' | 'throttled'>>
+  reactionSoundsMuted: boolean
+  setReactionSoundsMuted: (muted: boolean) => void
+}
+
+export const ReactionApiContext = React.createContext<ReactionApi | null>(null)
+
 export interface ReactionTarget {
   seat: number
   name: string
@@ -64,7 +87,7 @@ export function ReactionButton({
   onOpenChange,
   compact
 }: {
-  table: TableView
+  table: ReactionTable
   target: ReactionTarget | null
   onTargetChange: (t: ReactionTarget | null) => void
   open: boolean
@@ -109,11 +132,12 @@ function ReactionPanel({
   target,
   onTarget
 }: {
-  table: TableView
+  table: ReactionTable
   target: ReactionTarget | null
   onTarget: (t: ReactionTarget | null) => void
 }) {
-  const { react, reactionSoundsMuted, setReactionSoundsMuted } = usePoker()
+  const poker = usePoker()
+  const { react, reactionSoundsMuted, setReactionSoundsMuted } = React.useContext(ReactionApiContext) ?? poker
   const { emojis, packs } = useEmojis()
   const { sounds } = useSoundboard()
   const [tab, setTab] = React.useState<Tab>('emoji')
@@ -211,7 +235,7 @@ function TargetRow({
   target,
   onTarget
 }: {
-  table: TableView
+  table: ReactionTable
   target: ReactionTarget | null
   onTarget: (t: ReactionTarget | null) => void
 }) {

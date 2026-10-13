@@ -1921,7 +1921,7 @@ function HeroSeat({
 }
 
 /** Anel que esvazia até o prazo. A animação é CSS; o React só a arma. */
-function TimerRing({ deadline, total }: { deadline: number; total: number }) {
+export function TimerRing({ deadline, total }: { deadline: number; total: number }) {
   const remaining = Math.max(0, deadline - Date.now())
   const elapsed = Math.max(0, total - remaining)
   return (
@@ -1948,7 +1948,7 @@ function TimerRing({ deadline, total }: { deadline: number; total: number }) {
   )
 }
 
-function Countdown({ deadline, inline }: { deadline: number; inline?: boolean }) {
+export function Countdown({ deadline, inline }: { deadline: number; inline?: boolean }) {
   const now = useTicker(250)
   const secs = Math.max(0, Math.ceil((deadline - now) / 1000))
   return (
