@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.72.0',
+    headline: 'Pendências: nada mais se perde no chat',
+    items: [
+      'Sino novo na barra da esquerda, embaixo da Arena: mostra em vermelho quantas coisas esperam você — agenda sem resposta, enquete sem voto e clipe sem reação.',
+      'Dá pra responder ali mesmo: vou, talvez ou não vou na agenda, votar na enquete, ouvir o clipe e reagir. Sem caçar o card no chat.',
+      'Quando você abre o launcher ou volta do AFK, um cartão no canto mostra o que chegou enquanto você estava fora.',
+      'O launcher te lembra na hora certa: quando marcam, na véspera e 3h antes da agenda; 1h antes da enquete fechar. Um aviso só, juntando tudo, e nunca de madrugada.',
+      'Com a janela minimizada, o aviso vem pelo Windows (ou pela sobreposição, se estiver jogando), o ícone na barra de tarefas ganha uma bolinha vermelha e a bandeja diz quantas faltam.',
+      'No celular (bocasmurchas.com.br), o painel do sino tem o botão pra ligar os avisos no aparelho — é o que te lembra com o launcher fechado.'
+    ]
+  },
+  {
     version: '1.71.0',
     headline: 'Truco e cacheta na mesa',
     items: [
