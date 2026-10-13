@@ -26,7 +26,7 @@ import {
   stopProcessLoopback
 } from './services/process-loopback.js'
 import { shakeWindow, type NudgeOptions } from './services/nudge.js'
-import { setVoiceState, setCloseToTray } from './services/tray.js'
+import { setVoiceState, setCloseToTray, setPendencias } from './services/tray.js'
 import { getLolStatus, refreshLolNow, startLolWatcher, stopLolWatcher } from './services/lol.js'
 import { launchLolClient } from './services/lol-launch.js'
 import {
@@ -54,9 +54,9 @@ import type {
 } from '../preload/types.js'
 import { isOverlaySide } from '../preload/types.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
-import { showMainWindow } from './services/main-window.js'
+import { getMainWindow, showMainWindow } from './services/main-window.js'
 import { bringBack, closePopout, flashPopout, focusPopout, getPopoutState, openPopout } from './services/popout.js'
-import type { PopoutKind } from '../preload/types.js'
+import type { PopoutKind, TrayCommand } from '../preload/types.js'
 import { app, powerMonitor } from 'electron'
 
 function serializeError(err: unknown): { message: string; code?: string } {
@@ -367,9 +367,16 @@ export function registerIpcHandlers(): void {
     }
   )
 
+  ipcMain.handle('tray:set-pendencias', async (_e, count: unknown) => {
+    setPendencias(typeof count === 'number' && Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0)
+  })
+
   ipcMain.handle(
     'notify:show',
-    async (_e, payload: { title: string; body: string; silent?: boolean }) => {
+    async (
+      _e,
+      payload: { title: string; body: string; silent?: boolean; command?: TrayCommand['command'] }
+    ) => {
       // Com a sobreposicao na tela, a notificacao sai LA — do lado da logo, ou
       // por cima do jogo, onde o balao do Windows nao aparece (o "assistente
       // de foco" segura tudo durante jogo). As duas juntas seriam o mesmo
@@ -393,7 +400,13 @@ export function registerIpcHandlers(): void {
         silent: payload.silent ?? false
       })
 
-      notification.on('click', showMainWindow)
+      notification.on('click', () => {
+        showMainWindow()
+        // A notificação de pendência abre o painel delas, não só a janela.
+        if (payload.command) {
+          getMainWindow()?.webContents.send('tray:command', { command: payload.command })
+        }
+      })
 
       notification.show()
     }

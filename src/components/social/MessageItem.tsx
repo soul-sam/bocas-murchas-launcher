@@ -35,7 +35,7 @@ import { TipButton, TipChip, canTip } from './TipPopover'
 import { toqueLongo } from '@/lib/toque-longo'
 import { usePonteiroGrosso } from '@/lib/use-ponteiro-grosso'
 
-const QUICK_EMOJIS = ['😂', '💀', '🔥', '👍', '❤️', '😭']
+export const QUICK_EMOJIS = ['😂', '💀', '🔥', '👍', '❤️', '😭']
 
 /** Reação com emoji do servidor é guardada como `:nome:`, igual no texto. */
 const CUSTOM_REACTION = /^:([a-z0-9_]+):$/

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { dmChannelId, useChat } from '@/lib/chat-context'
+import { usePendencias } from '@/lib/pendencias-context'
 
 /**
  * TOQUE NA NOTIFICAÇÃO → A CONVERSA CERTA.
@@ -23,12 +24,16 @@ import { dmChannelId, useChat } from '@/lib/chat-context'
  * notificação é nativa. Resultado: o toque focava a janela e não saía do
  * lugar.
  *
+ * **3. `?pendencias=1`.** O push de pendência (agenda sem resposta, enquete
+ * sem voto...) abre o painel delas, não um canal.
+ *
  * A query é apagada depois de usada (`replace: true`): sem isso ela gruda no
  * histórico e voltar pra tela mandaria a pessoa de novo pro canal do push,
  * mesmo que ela já tivesse trocado.
  */
 export function DeepLink() {
   const { setActiveChannel } = useChat()
+  const { abrirPainel } = usePendencias()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
 
@@ -45,6 +50,15 @@ export function DeepLink() {
     limpo.delete('dm')
     setParams(limpo, { replace: true })
   }, [params, setParams, setActiveChannel])
+
+  // --- 3. veio com ?pendencias=1 ---
+  React.useEffect(() => {
+    if (!params.has('pendencias')) return
+    const limpo = new URLSearchParams(params)
+    limpo.delete('pendencias')
+    setParams(limpo, { replace: true })
+    abrirPainel()
+  }, [params, setParams, abrirPainel])
 
   // --- 2. o service worker pediu pra navegar ---
   React.useEffect(() => {

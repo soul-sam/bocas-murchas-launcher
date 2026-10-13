@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, Keyboard } from 'lucide-react'
+import { Bell, BellRing, LogOut, Keyboard } from 'lucide-react'
 import { ChatIcon, GameIcon, PrinterIcon, ServerIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -25,6 +25,8 @@ import { useCargos } from '@/lib/cargos-context'
 import { useCosts } from '@/lib/costs-context'
 import { toqueLongo } from '@/lib/toque-longo'
 import { ArenaRail } from './ArenaRail'
+import { usePendencias } from '@/lib/pendencias-context'
+import { Hint } from '@/components/ui/tooltip'
 
 /**
  * Barra estreita da esquerda: alterna entre o social e o launcher do Minecraft.
@@ -180,6 +182,10 @@ export function AppRail() {
           só abrindo um painel com tudo dentro. Ver components/social/ArenaRail. */}
       <ArenaRail />
 
+      {/* O SINO: agenda sem resposta, enquete sem voto, clipe sem reação.
+          Embaixo da Arena porque abre painel na mesma coluna da direita. */}
+      <PendenciasRail />
+
       {/* Conversas abertas: os ícones acima e os botões abaixo ficam fixos;
           só esta lista rola. `min-h-0` é o que permite ela encolher em vez de
           empurrar o rodapé pra fora da tela. */}
@@ -317,6 +323,66 @@ export function AppRail() {
         </DialogContent>
       </Dialog>
     </nav>
+  )
+}
+
+/**
+ * O sino das pendências. Vermelho com número quando há algo esperando
+ * resposta; apagado quando não há. No celular só aparece com algo dentro —
+ * a barra deitada não tem espaço pra um ícone que não diz nada.
+ */
+function PendenciasRail() {
+  const { count } = usePendencias()
+  const { isPhone, pendenciasOpen, togglePendencias, openPendencias } = useLayout()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const onSocial = pathname === '/'
+
+  if (isPhone && count === 0 && !pendenciasOpen) return null
+
+  const active = pendenciasOpen && onSocial
+  const Icon = count > 0 ? BellRing : Bell
+  const label = count === 0 ? 'Pendências' : count === 1 ? '1 pendência' : `${count} pendências`
+
+  const run = (): void => {
+    if (onSocial) togglePendencias()
+    else {
+      navigate('/')
+      openPendencias()
+    }
+  }
+
+  return (
+    <>
+      {!isPhone && <span aria-hidden className="my-1 h-px w-8 shrink-0 bg-surface-raised" />}
+      <Hint
+        label={label}
+        description="Agenda sem resposta, enquete sem voto e clipe sem reação. Responde ali mesmo."
+        side={isPhone ? 'top' : 'right'}
+      >
+        <button
+          type="button"
+          aria-label={label}
+          aria-pressed={active}
+          onClick={run}
+          className={cn(
+            'alvo-dedo relative rounded-brutal p-2.5 transition-colors',
+            active
+              ? 'bg-acid/10 text-acid shadow-[inset_2px_0_0_hsl(var(--acid))]'
+              : count > 0
+                ? 'text-foreground hover:bg-void-light'
+                : 'text-muted-foreground hover:bg-void-light hover:text-foreground'
+          )}
+        >
+          <Icon className="h-5 w-5" />
+          {count > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full border border-void bg-destructive px-1 text-center font-mono text-[11px] font-bold leading-4 text-dirty-white">
+              {count > 99 ? '99+' : count}
+            </span>
+          )}
+        </button>
+      </Hint>
+    </>
   )
 }
 

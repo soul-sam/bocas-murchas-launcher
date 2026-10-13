@@ -368,6 +368,20 @@ function criarPonte(): BocasAPI {
     tray: {
       setVoiceState: async () => {},
       onCommand: semEventos,
+      // No site não há bandeja; o ícone do app instalado (PWA) ganha o número
+      // onde o sistema deixa (Chrome no Windows/Android, Edge).
+      setPendencias: async (count) => {
+        const nav = navigator as Navigator & {
+          setAppBadge?: (n?: number) => Promise<void>
+          clearAppBadge?: () => Promise<void>
+        }
+        try {
+          if (count > 0) await nav.setAppBadge?.(count)
+          else await nav.clearAppBadge?.()
+        } catch {
+          // Sem permissão ou sem suporte: o contador da barra basta.
+        }
+      },
     },
 
     notify: {

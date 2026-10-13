@@ -209,6 +209,12 @@ interface LayoutContextValue {
   toggleRecap: () => void
   openRecap: () => void
   closeRecap: () => void
+
+  /** Pendências: agenda sem resposta, enquete sem voto, clipe sem reação. */
+  pendenciasOpen: boolean
+  togglePendencias: () => void
+  openPendencias: () => void
+  closePendencias: () => void
 }
 
 const LayoutContext = React.createContext<LayoutContextValue | null>(null)
@@ -260,6 +266,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
     | 'recap'
     | 'suggestions'
     | 'clips'
+    | 'pendencias'
     | null
   const [panel, setPanel] = React.useState<RightPanel>(null)
   const togglePanel = React.useCallback(
@@ -280,6 +287,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   const recapOpen = panel === 'recap'
   const suggestionsOpen = panel === 'suggestions'
   const clipsOpen = panel === 'clips'
+  const pendenciasOpen = panel === 'pendencias'
 
   // Ctrl+F abre a busca do chat. O Chromium nao tem busca nativa de pagina no
   // Electron, entao a tecla estava sobrando — e e a que todo mundo aperta.
@@ -398,6 +406,10 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       recapOpen,
       toggleRecap: () => togglePanel('recap'),
       openRecap: () => setPanel('recap'),
+      pendenciasOpen,
+      togglePendencias: () => togglePanel('pendencias'),
+      openPendencias: () => setPanel('pendencias'),
+      closePendencias: () => closePanel('pendencias'),
       closeRecap: () => closePanel('recap')
     }),
     [
@@ -421,6 +433,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       leaderboardOpen,
       wagersOpen,
       recapOpen,
+      pendenciasOpen,
       togglePanel,
       closePanel,
       view

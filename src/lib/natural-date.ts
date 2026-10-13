@@ -397,8 +397,11 @@ export function formatRelative(d: Date, now: Date = new Date()): string {
   if (abs < MINUTE_MS) return diff >= 0 ? 'agora' : 'agora mesmo'
   if (abs < HOUR_MS) return `${prefix} ${Math.round(abs / MINUTE_MS)} min`
   if (abs < DAY_MS) {
-    const hours = Math.floor(abs / HOUR_MS)
-    const mins = Math.round((abs % HOUR_MS) / MINUTE_MS)
+    // Arredonda o TOTAL em minutos antes de separar: arredondar só o resto
+    // fazia 5h59min40s virar "5h60".
+    const total = Math.round(abs / MINUTE_MS)
+    const hours = Math.floor(total / 60)
+    const mins = total % 60
     return mins > 0 && hours < 6 ? `${prefix} ${hours}h${pad(mins)}` : `${prefix} ${hours}h`
   }
   const days = Math.round(
@@ -433,8 +436,10 @@ export function formatEventWhen(when: string | Date, now: Date = new Date()): st
  * `import.meta.env.DEV` é false e o Vite descarta o bloco inteiro. Não é um
  * test runner — é um cheiro no console se alguém quebrar uma regra mexendo
  * nas regexes. Base: sexta, 4/9/2026 às 18:00.
+ *
+ * `?.`: no `node --test` (natural-date.test.ts) não existe `import.meta.env`.
  */
-if (import.meta.env.DEV) {
+if (import.meta.env?.DEV) {
   const base = new Date(2026, 8, 4, 18, 0)
   const expect = (
     input: string,

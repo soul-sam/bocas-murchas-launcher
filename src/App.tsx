@@ -30,6 +30,7 @@ import { SmokeProvider } from '@/lib/smoke-context'
 import { ClipProvider } from '@/lib/clip-context'
 import { GamificationProvider } from '@/lib/gamification-context'
 import { CostsProvider } from '@/lib/costs-context'
+import { PendenciasProvider } from '@/lib/pendencias-context'
 import { WatchProvider } from '@/lib/watch-context'
 import { EmojiProvider } from '@/lib/emoji-context'
 import { PrintProvider } from '@/lib/print-context'
@@ -72,6 +73,7 @@ import { AchievementsModal } from '@/components/social/AchievementsModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
 import { BoardInvitePrompt } from '@/components/board/BoardInvitePrompt'
+import { PendenciasChegada } from '@/components/social/PendenciasChegada'
 import { OverlayBridge } from '@/lib/overlay-bridge'
 import { OverlayFeed } from '@/lib/overlay-feed'
 import { MusicHost } from '@/components/social/MusicHost'
@@ -284,6 +286,9 @@ function GlobalOverlays() {
       <PartyCallPrompt />
       {/* Convite pra uma partida de xadrez ou dama. */}
       <BoardInvitePrompt />
+      {/* "Enquanto você estava fora": agenda, enquete e clipe esperando
+          resposta. Ver lib/pendencias-context. */}
+      <PendenciasChegada />
       {/* Quanto custa manter isto de pé, e quanto cabe a cada um. A faixa
           some sozinha pra quem já marcou "paguei" no mês. */}
       <CostShareBanner />
@@ -389,6 +394,10 @@ function AuthedLayout() {
                                 (AppRail) mostra o pontinho de "ainda não
                                 paguei" — e ela vive dentro do AuthedShell. */}
                             <CostsProvider>
+                            {/* Pendências: precisa de socket, AFK (abrir o
+                                cartão quando a pessoa volta) e layout (abrir o
+                                painel); a barra de ícones mostra o sino. */}
+                            <PendenciasProvider>
                             <PartyProvider>
                             {/* Pôquer: espelho das mesas via socket. Precisa de
                                 socket, auth e settings (som da vez). Fica acima do
@@ -420,6 +429,7 @@ function AuthedLayout() {
                             </CartasProvider>
                             </PokerProvider>
                             </PartyProvider>
+                            </PendenciasProvider>
                             </CostsProvider>
                           </GamificationProvider>
                         </EmojiProvider>

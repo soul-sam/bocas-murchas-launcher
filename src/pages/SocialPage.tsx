@@ -17,6 +17,7 @@ import { SuggestionsPanel } from '@/components/social/SuggestionsPanel'
 import { LeaderboardPanel } from '@/components/social/LeaderboardPanel'
 import { WagersPanel } from '@/components/social/WagersPanel'
 import { RecapPanel } from '@/components/social/RecapPanel'
+import { PendenciasPanel } from '@/components/social/PendenciasPanel'
 import { useOverlays } from '@/lib/overlay-context'
 import { FolhaDePainel } from '@/components/ui/folha'
 
@@ -51,6 +52,7 @@ export function SocialPage() {
     leaderboardOpen,
     wagersOpen,
     recapOpen,
+    pendenciasOpen,
     suggestionsOpen
   } = useLayout()
 
@@ -120,6 +122,8 @@ export function SocialPage() {
       <WagersPanel />
     ) : recapOpen ? (
       <RecapPanel />
+    ) : pendenciasOpen ? (
+      <PendenciasPanel />
     ) : membersOpen && !dmActive ? (
       <MemberList />
     ) : null

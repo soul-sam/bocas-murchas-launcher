@@ -18,6 +18,8 @@ let quitting = false
 /** Estado espelhado do renderer, so pra desenhar o menu. */
 let inVoice = false
 let micMuted = false
+/** Agenda sem resposta, enquete sem voto, clipe sem reacao (lib/pendencias-context). */
+let pendencias = 0
 
 /**
  * Cache da preferencia "fechar para a bandeja".
@@ -120,6 +122,17 @@ function buildMenu(): Menu {
       label: 'Abrir Bocas Murchas',
       click: showWindow
     },
+    ...(pendencias > 0
+      ? [
+          {
+            label: pendencias === 1 ? '1 pendência esperando você' : `${pendencias} pendências esperando você`,
+            click: () => {
+              showWindow()
+              send('tray:command', { command: 'open-pendencias' })
+            }
+          }
+        ]
+      : []),
     { type: 'separator' },
     {
       label: micMuted ? 'Reativar microfone' : 'Silenciar microfone',
@@ -148,9 +161,8 @@ function refresh(): void {
 
   tray.setContextMenu(buildMenu())
   tray.setToolTip(
-    inVoice
-      ? 'Bocas Murchas - na call' + (micMuted ? ' (mudo)' : '')
-      : 'Bocas Murchas'
+    (inVoice ? 'Bocas Murchas - na call' + (micMuted ? ' (mudo)' : '') : 'Bocas Murchas') +
+      (pendencias > 0 ? ` - ${pendencias} pendência${pendencias === 1 ? '' : 's'}` : '')
   )
 }
 
@@ -171,6 +183,61 @@ export function setVoiceState(state: { inVoice?: boolean; micMuted?: boolean }):
   if (state.inVoice !== undefined) inVoice = state.inVoice
   if (state.micMuted !== undefined) micMuted = state.micMuted
   refresh()
+}
+
+/**
+ * Bolinha vermelha no canto do icone da barra de tarefas.
+ *
+ * Desenhada em codigo (16x16 BGRA) e nao um .png em build/: e um circulo, e
+ * um arquivo a mais no instalador pra isso e mais um caminho de recurso pra
+ * errar entre dev e empacotado.
+ */
+let badgeImage: Electron.NativeImage | null = null
+
+function badge(): Electron.NativeImage {
+  if (badgeImage) return badgeImage
+  const size = 16
+  const buf = Buffer.alloc(size * size * 4)
+  const c = (size - 1) / 2
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const d = Math.hypot(x - c, y - c)
+      const i = (y * size + x) * 4
+      if (d <= 7.5) {
+        // Borda escura de 1px pra bolinha nao sumir na barra clara do Windows.
+        const edge = d > 6.2
+        buf[i] = edge ? 0x14 : 0x3c // B
+        buf[i + 1] = edge ? 0x14 : 0x3c // G
+        buf[i + 2] = edge ? 0x14 : 0xef // R
+        buf[i + 3] = 0xff
+      }
+    }
+  }
+  badgeImage = nativeImage.createFromBitmap(buf, { width: size, height: size })
+  return badgeImage
+}
+
+/**
+ * O renderer conta as pendencias; aqui elas viram sinal fora da janela:
+ * tooltip e item na bandeja, bolinha na barra de tarefas e a janela piscando
+ * quando o numero SOBE com ela fora de foco (pisca ate a pessoa olhar).
+ */
+export function setPendencias(count: number): void {
+  const subiu = count > pendencias
+  pendencias = count
+  refresh()
+
+  const win = getMainWindow()
+  if (!win || win.isDestroyed()) return
+  if (process.platform === 'win32') {
+    win.setOverlayIcon(count > 0 ? badge() : null, count > 0 ? `${count} pendências` : '')
+  }
+  if (subiu && !win.isFocused()) {
+    win.flashFrame(true)
+    win.once('focus', () => {
+      if (!win.isDestroyed()) win.flashFrame(false)
+    })
+  }
 }
 
 export function destroyTray(): void {

@@ -86,7 +86,8 @@ const api: BocasAPI = {
   },
   tray: {
     setVoiceState: (state) => ipcRenderer.invoke('tray:set-voice-state', state),
-    onCommand: (cb) => on('tray:command', cb)
+    onCommand: (cb) => on('tray:command', cb),
+    setPendencias: (count) => ipcRenderer.invoke('tray:set-pendencias', count)
   },
   notify: {
     show: (payload) => ipcRenderer.invoke('notify:show', payload)

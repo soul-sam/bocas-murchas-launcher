@@ -994,7 +994,8 @@ export interface NudgeResult {
 }
 
 export interface TrayCommand {
-  command: 'toggle-mute' | 'leave-voice'
+  /** `open-pendencias`: item da bandeja ou clique na notificação de pendência. */
+  command: 'toggle-mute' | 'leave-voice' | 'open-pendencias'
 }
 
 export interface ModpackChangelog {
@@ -1268,9 +1269,24 @@ export interface BocasAPI {
   tray: {
     setVoiceState: (state: { inVoice?: boolean; micMuted?: boolean }) => Promise<void>
     onCommand: (cb: (command: TrayCommand) => void) => () => void
+    /**
+     * Quantas pendências a pessoa tem (agenda sem resposta, enquete sem voto,
+     * clipe sem reação): bolinha na barra de tarefas, item na bandeja e a
+     * janela piscando quando o número SOBE com ela fora de foco.
+     */
+    setPendencias: (count: number) => Promise<void>
   }
   notify: {
-    show: (payload: { title: string; body: string; silent?: boolean }) => Promise<void>
+    /**
+     * `command`: o que o clique na notificação faz além de mostrar a janela
+     * (chega no renderer por `tray.onCommand`).
+     */
+    show: (payload: {
+      title: string
+      body: string
+      silent?: boolean
+      command?: TrayCommand['command']
+    }) => Promise<void>
   }
   /**
    * Uma tela em janela própria (hoje, a mesa de pôquer): a principal pede
