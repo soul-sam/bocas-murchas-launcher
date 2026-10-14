@@ -9,11 +9,18 @@ import {
   Mic,
   MicOff,
   Minus,
+  Music2,
+  Pause,
   PhoneOff,
   Pickaxe,
   PinOff,
+  Play,
   Scissors,
+  SkipBack,
+  SkipForward,
   Swords,
+  Volume2,
+  VolumeX,
   Waves
 } from 'lucide-react'
 import { MurchosIcon, SoundboardIcon, StreakIcon } from '@/lib/bocas-icons'
@@ -21,6 +28,7 @@ import { cn, formatClock } from '@/lib/utils'
 import type {
   OverlayAction,
   OverlayBetTarget,
+  OverlayMusic,
   OverlayMyGame,
   OverlaySide,
   OverlayState,
@@ -49,10 +57,10 @@ import { toastLook } from './Toasts'
  *
  * De cima pra baixo, do que é SEU pro que é do grupo:
  *   1. a carta de jogador (nível, XP, murchos, sequência);
- *   2. as ações rápidas da call;
+ *   2. as ações rápidas da call, e a música quando tem uma tocando;
  *   3. a SUA partida, quando há uma, com a aposta em você;
  *   4. as partidas do grupo em que dá pra apostar;
- *   5. o que aconteceu agora há pouco.
+ *   5. o que aconteceu agora há pouco (recolhível — fica lembrado).
  *
  * Sem teclado e sem rede (ver o cabeçalho da OverlayPage): tudo é botão e tudo
  * volta pra janela principal por `send`. O formulário de aposta — valor por
@@ -109,6 +117,8 @@ export function Panel({
       <PlayerHeader state={state} pinned={pinned} onCollapse={onCollapse} onMinimize={onMinimize} />
 
       {state?.ready && <QuickActions voice={state.voice} />}
+
+      {state?.ready && state.music && <MusicControls music={state.music} />}
 
       <div className="ov-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {state === null ? (
@@ -356,6 +366,7 @@ function ActionButton({
   label,
   alert,
   danger,
+  disabled,
   onClick,
   children
 }: {
@@ -363,6 +374,7 @@ function ActionButton({
   /** Estado que a pessoa precisa NOTAR: microfone fechado, ouvido tampado. */
   alert?: boolean
   danger?: boolean
+  disabled?: boolean
   onClick: () => void
   children: React.ReactNode
 }) {
@@ -371,9 +383,11 @@ function ActionButton({
       type="button"
       aria-label={label}
       title={label}
+      disabled={disabled}
       onClick={onClick}
       className={cn(
         'flex h-8 w-8 shrink-0 items-center justify-center rounded-brutal border transition-colors',
+        'disabled:cursor-not-allowed disabled:opacity-30',
         alert
           ? 'border-destructive/60 bg-destructive/15 text-destructive'
           : danger
@@ -383,6 +397,128 @@ function ActionButton({
     >
       {children}
     </button>
+  )
+}
+
+// ============================================
+// MÚSICA
+// ============================================
+
+/** Quanto o slider espera a mão parar antes de mandar o volume. */
+const VOLUME_SEND_MS = 250
+
+/**
+ * A jukebox da call, de dentro do jogo: voltar, pausar, pular e o volume.
+ *
+ * Só aparece com música no ar (ou pausada) no meu canal — fora disso não há o
+ * que controlar, e uma fileira de botões mortos em cima do jogo é ruído.
+ *
+ * Pausar e pular valem pra SALA toda (é o mesmo botão da barra no launcher);
+ * o volume é só meu. "Voltar" volta pro começo da faixa: o servidor não
+ * guarda as que já tocaram.
+ */
+function MusicControls({ music }: { music: OverlayMusic }) {
+  /**
+   * O slider é da mão enquanto ela está nele. O retrato que volta do launcher
+   * chega atrasado e, adotado no meio do arrasto, faria o pino pular pra trás.
+   */
+  const [volume, setVolume] = React.useState(music.volume)
+  const pendingRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    if (pendingRef.current) return
+    setVolume(music.volume)
+  }, [music.volume])
+
+  React.useEffect(
+    () => () => {
+      if (pendingRef.current) clearTimeout(pendingRef.current)
+    },
+    []
+  )
+
+  const changeVolume = (next: number): void => {
+    setVolume(next)
+    if (pendingRef.current) clearTimeout(pendingRef.current)
+    pendingRef.current = setTimeout(() => {
+      pendingRef.current = null
+      send({ type: 'music-volume', volume: next })
+    }, VOLUME_SEND_MS)
+  }
+
+  /** De onde veio, pro clique no alto-falante desfazer o próprio mudo. */
+  const lastAudibleRef = React.useRef(music.volume > 0 ? music.volume : 45)
+  if (volume > 0) lastAudibleRef.current = volume
+
+  return (
+    <section className="shrink-0 border-b border-line px-3 py-2.5">
+      <div className="flex items-center gap-2.5">
+        {/* Sem capa: a CSP da sobreposição não deixa imagem de fora (ela não
+            tem rede nenhuma, ver overlay.html), e abrir isso por uma capa
+            de 36px não vale. */}
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-brutal border border-acid-dark/60 bg-acid/10">
+          <Music2 className="h-4 w-4 text-acid-text" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className="block truncate text-xs font-semibold leading-tight text-foreground"
+            title={music.title}
+          >
+            {music.title}
+          </span>
+          <span className="mt-0.5 block truncate text-[11.5px] leading-tight text-muted-foreground">
+            {music.playing ? 'tocando' : 'pausada'}
+            {music.artist ? ` · ${music.artist}` : ''}
+          </span>
+        </span>
+      </div>
+
+      <div className="mt-2 flex items-center gap-1.5">
+        <ActionButton label="Voltar pro começo da música" onClick={() => send({ type: 'music-restart' })}>
+          <SkipBack className="h-3.5 w-3.5" />
+        </ActionButton>
+        <ActionButton
+          label={music.playing ? 'Pausar pra todo mundo' : 'Dar play pra todo mundo'}
+          onClick={() => send({ type: 'music-toggle' })}
+        >
+          {music.playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+        </ActionButton>
+        <ActionButton
+          label={music.hasNext ? 'Próxima da fila' : 'A fila está vazia'}
+          disabled={!music.hasNext}
+          onClick={() => send({ type: 'music-next' })}
+        >
+          <SkipForward className="h-3.5 w-3.5" />
+        </ActionButton>
+
+        <button
+          type="button"
+          aria-label={volume === 0 ? 'Voltar o som da música' : 'Mutar a música (só pra mim)'}
+          title={volume === 0 ? 'Voltar o som da música' : 'Mutar a música (só pra mim)'}
+          onClick={() => changeVolume(volume === 0 ? lastAudibleRef.current : 0)}
+          className={cn(
+            'ml-1 shrink-0 transition-colors',
+            volume === 0 ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={volume}
+          onChange={(event) => changeVolume(Number(event.target.value))}
+          aria-label="Volume da música (só meu)"
+          title={`Volume da música: ${volume}% (só pra mim)`}
+          className={cn('mini-slider min-w-0 flex-1', volume === 0 && 'is-muted')}
+        />
+        <span className="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
+          {volume}%
+        </span>
+      </div>
+    </section>
   )
 }
 
@@ -710,12 +846,59 @@ function TargetRow({
 // AVISO E RECENTES
 // ============================================
 
-/** As notificações de agora há pouco, dentro do painel. */
+/** Onde o painel lembra se "agora há pouco" está recolhido. Por máquina. */
+const RECENT_COLLAPSED_KEY = 'bm.overlay.recentesRecolhidas'
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(RECENT_COLLAPSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * As notificações de agora há pouco, dentro do painel.
+ *
+ * Recolhível: numa partida movimentada a lista empurra as apostas pra baixo
+ * e é a parte do painel que menos se lê. Recolhida, o título fica com a
+ * contagem — dá pra ver que chegou coisa sem abrir.
+ */
 function RecentList({ toasts, now }: { toasts: OverlayToast[]; now: number }) {
+  const [collapsed, setCollapsed] = React.useState(readCollapsed)
+
+  const toggle = (): void => {
+    const next = !collapsed
+    setCollapsed(next)
+    try {
+      localStorage.setItem(RECENT_COLLAPSED_KEY, next ? '1' : '0')
+    } catch {
+      // Sem armazenamento a escolha vale até a sobreposição fechar.
+    }
+  }
+
   return (
     <section>
-      <SectionTitle>agora há pouco</SectionTitle>
-      <ul className="space-y-2">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={!collapsed}
+        title={collapsed ? 'Mostrar as notificações' : 'Recolher as notificações'}
+        className="mb-1.5 flex w-full items-center justify-between gap-2 font-mono text-[11px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <span>agora há pouco</span>
+        <span className="flex items-center gap-1">
+          {collapsed && (
+            <span className="font-mono text-[11px] normal-case tracking-normal">{toasts.length}</span>
+          )}
+          <ChevronDown
+            className={cn('h-3.5 w-3.5 transition-transform duration-200', !collapsed && 'rotate-180')}
+            aria-hidden
+          />
+        </span>
+      </button>
+      {!collapsed && (
+        <ul className="space-y-2">
         {toasts.map((toast) => {
           const { icon: Icon, tone, tile } = toastLook(toast.kind)
           return (
@@ -744,7 +927,8 @@ function RecentList({ toasts, now }: { toasts: OverlayToast[]; now: number }) {
             </li>
           )
         })}
-      </ul>
+        </ul>
+      )}
     </section>
   )
 }

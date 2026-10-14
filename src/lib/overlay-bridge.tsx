@@ -2,6 +2,7 @@ import * as React from 'react'
 import type {
   OverlayAction,
   OverlayBetTarget,
+  OverlayMusic,
   OverlayMyGame,
   OverlayNotice,
   OverlaySound,
@@ -18,6 +19,7 @@ import { useNudge } from './nudge-context'
 import { useSettings } from './settings-context'
 import { useSoundboard } from './soundboard-context'
 import { useVoice } from './voice-context'
+import { useWatch } from './watch-context'
 
 /**
  * A PONTE DA SOBREPOSIÇÃO — o lado desta janela.
@@ -54,13 +56,14 @@ const NOTICE_CLEAR_MS = 8_000
 
 export function OverlayBridge(): null {
   const { user } = useAuth()
-  const { settings } = useSettings()
+  const { settings, update: updateSettings } = useSettings()
   const { lol } = useActivity()
   const { liveGames, profile, placeWager, refreshLiveGames } = useGamification()
   const soundboard = useSoundboard()
   const voice = useVoice()
   const nudge = useNudge()
   const clips = useClips()
+  const watch = useWatch()
 
   const [notice, setNotice] = React.useState<OverlayNotice | null>(null)
 
@@ -236,6 +239,27 @@ export function OverlayBridge(): null {
     }
   }, [voice.connected, voice.channel, voice.micEnabled, voice.deafened, voice.participants])
 
+  /**
+   * A jukebox da call. Vídeo do "assistir junto" fica de fora: o painel não
+   * tem tela pra ele, e pausar um filme que a sala está vendo sem ver nada
+   * seria um botão perigoso. Pausada conta — senão o botão de play sumiria
+   * justo quando precisa dele.
+   *
+   * O volume vem do settings.json, que é onde a barra da música também lê e
+   * grava: mexer de lá ou de cá dá no mesmo lugar.
+   */
+  const music = watch.current?.mode === 'music' ? watch.current : null
+  const musicSnapshot = React.useMemo<OverlayMusic | null>(() => {
+    if (!music) return null
+    return {
+      title: music.title ?? 'Som do YouTube',
+      artist: music.artist,
+      playing: music.playing,
+      hasNext: (music.queue ?? []).length > 0,
+      volume: Math.round(settings.music.volume * 100)
+    }
+  }, [music, settings.music.volume])
+
   const state = React.useMemo<OverlayState>(
     () => ({
       ready: Boolean(user),
@@ -249,7 +273,8 @@ export function OverlayBridge(): null {
       notice,
       wagerMin: WAGER_MIN,
       sounds,
-      voice: voiceSnapshot
+      voice: voiceSnapshot,
+      music: musicSnapshot
     }),
     [
       user,
@@ -262,7 +287,8 @@ export function OverlayBridge(): null {
       targets,
       notice,
       sounds,
-      voiceSnapshot
+      voiceSnapshot,
+      musicSnapshot
     ]
   )
 
@@ -312,7 +338,8 @@ export function OverlayBridge(): null {
           notice: null,
           wagerMin: WAGER_MIN,
           sounds: [],
-          voice: null
+          voice: null,
+          music: null
         })
         // A janela pode estar sendo destruída junto (app fechando): aqui não
         // há mais ninguém pra tratar a promessa recusada.
@@ -345,8 +372,28 @@ export function OverlayBridge(): null {
    * seria engolido em silêncio, e é justamente o clique dado no meio de uma
    * partida movimentada. É o mesmo arranjo do hotkeys-context.
    */
-  const handlersRef = React.useRef({ liveGames, placeWager, soundboard, voice, nudge, clips })
-  handlersRef.current = { liveGames, placeWager, soundboard, voice, nudge, clips }
+  const handlersRef = React.useRef({
+    liveGames,
+    placeWager,
+    soundboard,
+    voice,
+    nudge,
+    clips,
+    watch,
+    musicSettings: settings.music,
+    updateSettings
+  })
+  handlersRef.current = {
+    liveGames,
+    placeWager,
+    soundboard,
+    voice,
+    nudge,
+    clips,
+    watch,
+    musicSettings: settings.music,
+    updateSettings
+  }
 
   React.useEffect(() => {
     if (!active) return
@@ -431,6 +478,41 @@ export function OverlayBridge(): null {
           h.nudge.nudgeChannel()
           setNotice({ kind: 'ok', text: 'Tremeu a sala inteira.', at: Date.now() })
           break
+
+        /**
+         * A música obedece a SALA: pausar, pular e voltar vão pro servidor,
+         * e o player desta janela (MusicHost) segue o que voltar de lá. A
+         * posição é a que o relógio do servidor diz — o player de verdade
+         * está no MusicHost, mas a diferença é de uma fração de segundo.
+         */
+        case 'music-toggle': {
+          const session = h.watch.current
+          if (!session || session.mode !== 'music') break
+          const position = h.watch.expectedPosition(session)
+          void (session.playing ? h.watch.pause(position) : h.watch.play(position))
+          break
+        }
+
+        case 'music-next':
+          void h.watch.next()
+          break
+
+        // O servidor não guarda as faixas que já tocaram, então "voltar" é o
+        // que todo player faz no primeiro toque: começo da faixa.
+        case 'music-restart':
+          if (h.watch.current?.mode === 'music') void h.watch.seek(0)
+          break
+
+        /**
+         * Volume é SÓ MEU, não passa pela sala. Grava no settings.json e a
+         * barra da música adota de lá. A sobreposição já segura o slider e só
+         * manda quando a mão para — aqui não precisa de outra trava.
+         */
+        case 'music-volume': {
+          const volume = Math.min(100, Math.max(0, Math.round(action.volume)))
+          void h.updateSettings({ music: { ...h.musicSettings, volume: volume / 100 } })
+          break
+        }
       }
     })
   }, [active])

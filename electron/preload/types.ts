@@ -634,6 +634,22 @@ export interface OverlayVoice {
   peers: string[]
 }
 
+/**
+ * A musica da call (a jukebox), pro painel poder pausar, pular e mexer no
+ * volume sem alt-tab. So existe com musica no ar no MEU canal — video do
+ * "assistir junto" nao entra: aquilo se assiste, nao se controla de olho fechado.
+ */
+export interface OverlayMusic {
+  title: string
+  artist?: string
+  /** O estado da SALA, nao o do meu player. */
+  playing: boolean
+  /** Tem fila esperando — sem ela, pular nao faz nada. */
+  hasNext: boolean
+  /** Volume da musica SO PRA MIM, 0..100 (posicao do slider, como no launcher). */
+  volume: number
+}
+
 export interface OverlayState {
   /** Da pra apostar: tem login e o servidor respondeu. */
   ready: boolean
@@ -656,6 +672,8 @@ export interface OverlayState {
   sounds: OverlaySound[]
   /** Null quando nao estou em call nenhuma. */
   voice: OverlayVoice | null
+  /** Null quando nao tem musica tocando (ou pausada) no meu canal. */
+  music: OverlayMusic | null
 }
 
 /**
@@ -727,6 +745,14 @@ export type OverlayAction =
   | { type: 'nudge' }
   /** Trazer a janela principal pra frente. */
   | { type: 'open-app' }
+  /** Pausar/dar play na musica pra sala toda. */
+  | { type: 'music-toggle' }
+  /** Proxima da fila. */
+  | { type: 'music-next' }
+  /** Voltar pro comeco da faixa (o servidor nao guarda historico de faixas). */
+  | { type: 'music-restart' }
+  /** Volume da musica so pra mim, 0..100. */
+  | { type: 'music-volume'; volume: number }
 
 /**
  * Temas. Cada um e uma folha de tokens em src/styles/globals.css, aplicada
