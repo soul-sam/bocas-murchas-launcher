@@ -73,6 +73,7 @@ import { AchievementsModal } from '@/components/social/AchievementsModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
 import { BoardInvitePrompt } from '@/components/board/BoardInvitePrompt'
+import { MesaVoltaCard } from '@/components/games/MesaVoltaCard'
 import { PendenciasChegada } from '@/components/social/PendenciasChegada'
 import { OverlayBridge } from '@/lib/overlay-bridge'
 import { OverlayFeed } from '@/lib/overlay-feed'
@@ -286,6 +287,8 @@ function GlobalOverlays() {
       <PartyCallPrompt />
       {/* Convite pra uma partida de xadrez ou dama. */}
       <BoardInvitePrompt />
+      {/* "Você está na mesa de ...": volta pra partida de qualquer outra tela. */}
+      <MesaVoltaCard />
       {/* "Enquanto você estava fora": agenda, enquete e clipe esperando
           resposta. Ver lib/pendencias-context. */}
       <PendenciasChegada />
