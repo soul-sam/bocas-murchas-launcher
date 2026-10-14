@@ -43,6 +43,7 @@ import {
 import { cash as cashApi } from '@/lib/api-cash'
 import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
+import { useSpeakingIds } from '@/lib/voice-context'
 import { useGamification } from '@/lib/gamification-context'
 import { useLayout } from '@/lib/layout-context'
 import { isPopout, isWeb } from '@/lib/platform'
@@ -1612,6 +1613,7 @@ function SeatSpot({
   set: ChipDenom[]
 }) {
   const { byId } = useMembers()
+  const speakingIds = useSpeakingIds()
   const phone = layout.phone
   const avatarPx = layout.avatarPx
   const vars = seatVars(pos, avatarPx)
@@ -1686,6 +1688,7 @@ function SeatSpot({
           <div className={cn('relative z-[1] h-full w-full rounded-full', seat.toAct && 'poker-vez', won && 'poker-vencedor')}>
             <UserAvatar
               userId={seat.userId}
+              speaking={speakingIds.has(seat.userId)}
               src={resolveAssetUrl(member?.avatar ?? seat.avatar)}
               name={seat.displayName}
               ringColor={member?.profileColor ?? undefined}
@@ -1797,6 +1800,7 @@ function HeroSeat({
   onOpenRules: (category?: HandCategory | null) => void
 }) {
   const { byId } = useMembers()
+  const speakingIds = useSpeakingIds()
   const member = byId[seat.userId]
   const phone = layout.phone
   const result = table.result
@@ -1864,6 +1868,7 @@ function HeroSeat({
           <div className={cn('relative shrink-0 rounded-full', seat.toAct && 'poker-vez', won && 'poker-vencedor')} style={{ width: avatarPx, height: avatarPx }}>
             <UserAvatar
               userId={seat.userId}
+              speaking={speakingIds.has(seat.userId)}
               src={resolveAssetUrl(member?.avatar ?? seat.avatar)}
               name={seat.displayName}
               ringColor={member?.profileColor ?? undefined}

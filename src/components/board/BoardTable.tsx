@@ -41,6 +41,7 @@ import { clockNow, material, START_POSITION, type Material } from '@/lib/board-p
 import { BRAND_MASK_STYLE } from '@/lib/brand-mask'
 import { useLayout } from '@/lib/layout-context'
 import { useMembers } from '@/lib/members-context'
+import { useSpeakingIds } from '@/lib/voice-context'
 import { useSettings } from '@/lib/settings-context'
 import { playUiSound, type UiSound } from '@/lib/ui-sounds'
 import { useTicker } from '@/lib/use-now'
@@ -800,6 +801,7 @@ function PlayerBar({
   firstMoveIn?: number | null
 }) {
   const { byId } = useMembers()
+  const speakingIds = useSpeakingIds()
   const member = person ? byId[person.userId] : undefined
   const active = !!side && table.phase === 'playing' && !table.result && table.turn === side
   const won = !!side && table.phase === 'finished' && table.result?.winner === side
@@ -857,6 +859,7 @@ function PlayerBar({
       {person ? (
         <UserAvatar
           userId={person.userId}
+          speaking={speakingIds.has(person.userId)}
           src={resolveAssetUrl(member?.avatar ?? person.avatar)}
           name={person.displayName}
           ringColor={member?.profileColor ?? undefined}

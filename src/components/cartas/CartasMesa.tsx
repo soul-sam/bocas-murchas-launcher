@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useCartas } from '@/lib/cartas-context'
 import { useLayout } from '@/lib/layout-context'
 import { useMembers } from '@/lib/members-context'
+import { useSpeakingIds } from '@/lib/voice-context'
 import { isPopout, isWeb } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { BRAND_MASK_STYLE } from '@/components/poker/PokerGlyphs'
@@ -727,6 +728,7 @@ function SeatPlate({
   cards?: React.ReactNode
 }) {
   const { byId } = useMembers()
+  const speakingIds = useSpeakingIds()
   const avatarPx = layout.avatarPx
   const vars = seatVars(pos, avatarPx)
 
@@ -774,6 +776,7 @@ function SeatPlate({
         >
           <UserAvatar
             userId={seat.userId}
+            speaking={speakingIds.has(seat.userId)}
             src={resolveAssetUrl(member?.avatar ?? seat.avatar)}
             name={seat.displayName}
             ringColor={member?.profileColor ?? undefined}
@@ -848,6 +851,7 @@ function HeroPlate({
   cards?: React.ReactNode
 }) {
   const { byId } = useMembers()
+  const speakingIds = useSpeakingIds()
   const member = byId[seat.userId]
   const toAct = table.playing && table.toAct.includes(seat.index)
   const won = !table.playing && !!table.outcome?.winners.includes(seat.index)
@@ -877,6 +881,7 @@ function HeroPlate({
         >
           <UserAvatar
             userId={seat.userId}
+            speaking={speakingIds.has(seat.userId)}
             src={resolveAssetUrl(member?.avatar ?? seat.avatar)}
             name={seat.displayName}
             ringColor={member?.profileColor ?? undefined}

@@ -2471,3 +2471,16 @@ export function useVoice(): VoiceContextValue {
   if (!ctx) throw new Error('useVoice must be used within a VoiceProvider')
   return ctx
 }
+
+/**
+ * Ids de quem está falando agora na minha call — pra acender a borda do
+ * avatar fora da barra lateral (mesas dos minigames). Na janela própria
+ * (popout) não há call, então volta vazio.
+ */
+export function useSpeakingIds(): Set<string> {
+  const { participants } = useVoice()
+  return React.useMemo(
+    () => new Set(participants.filter((p) => p.isSpeaking).map((p) => p.identity)),
+    [participants]
+  )
+}
