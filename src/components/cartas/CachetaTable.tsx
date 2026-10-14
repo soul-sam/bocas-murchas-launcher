@@ -1060,7 +1060,6 @@ function MinhaMao({
       {cards.map((c, dealIndex) => {
         const left = drag?.moved && drag.key === c.key ? drag.startLeft + drag.dx : pos.get(c.key) ?? 0
         const isSel = selected === c.key
-        const inMeld = groups.has(c.key)
         const knocks = !!knockNine && knockNine.has(c.code)
         const isForbidden = forbidden === c.code && cards.filter((x) => x.code === c.code).length < 2
         const z = (shown.indexOf(c.key) + 1) * 2
@@ -1073,7 +1072,6 @@ function MinhaMao({
               'cacheta-carta',
               isSel && 'cacheta-carta--escolhida',
               drag?.key === c.key && drag.moved && 'cacheta-carta--arrasta',
-              inMeld && 'cacheta-carta--jogo',
               isForbidden && 'cacheta-carta--proibida',
               newKey === c.key && 'cacheta-carta--nova'
             )}
