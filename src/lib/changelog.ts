@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.73.0',
+    headline: 'Música na mão, até dentro do jogo',
+    items: [
+      'Na sobreposição, com música tocando na call, aparecem os controles: voltar, pausar, pular e o volume (esse só pra você).',
+      'Voltar agora volta de verdade: no meio da faixa recomeça, logo no começo vai pra música anterior. Vale na barra de música do launcher também.',
+      'A lista "agora há pouco" da sobreposição recolhe clicando no título — e fica lembrada.',
+      'Card "Voltar para a mesa": saiu da tela do jogo com uma mesa aberta (xadrez, dama, bilhar, pôquer, truco ou cacheta)? Ele aparece em qualquer outra tela, pra voltar ou sair dela.',
+      'Nas mesas de pôquer, truco, cacheta, xadrez e dama, o avatar de quem está falando na call acende, igual à barra lateral.',
+      'Truco e cacheta agora giram no sentido horário, igual ao pôquer, e sumiu o filete verde embaixo das cartas da cacheta.'
+    ]
+  },
+  {
     version: '1.72.0',
     headline: 'Pendências: nada mais se perde no chat',
     items: [
