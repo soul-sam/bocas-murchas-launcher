@@ -5,6 +5,7 @@ import {
   Loader2,
   Pause,
   Play,
+  SkipBack,
   SkipForward,
   Square,
   Trash2,
@@ -66,6 +67,9 @@ import {
  * refrão por cima da primeira sílaba de quem falou); subir é preguiçoso.
  */
 const DUCK_RELEASE_MS = 900
+
+/** Até aqui (s) o "voltar" vai pra anterior; depois disso recomeça a faixa. */
+const RESTART_THRESHOLD_SEC = 5
 
 /** Arrastar o slider grava no disco só depois que a mão para. */
 const VOLUME_SAVE_MS = 400
@@ -306,6 +310,13 @@ function MusicBar({ session }: { session: WatchSession }) {
     else void watch.play(player.timeRef.current)
   }
 
+  /** Voltar como todo player: no meio da faixa recomeça; no começo, vai pra anterior. */
+  const hasPrev = (session.history ?? []).length > 0
+  const goBack = (): void => {
+    if (hasPrev && player.timeRef.current < RESTART_THRESHOLD_SEC) void watch.previous()
+    else void watch.seek(0)
+  }
+
   const progress =
     player.duration > 0 ? Math.min(100, (player.currentTime / player.duration) * 100) : 0
 
@@ -431,6 +442,19 @@ function MusicBar({ session }: { session: WatchSession }) {
 
             {/* Controles */}
             <div className="flex items-center gap-1.5 p-2">
+              <button
+                type="button"
+                onClick={goBack}
+                title={
+                  hasPrev
+                    ? 'Voltar (no começo da faixa, vai pra anterior)'
+                    : 'Voltar pro começo da música'
+                }
+                className="shrink-0 rounded-brutal border-2 border-line p-1 text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground"
+              >
+                <SkipBack className="h-4 w-4" />
+              </button>
+
               <button
                 type="button"
                 onClick={togglePlay}

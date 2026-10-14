@@ -53,6 +53,8 @@ const REQUEST_DEBOUNCE_MS = 2_000
  * jogo repetindo o resultado de uma aposta de meia hora atrás.
  */
 const NOTICE_CLEAR_MS = 8_000
+/** Até aqui (s) o "voltar" vai pra anterior; depois disso recomeça a faixa. */
+const RESTART_THRESHOLD_SEC = 5
 
 export function OverlayBridge(): null {
   const { user } = useAuth()
@@ -256,6 +258,7 @@ export function OverlayBridge(): null {
       artist: music.artist,
       playing: music.playing,
       hasNext: (music.queue ?? []).length > 0,
+      hasPrev: (music.history ?? []).length > 0,
       volume: Math.round(settings.music.volume * 100)
     }
   }, [music, settings.music.volume])
@@ -497,11 +500,16 @@ export function OverlayBridge(): null {
           void h.watch.next()
           break
 
-        // O servidor não guarda as faixas que já tocaram, então "voltar" é o
-        // que todo player faz no primeiro toque: começo da faixa.
-        case 'music-restart':
-          if (h.watch.current?.mode === 'music') void h.watch.seek(0)
+        // Voltar como todo player: passou do começo, recomeça; logo no
+        // começo (ou sem nada antes), vai pra anterior.
+        case 'music-prev': {
+          const session = h.watch.current
+          if (!session || session.mode !== 'music') break
+          const hasPrev = (session.history ?? []).length > 0
+          if (hasPrev && h.watch.expectedPosition(session) < RESTART_THRESHOLD_SEC) void h.watch.previous()
+          else void h.watch.seek(0)
           break
+        }
 
         /**
          * Volume é SÓ MEU, não passa pela sala. Grava no settings.json e a

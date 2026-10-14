@@ -62,6 +62,8 @@ export interface WatchSession extends WatchTrack {
   mode: WatchMode
   /** Aleatório ligado: a fila foi embaralhada e pedido novo cai em posição sorteada. */
   shuffle?: boolean
+  /** Só música: as que já tocaram, a mais recente no fim. É o que dá o "anterior". */
+  history?: WatchQueueItem[]
 }
 
 export interface WatchAck {
@@ -113,6 +115,8 @@ interface WatchContextValue {
    * servidor pula, tira o vídeo da fila e das playlists do grupo.
    */
   next: (afterVideoId?: string, broken?: boolean) => Promise<WatchAck>
+  /** Música anterior: a atual volta pra frente da fila. Só com `history`. */
+  previous: () => Promise<WatchAck>
   play: (positionSec: number) => Promise<WatchAck>
   pause: (positionSec: number) => Promise<WatchAck>
   seek: (positionSec: number) => Promise<WatchAck>
@@ -311,6 +315,7 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
       request('watch:next', afterVideoId ? { afterVideoId, ...(broken ? { broken: true } : {}) } : undefined),
     [request]
   )
+  const previous = React.useCallback(() => request('watch:prev'), [request])
   const play = React.useCallback((positionSec: number) => request('watch:play', { positionSec }), [request])
   const pause = React.useCallback((positionSec: number) => request('watch:pause', { positionSec }), [request])
   const seek = React.useCallback((positionSec: number) => request('watch:seek', { positionSec }), [request])
@@ -356,6 +361,7 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
       setShuffle,
       queueRemove,
       next,
+      previous,
       play,
       pause,
       seek,
@@ -376,6 +382,7 @@ export function WatchProvider({ children }: { children: React.ReactNode }) {
       setShuffle,
       queueRemove,
       next,
+      previous,
       play,
       pause,
       seek,

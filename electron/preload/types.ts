@@ -646,6 +646,8 @@ export interface OverlayMusic {
   playing: boolean
   /** Tem fila esperando — sem ela, pular nao faz nada. */
   hasNext: boolean
+  /** Tem musica antes desta (historico da sala) — sem ela, voltar so recomeca. */
+  hasPrev: boolean
   /** Volume da musica SO PRA MIM, 0..100 (posicao do slider, como no launcher). */
   volume: number
 }
@@ -749,8 +751,11 @@ export type OverlayAction =
   | { type: 'music-toggle' }
   /** Proxima da fila. */
   | { type: 'music-next' }
-  /** Voltar pro comeco da faixa (o servidor nao guarda historico de faixas). */
-  | { type: 'music-restart' }
+  /**
+   * Voltar, como todo player: no meio da faixa recomeca; nos primeiros
+   * segundos (ou de novo logo em seguida) vai pra musica anterior.
+   */
+  | { type: 'music-prev' }
   /** Volume da musica so pra mim, 0..100. */
   | { type: 'music-volume'; volume: number }
 

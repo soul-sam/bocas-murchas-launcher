@@ -414,8 +414,8 @@ const VOLUME_SEND_MS = 250
  * que controlar, e uma fileira de botões mortos em cima do jogo é ruído.
  *
  * Pausar e pular valem pra SALA toda (é o mesmo botão da barra no launcher);
- * o volume é só meu. "Voltar" volta pro começo da faixa: o servidor não
- * guarda as que já tocaram.
+ * o volume é só meu. "Voltar" funciona como em todo player: no meio da faixa
+ * recomeça, nos primeiros segundos vai pra anterior (a sala guarda as últimas).
  */
 function MusicControls({ music }: { music: OverlayMusic }) {
   /**
@@ -474,7 +474,14 @@ function MusicControls({ music }: { music: OverlayMusic }) {
       </div>
 
       <div className="mt-2 flex items-center gap-1.5">
-        <ActionButton label="Voltar pro começo da música" onClick={() => send({ type: 'music-restart' })}>
+        <ActionButton
+          label={
+            music.hasPrev
+              ? 'Voltar (no começo da faixa, vai pra anterior)'
+              : 'Voltar pro começo da música'
+          }
+          onClick={() => send({ type: 'music-prev' })}
+        >
           <SkipBack className="h-3.5 w-3.5" />
         </ActionButton>
         <ActionButton
