@@ -42,9 +42,8 @@ import './cartas.css'
  *   - `log`: o histórico.
  *
  * O MEU LUGAR FICA SEMPRE EMBAIXO, e a roda gira A PARTIR DELE no sentido em
- * que o jogo anda — pra DIREITA (anti-horário visto de cima), como se joga
- * truco e cacheta: o próximo a jogar senta à minha direita. No truco 2x2 o
- * parceiro fica em frente.
+ * que o jogo anda — no sentido HORÁRIO da tela, igual ao pôquer: o próximo a
+ * jogar senta à minha esquerda. No truco 2x2 o parceiro fica em frente.
  *
  * Tudo que voa (cartas saindo do baralho) usa `--deck-x/--deck-y` da área e
  * `--seat-x/--seat-y` do destino, em % — as mesmas variáveis do poker.css.
@@ -70,16 +69,16 @@ function seatAngles(count: number, phone: boolean): number[] {
   if (phone) {
     const PHONE: Record<number, number[]> = {
       2: [90, 270],
-      3: [90, 325, 215],
-      4: [90, 10, 270, 170],
-      5: [90, 20, 310, 230, 160],
-      6: [90, 30, 328, 270, 212, 150]
+      3: [90, 215, 325],
+      4: [90, 170, 270, 10],
+      5: [90, 160, 230, 310, 20],
+      6: [90, 150, 212, 270, 328, 30]
     }
     return PHONE[count] ?? PHONE[6]
   }
   const n = Math.max(2, count)
-  // Pra direita a partir de mim (90° = embaixo): 90, 90-360/n, ...
-  return Array.from({ length: n }, (_, k) => (((90 - (360 / n) * k) % 360) + 360) % 360)
+  // Horário a partir de mim (90° = embaixo): 90, 90+360/n, ...
+  return Array.from({ length: n }, (_, k) => (90 + (360 / n) * k) % 360)
 }
 
 export interface MesaLayout {
@@ -108,7 +107,7 @@ export interface SeatSlot {
   seat: CartasSeatView | null
   /** Posição do centro do avatar, em % da área. */
   pos: [number, number]
-  /** 0 = eu (embaixo); cresce pra direita. */
+  /** 0 = eu (embaixo); cresce no sentido horário. */
   slot: number
 }
 
@@ -269,7 +268,7 @@ export function CartasMesa({
   const heroPos: [number, number] = [50, 100 - geo.rail[2] - 2]
   const rotated: SeatSlot[] = table.seats.map((seat, index) => {
     const slot = (index - anchor + table.maxSeats) % table.maxSeats
-    // Pra direita: o slot k é o k-ésimo depois de mim no sentido do jogo.
+    // Horário: o slot k é o k-ésimo depois de mim no sentido do jogo.
     const deg = angles[slot] ?? 90
     const rad = (deg * Math.PI) / 180
     const x = geo.cx + geo.rx * Math.cos(rad)
