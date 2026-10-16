@@ -122,7 +122,8 @@ export type TrucoHandReason = 'vazas' | 'correu' | 'empate' | 'recusou' | 'aband
 export interface TrucoEvent {
   seq: number
   at: number
-  kind: 'deal' | 'play' | 'truco' | 'accept' | 'run' | 'raise' | 'decide' | 'round' | 'hand'
+  /** `wantrun`: um parceiro votou por correr e o outro ainda não respondeu. */
+  kind: 'deal' | 'play' | 'truco' | 'accept' | 'run' | 'wantrun' | 'raise' | 'decide' | 'round' | 'hand'
   seat?: number
   /** play: a carta (null se coberta); deal: a vira (paulista). */
   card?: string | null
@@ -133,6 +134,8 @@ export interface TrucoEvent {
   points?: number
   /** decide: jogou (true) ou correu (false). */
   play?: boolean
+  /** accept/raise/decide: foi contra o parceiro, que queria correr. */
+  alone?: boolean
   round?: number
   reason?: TrucoHandReason
 }
@@ -147,6 +150,8 @@ export interface TrucoLegal {
   decide: boolean
   /** Mão de ferro: joga-se pela posição, às cegas. */
   blind: boolean
+  /** Já votei por correr: falta o parceiro (ainda dá pra aceitar ou subir). */
+  voted?: boolean
 }
 
 export interface TrucoPlay {
@@ -182,6 +187,12 @@ export interface TrucoView {
   specialTeam: Team | null
   phase: 'decide' | 'play' | 'truco' | 'done' | 'over'
   pending: { byTeam: Team; bySeat: number; value: number; name: TrucoCall } | null
+  /**
+   * 2x2: quem da dupla que responde (ao pedido ou à mão de onze) já votou por
+   * correr. Correr precisa dos dois; aceitar, subir ou jogar basta um.
+   * (Opcional: servidor antigo não manda.)
+   */
+  runVotes?: number[]
   turn: number | null
   round: number
   rounds: TrucoRound[]
@@ -206,6 +217,17 @@ export const TRUCO_CALL_LABEL: Record<TrucoCall, string> = {
   seis: 'Seis',
   nove: 'Nove',
   doze: 'Doze'
+}
+
+/** Um sinal do truco, como chega da sala (`cartas:signal`). O catálogo está em components/cartas/truco-sinais. */
+export interface TrucoSignalEvent {
+  id: string
+  at: number
+  seat: number
+  userId: string
+  signal: string
+  /** Carimbado pela tela quando chega (relógio local; o `at` é do servidor). */
+  localAt?: number
 }
 
 /** O que o grito pede, com o valor: "TRUCO!", "SEIS!"… */

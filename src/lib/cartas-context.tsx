@@ -9,7 +9,7 @@ import { playUiSound, type UiSound } from './ui-sounds'
 import { isPopout } from './platform'
 import { reactionLifeMs } from './poker-context'
 import type { PokerReaction, ReactionInput } from './api-poker'
-import type { CardGame, CartasAck, CartasLobbyTable, CartasSpeed, CartasTableView, TrucoVariant } from './api-cartas'
+import type { CardGame, CartasAck, CartasLobbyTable, CartasSpeed, CartasTableView, TrucoSignalEvent, TrucoVariant } from './api-cartas'
 
 /**
  * TRUCO E CACHETA — o espelho da mesa no launcher. Mesmo desenho do
@@ -28,6 +28,8 @@ import type { CardGame, CartasAck, CartasLobbyTable, CartasSpeed, CartasTableVie
  */
 
 const MUTE_KEY = 'bocas:cartas:mute-reactions'
+/** Quantos sinais a tela guarda (o histórico mostra os da partida). */
+const SIGNALS_KEPT = 80
 
 function readMuted(): boolean {
   try {
@@ -74,6 +76,10 @@ interface CartasContextValue {
   reactionSoundsMuted: boolean
   setReactionSoundsMuted: (muted: boolean) => void
 
+  /** Sinais do truco da mesa aberta (os mais recentes, em ordem de chegada). */
+  signals: TrucoSignalEvent[]
+  sendSignal: (tableId: string, signal: string) => Promise<CartasAck>
+
   /** A mesa em outra janela (só no app do PC; ver poker-context). */
   popoutOpen: CardGame | null
   popOut: (game: CardGame, tableId: string) => Promise<void>
@@ -116,6 +122,7 @@ export function CartasProvider({ children }: { children: React.ReactNode }) {
   const [openTableId, setOpenTableId] = React.useState<string | null>(null)
   const [table, setTable] = React.useState<CartasTableView | null>(null)
   const [reactions, setReactions] = React.useState<PokerReaction[]>([])
+  const [signals, setSignals] = React.useState<TrucoSignalEvent[]>([])
   const [reactionSoundsMuted, setMutedState] = React.useState<boolean>(readMuted)
   const [popoutOpen, setPopoutOpen] = React.useState<CardGame | null>(null)
   const mutedRef = React.useRef(reactionSoundsMuted)
@@ -184,18 +191,29 @@ export function CartasProvider({ children }: { children: React.ReactNode }) {
       reactionTimers.current.add(timer)
     }
 
+    // Sinal fica guardado (não some no tempo como a reação): o histórico
+    // mostra os da partida. A bolha no assento é que apaga sozinha.
+    const handleSignal = (data: { tableId: string; signal: TrucoSignalEvent }): void => {
+      const s = data?.signal
+      if (!s?.id || data.tableId !== openIdRef.current) return
+      setSignals((prev) => [...prev.filter((x) => x.id !== s.id), { ...s, localAt: Date.now() }].slice(-SIGNALS_KEPT))
+    }
+
     socket.on('cartas:lobby', handleLobby)
     socket.on('cartas:table', handleTable)
     socket.on('cartas:reaction', handleReaction)
+    socket.on('cartas:signal', handleSignal)
     return () => {
       socket.off('cartas:lobby', handleLobby)
       socket.off('cartas:table', handleTable)
       socket.off('cartas:reaction', handleReaction)
+      socket.off('cartas:signal', handleSignal)
     }
   }, [socket, sound])
 
   React.useEffect(() => {
     setReactions([])
+    setSignals([])
   }, [openTableId])
 
   // Lista a cada (re)conexão, e a mesa aberta volta pra sala sozinha.
@@ -323,6 +341,10 @@ export function CartasProvider({ children }: { children: React.ReactNode }) {
       emitWithAck(socket, 'cartas:react', { tableId, kind: input.kind, value: input.value, to: input.to ?? null }),
     [socket]
   )
+  const sendSignal = React.useCallback(
+    (tableId: string, signal: string) => emitWithAck(socket, 'cartas:signal', { tableId, signal }),
+    [socket]
+  )
   const setReactionSoundsMuted = React.useCallback((muted: boolean) => {
     setMutedState(muted)
     try {
@@ -378,6 +400,8 @@ export function CartasProvider({ children }: { children: React.ReactNode }) {
       react,
       reactionSoundsMuted,
       setReactionSoundsMuted,
+      signals,
+      sendSignal,
       popoutOpen,
       popOut,
       bringBack,
@@ -403,6 +427,8 @@ export function CartasProvider({ children }: { children: React.ReactNode }) {
       react,
       reactionSoundsMuted,
       setReactionSoundsMuted,
+      signals,
+      sendSignal,
       popoutOpen,
       popOut,
       bringBack,

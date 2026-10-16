@@ -163,6 +163,13 @@ function Gritos({ variant }: { variant: TrucoVariant }) {
         </p>
         <p>Quem subiu por último não sobe de novo: agora só o outro lado pode pedir mais. Não dá pra pular degrau.</p>
       </Section>
+      <Section title="Correr é da dupla (2x2)">
+        <p>
+          Um parceiro sozinho não entrega a mão: apertar <Key>correr</Key> é só um voto. A mão corre quando os{' '}
+          <Key>dois</Key> votam. Até lá o outro decide: <Key>corre junto</Key> ou <Key>vai sozinho</Key> — aceitar ou subir vale
+          pela dupla inteira. Na mão de {onze.at === 11 ? 'onze' : 'dez'} é igual: correr precisa dos dois, jogar basta um.
+        </p>
+      </Section>
       <Section title={onze.name[0].toUpperCase() + onze.name.slice(1)}>
         <p>
           Quando uma dupla chega a <Key>{onze.at}</Key>, ela olha as próprias cartas (e as do parceiro, no 2x2) antes de decidir:{' '}
@@ -200,6 +207,16 @@ function Como({ variant }: { variant: TrucoVariant }) {
           Da <Key>segunda vaza</Key> em diante dá pra jogar uma carta virada pra baixo (clique direito, ou o botão "coberta"). Ela
           não ganha de nada — serve pra esconder o que você tem.
         </p>
+      </Section>
+      <Section title="Sinais">
+        <p>
+          O botão <Key>Sinais</Key> no rodapé (ou a tecla <Key>S</Key>) tem os gestos de sempre: piscar é zap, sobrancelha é copas,
+          boca torta é espadilha, língua é pica-fumo, e por aí vai. Dá pra emendar vários seguidos. Como na mesa de verdade, a{' '}
+          <Key>mesa inteira vê</Key> — o parceiro e os adversários.
+        </p>
+      </Section>
+      <Section title="Fim da mão">
+        <p>Carta que não foi jogada não aparece pra ninguém, nem no fim: o blefe da próxima mão continua valendo.</p>
       </Section>
       <Section title="Relógio">
         <p>Dormiu na vez, o relógio joga a carta mais fraca por você; dormiu num grito, sua dupla corre. Quem cai joga no automático.</p>

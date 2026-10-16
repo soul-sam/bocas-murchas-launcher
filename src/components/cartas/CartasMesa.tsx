@@ -200,6 +200,14 @@ export interface CartasMesaProps {
   deckAt?: (ctx: MesaCtx) => [number, number]
   /** Placar/realce por cima de tudo, fora do feltro (ex.: tentos do truco). */
   overlay?: (ctx: MesaCtx) => React.ReactNode
+  /**
+   * Ao lado do avatar de cada um (sinais do truco). `side` = pra que lado há
+   * espaço: 'right' cresce pra direita do avatar, 'left' pra esquerda. Na
+   * minha placa, sempre à esquerda dela.
+   */
+  seatAside?: (seat: number, side: 'left' | 'right', ctx: MesaCtx) => React.ReactNode
+  /** Botões extras do jogador no rodapé, ao lado do "Levantar" (só sentado na partida). */
+  dockExtra?: React.ReactNode
   /** A barra de ação (só pra quem está sentado e jogando). */
   actions?: React.ReactNode
   /** Linha de estado à esquerda do rodapé. */
@@ -222,6 +230,8 @@ export function CartasMesa({
   heroRows = 1,
   deckAt,
   overlay,
+  seatAside,
+  dockExtra,
   actions,
   status,
   log,
@@ -433,6 +443,7 @@ export function CartasMesa({
                     dealer={dealerSeat === index}
                     info={seatInfo?.(seat)}
                     cards={area.w > 0 ? heroCards?.(ctx) : null}
+                    aside={area.w > 0 ? seatAside?.(index, 'left', ctx) : null}
                   />
                 ) : (
                   <SeatPlate
@@ -447,6 +458,7 @@ export function CartasMesa({
                     onSit={() => void run(() => sit(table.id, index))}
                     info={seat ? seatInfo?.(seat) : null}
                     cards={seat && area.w > 0 ? seatCards?.(seat, ctx, pos) : null}
+                    aside={seat && area.w > 0 ? seatAside?.(index, pos[0] <= 52 ? 'right' : 'left', ctx) : null}
                   />
                 )
               )}
@@ -507,6 +519,7 @@ export function CartasMesa({
                             : 'Levantar mesmo?'
                           : 'Levantar'}
                       </button>
+                      {inMatch && table.playing && dockExtra}
                       {table.stake.amount > 0 && (
                         <span className="flex items-center gap-1 text-[11.5px] text-muted-foreground">
                           <MurchosIcon className="h-3.5 w-3.5 text-burn" aria-hidden />
@@ -714,7 +727,8 @@ function SeatPlate({
   canSit,
   onSit,
   info,
-  cards
+  cards,
+  aside
 }: {
   table: CartasTableView
   index: number
@@ -726,6 +740,7 @@ function SeatPlate({
   onSit: () => void
   info?: React.ReactNode
   cards?: React.ReactNode
+  aside?: React.ReactNode
 }) {
   const { byId } = useMembers()
   const speakingIds = useSpeakingIds()
@@ -792,6 +807,7 @@ function SeatPlate({
             D
           </span>
         )}
+        {aside}
       </div>
 
       <div
@@ -840,7 +856,8 @@ function HeroPlate({
   layout,
   dealer,
   info,
-  cards
+  cards,
+  aside
 }: {
   table: CartasTableView
   seat: CartasSeatView
@@ -849,6 +866,7 @@ function HeroPlate({
   dealer: boolean
   info?: React.ReactNode
   cards?: React.ReactNode
+  aside?: React.ReactNode
 }) {
   const { byId } = useMembers()
   const speakingIds = useSpeakingIds()
@@ -906,6 +924,7 @@ function HeroPlate({
           <div className="mt-0.5 flex min-h-[18px] flex-wrap items-center gap-1.5">{info}</div>
         </div>
         {seat.wins > 0 && <WinsTag wins={seat.wins} corner="baixo" />}
+        {aside}
       </div>
     </div>
   )

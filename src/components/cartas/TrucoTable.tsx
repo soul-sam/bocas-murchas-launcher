@@ -7,8 +7,10 @@ import {
   type CartasSeatView,
   type CartasTableView,
   type Team,
+  type TrucoCall,
   type TrucoEvent,
   type TrucoRound,
+  type TrucoSignalEvent,
   type TrucoView
 } from '@/lib/api-cartas'
 import { useCartas } from '@/lib/cartas-context'
@@ -18,6 +20,7 @@ import { playUiSound, type UiSound } from '@/lib/ui-sounds'
 import { cn } from '@/lib/utils'
 import { CARD_WIDTH, CardRow, FlipCard, PlayingCard, cardHeight, type CardSize } from '@/components/poker/PlayingCard'
 import { CartasMesa, LogLine, TEAM_TONE, firstName, type MesaCtx } from './CartasMesa'
+import { SeatSignals, SignalButton, SignalChainInline, signalChains } from './truco-sinais'
 import './truco.css'
 
 /**
@@ -36,6 +39,12 @@ import './truco.css'
  *    (uma carta por pessoa, como se dá de verdade). Na vez, clicar joga;
  *    clique direito (ou o botão "coberta") joga virada pra baixo.
  *  - O PLACAR de tentos no canto, com as cores das duplas.
+ *  - CORRER É DA DUPLA (2x2): o "correr" de um é voto; o parceiro corre
+ *    junto ou vai sozinho (aceita/sobe/joga). A faixa em cima dos botões diz
+ *    quem quer o quê.
+ *  - OS SINAIS (truco-sinais.tsx): botão no rodapé (ou S), a fila de gestos
+ *    aparece do lado do avatar de quem fez, pra mesa inteira, e entra no
+ *    histórico.
  *
  * Tudo que é regra vem do servidor (a vista já traz `legal`, quem é a vez,
  * quanto vale): a tela só mostra e manda a jogada.
@@ -107,17 +116,20 @@ export function TrucoTable({ onOpenRules }: { onOpenRules: () => void }) {
 }
 
 function TrucoScreen({ table, onOpenRules }: { table: CartasTableView; onOpenRules: () => void }) {
-  const { act } = useCartas()
+  const { act, signals } = useCartas()
   const view = isTruco(table.match) ? table.match : null
   const sound = useTableSound()
+  const { isPhone } = useLayout()
   const [error, setError] = React.useState<string | null>(null)
   const [busy, setBusy] = React.useState(false)
   const [covered, setCovered] = React.useState(false)
+  const [signalsOpen, setSignalsOpen] = React.useState(false)
   const [shout, setShout] = React.useState<{ key: number; text: string; cold: boolean } | null>(null)
   const deal = useDeal(table, view)
 
   const mySeat = table.mySeat
   const legal = table.playing ? view?.legal ?? null : null
+  const canSignal = !!view && mySeat !== null && table.playing && !!table.seats[mySeat]?.inMatch
   const players = view ? view.teams[0].length + view.teams[1].length : table.maxSeats
   const lockUntil = deal.fresh ? deal.at + SHUFFLE_MS + (players * 3 - 1) * DEAL_STEP_MS + CARD_FLY_MS + CARD_FLIP_MS : 0
   const [, rerender] = React.useReducer((x: number) => x + 1, 0)
@@ -174,8 +186,12 @@ function TrucoScreen({ table, onOpenRules }: { table: CartasTableView; onOpenRul
           }
           break
         case 'accept':
-          setShout({ key: e.seq, text: 'DESCE!', cold: true })
+          setShout({ key: e.seq, text: e.alone ? 'VAI SOZINHO!' : 'DESCE!', cold: true })
           sound('poker-chip')
+          break
+        case 'wantrun':
+          // O parceiro de quem votou: agora é com ele.
+          if (mySeat !== null && e.seat !== undefined && e.seat !== mySeat && e.team === view.myTeam) sound('poker-turn')
           break
         case 'run':
           setShout({ key: e.seq, text: 'CORREU!', cold: true })
@@ -183,7 +199,7 @@ function TrucoScreen({ table, onOpenRules }: { table: CartasTableView; onOpenRul
           break
         case 'decide':
           if (e.play) {
-            setShout({ key: e.seq, text: 'VAMO!', cold: false })
+            setShout({ key: e.seq, text: e.alone ? 'VAI SOZINHO!' : 'VAMO!', cold: false })
             sound('poker-chip')
           }
           break
@@ -244,21 +260,26 @@ function TrucoScreen({ table, onOpenRules }: { table: CartasTableView; onOpenRul
       if (e.ctrlKey || e.metaKey || e.altKey) return
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
-      if (!legal) return
       const k = e.key.toLowerCase()
+      if (k === 's' && canSignal) {
+        setSignalsOpen((v) => !v)
+        e.preventDefault()
+        return
+      }
+      if (!legal) return
       if (k === '1' || k === '2' || k === '3') playCard(Number(k) - 1, covered)
       else if (k === 't' && (legal.truco || legal.raise)) void send({ type: legal.raise ? 'raise' : 'truco' })
       else if (k === 'a' && legal.accept) void send({ type: 'accept' })
       else if (k === 'a' && legal.decide) void send({ type: 'decide', play: true })
       else if (k === 'c' && legal.run) void send({ type: 'run' })
-      else if (k === 'c' && legal.decide) void send({ type: 'decide', play: false })
+      else if (k === 'c' && legal.decide && !legal.voted) void send({ type: 'decide', play: false })
       else if (k === 'x' && legal.cover) setCovered((v) => !v)
       else return
       e.preventDefault()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [legal, playCard, covered, send])
+  }, [legal, playCard, covered, send, canSignal])
 
   const teamLabel = React.useCallback(
     (team: Team | null | undefined): string => {
@@ -295,6 +316,20 @@ function TrucoScreen({ table, onOpenRules }: { table: CartasTableView; onOpenRul
       overlay={(ctx) => (view ? <Placar view={view} teamLabel={teamLabel} phone={ctx.layout.phone} /> : null)}
       seatCards={(seat, ctx) => (view && showMatch ? <SeatCards seat={seat} view={view} ctx={ctx} deal={deal} /> : null)}
       seatInfo={(seat) => (view && showMatch ? <SeatTag seat={seat} view={view} tag={tags.get(seat.index) ?? null} /> : null)}
+      seatAside={(seat, side, ctx) => (view ? <SeatSignals seat={seat} variant={view.variant} side={side} compact={ctx.layout.phone} mine={seat === mySeat} /> : null)}
+      dockExtra={
+        canSignal && view ? (
+          <SignalButton
+            tableId={table.id}
+            mySeat={mySeat!}
+            variant={view.variant}
+            open={signalsOpen}
+            onOpenChange={setSignalsOpen}
+            compact={isPhone}
+            onError={setError}
+          />
+        ) : null
+      }
       heroCards={(ctx) =>
         view && showMatch && mySeat !== null ? (
           <HeroHand
@@ -312,6 +347,7 @@ function TrucoScreen({ table, onOpenRules }: { table: CartasTableView; onOpenRul
       actions={
         view ? (
           <ActionBar
+            table={table}
             view={view}
             legal={legal}
             busy={busy}
@@ -322,7 +358,7 @@ function TrucoScreen({ table, onOpenRules }: { table: CartasTableView; onOpenRul
           />
         ) : null
       }
-      log={view ? <TrucoLog table={table} view={view} teamLabel={teamLabel} /> : null}
+      log={view ? <TrucoLog table={table} view={view} teamLabel={teamLabel} signals={signals} /> : null}
     />
   )
 }
@@ -719,6 +755,11 @@ interface Tag {
   tone: 'raise' | 'check' | 'fold' | 'blind'
 }
 
+/** Os lugares da dupla de `seat` (ele mesmo, no 1x1). */
+function teamOf(view: TrucoView, seat: number): number[] {
+  return view.teams.find((t) => t.includes(seat)) ?? [seat]
+}
+
 /** A última fala de cada um na mão corrente (depois do último `deal`). */
 function lastTags(view: TrucoView): Map<number, Tag> {
   const tags = new Map<number, Tag>()
@@ -729,9 +770,12 @@ function lastTags(view: TrucoView): Map<number, Tag> {
   for (const e of view.log.slice(start)) {
     if (e.seat === undefined) continue
     if (e.kind === 'truco' || e.kind === 'raise') tags.set(e.seat, { text: `pediu ${e.name ?? 'truco'}`, tone: 'raise' })
-    else if (e.kind === 'accept') tags.set(e.seat, { text: 'aceitou', tone: 'check' })
-    else if (e.kind === 'run') tags.set(e.seat, { text: 'correu', tone: 'fold' })
-    else if (e.kind === 'decide') tags.set(e.seat, e.play ? { text: 'topou', tone: 'check' } : { text: 'correu', tone: 'fold' })
+    else if (e.kind === 'accept') tags.set(e.seat, { text: e.alone ? 'foi sozinho' : 'aceitou', tone: 'check' })
+    // A dupla correu junto: "quer correr" do parceiro vira "correu" também.
+    else if (e.kind === 'run') for (const s of teamOf(view, e.seat)) tags.set(s, { text: 'correu', tone: 'fold' })
+    else if (e.kind === 'wantrun') tags.set(e.seat, { text: 'quer correr', tone: 'fold' })
+    else if (e.kind === 'decide' && e.play) tags.set(e.seat, { text: e.alone ? 'foi sozinho' : 'topou', tone: 'check' })
+    else if (e.kind === 'decide') for (const s of teamOf(view, e.seat)) tags.set(s, { text: 'correu', tone: 'fold' })
   }
   return tags
 }
@@ -872,9 +916,21 @@ function Placar({ view, teamLabel, phone }: { view: TrucoView; teamLabel: (t: Te
 function StatusLine({ table, view, teamLabel }: { table: CartasTableView; view: TrucoView; teamLabel: (t: Team | null | undefined) => string }) {
   const me = table.mySeat
   const mine = me !== null && table.toAct.includes(me)
+  const votes = view.runVotes ?? []
+  const iVoted = me !== null && votes.includes(me)
+  const partnerVote = votes.find((s) => s !== me)
   let text: React.ReactNode
   if (view.phase === 'done') text = 'Fim da mão — a próxima já vem.'
-  else if (view.phase === 'decide') {
+  else if ((view.phase === 'truco' || view.phase === 'decide') && votes.length > 0) {
+    // Quem decide tem a faixa em cima dos botões; aqui é só o estado.
+    text = iVoted ? (
+      'Você votou correr — esperando o parceiro'
+    ) : mine && partnerVote !== undefined ? (
+      <span className="font-semibold text-burn">Sua dupla decide</span>
+    ) : (
+      `${votes.map((s) => firstName(table, s)).join(' e ')} quer correr — falta o parceiro`
+    )
+  } else if (view.phase === 'decide') {
     text = mine ? (
       <span className="text-acid-text">Decida a mão de {view.variant === 'mineiro' ? 'dez' : 'onze'}</span>
     ) : (
@@ -899,6 +955,7 @@ function StatusLine({ table, view, teamLabel }: { table: CartasTableView; view: 
 }
 
 function ActionBar({
+  table,
   view,
   legal,
   busy,
@@ -907,6 +964,7 @@ function ActionBar({
   onCover,
   send
 }: {
+  table: CartasTableView
   view: TrucoView
   legal: TrucoView['legal']
   busy: boolean
@@ -920,45 +978,84 @@ function ActionBar({
   const btn = (extra: string) => cn('poker-botao', extra, phone && 'poker-botao--compacto')
   const key = (k: string) => (phone ? null : <kbd>{k}</kbd>)
 
+  // 2x2: correr é da dupla. Quem votou espera; o parceiro corre junto ou vai sozinho.
+  const me = table.mySeat
+  const votes = view.runVotes ?? []
+  const iVoted = !!legal?.voted
+  const partnerVote = votes.find((s) => s !== me)
+  const partnerWants = !iVoted && partnerVote !== undefined
+  const voteLine =
+    iVoted || partnerWants ? (
+      <p className={cn('truco-voto', partnerWants && 'truco-voto--parceiro')} role="status">
+        <Undo2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        {iVoted
+          ? 'Você votou correr. Falta o parceiro concordar — ou ele vai sozinho.'
+          : `${firstName(table, partnerVote)} quer correr. Corre junto, ou vai sozinho?`}
+      </p>
+    ) : null
+  const alone = partnerWants ? <span className="text-[11px] font-medium opacity-80">sozinho</span> : null
+
   // Decidindo a mão de onze/dez.
   if (legal?.decide) {
     const play = view.variant === 'mineiro' ? 4 : 3
     const run = view.variant === 'mineiro' ? 2 : 1
     return (
-      <div className="grid grid-cols-2 gap-2">
-        <button type="button" className={btn('poker-botao--fold')} disabled={off} onClick={() => send({ type: 'decide', play: false })}>
-          Correr <span className="text-[11px] font-medium opacity-80">(dá {run})</span>
-          {key('C')}
-        </button>
-        <button type="button" className={btn('poker-botao--raise')} disabled={off} onClick={() => send({ type: 'decide', play: true })}>
-          Jogar valendo {play}
-          {key('A')}
-        </button>
+      <div className="flex flex-col gap-1.5">
+        {voteLine}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className={btn('poker-botao--fold')}
+            disabled={off || iVoted}
+            aria-pressed={iVoted}
+            onClick={() => send({ type: 'decide', play: false })}
+          >
+            {iVoted ? 'Votou correr' : partnerWants ? 'Correr junto' : 'Correr'}{' '}
+            <span className="text-[11px] font-medium opacity-80">(dá {run})</span>
+            {!iVoted && key('C')}
+          </button>
+          <button type="button" className={btn('poker-botao--raise')} disabled={off} onClick={() => send({ type: 'decide', play: true })}>
+            Jogar valendo {play}
+            {alone}
+            {key('A')}
+          </button>
+        </div>
       </div>
     )
   }
 
-  // Respondendo um grito.
+  // Respondendo um grito: subir é o degrau DEPOIS do que foi pedido.
   if (legal?.accept || legal?.run) {
     const pending = view.pending
-    const up = view.nextName
+    const up = pending ? NEXT_CALL[pending.name] : view.nextName
     return (
-      <div className="grid grid-cols-3 gap-2">
-        <button type="button" className={btn('poker-botao--fold')} disabled={off || !legal.run} onClick={() => send({ type: 'run' })}>
-          <Undo2 className="h-4 w-4" aria-hidden />
-          Correr
-          {key('C')}
-        </button>
-        <button type="button" className={btn('poker-botao--check')} disabled={off || !legal.accept} onClick={() => send({ type: 'accept' })}>
-          <Hand className="h-4 w-4" aria-hidden />
-          Aceitar{pending ? ` ${pending.value}` : ''}
-          {key('A')}
-        </button>
-        <button type="button" className={btn('poker-botao--allin')} disabled={off || !legal.raise || !up} onClick={() => send({ type: 'raise' })}>
-          <Flame className="h-4 w-4" aria-hidden />
-          {up ? `${TRUCO_CALL_LABEL[up]}!` : 'Subir'}
-          {key('T')}
-        </button>
+      <div className="flex flex-col gap-1.5">
+        {voteLine}
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            className={btn('poker-botao--fold')}
+            disabled={off || !legal.run}
+            aria-pressed={iVoted}
+            onClick={() => send({ type: 'run' })}
+          >
+            <Undo2 className="h-4 w-4" aria-hidden />
+            {iVoted ? 'Votou correr' : partnerWants ? 'Correr junto' : 'Correr'}
+            {!iVoted && key('C')}
+          </button>
+          <button type="button" className={btn('poker-botao--check')} disabled={off || !legal.accept} onClick={() => send({ type: 'accept' })}>
+            <Hand className="h-4 w-4" aria-hidden />
+            Aceitar{pending ? ` ${pending.value}` : ''}
+            {alone}
+            {key('A')}
+          </button>
+          <button type="button" className={btn('poker-botao--allin')} disabled={off || !legal.raise || !up} onClick={() => send({ type: 'raise' })}>
+            <Flame className="h-4 w-4" aria-hidden />
+            {up ? `${TRUCO_CALL_LABEL[up]}!` : 'Subir'}
+            {alone}
+            {key('T')}
+          </button>
+        </div>
       </div>
     )
   }
@@ -1009,28 +1106,66 @@ function ActionBar({
 
 const ORDINAL = ['1ª', '2ª', '3ª']
 
+/** O degrau acima de cada pedido (doze é o teto). */
+const NEXT_CALL: Record<TrucoCall, TrucoCall | null> = { truco: 'seis', seis: 'nove', nove: 'doze', doze: null }
+
+/** Quantos tem a dupla de um lugar (1 no 1x1, 2 no 2x2). */
+function teamSize(view: TrucoView, seat: number | undefined): number {
+  if (seat === undefined) return 1
+  return view.teams.find((t) => t.includes(seat))?.length ?? 1
+}
+
 /** O verbo concordando com quem: "Nós levamos", "Eles levaram", "Zé e Bia levaram", "Você levou". */
 function conj(label: string, one: string, many: string, nos: string): string {
   if (label === 'Nós') return nos
   return label === 'Eles' || label.includes(' e ') ? many : one
 }
 
-function TrucoLog({ table, view, teamLabel }: { table: CartasTableView; view: TrucoView; teamLabel: (t: Team | null | undefined) => string }) {
+function TrucoLog({
+  table,
+  view,
+  teamLabel,
+  signals
+}: {
+  table: CartasTableView
+  view: TrucoView
+  teamLabel: (t: Team | null | undefined) => string
+  signals: readonly TrucoSignalEvent[]
+}) {
   // Em ordem, do mais velho pro mais novo, rolando sozinho pro fim — como o
-  // histórico da mão do pôquer.
+  // histórico da mão do pôquer. Os sinais entram no meio, pela hora (as duas
+  // horas são do servidor), uma linha por frase.
   const events = view.log.slice(-40)
+  const since = events[0]?.at ?? 0
+  const chains = React.useMemo(() => signalChains(signals.filter((s) => s.at >= since)), [signals, since])
+  const items: Array<{ at: number; node: React.ReactNode }> = events.map((e) => ({
+    at: e.at,
+    node: <TrucoLogLine key={`e${e.seq}`} e={e} table={table} view={view} teamLabel={teamLabel} />
+  }))
+  for (const chain of chains) {
+    items.push({
+      at: chain[0].at,
+      node: (
+        <LogLine key={`s${chain[0].id}`} tone="fraco">
+          <span className="inline-flex flex-wrap items-center gap-x-1.5">
+            {firstName(table, chain[0].seat)} fez sinal: <SignalChainInline chain={chain} variant={view.variant} />
+          </span>
+        </LogLine>
+      )
+    })
+  }
+  // sort é estável: na mesma hora, o lance vem antes do sinal.
+  items.sort((a, b) => a.at - b.at)
   const ref = React.useRef<HTMLDivElement>(null)
-  const last = events[events.length - 1]?.seq
+  const last = `${events[events.length - 1]?.seq}:${signals.length}`
   React.useEffect(() => {
     const el = ref.current?.parentElement
     el?.scrollTo({ top: el.scrollHeight })
   }, [last])
-  if (events.length === 0) return <LogLine tone="fraco">Nada ainda.</LogLine>
+  if (items.length === 0) return <LogLine tone="fraco">Nada ainda.</LogLine>
   return (
     <div ref={ref} className="py-1">
-      {events.map((e) => (
-        <TrucoLogLine key={e.seq} e={e} table={table} view={view} teamLabel={teamLabel} />
-      ))}
+      {items.map((x) => x.node)}
     </div>
   )
 }
@@ -1068,19 +1203,26 @@ function TrucoLogLine({
     case 'truco':
       return <LogLine tone="forte">{who} pediu {e.name ?? 'truco'}!</LogLine>
     case 'raise':
-      return <LogLine tone="forte">{who} subiu: {e.name ?? 'mais'}!</LogLine>
+      return (
+        <LogLine tone="forte">
+          {who} subiu{e.alone ? ' sozinho' : ''}: {e.name ?? 'mais'}!
+        </LogLine>
+      )
     case 'accept':
       return (
-        <LogLine>
-          {who} aceitou{e.value ? ` — vale ${e.value}` : ''}
+        <LogLine tone={e.alone ? 'forte' : undefined}>
+          {who} aceitou{e.alone ? ' sozinho' : ''}
+          {e.value ? ` — vale ${e.value}` : ''}
         </LogLine>
       )
     case 'run':
-      return <LogLine>{who} correu</LogLine>
+      return <LogLine>{who} correu{teamSize(view, e.seat) > 1 ? ' — a dupla correu junto' : ''}</LogLine>
+    case 'wantrun':
+      return <LogLine>{who} quer correr — falta o parceiro</LogLine>
     case 'decide':
       return (
-        <LogLine>
-          {who} {e.play ? 'topou a' : 'correu da'} mão de {view.variant === 'mineiro' ? 'dez' : 'onze'}
+        <LogLine tone={e.alone ? 'forte' : undefined}>
+          {who} {e.play ? (e.alone ? 'topou sozinho a' : 'topou a') : 'correu da'} mão de {view.variant === 'mineiro' ? 'dez' : 'onze'}
         </LogLine>
       )
     case 'round': {
