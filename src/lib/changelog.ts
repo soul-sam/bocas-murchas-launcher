@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.74.0',
+    headline: 'Truco de dupla e pote à vista',
+    items: [
+      'Truco 2x2: correr agora é da dupla. Se o parceiro apertar Correr, você escolhe correr junto ou ir sozinho (aceitar ou subir por conta própria). Vale na mão de onze também.',
+      'Sinais do truco: botão Sinais no rodapé (ou tecla S) com 17 gestos, das cartas (zap, copas, espadilha, pica-fumo...) aos recados (pode trucar, corre, deixa comigo, blefando). Dá pra emendar vários em seguida, e a mesa inteira vê.',
+      'No fim da mão as cartas dos outros não aparecem mais, pra ninguém entregar o blefe da próxima.',
+      'Respondendo um truco, o botão de subir agora diz Seis! (antes dizia Truco!).',
+      'Apostas: o pote da casa aparece sempre no painel, mesmo sem ninguém em partida, com quanto falta pra disputa, o que entrou na semana e os últimos potes pagos. A dica do ícone de Apostas mostra o pote.'
+    ]
+  },
+  {
     version: '1.73.0',
     headline: 'Música na mão, até dentro do jogo',
     items: [
