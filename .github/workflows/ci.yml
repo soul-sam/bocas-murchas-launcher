@@ -1,0 +1,36 @@
+name: CI
+
+# Roda em todo PR pra main (e em push na main): os mesmos testes de regra e o
+# typecheck que o release.yml exige antes de publicar. O nome do job (`test`)
+# e o que a branch protection da main deve exigir. Nao publica nada.
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # Node 24 porque `node --test` roda .ts direto (type stripping).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Testes de regra
+        run: npm run test:policy
+      - name: Typecheck e tokens de design
+        run: npm run typecheck
