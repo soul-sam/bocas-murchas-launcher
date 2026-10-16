@@ -7,10 +7,9 @@ import {
   RefreshCw,
   Swords,
   Timer,
-  Users,
-  Vault
+  Users
 } from 'lucide-react'
-import { TrophyIcon, WalletIcon } from '@/lib/bocas-icons'
+import { WalletIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Hint } from '@/components/ui/tooltip'
 import { resolveAssetUrl } from '@/lib/api'
@@ -32,6 +31,7 @@ import { BetPopover, PoolBars } from './BetPopover'
 import { EarnRulesPopover } from './EarnRulesPopover'
 import { formatElapsed } from './ActivityLine'
 import { ArenaHeader, ArenaTabs } from './ArenaChrome'
+import { HousePot } from './HousePot'
 
 /**
  * APOSTAS — as partidas ao vivo, agora num painel só delas.
@@ -79,8 +79,9 @@ export function WagersPanel() {
     )
   }, [liveGames])
 
-  // O cofre é um só; qualquer board o traz.
-  const house = liveGames.find((g) => g.house)?.house
+  // O cofre é um só; qualquer board o traz. Só vale pra servidor sem o
+  // `/wagers/house` — com ele, o HousePot usa o do contexto.
+  const boardHouse = liveGames.find((g) => g.house)?.house
 
   return (
     <aside className="flex w-72 shrink-0 flex-col border-l border-line bg-void xl:w-80">
@@ -122,7 +123,7 @@ export function WagersPanel() {
           )}
         </div>
 
-        {house && <HouseVault jackpot={house.jackpot} bonusFund={house.bonusFund} />}
+        <HousePot matches={matches} fallback={boardHouse} />
 
         <section>
           <h4 className="mb-1.5 flex items-center gap-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
@@ -167,46 +168,6 @@ export function WagersPanel() {
         )}
       </div>
     </aside>
-  )
-}
-
-// ---------------------------------------------------------------------------
-
-/**
- * O cofre da casa: o que se perde em aposta vira pote e fundo de bônus (ver
- * WagerHouse em api-gamification). Dois números que a galera só via no
- * rodapé do card, quando havia card.
- */
-function HouseVault({ jackpot, bonusFund }: { jackpot: number; bonusFund: number }) {
-  return (
-    <div className="grid grid-cols-2 gap-1.5">
-      <Hint
-        label="Pote da casa"
-        description={`Sai numa partida com ${JACKPOT_MIN_BETTORS} ou mais apostando em que todo mundo acertou, dividido entre eles. Cresce com o que é perdido em aposta.`}
-        side="bottom"
-      >
-        <div className="cursor-help rounded-brutal border border-acid-dark/60 bg-acid/[0.05] px-2.5 py-2">
-          <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <TrophyIcon className="h-3 w-3 text-acid-text" aria-hidden />
-            pote
-          </p>
-          <p className="font-mono text-sm text-acid-text">{formatCompact(jackpot)}</p>
-        </div>
-      </Hint>
-      <Hint
-        label="Fundo de bônus"
-        description="Paga o bônus de grupo: +15% por apostador além do primeiro, até +60%. Quando o fundo está baixo, o bônus sai menor."
-        side="bottom"
-      >
-        <div className="cursor-help rounded-brutal border border-line bg-void/60 px-2.5 py-2">
-          <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Vault className="h-3 w-3" aria-hidden />
-            fundo de bônus
-          </p>
-          <p className="font-mono text-sm text-foreground">{formatCompact(bonusFund)}</p>
-        </div>
-      </Hint>
-    </div>
   )
 }
 

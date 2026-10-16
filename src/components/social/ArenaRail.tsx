@@ -49,7 +49,7 @@ interface Item {
 }
 
 export function ArenaRail() {
-  const { profile } = useGamification()
+  const { profile, house } = useGamification()
   const live = useLiveMatchCount()
   const {
     isPhone,
@@ -96,13 +96,23 @@ export function ArenaRail() {
       id: 'wagers',
       active: wagersOpen && onSocial,
       run: panel(toggleWagers, openWagers),
-      hint: 'Partidas ao vivo pra apostar murchos, com a pool e o pote da casa.',
+      hint: house
+        ? `Pote da casa agora: ${house.jackpot.toLocaleString('pt-BR')} murchos. Partidas ao vivo pra apostar, com a pool de cada uma.`
+        : 'Partidas ao vivo pra apostar murchos, com a pool e o pote da casa.',
       badge: live > 0 && (
         <Pill tone="urgent" corner="top">
           {live}
         </Pill>
       ),
-      meta: live > 0 && <LiveCount count={live} />
+      // Sem partida, o menu do celular mostra o pote no lugar da contagem.
+      meta:
+        live > 0 ? (
+          <LiveCount count={live} />
+        ) : (
+          house && (
+            <span className="font-mono text-[11.5px] text-acid-text">pote {formatCompact(house.jackpot)}</span>
+          )
+        )
     },
     {
       id: 'achievements',

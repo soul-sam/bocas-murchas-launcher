@@ -18,6 +18,7 @@ import { isShopThemeId, type ShopThemeId } from '../../electron/preload/types'
  *   POST /gamification/equip { type, cosmeticId|null, slot? } -> { user }   slot 2 só p/ emoji
  *   POST /gamification/checkin                  -> { profile, awarded|null }
  *   GET  /gamification/wagers/live              -> { games }
+ *   GET  /gamification/wagers/house             -> { house }  cofre, potes pagos, semana
  *   GET  /gamification/wagers/ranking?period&weekStart -> { period, entries }  saldo e aproveitamento
  *   POST /gamification/wagers { sessionId, prediction, amount } -> { wager, coins }
  *   GET  /gamification/recap/latest             -> { recap|null }
@@ -364,6 +365,33 @@ export interface WagerGroupBonus {
 export interface WagerHouse {
   jackpot: number
   bonusFund: number
+  /** Quanto já sumiu de vez (o ralo). Só vem no `/wagers/house` e no socket. */
+  sunk?: number
+}
+
+/** Um pote já pago, com quem levou e quanto cada um. */
+export interface JackpotWinInfo {
+  matchId: string
+  amount: number
+  at: string
+  game: string | null
+  queue: string | null
+  winners: { userId: string; displayName: string; share: number }[]
+}
+
+/**
+ * O cofre por inteiro (GET /wagers/house): o mesmo pote e fundo, mais o ralo,
+ * os potes já pagos e o que entrou na semana. Existe pra o painel mostrar o
+ * pote sem partida no ar — o `/wagers/live` só traz o cofre dentro de board.
+ */
+export interface WagerHouseInfo extends WagerHouse {
+  sunk: number
+  updatedAt: string
+  paid: { count: number; total: number }
+  wins: JackpotWinInfo[]
+  /** Semana corrente, só das apostas em partida: perdido e o que foi pro pote. */
+  week: { start: string; lost: number; toJackpot: number }
+  rules: { minBettors: number; sink: number; bonusFund: number; jackpot: number }
 }
 
 /** Quantos apostadores distintos a partida precisa pra disputar o pote. */
@@ -948,6 +976,12 @@ export const gamification = {
   async liveWagers(token: string): Promise<LiveWagerGame[]> {
     const res = await request<{ games: LiveWagerGame[] }>('/gamification/wagers/live', { token })
     return Array.isArray(res?.games) ? res.games : []
+  },
+
+  /** Null em servidor antigo (sem a rota): o painel cai no cofre dos boards. */
+  async wagerHouse(token: string): Promise<WagerHouseInfo | null> {
+    const res = await request<{ house?: WagerHouseInfo }>('/gamification/wagers/house', { token })
+    return res?.house && typeof res.house.jackpot === 'number' ? res.house : null
   },
 
   /** `weekStart` (ISO) escolhe a semana; sem ele, a corrente. Ignorado em `all`. */

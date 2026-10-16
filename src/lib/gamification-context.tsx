@@ -16,6 +16,8 @@ import {
   type LiveWagerGame,
   type ShopItem,
   type ShopResponse,
+  type WagerHouse,
+  type WagerHouseInfo,
   type WagerPrediction
 } from './api-gamification'
 import { useAuth } from './auth-context'
@@ -97,6 +99,13 @@ interface GamificationContextValue {
   liveGames: LiveWagerGame[]
   refreshLiveGames: () => Promise<void>
   placeWager: (sessionId: string, prediction: WagerPrediction, amount: number) => Promise<void>
+  /**
+   * Cofre da casa (GET /wagers/house): pote, fundo, potes pagos. Carrega no
+   * login e anda pelo socket `gamification:house`, com ou sem partida no ar.
+   * Null até chegar (ou em servidor sem a rota).
+   */
+  house: WagerHouseInfo | null
+  refreshHouse: () => Promise<void>
 
   /** Perfil de gamificação de outra pessoa, com cache curto. */
   profileOf: (userId: string) => Promise<GamificationProfile>
@@ -120,6 +129,8 @@ const SOUND_THROTTLE_MS = 3_000
 const REFRESH_DEBOUNCE_MS = 1_200
 /** Intervalo do poll de partidas ao vivo. */
 const LIVE_POLL_MS = 30_000
+/** Poll do cofre com o painel de apostas aberto — o socket é o caminho principal. */
+const HOUSE_POLL_MS = 60_000
 /** Perfil alheio vale por este tempo antes de buscar de novo. */
 const PROFILE_CACHE_MS = 60_000
 
@@ -143,6 +154,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const [ready, setReady] = React.useState(false)
   const [shop, setShop] = React.useState<ShopResponse | null>(null)
   const [liveGames, setLiveGames] = React.useState<LiveWagerGame[]>([])
+  const [house, setHouse] = React.useState<WagerHouseInfo | null>(null)
+  const houseRef = React.useRef(house)
+  houseRef.current = house
   const [toasts, setToasts] = React.useState<GamificationToast[]>([])
 
   // Settings numa ref: os handlers do socket são registrados uma vez e não
@@ -265,6 +279,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       setProfile(null)
       setShop(null)
       setLiveGames([])
+      setHouse(null)
       setReady(false)
       return
     }
@@ -487,6 +502,80 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     return () => clearInterval(timer)
   }, [token, shouldPoll, overlayOn, refreshLiveGames])
 
+  // --- cofre da casa ------------------------------------------------------------
+  const refreshHouse = React.useCallback(async () => {
+    if (!token) return
+    try {
+      const next = await api.wagerHouse(token)
+      if (next) setHouse(next)
+    } catch {
+      // Servidor sem a rota ou sem rede: o painel usa o cofre que vem nos boards.
+    }
+  }, [token])
+
+  /**
+   * Um retrato do cofre chegou (socket ou board): troca os números. Se o pote
+   * DIMINUIU, saiu um pote — a lista de pagos ficou velha e vale rebuscar.
+   */
+  const applyHouseSnapshot = React.useCallback(
+    (snap: WagerHouse) => {
+      if (typeof snap?.jackpot !== 'number' || typeof snap.bonusFund !== 'number') return
+      const prev = houseRef.current
+      if (!prev) return
+      if (
+        prev.jackpot === snap.jackpot &&
+        prev.bonusFund === snap.bonusFund &&
+        (snap.sunk == null || prev.sunk === snap.sunk)
+      ) {
+        return
+      }
+      if (snap.jackpot < prev.jackpot) {
+        void refreshHouse()
+        return
+      }
+      setHouse((cur) =>
+        cur
+          ? {
+              ...cur,
+              jackpot: snap.jackpot,
+              bonusFund: snap.bonusFund,
+              sunk: snap.sunk ?? cur.sunk,
+              updatedAt: new Date().toISOString()
+            }
+          : cur
+      )
+    },
+    [refreshHouse]
+  )
+
+  // Carrega no login: a dica da barra e o painel mostram o pote sem precisar
+  // abrir nada. Com o painel aberto, rebusca ao abrir e de minuto em minuto
+  // (o "entrou na semana" só muda por aqui; o socket só traz os saldos).
+  React.useEffect(() => {
+    if (!token) return
+    void refreshHouse()
+    if (!wagersOpen) return
+    const timer = setInterval(() => {
+      if (!document.hidden) void refreshHouse()
+    }, HOUSE_POLL_MS)
+    return () => clearInterval(timer)
+  }, [token, wagersOpen, refreshHouse])
+
+  // O board também traz o cofre: servidor que não emite o socket ainda anda.
+  React.useEffect(() => {
+    const fromBoard = liveGames.find((g) => g.house)?.house
+    if (fromBoard) applyHouseSnapshot(fromBoard)
+  }, [liveGames, applyHouseSnapshot])
+
+  React.useEffect(() => {
+    if (!socket) return
+    const handleHouse = (data: WagerHouse): void => applyHouseSnapshot(data)
+    socket.on('gamification:house', handleHouse)
+    return () => {
+      socket.off('gamification:house', handleHouse)
+    }
+  }, [socket, applyHouseSnapshot])
+
   const placeWager = React.useCallback(
     async (sessionId: string, prediction: WagerPrediction, amount: number) => {
       if (!token) throw new ApiError(401, 'Sem sessão')
@@ -700,6 +789,8 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       liveGames,
       refreshLiveGames,
       placeWager,
+      house,
+      refreshHouse,
       profileOf,
       toasts,
       pushToast,
@@ -720,6 +811,8 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       liveGames,
       refreshLiveGames,
       placeWager,
+      house,
+      refreshHouse,
       profileOf,
       toasts,
       pushToast,
