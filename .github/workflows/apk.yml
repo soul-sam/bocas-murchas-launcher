@@ -201,11 +201,12 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # O NOME DO SEGREDO MENTE: `SSH_PASSPHRASE` guarda a SENHA DO
-          # USUARIO, nao a frase-secreta da chave — e e por `password` que a
-          # autenticacao passa. Mesmo par do deploy-web.yml.
-          password: ${{ secrets.SSH_PASSPHRASE }}
-          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          # SO A CHAVE, igual ao deploy-web.yml (commit 00c986b). Ela nao tem
+          # frase-secreta: passar `passphrase` faz o ParsePrivateKey falhar
+          # ("key is not password protected") e a chave e descartada em
+          # silencio; e a VPS esta com `PasswordAuthentication no` desde
+          # 11/10/2026, entao `password` tambem nao entra. Com os dois, o envio
+          # morria com "attempted methods [none]".
           source: "bocas-murchas.apk"
           # ./app e um volume separado do ./html de proposito: publicar o site
           # nao apaga o APK, e publicar o APK nao mexe no site.
