@@ -15,7 +15,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Portao de testes: deploy so roda com os testes de regra verdes. Node 24
+  # porque `node --test` roda .ts direto (type stripping).
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Testes de regra
+        run: npm run test:policy
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
