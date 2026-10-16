@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.production)",
+      "Read(./.env.development)",
+      "Read(./**/*.keystore)",
+      "Read(./**/*.jks)",
+      "Read(../chave-apk/**)",
+      "Bash(npm run release)",
+      "Bash(npm run release:*)"
+    ]
+  }
+}

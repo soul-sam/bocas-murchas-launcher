@@ -49,3 +49,7 @@ ds-bundle/
 
 # previa do gerador da janela do instalador (scripts/gen-installer-splash.mjs)
 build/*.preview.png
+
+# Outras variantes de .env (o .env.example continua versionado)
+.env.*
+!.env.example
