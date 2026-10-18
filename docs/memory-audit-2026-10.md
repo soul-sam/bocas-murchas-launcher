@@ -382,6 +382,17 @@ Medição (build local, app aberto sem tocar, janela principal, privado): 45 s a
 | 2.10 | Dedup de GET em voo (mapa de promises) + `signal` nos efeitos; um bus de resync debounced para `connect`/`visibilitychange` | A10, A12 | — | M | baixo | uma reconexão = 1 rajada de requests sem duplicatas (Network) |
 | 2.11 | Imagens do chat: `decoding="async"`, `width/height`; depois miniatura no servidor | C17, O3 | API para miniatura | M | baixo | memória de imagens no heap/GPU com canal cheio de fotos |
 
+**Estado da Fase 3 (18/10/2026):**
+
+| # | Estado |
+|---|---|
+| 3.1 fala fora do estado | feito: anel só com a janela visível (decisão do dono); oculto, `isSpeaking` = false e nada re-renderiza; AFK usa `subscribeSpeaking`. Música não abaixa mais (recurso removido, decisão do dono). Falta conferir numa call com outra pessoa |
+| 3.2 socket sem presença | feito: `useSocketClient()` em 30 arquivos (`watch-context`/`MusicHost` ficaram no `useSocket` por causa de mudança de outra sessão) |
+| 3.3 presença por diff | não feito — muda protocolo; precisa de compatibilidade com cliente antigo |
+| 3.4–3.6 | não feitos |
+
+CPU do main (7–16 % nas medições da fase 2): perfil de 30 s mostrou JS ocupado 0,13 s e o processo em 0,6 % em regime — era inicialização (amostras 45–105 s após abrir), não custo contínuo.
+
 ### Fase 3 — Mudanças estruturais
 
 | # | Ação | Ataca | Depende de | Esforço | Risco | Validação |
