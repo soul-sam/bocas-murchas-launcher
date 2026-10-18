@@ -647,6 +647,7 @@ function MessageBody({
           src={sticker}
           alt=""
           loading="lazy"
+          decoding="async"
           className="mt-1 block h-32 w-32 object-contain"
           draggable={false}
         />
@@ -663,6 +664,9 @@ function MessageBody({
             src={attachment}
             alt=""
             loading="lazy"
+            // Foto grande decodifica fora da thread principal: rolar o chat
+            // não engasga enquanto ela abre.
+            decoding="async"
             className="max-h-80 max-w-md object-contain"
           />
         </button>
