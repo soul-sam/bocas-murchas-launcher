@@ -388,7 +388,11 @@ Medição (build local, app aberto sem tocar, janela principal, privado): 45 s a
 |---|---|
 | 3.1 fala fora do estado | feito: anel só com a janela visível (decisão do dono); oculto, `isSpeaking` = false e nada re-renderiza; AFK usa `subscribeSpeaking`. Música não abaixa mais (recurso removido, decisão do dono). Falta conferir numa call com outra pessoa |
 | 3.2 socket sem presença | feito: `useSocketClient()` em 30 arquivos (`watch-context`/`MusicHost` ficaram no `useSocket` por causa de mudança de outra sessão) |
-| 3.3 presença por diff | não feito — muda protocolo; precisa de compatibilidade com cliente antigo |
+| 3.3 presença por diff | feito: `auth.caps=['presence-diff']` → `presence:join/leave`; antigos seguem com a lista inteira; compatível nos dois sentidos (API `f5423aa`, launcher `a1fde76`). Não testado contra API rodando (só testes unitários) |
+| câmera oculta | feito: câmera dos outros não é assinada minimizado/bandeja (decisão do dono, `de486ad`) |
+| 2.9 saguões | feito: `createChangeGate` nos três saguões (API `fe3c7d7`) |
+| 2.10 GET em voo | feito: `in-flight.ts` (`6f73878`) |
+| 2.11 imagens | só `decoding="async"`; miniatura no servidor precisaria de dependência nova (`sharp`) — pede aprovação |
 | 3.4–3.6 | não feitos |
 
 CPU do main (7–16 % nas medições da fase 2): perfil de 30 s mostrou JS ocupado 0,13 s e o processo em 0,6 % em regime — era inicialização (amostras 45–105 s após abrir), não custo contínuo.
