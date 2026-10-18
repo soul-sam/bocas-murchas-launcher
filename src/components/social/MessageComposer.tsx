@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { themeIsLight } from '../../../electron/preload/types'
 import { useSettings } from '@/lib/settings-context'
-import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react'
+import EmojiPicker, { Theme, EmojiStyle } from '@/components/ui/lazy-emoji-picker'
 import {
   Send,
   Smile,

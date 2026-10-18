@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { themeIsLight } from '../../../electron/preload/types'
-import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react'
+import EmojiPicker, { Theme, EmojiStyle } from '@/components/ui/lazy-emoji-picker'
 import {
   Reply,
   SmilePlus,
@@ -91,7 +91,16 @@ interface MessageItemProps {
   onJumpTo?: (messageId: string) => void
 }
 
-export function MessageItem({
+/**
+ * Memo: o ChatView renderiza a cada mudança do contexto do chat (mensagem
+ * nova, digitando, não-lidas). Sem isto, cada uma refazia TODAS as mensagens
+ * carregadas; com isto, só a que mudou. Os callbacks que chegam aqui são
+ * estáveis (useCallback no chat-context e no ChatView) — quem acrescentar
+ * prop nova, mantenha estável, senão o memo vira enfeite.
+ */
+export const MessageItem = React.memo(MessageItemImpl)
+
+function MessageItemImpl({
   message,
   grouped,
   highlighted,

@@ -1,5 +1,6 @@
 import * as React from 'react'
-import EmojiPicker, { EmojiStyle, Theme, type EmojiClickData } from 'emoji-picker-react'
+import EmojiPicker, { EmojiStyle, Theme } from '@/components/ui/lazy-emoji-picker'
+import type { EmojiClickData } from 'emoji-picker-react'
 import { Eye, Film, Loader2, Search, Smile, Sparkles, Sticker as StickerIcon, Volume2, VolumeX } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

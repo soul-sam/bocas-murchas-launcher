@@ -355,6 +355,17 @@ Esforço: P (< 1 h), M (meio dia), G (≥ 1 dia). Risco = risco de regressão.
 
 Os commits do launcher foram reaplicados sobre `origin/main` (1.74.0) na branch `perf/auditoria-out-2026` (worktree `~/.bm-worktrees/launcher-perf`); 179/179 testes e typecheck ok lá. A API **não foi para a `main`** de propósito: o push na `main` faz deploy automático (o `prisma db push` do boot cria os dois índices). Merge e deploy ficam com o dono. Os commits do launcher estão na `main` local, sem push e sem tag.
 
+**Estado da Fase 2 (18/10/2026):**
+
+| # | Estado |
+|---|---|
+| 2.2 sobreposição sob demanda | **não fazer** — decisão do dono: a logo fica sempre |
+| 2.5 chat | feito, mais agressivo que o plano: 20 mensagens por canal (decisão do dono), piso pra encher a tela, até 500 só lendo histórico; regra pura em `chat-cache.ts` com teste (mutação conferida) |
+| 2.6 MessageItem | `React.memo` + `onStopEdit` estável feito; barra de ações só no hover **adiada** (popover em portal fecharia ao sair o mouse; teclado perderia acesso) |
+| 2.7 code splitting | feito: páginas de jogo/impressão/LoL/salão, 5 modais (montam só abertos) e seletor de emoji lazy; `index-*.js` 5726 → 4089 KB |
+
+Medição (build local, app aberto sem tocar, janela principal, privado): 45 s após abrir 430/344/405 MB (fase 1) vs 221/150/393 MB (fase 2); estável a 2,5 min **393 → 266 MB**. Medido antes do corte para 20 mensagens. CPU parada sem diferença; main/sobreposição oscilaram 0,7–16 % nos DOIS builds (não é da fase 2; em aberto).
+
 ### Fase 2 — Melhorias intermediárias
 
 | # | Ação | Ataca | Depende de | Esforço | Risco | Validação |

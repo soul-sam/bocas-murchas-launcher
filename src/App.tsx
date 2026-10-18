@@ -39,12 +39,6 @@ import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { HomePage } from '@/pages/HomePage'
 import { SocialPage } from '@/pages/SocialPage'
-import { PokerPage } from '@/pages/PokerPage'
-import { CartasPage } from '@/pages/CartasPage'
-import { BoardPage } from '@/pages/BoardPage'
-import { GameHallPage } from '@/pages/GameHallPage'
-import { LolPage } from '@/pages/LolPage'
-import { PrintPage } from '@/pages/PrintPage'
 import { TitleBar } from '@/components/TitleBar'
 import { DeepLink } from '@/components/DeepLink'
 import { DesktopSiteNotice } from '@/components/DesktopSiteNotice'
@@ -67,9 +61,6 @@ import { EventComposer } from '@/components/social/EventComposer'
 import { PartyComposer } from '@/components/social/PartyComposer'
 import { SmokeComposer } from '@/components/social/SmokeComposer'
 import { ClipComposer } from '@/components/social/ClipComposer'
-import { WrappedModal } from '@/components/social/WrappedModal'
-import { ShopModal } from '@/components/social/ShopModal'
-import { AchievementsModal } from '@/components/social/AchievementsModal'
 import { DropHost } from '@/components/social/DropHost'
 import { PartyCallPrompt } from '@/components/social/PartyCallPrompt'
 import { BoardInvitePrompt } from '@/components/board/BoardInvitePrompt'
@@ -80,14 +71,53 @@ import { OverlayFeed } from '@/lib/overlay-feed'
 import { MusicHost } from '@/components/social/MusicHost'
 import { MusicPanel } from '@/components/social/MusicPanel'
 import { ProfileModal } from '@/components/social/ProfileModal'
-import { AdminModal } from '@/components/AdminModal'
-import { CostsModal } from '@/components/CostsModal'
 import { CostShareBanner } from '@/components/social/CostShareBanner'
 import { WhatsNewModal } from '@/components/WhatsNewModal'
 import { ApprovalModal } from '@/components/print/ApprovalModal'
 import { LolFullscreenNotice } from '@/components/LolFullscreenNotice'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+
+/**
+ * CARREGADO SOB DEMANDA.
+ *
+ * Tudo isto entrava no pacote da inicialização (um único index-*.js de
+ * ~5,7 MB) e ficava compilado na memória do renderer o dia inteiro, mesmo pra
+ * quem nunca abria o pôquer ou a loja. Agora cada um vira um chunk que chega
+ * no primeiro uso (docs/memory-audit-2026-10.md, item 2.7). A tela social e
+ * o chat continuam no pacote principal: são a primeira coisa que aparece.
+ */
+const named = <K extends string, M extends Record<K, React.ComponentType<any>>>(
+  load: () => Promise<M>,
+  key: K
+) => React.lazy(() => load().then((m) => ({ default: m[key] })))
+
+const PokerPage = named(() => import('@/pages/PokerPage'), 'PokerPage')
+const CartasPage = named(() => import('@/pages/CartasPage'), 'CartasPage')
+const BoardPage = named(() => import('@/pages/BoardPage'), 'BoardPage')
+const GameHallPage = named(() => import('@/pages/GameHallPage'), 'GameHallPage')
+const LolPage = named(() => import('@/pages/LolPage'), 'LolPage')
+const PrintPage = named(() => import('@/pages/PrintPage'), 'PrintPage')
+const WrappedModal = named(() => import('@/components/social/WrappedModal'), 'WrappedModal')
+const ShopModal = named(() => import('@/components/social/ShopModal'), 'ShopModal')
+const AchievementsModal = named(() => import('@/components/social/AchievementsModal'), 'AchievementsModal')
+const AdminModal = named(() => import('@/components/AdminModal'), 'AdminModal')
+const CostsModal = named(() => import('@/components/CostsModal'), 'CostsModal')
+
+/**
+ * Modal lazy só monta (e só baixa o chunk) quando abre. Os cinco abaixo já
+ * devolviam `null` fechados — então não há animação de saída a perder —, mas
+ * montados rodavam os hooks deles (membros, gamificação) a cada mudança.
+ */
+function WhenOpen({ open, children }: { open: boolean; children: React.ReactNode }) {
+  if (!open) return null
+  return <React.Suspense fallback={null}>{children}</React.Suspense>
+}
+
+/** Rota lazy: enquanto o chunk chega, a área fica vazia (é rápido, vem do disco). */
+function RouteFallback() {
+  return <div className="h-full w-full" aria-busy="true" />
+}
 
 function LoadingSplash() {
   // Sessão salva, mas sem falar com a API: o splash conta que está tentando,
@@ -175,7 +205,9 @@ function AuthedShell() {
     if (location.pathname !== home) return <Navigate to={home} replace />
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <Outlet />
+        <React.Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </React.Suspense>
         <PopoutOverlays />
       </div>
     )
@@ -197,7 +229,9 @@ function AuthedShell() {
     >
       <AppRail />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Outlet />
+        <React.Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </React.Suspense>
       </div>
       <NudgeOverlay />
       <GlobalOverlays />
@@ -234,7 +268,15 @@ function PopoutOverlays() {
  * em lib/interaction-guard.ts e lib/overlay-context.tsx.
  */
 function GlobalOverlays() {
-  const { profileEditorOpen, closeProfileEditor } = useOverlays()
+  const {
+    profileEditorOpen,
+    closeProfileEditor,
+    shopOpen,
+    achievementsOpen,
+    adminOpen,
+    wrappedOpen,
+    costsOpen
+  } = useOverlays()
   const { connected: inVoice } = useVoice()
 
   // Em call, a tela do celular não apaga: tela apagada é aba em segundo plano,
@@ -269,9 +311,15 @@ function GlobalOverlays() {
       <EventComposer />
       <PartyComposer />
       <SmokeComposer />
-      <ShopModal />
-      <AchievementsModal />
-      <AdminModal />
+      <WhenOpen open={shopOpen}>
+        <ShopModal />
+      </WhenOpen>
+      <WhenOpen open={achievementsOpen}>
+        <AchievementsModal />
+      </WhenOpen>
+      <WhenOpen open={adminOpen}>
+        <AdminModal />
+      </WhenOpen>
       {/* Novidades da versão: camada própria (sem Radix) porque pode abrir
           sozinha no primeiro quadro, antes de qualquer clique. */}
       <WhatsNewModal />
@@ -281,7 +329,9 @@ function GlobalOverlays() {
       {/* Confirmar o clipe: também abre sozinha, disparada por um atalho
           global que funciona com a janela em segundo plano. */}
       <ClipComposer />
-      <WrappedModal />
+      <WhenOpen open={wrappedOpen}>
+        <WrappedModal />
+      </WhenOpen>
       {/* Banners: drops de admin e "tem gente do grupo no seu lobby". */}
       <DropHost />
       <PartyCallPrompt />
@@ -295,7 +345,9 @@ function GlobalOverlays() {
       {/* Quanto custa manter isto de pé, e quanto cabe a cada um. A faixa
           some sozinha pra quem já marcou "paguei" no mês. */}
       <CostShareBanner />
-      <CostsModal />
+      <WhenOpen open={costsOpen}>
+        <CostsModal />
+      </WhenOpen>
       {/* A sobreposição NÃO é desenhada aqui: ela é outra janela, por cima do
           jogo. Isto é só a ponte que alimenta aquela janela (apostas ao vivo,
           catálogo de sons, estado da call) e executa os cliques que voltam de

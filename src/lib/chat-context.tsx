@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { appendCapped, overCap } from './chat-cache'
 import {
   channels as channelsApi,
   messages as messagesApi,
@@ -37,9 +38,27 @@ import { marcarFala } from './presenca-de-fala'
  * tempo.
  */
 
-const PAGE_SIZE = 50
-/** Quantas mensagens um canal fechado guarda em memoria. */
-const CACHE_KEEP = 2 * PAGE_SIZE
+/**
+ * 20 por página, e só 20 guardadas por canal (decisão do dono, out/2026): o
+ * chat abre com as últimas 20 e o resto vem rolando pra cima. Se 20 não
+ * enchem a tela, o ChatView pede mais sozinho até dar pra rolar.
+ */
+const PAGE_SIZE = 20
+/** Quantas mensagens cada canal guarda em memoria fora da leitura de histórico. */
+const CACHE_KEEP = PAGE_SIZE
+
+/**
+ * Teto do canal ABERTO quando a pessoa rolou pra cima lendo histórico.
+ *
+ * Antes o canal aberto nunca era aparado: um canal movimentado deixado aberto
+ * o dia inteiro acumulava toda mensagem que chegava — o único crescimento sem
+ * limite achado na auditoria de out/2026. Agora o canal aberto fica em
+ * `CACHE_KEEP` como os outros; só depois de um "role pra cima" ele pode
+ * passar disso, senão a mensagem nova cortaria justo o trecho antigo que está
+ * sendo lido. Volta a `CACHE_KEEP` ao voltar pro fim da conversa, ocultar a
+ * janela ou trocar de canal.
+ */
+const READING_KEEP = 25 * PAGE_SIZE
 
 /** Prefixo que distingue conversa de canal de verdade. */
 const DM_PREFIX = 'dm:'
@@ -164,7 +183,10 @@ interface ChatContextValue {
   messages: ChatMessage[]
   loadingMessages: boolean
   hasMore: boolean
-  loadOlder: () => Promise<void>
+  /** `fill`: página pedida só pra encher a tela (não conta como leitura de histórico). */
+  loadOlder: (options?: { fill?: boolean }) => Promise<void>
+  /** Voltou pro fim depois de ler histórico: o canal aberto volta a `CACHE_KEEP`. */
+  compactActive: () => void
 
   unread: Record<string, number>
   /** Quantas das nao-lidas citam voce. Bolinha vermelha vs. numero comum. */
@@ -257,6 +279,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   /** Espelho de byChannel pra checar cache sem virar dependencia de efeito. */
   const cacheRef = React.useRef<Record<string, ChatMessage[]>>({})
+  /** Canais em que a pessoa carregou histórico (`loadOlder`) desde o último corte. */
+  const pagedBackRef = React.useRef(new Set<string>())
+  /**
+   * Piso por canal: quantas mensagens foram precisas pra encher a tela (as
+   * páginas que o ChatView pede sozinho). Sem isto, a mensagem nova aparava o
+   * canal de volta a 20, a tela ficava sem rolagem, o ChatView pedia outra
+   * página — e assim a cada mensagem.
+   */
+  const fillKeepRef = React.useRef(new Map<string, number>())
   cacheRef.current = byChannel
 
   /**
@@ -548,12 +579,28 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const message = data?.message
       if (!bucket || !message?.id) return
 
+      const keep =
+        bucket !== activeRef.current
+          ? CACHE_KEEP
+          : pagedBackRef.current.has(bucket)
+            ? READING_KEEP
+            : Math.max(CACHE_KEEP, fillKeepRef.current.get(bucket) ?? 0)
       setByChannel((prev) => {
         const list = prev[bucket] ?? []
         // O servidor devolve pro autor tambem; nao duplicar.
-        if (list.some((m) => m.id === message.id)) return prev
-        return { ...prev, [bucket]: [...list, message] }
+        const next = appendCapped(list, message, keep)
+        return next === list ? prev : { ...prev, [bucket]: next as ChatMessage[] }
       })
+      // Cortou o começo: o que sumiu volta pela paginação. Decide pelo cache
+      // do último render (o updater acima pode rodar depois desta linha).
+      if ((cacheRef.current[bucket]?.length ?? 0) + 1 > keep) {
+        setExhausted((prev) => {
+          if (!prev[bucket]) return prev
+          const next = { ...prev }
+          delete next[bucket]
+          return next
+        })
+      }
 
       /**
        * Mensagem de uma conversa que nao esta na minha lista: eu fechei esse
@@ -968,6 +1015,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // pra cima" busca de novo do servidor, como na primeira abertura.
   React.useEffect(() => {
     if (!activeChannelId) return
+    // Trocou de canal: quem estava lendo histórico em outro canal parou.
+    for (const id of pagedBackRef.current) if (id !== activeChannelId) pagedBackRef.current.delete(id)
+    for (const id of fillKeepRef.current.keys()) if (id !== activeChannelId) fillKeepRef.current.delete(id)
     const trimmed: string[] = []
     setByChannel((prev) => {
       let next: Record<string, ChatMessage[]> | null = null
@@ -987,6 +1037,35 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       })
     }
   }, [activeChannelId])
+
+  // --- janela oculta: o canal aberto também volta ao tamanho de cache ------
+  // Ninguém está lendo histórico com o launcher na bandeja. Rolar pra cima
+  // por uma hora e minimizar deixava todas as páginas carregadas (e, ao
+  // voltar, os nós de DOM delas) até a próxima troca de canal.
+  React.useEffect(() => {
+    const onHidden = (): void => {
+      if (!document.hidden) return
+      // Quem passa do teto, decidido pelo cache do último render (o updater
+      // do setState pode rodar só depois).
+      const trimmed = overCap(cacheRef.current, CACHE_KEEP)
+      pagedBackRef.current.clear()
+      // Ao voltar, o ChatView enche a tela de novo se precisar.
+      fillKeepRef.current.clear()
+      if (trimmed.length === 0) return
+      setByChannel((prev) => {
+        const next = { ...prev }
+        for (const id of trimmed) if (next[id]) next[id] = next[id].slice(-CACHE_KEEP)
+        return next
+      })
+      setExhausted((prev) => {
+        const next = { ...prev }
+        for (const id of trimmed) delete next[id]
+        return next
+      })
+    }
+    document.addEventListener('visibilitychange', onHidden)
+    return () => document.removeEventListener('visibilitychange', onHidden)
+  }, [])
 
   // --- carregar mensagens do canal aberto ---------------------------------
   React.useEffect(() => {
@@ -1050,7 +1129,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [token, activeChannelId])
 
-  const loadOlder = React.useCallback(async () => {
+  const compactActive = React.useCallback(() => {
+    const id = activeRef.current
+    if (!id || !pagedBackRef.current.has(id)) return
+    pagedBackRef.current.delete(id)
+    const keep = Math.max(CACHE_KEEP, fillKeepRef.current.get(id) ?? 0)
+    if ((cacheRef.current[id]?.length ?? 0) <= keep) return
+    setByChannel((prev) => (prev[id] ? { ...prev, [id]: prev[id].slice(-keep) } : prev))
+    setExhausted((prev) => {
+      if (!prev[id]) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }, [])
+
+  const loadOlder = React.useCallback(async (options?: { fill?: boolean }) => {
     if (!token || !activeChannelId) return
     const current = byChannel[activeChannelId] ?? []
     if (current.length === 0 || exhausted[activeChannelId]) return
@@ -1071,6 +1165,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
       if (older.length === 0) return
 
+      if (options?.fill) {
+        const before = cacheRef.current[activeChannelId]?.length ?? 0
+        fillKeepRef.current.set(activeChannelId, Math.min(READING_KEEP, before + older.length))
+      } else {
+        pagedBackRef.current.add(activeChannelId)
+      }
       setByChannel((prev) => {
         const existing = prev[activeChannelId] ?? []
         const known = new Set(existing.map((m) => m.id))
@@ -1373,6 +1473,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       loadingMessages,
       hasMore: activeChannelId ? !exhausted[activeChannelId] : false,
       loadOlder,
+      compactActive,
       unread,
       mentions,
       unreadMarker: activeChannelId ? (markers[activeChannelId] ?? null) : null,
@@ -1413,6 +1514,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       loadingMessages,
       exhausted,
       loadOlder,
+      compactActive,
       unread,
       mentions,
       markers,

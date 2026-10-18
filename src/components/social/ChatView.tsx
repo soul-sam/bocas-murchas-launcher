@@ -68,6 +68,7 @@ export function ChatView() {
     loadingMessages,
     hasMore,
     loadOlder,
+    compactActive,
     typing,
     unreadMarker,
     isMuted,
@@ -104,6 +105,8 @@ export function ChatView() {
 
   const [replyTo, setReplyTo] = React.useState<ChatMessage | null>(null)
   const [editingId, setEditingId] = React.useState<string | null>(null)
+  // Estável: vai pra cada MessageItem, que é memoizado.
+  const stopEdit = React.useCallback(() => setEditingId(null), [])
   const [highlightedId, setHighlightedId] = React.useState<string | null>(null)
   const [atBottom, setAtBottom] = React.useState(true)
   /**
@@ -148,6 +151,10 @@ export function ChatView() {
 
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
     const stuck = distanceFromBottom < STICK_THRESHOLD_PX
+    // Voltou pro fim depois de ler histórico: as páginas antigas saem da
+    // memória (o canal volta às últimas 20). Cortar o topo com a rolagem no
+    // fim não mexe no que está na tela.
+    if (stuck && !stickToBottomRef.current) compactActive()
     stickToBottomRef.current = stuck
     setAtBottom(stuck)
 
@@ -165,6 +172,27 @@ export function ChatView() {
       })
     }
   }
+
+  /**
+   * Página curta não dá barra de rolagem.
+   *
+   * O chat abre com só 20 mensagens; em tela alta, ou com mensagens de uma
+   * linha, elas não enchem a área — e sem rolagem o "role pra cima pra ver
+   * mais" nunca dispara. Enquanto não houver o que rolar (e houver mais no
+   * servidor), pede a página seguinte sozinho.
+   */
+  React.useEffect(() => {
+    const el = scrollRef.current
+    if (!el || !hasMore || loadingMessages || loadingOlderRef.current) return
+    if (el.scrollHeight > el.clientHeight + 200) return
+    loadingOlderRef.current = true
+    void loadOlder({ fill: true }).finally(() => {
+      requestAnimationFrame(() => {
+        loadingOlderRef.current = false
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
+      })
+    })
+  }, [messages.length, hasMore, loadingMessages, loadOlder])
 
   const scrollToBottom = React.useCallback((smooth = false) => {
     const el = scrollRef.current
@@ -528,7 +556,7 @@ export function ChatView() {
                     highlighted={highlightedId === message.id}
                     editing={editingId === message.id}
                     onStartEdit={setEditingId}
-                    onStopEdit={() => setEditingId(null)}
+                    onStopEdit={stopEdit}
                     onReply={setReplyTo}
                     onEdit={edit}
                     onDelete={remove}

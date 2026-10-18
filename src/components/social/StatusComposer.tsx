@@ -1,5 +1,5 @@
 import * as React from 'react'
-import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react'
+import EmojiPicker, { Theme, EmojiStyle } from '@/components/ui/lazy-emoji-picker'
 import { Smile, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
