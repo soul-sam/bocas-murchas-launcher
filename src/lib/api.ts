@@ -1,3 +1,5 @@
+import { createInFlight } from './in-flight'
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.bocasmurchas.com.br/api'
 
 /** Raiz do servidor, sem /api — usada pra montar URL de arquivo estatico. */
@@ -62,9 +64,24 @@ export class ApiError extends Error {
  * Exportado pra os módulos de API por feature (api-polls.ts, api-events.ts…)
  * montarem as próprias chamadas sem crescer este arquivo.
  */
+const shareGet = createInFlight()
+
 export async function request<T>(
   endpoint: string,
   options: RequestInit & { token?: string | null } = {}
+): Promise<T> {
+  // GET simples (sem corpo, sem cancelamento próprio, sem cabeçalho extra):
+  // chamadas iguais ao mesmo tempo dividem um fetch (ver lib/in-flight).
+  const method = (options.method ?? 'GET').toUpperCase()
+  if (method === 'GET' && !options.body && !options.signal && !options.headers) {
+    return shareGet(`${options.token ?? ''} ${endpoint}`, () => send<T>(endpoint, options))
+  }
+  return send<T>(endpoint, options)
+}
+
+async function send<T>(
+  endpoint: string,
+  options: RequestInit & { token?: string | null }
 ): Promise<T> {
   const { token, headers, ...rest } = options
   const res = await fetch(`${API_BASE}${endpoint}`, {
