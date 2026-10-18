@@ -162,12 +162,18 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       timeout: 10_000
     })
 
+    // O servidor manda `userOnline` e `voiceState` sozinho em TODA conexao
+    // (inclusive reconexao). Pedir de novo aqui custava duas consultas e dois
+    // payloads completos a mais por reconexao. So no primeiro connect o pedido
+    // ainda vale: quem ouve `voiceState` e o voice-context, que se registra
+    // num efeito depois que este socket aparece no estado — o envio
+    // espontaneo do servidor pode chegar antes. Na reconexao os ouvintes ja
+    // estao presos a este mesmo cliente.
+    let firstConnect = true
     const handleConnect = (): void => {
       setConnected(true)
-      // Ao reconectar o estado local pode estar velho. A presenca precisa ser
-      // pedida junto: ela so chegava em `userOnline`/`userOffline`, entao uma
-      // queda de conexao deixava a lista da direita congelada no que era
-      // verdade antes da queda — gente online aparecendo offline.
+      if (!firstConnect) return
+      firstConnect = false
       client.emit('requestVoiceState')
       client.emit('requestPresence')
     }
