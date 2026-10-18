@@ -69,7 +69,8 @@ export const clips = {
      * quando o MIME não ajuda, e o MIME do MediaRecorder vem com codecs
      * grudados ("audio/webm;codecs=opus").
      */
-    const ext = input.blob.type.includes('ogg') ? 'ogg' : input.blob.type.includes('mp4') ? 'm4a' : 'webm'
+    const type = input.blob.type
+    const ext = type.includes('ogg') ? 'ogg' : type.includes('mp4') ? 'm4a' : type.includes('wav') ? 'wav' : 'webm'
     form.append('file', input.blob, `clipe.${ext}`)
     form.append('durationMs', String(Math.round(input.durationMs)))
     form.append('participants', JSON.stringify(input.participants))

@@ -1,30 +1,28 @@
 /**
- * BUFFER ROLANTE DA CALL — os últimos ~30 segundos, sempre à mão.
+ * BUFFER ROLANTE DA CALL — os últimos 30 segundos, sempre à mão.
  *
  * ------------------------------------------------------------------
  * A DECISÃO QUE MANDA NO ARQUIVO
  * ------------------------------------------------------------------
- * "Guardar os últimos 30s" parece pedir UM `MediaRecorder` com `timeslice`
- * curto e uma fila de pedaços. Não funciona: num webm, os pedaços depois do
- * primeiro NÃO são decodificáveis sozinhos — o cabeçalho está no primeiro, e
- * jogar fora os pedaços velhos joga fora o começo do arquivo. Dá pra grudar
- * o cabeçalho num recorte do meio e às vezes toca, mas a duração vem quebrada
- * e depende do player. Não vale um acervo em cima disso.
+ * Guardar PCM, codificar só ao clipar.
  *
- * A alternativa segura seria guardar PCM cru num anel e montar um WAV na
- * hora: 30s mono a 48kHz dá ~2,9 MB por clipe. Sobreviveria, mas é cem vezes
- * o tamanho do mesmo áudio em opus, e o disco é de uma VPS.
+ * A versão anterior mantinha TRÊS `MediaRecorder` sobrepostos na mesma
+ * mistura, defasados em 10 s, porque um webm só é decodificável a partir do
+ * primeiro pedaço (o cabeçalho mora nele) — então "os últimos 30 s" de um
+ * gravador único não existiam como arquivo. Funcionava, mas eram três
+ * codificadores opus rodando a call inteira: medido em out/2026, ~7,5% de um
+ * núcleo sem parar, mesmo no mudo (docs/memory-audit-2026-10.md).
  *
- * Então: TRÊS gravadores sobrepostos na mesma mistura, defasados em
- * `WINDOW_MS / SLOTS`, cada um vivendo `WINDOW_MS` e recomeçando. Em qualquer
- * instante, o mais velho deles está rodando há pelo menos
- * `WINDOW_MS - WINDOW_MS/SLOTS` — com 30s e 3 gravadores, no mínimo 20
- * segundos. Clipar é parar esse e pegar o arquivo dele: um webm inteiro,
- * válido, com duração certa, sem remendo.
+ * Agora um AudioWorklet (clip-ring.worklet.js) guarda o PCM da mistura num
+ * anel de 30 s — Int16 estéreo, ~5,8 MB a 48 kHz — e o custo contínuo é só
+ * copiar amostras. Ao clipar, o anel é copiado, o WebCodecs codifica em opus
+ * numa passada (bem mais rápido que tempo real) e lib/webm-opus.ts monta o
+ * .webm. O arquivo que sobe é o mesmo opus a 64 kbps de antes (~240 KB por
+ * 30 s); o PCM nunca sai da máquina. De brinde, o clipe passa a ter sempre
+ * 30 s (antes variava entre 20 e 30) e duração certa no cabeçalho.
  *
- * O preço é a duração variar entre 20 e 30 segundos. É um preço bom: ninguém
- * vai reclamar que o clipe pegou 23s em vez de 30, e todo mundo reclamaria de
- * um arquivo que não toca.
+ * Sem WebCodecs (não deveria acontecer no Electron), sai WAV, que o
+ * servidor também aceita — maior, mas o clipe não se perde.
  *
  * ------------------------------------------------------------------
  * O QUE ENTRA NA MISTURA
@@ -38,41 +36,27 @@
  * PRIVACIDADE
  * ------------------------------------------------------------------
  * Nada sai desta máquina enquanto ninguém aperta o botão. O buffer vive em
- * memória, é descartado a cada ciclo e morre inteiro quando a call acaba —
+ * memória, é sobrescrito continuamente e morre inteiro quando a call acaba —
  * `destroy()` é chamado ao sair. O upload só existe depois de um clique
  * deliberado, e ainda passa por uma tela de confirmação.
  */
+import workletUrl from './clip-ring.worklet.js?url'
+import { muxWebmOpus, wavFromPcm, type OpusPacket } from './webm-opus'
 
-/** Quanto tempo cada gravador vive antes de recomeçar. */
+/** Tamanho do anel (tem que bater com WINDOW_SECONDS do worklet). */
 const WINDOW_MS = 30_000
-
-/** Gravadores sobrepostos. Três dá piso de 20s; dois dariam 15s. */
-const SLOTS = 3
-
-const STAGGER_MS = WINDOW_MS / SLOTS
 
 /** Opus a 64 kbps: voz limpa, ~240 KB por clipe de 30s. */
 const AUDIO_BITS = 64_000
 
-/** Da melhor pra pior. Vazio no fim = deixa o navegador escolher. */
-const MIME_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', '']
+/** Opus só trabalha a 48 kHz (o OpusHead registra a taxa original). */
+const OPUS_RATE = 48_000
 
-function pickMime(): string {
-  for (const mime of MIME_CANDIDATES) {
-    if (!mime) return ''
-    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) return mime
-  }
-  return ''
-}
+/** Atraso padrão do libopus (6,5 ms), usado se o encoder não informar. */
+const DEFAULT_PRE_SKIP = 312
 
-interface Slot {
-  recorder: MediaRecorder | null
-  chunks: Blob[]
-  startedAt: number
-  timer: number | null
-  /** Preenchido quando alguém clipou este slot e espera o arquivo. */
-  waiting: ((blob: Blob) => void) | null
-}
+/** Quanto PCM vai por AudioData ao codificar: 100 ms. */
+const ENCODE_SLICE = OPUS_RATE / 10
 
 export interface Capture {
   blob: Blob
@@ -86,143 +70,221 @@ export interface ClipRecorder {
   remove: (key: string) => void
   /** Quantas faixas estão na mistura. Zero = não há o que clipar. */
   size: () => number
-  /** Há quanto tempo o gravador mais velho está rodando. */
+  /** Quanto áudio o anel já tem (até 30 s). */
   bufferedMs: () => number
-  /** Pega os últimos segundos. Null se ainda não há gravador maduro. */
+  /** Pega os últimos segundos. Null se ainda não há áudio. */
   capture: () => Promise<Capture | null>
   destroy: () => void
 }
 
+interface Snapshot {
+  left: Int16Array
+  right: Int16Array
+  frames: number
+}
+
+/** PCM do anel → planar float a 48 kHz (reamostra se o contexto não for 48k). */
+async function toOpusRate(snap: Snapshot, rate: number): Promise<Float32Array[]> {
+  const toFloat = (src: Int16Array): Float32Array<ArrayBuffer> => {
+    const out = new Float32Array(src.length)
+    for (let i = 0; i < src.length; i++) out[i] = src[i] / 32768
+    return out
+  }
+  const left = toFloat(snap.left)
+  const right = toFloat(snap.right)
+  if (rate === OPUS_RATE) return [left, right]
+
+  const length = Math.ceil((snap.frames * OPUS_RATE) / rate)
+  const offline = new OfflineAudioContext(2, length, OPUS_RATE)
+  const buffer = offline.createBuffer(2, snap.frames, rate)
+  buffer.copyToChannel(left, 0)
+  buffer.copyToChannel(right, 1)
+  const source = offline.createBufferSource()
+  source.buffer = buffer
+  source.connect(offline.destination)
+  source.start()
+  const rendered = await offline.startRendering()
+  return [rendered.getChannelData(0), rendered.getChannelData(1)]
+}
+
+/** Codifica em opus pelo WebCodecs e embrulha em webm. Null se não houver suporte. */
+async function encodeWebm(channels: Float32Array[], durationMs: number): Promise<Blob | null> {
+  if (typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined') return null
+  const config: AudioEncoderConfig = {
+    codec: 'opus',
+    sampleRate: OPUS_RATE,
+    numberOfChannels: 2,
+    bitrate: AUDIO_BITS
+  }
+  try {
+    const support = await AudioEncoder.isConfigSupported(config)
+    if (!support.supported) return null
+  } catch {
+    return null
+  }
+
+  const packets: OpusPacket[] = []
+  let head: Uint8Array | undefined
+  let failure: unknown = null
+  let firstTs: number | null = null
+
+  const encoder = new AudioEncoder({
+    output: (chunk, metadata) => {
+      const data = new Uint8Array(chunk.byteLength)
+      chunk.copyTo(data)
+      firstTs ??= chunk.timestamp
+      packets.push({ data, timestampUs: chunk.timestamp - firstTs })
+      const description = metadata?.decoderConfig?.description
+      if (!head && description) {
+        const bytes = ArrayBuffer.isView(description)
+          ? new Uint8Array(description.buffer, description.byteOffset, description.byteLength)
+          : new Uint8Array(description)
+        if (bytes.length >= 19 && String.fromCharCode(...bytes.subarray(0, 8)) === 'OpusHead') {
+          head = bytes.slice()
+        }
+      }
+    },
+    error: (err) => {
+      failure = err
+    }
+  })
+
+  try {
+    encoder.configure(config)
+    const [left, right] = channels
+    const total = left.length
+    for (let at = 0; at < total; at += ENCODE_SLICE) {
+      const n = Math.min(ENCODE_SLICE, total - at)
+      const planar = new Float32Array(n * 2)
+      planar.set(left.subarray(at, at + n), 0)
+      planar.set(right.subarray(at, at + n), n)
+      const frame = new AudioData({
+        format: 'f32-planar',
+        sampleRate: OPUS_RATE,
+        numberOfFrames: n,
+        numberOfChannels: 2,
+        timestamp: Math.round((at / OPUS_RATE) * 1e6),
+        data: planar
+      })
+      encoder.encode(frame)
+      frame.close()
+    }
+    await encoder.flush()
+  } catch (err) {
+    failure ??= err
+  } finally {
+    if (encoder.state !== 'closed') encoder.close()
+  }
+  if (failure || packets.length === 0) return null
+
+  const preSkip = head ? new DataView(head.buffer, head.byteOffset).getUint16(10, true) : DEFAULT_PRE_SKIP
+  const bytes = muxWebmOpus({ packets, channels: 2, durationMs, preSkip, opusHead: head })
+  return new Blob([bytes], { type: 'audio/webm;codecs=opus' })
+}
+
 export function createClipRecorder(): ClipRecorder {
   let ctx: AudioContext | null = null
-  let destination: MediaStreamAudioDestinationNode | null = null
+  let ring: AudioWorkletNode | null = null
+  let mix: GainNode | null = null
+  let startedAt = 0
+  let starting: Promise<void> | null = null
   let destroyed = false
 
   const sources = new Map<string, MediaStreamAudioSourceNode>()
-  const slots: Slot[] = []
-  const mimeType = pickMime()
+  /** Faixas que chegaram antes do worklet carregar: ligam assim que ele subir. */
+  const queued = new Map<string, MediaStream>()
 
-  const audioContext = (): AudioContext | null => {
-    if (ctx && ctx.state !== 'closed') return ctx
-    try {
-      const Ctor =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      if (!Ctor) return null
-      ctx = new Ctor()
-      destination = ctx.createMediaStreamDestination()
-      return ctx
-    } catch {
-      return null
+  const connect = (key: string, stream: MediaStream): void => {
+    if (!ctx || !mix) return
+    const previous = sources.get(key)
+    if (previous) {
+      try {
+        previous.disconnect()
+      } catch {
+        // Nó já solto: nada a desfazer.
+      }
+      sources.delete(key)
     }
-  }
-
-  const startSlot = (slot: Slot): void => {
-    if (destroyed || !destination) return
     try {
-      const recorder = new MediaRecorder(destination.stream, {
-        ...(mimeType ? { mimeType } : {}),
-        audioBitsPerSecond: AUDIO_BITS
-      })
-
-      slot.chunks = []
-      slot.recorder = recorder
-      slot.startedAt = performance.now()
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) slot.chunks.push(event.data)
-      }
-
-      recorder.onstop = () => {
-        const blob = new Blob(slot.chunks, { type: mimeType || 'audio/webm' })
-        slot.chunks = []
-
-        const waiting = slot.waiting
-        slot.waiting = null
-        if (waiting) waiting(blob)
-
-        // Recomeça sozinho: o buffer não pode ter buraco. Mesmo o ciclo
-        // normal (sem clipe) passa por aqui.
-        if (!destroyed) startSlot(slot)
-      }
-
-      recorder.start()
-
-      // Ciclo normal: viveu `WINDOW_MS`, para e recomeça pelo `onstop`.
-      slot.timer = window.setTimeout(() => {
-        slot.timer = null
-        if (slot.recorder?.state === 'recording') slot.recorder.stop()
-      }, WINDOW_MS)
+      const source = ctx.createMediaStreamSource(stream)
+      source.connect(mix)
+      sources.set(key, source)
     } catch {
-      // Sem MediaRecorder utilizável: o resto da call continua funcionando,
-      // só não dá pra clipar. `bufferedMs` devolve 0 e a UI se desabilita.
-      slot.recorder = null
+      // Faixa que morreu entre o evento e aqui. Fica de fora da mistura.
     }
   }
 
   const ensureRunning = (): void => {
-    if (destroyed || slots.length > 0) return
-    if (!audioContext()) return
-
-    for (let i = 0; i < SLOTS; i++) {
-      const slot: Slot = { recorder: null, chunks: [], startedAt: 0, timer: null, waiting: null }
-      slots.push(slot)
-      // Defasagem: é ela que garante que sempre exista um gravador maduro.
-      window.setTimeout(() => {
-        if (!destroyed) startSlot(slot)
-      }, i * STAGGER_MS)
-    }
-  }
-
-  const oldest = (): Slot | null => {
-    const now = performance.now()
-    let best: Slot | null = null
-    let bestAge = -1
-    for (const slot of slots) {
-      if (slot.recorder?.state !== 'recording') continue
-      const age = now - slot.startedAt
-      if (age > bestAge) {
-        bestAge = age
-        best = slot
+    if (destroyed || starting) return
+    starting = (async () => {
+      try {
+        const Ctor =
+          window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+        if (!Ctor) return
+        // Sem sampleRate forçado: forçar a taxa já deixou a voz robotizada
+        // em driver onboard (ver audio-processor.ts). Se não for 48k, o
+        // capture reamostra.
+        const audio = new Ctor({ latencyHint: 'playback' })
+        ctx = audio
+        await audio.audioWorklet.addModule(workletUrl)
+        if (destroyed) return
+        mix = audio.createGain()
+        ring = new AudioWorkletNode(audio, 'bm-clip-ring', {
+          numberOfInputs: 1,
+          numberOfOutputs: 1,
+          outputChannelCount: [1],
+          channelCount: 2,
+          channelCountMode: 'explicit'
+        })
+        mix.connect(ring)
+        // A saída é sempre silêncio; ligar no destino só garante que o
+        // grafo puxe o worklet a cada quantum.
+        ring.connect(audio.destination)
+        startedAt = performance.now()
+        // Contexto nasce suspenso sem gesto do usuário; sem resume o grafo
+        // não roda e o anel fica em silêncio absoluto.
+        if (audio.state === 'suspended') void audio.resume().catch(() => {})
+        for (const [key, stream] of queued) connect(key, stream)
+        queued.clear()
+      } catch {
+        // Sem worklet utilizável: o resto da call continua funcionando, só
+        // não dá pra clipar. `bufferedMs` devolve 0 e a UI se desabilita.
+        ring = null
       }
-    }
-    return best
+    })()
   }
+
+  const snapshot = (): Promise<Snapshot | null> =>
+    new Promise((resolve) => {
+      const node = ring
+      if (!node) {
+        resolve(null)
+        return
+      }
+      const timer = window.setTimeout(() => {
+        node.port.onmessage = null
+        resolve(null)
+      }, 2_000)
+      node.port.onmessage = (e: MessageEvent<Snapshot>) => {
+        window.clearTimeout(timer)
+        node.port.onmessage = null
+        resolve(e.data)
+      }
+      node.port.postMessage('snapshot')
+    })
 
   return {
     add(key, stream) {
       if (destroyed) return
-      const audio = audioContext()
-      if (!audio || !destination) return
       if (stream.getAudioTracks().length === 0) return
-
-      // Contexto nasce suspenso sem gesto do usuário; sem resume o grafo não
-      // roda e o clipe sai em silêncio absoluto.
-      if (audio.state === 'suspended') void audio.resume().catch(() => {})
-
-      const previous = sources.get(key)
-      if (previous) {
-        try {
-          previous.disconnect()
-        } catch {
-          // Nó já solto: nada a desfazer.
-        }
-        sources.delete(key)
-      }
-
-      try {
-        const source = audio.createMediaStreamSource(stream)
-        source.connect(destination)
-        sources.set(key, source)
-      } catch {
-        // Faixa que morreu entre o evento e aqui. Fica de fora da mistura.
-        return
-      }
-
+      if (ring) connect(key, stream)
+      else queued.set(key, stream)
       ensureRunning()
     },
 
     remove(key) {
+      queued.delete(key)
       const source = sources.get(key)
       if (!source) return
       try {
@@ -233,55 +295,28 @@ export function createClipRecorder(): ClipRecorder {
       sources.delete(key)
     },
 
-    size: () => sources.size,
+    size: () => sources.size + queued.size,
 
     bufferedMs() {
-      const slot = oldest()
-      if (!slot) return 0
-      return Math.min(WINDOW_MS, performance.now() - slot.startedAt)
+      if (!ring) return 0
+      return Math.min(WINDOW_MS, performance.now() - startedAt)
     },
 
-    capture() {
-      const slot = oldest()
-      if (!slot || !slot.recorder) return Promise.resolve(null)
+    async capture() {
+      const rate = ctx?.sampleRate ?? OPUS_RATE
+      const snap = await snapshot()
+      if (!snap || snap.frames === 0) return null
+      const durationMs = (snap.frames / rate) * 1000
 
-      const durationMs = Math.min(WINDOW_MS, performance.now() - slot.startedAt)
-
-      return new Promise<Capture | null>((resolve) => {
-        // Já tem alguém esperando este slot (dois cliques colados): o segundo
-        // recebe o mesmo arquivo em vez de brigar pelo `onstop`.
-        const previous = slot.waiting
-        slot.waiting = (blob) => {
-          previous?.(blob)
-          resolve(blob.size > 0 ? { blob, durationMs, mimeType: blob.type } : null)
-        }
-
-        if (slot.timer !== null) {
-          window.clearTimeout(slot.timer)
-          slot.timer = null
-        }
-
-        if (slot.recorder?.state === 'recording') slot.recorder.stop()
-        else resolve(null)
-      })
+      const channels = await toOpusRate(snap, rate)
+      const webm = await encodeWebm(channels, durationMs)
+      const blob = webm ?? new Blob([wavFromPcm(snap.left, snap.right, rate)], { type: 'audio/wav' })
+      return { blob, durationMs, mimeType: blob.type }
     },
 
     destroy() {
       destroyed = true
-      for (const slot of slots) {
-        if (slot.timer !== null) window.clearTimeout(slot.timer)
-        slot.timer = null
-        slot.waiting = null
-        try {
-          if (slot.recorder?.state === 'recording') slot.recorder.stop()
-        } catch {
-          // Gravador já parado.
-        }
-        slot.recorder = null
-        slot.chunks = []
-      }
-      slots.length = 0
-
+      queued.clear()
       for (const source of sources.values()) {
         try {
           source.disconnect()
@@ -290,8 +325,13 @@ export function createClipRecorder(): ClipRecorder {
         }
       }
       sources.clear()
-
-      destination = null
+      try {
+        ring?.disconnect()
+      } catch {
+        // Idem.
+      }
+      ring = null
+      mix = null
       void ctx?.close().catch(() => {})
       ctx = null
     }

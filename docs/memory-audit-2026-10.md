@@ -151,6 +151,23 @@ Build de produção local (`electron-vite build` + `preview`), app recém-aberto
 - Visual conferido pelo usuário: molduras/nomes congelam ao tirar o foco e voltam ao retomar.
 - O ganho do 1.13 vale **só sozinho na call**; com amigos os 3 gravadores continuam (~7,5 %), pendente da troca por codificador único.
 
+### Gravador de clipes: codificador único (1.13 completo)
+
+Troca dos 3 `MediaRecorder` por um AudioWorklet que guarda 30 s de PCM (Int16 estéreo, ~5,8 MB) e codificação opus via WebCodecs só ao clipar, com muxer WebM próprio (`src/lib/webm-opus.ts`, testes em `webm-opus.test.ts`).
+
+Bancada isolada (Electron do projeto, janela oculta, 3 fontes sintéticas, mesmo amostrador externo, 60 s, uma rodada cada):
+
+| Modo | Renderer % | Total % | Privado total MB |
+|---|---:|---:|---:|
+| Só as fontes (linha de base) | 1,3 | 1,5 | 186 |
+| Gravador antigo (3 MediaRecorder) | 5,0 | 6,0 | 290 |
+| Gravador novo (anel + WebCodecs) | 1,9 | 2,6 | 199 |
+
+- Custo do gravador acima da base: **antigo ≈ 4,5 pontos, novo ≈ 1,1** (uma rodada; ordem de grandeza, não percentual exato). No app real a medição 6→7 deu ~7,5 para o antigo.
+- GPU-process do antigo ficou em 168 MB privados vs 67 MB no novo e na base (não investigado; consistente nas duas fontes de dados da bancada).
+- Clipe novo: opus 48 kHz estéreo, 252 KB/30 s, **duração 30,000 s no cabeçalho** (o antigo saía sem duração), decodifica sem erro no ffmpeg, mesmo volume do antigo; codificação ao clipar ≈ 200–260 ms. Contexto forçado a 44,1 kHz reamostra certo (mesma energia espectral).
+- Não testado ainda no app com outra pessoa na call (sozinho o buffer não grava desde `efd5b1e`).
+
 Falta (b): call com a sobreposição fechada, e depois call com a sobreposição aberta, para dividir a CPU da call entre o app e a sobreposição.
 
 **Limites desta etapa:**
