@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { sounds as soundsApi, resolveAssetUrl, type Sound } from './api'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useSettings } from './settings-context'
 import { useVoice } from './voice-context'
 import { adminApi } from './api-admin'
@@ -102,7 +102,7 @@ export function readAudioDuration(file: File): Promise<number> {
 
 export function SoundboardProvider({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { settings } = useSettings()
   const { connected: inVoice, deafened } = useVoice()
 

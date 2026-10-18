@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { cargoSlug, cargosApi, type Cargo, type CargosState } from './api-cargos'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 
 export type { Cargo } from './api-cargos'
 
@@ -59,7 +59,7 @@ const EMPTY: Cargo[] = []
 
 export function CargosProvider({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
 
   const [state, setState] = React.useState<CargosState>({ cargos: [], members: {} })
   const [ready, setReady] = React.useState(false)

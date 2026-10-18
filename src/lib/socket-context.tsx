@@ -94,6 +94,22 @@ export interface VoiceFlags {
 
 const SocketContext = React.createContext<SocketContextValue | null>(null)
 
+/**
+ * Só o cliente e se está conectado — o que muda quase nunca.
+ *
+ * O `useSocket()` completo carrega a presença inteira (online, atividades,
+ * voz, LoL) e muda a cada evento de qualquer pessoa do grupo; ~30 telas e
+ * contextos só queriam o `socket` pra pendurar `on/off` e re-renderizavam
+ * junto (auditoria out/2026, item 3.2). Quem não precisa de presença usa
+ * `useSocketClient()`.
+ */
+interface SocketClientValue {
+  socket: Socket | null
+  connected: boolean
+}
+
+const SocketClientContext = React.createContext<SocketClientValue | null>(null)
+
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { token, user, expireSession, applyUser } = useAuth()
 
@@ -495,7 +511,19 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     ]
   )
 
-  return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>
+  const client = React.useMemo<SocketClientValue>(() => ({ socket, connected }), [socket, connected])
+
+  return (
+    <SocketClientContext.Provider value={client}>
+      <SocketContext.Provider value={value}>{children}</SocketContext.Provider>
+    </SocketClientContext.Provider>
+  )
+}
+
+export function useSocketClient(): SocketClientValue {
+  const ctx = React.useContext(SocketClientContext)
+  if (!ctx) throw new Error('useSocketClient must be used within a SocketProvider')
+  return ctx
 }
 
 export function useSocket(): SocketContextValue {

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { formatSeconds, printApi, type PrintRequestRow, type PrintRequestStatus } from '@/lib/api-print'
 import { useAuth } from '@/lib/auth-context'
 import { useOverlays } from '@/lib/overlay-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { cn } from '@/lib/utils'
 import { PrintThumb, gramsLabel } from './print-bits'
 
@@ -35,7 +35,7 @@ const STATUS_LABEL: Record<PrintRequestStatus, string> = {
 
 export function RequestsTab({ canQueue }: { canQueue: boolean }) {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { openPrintRequestComposer } = useOverlays()
   const [scope, setScope] = React.useState<Scope>('active')
   const [rows, setRows] = React.useState<PrintRequestRow[] | null>(null)

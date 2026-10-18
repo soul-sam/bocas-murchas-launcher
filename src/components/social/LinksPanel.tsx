@@ -5,7 +5,7 @@ import { links as linksApi, type LinkKind, type SharedLink } from '@/lib/api-lin
 import { useAuth } from '@/lib/auth-context'
 import { useChat, isDmId } from '@/lib/chat-context'
 import { useLayout } from '@/lib/layout-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { LinkCard } from './LinkCard'
 
 /**
@@ -41,7 +41,7 @@ const LOAD_MORE_THRESHOLD = 240
 
 export function LinksPanel() {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { activeChannelId, activeChannel, setActiveChannel } = useChat()
   const { closeLinks } = useLayout()
 

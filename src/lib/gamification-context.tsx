@@ -21,7 +21,7 @@ import {
   type WagerPrediction
 } from './api-gamification'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useSettings } from './settings-context'
 import { useLayout } from './layout-context'
 import { useActivity } from './activity-context'
@@ -145,7 +145,7 @@ let toastSeq = 0
 
 export function GamificationProvider({ children }: { children: React.ReactNode }) {
   const { token, user, applyUser } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { settings, update: updateSettings } = useSettings()
   const { wagersOpen } = useLayout()
   const { inGame } = useActivity()

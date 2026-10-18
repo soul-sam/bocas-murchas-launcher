@@ -14,7 +14,7 @@ import {
 } from './api'
 import { isPlayableVideo } from './attachments'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
 import { isPopout } from './platform'
@@ -244,7 +244,7 @@ function preview(message: ChatMessage): string {
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { settings, update: updateSettings } = useSettings()
 
   const [channels, setChannels] = React.useState<Channel[]>([])

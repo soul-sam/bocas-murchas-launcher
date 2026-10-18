@@ -10,7 +10,7 @@ import {
   type ChessTimeClass
 } from '@/lib/api-chess'
 import { useAuth } from '@/lib/auth-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { openExternal } from '@/lib/rich-text'
 import { cn } from '@/lib/utils'
 
@@ -37,7 +37,7 @@ let lastManualSyncAt = 0
 
 export function ChessBlock({ userId, isSelf, open }: { userId: string; isSelf: boolean; open: boolean }) {
   const { token } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const [data, setData] = React.useState<ChessPayload | null>(null)
   const [username, setUsername] = React.useState('')
   const [busy, setBusy] = React.useState(false)

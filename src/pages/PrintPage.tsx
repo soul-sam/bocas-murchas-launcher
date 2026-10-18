@@ -54,7 +54,7 @@ import { SchedulePicker, crossesNight, describeSchedule } from '@/components/pri
 import { SwapRequestForm } from '@/components/print/SwapRequests'
 import { useAuth } from '@/lib/auth-context'
 import { usePrint } from '@/lib/print-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import {
   formatSeconds,
   printApi,
@@ -531,7 +531,7 @@ function readCameraPref(): boolean {
  */
 function CameraCard({ printer }: { printer: PrinterInfo }) {
   const { token } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const [open, setOpen] = React.useState(readCameraPref)
   const [visible, setVisible] = React.useState(() => !document.hidden)
   const [frameUrl, setFrameUrl] = React.useState<string | null>(null)

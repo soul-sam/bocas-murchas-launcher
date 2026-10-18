@@ -12,7 +12,7 @@ import {
   type SuggestionStatus
 } from '@/lib/api-suggestions'
 import { useAuth } from '@/lib/auth-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { Hint } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
@@ -47,7 +47,7 @@ const STATUS_STYLE: Record<SuggestionStatus, string> = {
 
 export function SuggestionCard({ metadata, compact }: CardProps<SuggestionCardMeta>) {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
 
   const suggestionId = metadata.suggestionId
 

@@ -9,7 +9,7 @@ import {
   type RemoteTrackPublication
 } from 'livekit-client'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useSettings } from './settings-context'
 import { useVoice } from './voice-context'
 import { useChat } from './chat-context'
@@ -81,7 +81,7 @@ const MIN_BUFFER_MS = 3_000
 
 export function ClipProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { settings } = useSettings()
   const voice = useVoice()
   const { activeChannelId, textChannels } = useChat()

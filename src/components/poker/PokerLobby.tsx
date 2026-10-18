@@ -24,7 +24,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useMembers } from '@/lib/members-context'
 import { useGamification } from '@/lib/gamification-context'
 import { usePoker } from '@/lib/poker-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { cn } from '@/lib/utils'
 import { PlayingCard } from './PlayingCard'
 
@@ -49,7 +49,7 @@ export function PokerLobby({
   const { tables, ready, openTable, seatedAt } = usePoker()
   const { profile } = useGamification()
   const { token } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const cashEnabled = !!rules?.cashEnabled
   const [mode, setMode] = React.useState<TableCurrency>('murchos')
   const [creating, setCreating] = React.useState(false)

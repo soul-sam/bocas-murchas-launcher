@@ -16,7 +16,7 @@ import {
 } from '@/lib/api-cash'
 import { useAuth } from '@/lib/auth-context'
 import { useGamification } from '@/lib/gamification-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { useTicker } from '@/lib/use-now'
 import { cn } from '@/lib/utils'
 
@@ -41,7 +41,7 @@ type View = 'home' | 'deposit' | 'pix' | 'withdraw' | 'history'
 
 export function CashPanel({ onBack }: { onBack: () => void }) {
   const { token } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { pushToast } = useGamification()
   const [state, setState] = React.useState<CashState | null>(null)
   const [view, setView] = React.useState<View>('home')

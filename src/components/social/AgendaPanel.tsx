@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useLayout } from '@/lib/layout-context'
 import { useMembers } from '@/lib/members-context'
 import { useOverlays } from '@/lib/overlay-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { formatDayLabel, formatRelative, formatTime } from '@/lib/natural-date'
 import { useNow } from '@/lib/use-now'
 import { cn } from '@/lib/utils'
@@ -51,7 +51,7 @@ function capitalize(text: string): string {
 export function AgendaPanel() {
   const { closeAgenda: close } = useLayout()
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { openEventComposer } = useOverlays()
   const { byId } = useMembers()
   const now = useNow(60_000)

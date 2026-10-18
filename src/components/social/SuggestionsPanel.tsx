@@ -12,7 +12,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { useLayout } from '@/lib/layout-context'
 import { useOverlays } from '@/lib/overlay-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { Button } from '@/components/ui/button'
 import { Hint } from '@/components/ui/tooltip'
 
@@ -40,7 +40,7 @@ const FILTERS: Array<{ id: SuggestionStatus | 'todas'; label: string }> = [
 
 export function SuggestionsPanel() {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { closeSuggestions } = useLayout()
   const { openSuggestionComposer } = useOverlays()
 

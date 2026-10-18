@@ -2,7 +2,7 @@ import * as React from 'react'
 import type { Socket } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound, type UiSound } from './ui-sounds'
 import { moveSound, type MoveSound } from './board-local'
@@ -189,7 +189,7 @@ const moverOf = (ply: number): Side => (ply % 2 === 0 ? 'white' : 'black')
 
 export function BoardProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const { socket, connected } = useSocket()
+  const { socket, connected } = useSocketClient()
   const { settings } = useSettings()
   const navigate = useNavigate()
 

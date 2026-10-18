@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { costs as costsApi, type CostSummary } from './api-costs'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
 import { isPopout } from './platform'
@@ -41,7 +41,7 @@ const CostsContext = React.createContext<CostsContextValue | null>(null)
 
 export function CostsProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { settings } = useSettings()
   const [summary, setSummary] = React.useState<CostSummary | null>(null)
   const [ready, setReady] = React.useState(false)

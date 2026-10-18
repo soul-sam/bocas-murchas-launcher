@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { printApi, type PrintState } from './api-print'
 
 /**
@@ -36,7 +36,7 @@ const POLL_MS = 60_000
 
 export function PrintProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const [state, setState] = React.useState<PrintState | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)

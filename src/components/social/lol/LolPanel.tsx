@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { lol as lolApi, type LolFilterOptions, type LolQuery, type LolStats } from '@/lib/api-lol'
 import { LolFilters } from './LolFilters'
 import { LolOverview } from './LolOverview'
@@ -38,7 +38,7 @@ const DEFAULT_QUERY: LolQuery = { period: '90d' }
 
 export function LolPanel() {
   const { token } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
 
   const [query, setQuery] = React.useState<LolQuery>(DEFAULT_QUERY)
   /**

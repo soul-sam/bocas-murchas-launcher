@@ -2,7 +2,7 @@ import * as React from 'react'
 import type { Socket } from 'socket.io-client'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useSettings } from './settings-context'
 import { useSoundboard } from './soundboard-context'
 import { playUiSound } from './ui-sounds'
@@ -132,7 +132,7 @@ function emitWithAck(socket: Socket | null, event: string, payload: unknown): Pr
 
 export function PokerProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const { socket, connected } = useSocket()
+  const { socket, connected } = useSocketClient()
   const { settings } = useSettings()
   const { playIncoming } = useSoundboard()
   const navigate = useNavigate()

@@ -8,7 +8,7 @@ import { DEFAULT_NAME_COLOR, nameStyle } from '@/lib/api-gamification'
 import { formatSeconds, printApi, type HourListing, type MarketPerson, type PrintQuota } from '@/lib/api-print'
 import { useAuth } from '@/lib/auth-context'
 import { useGamification } from '@/lib/gamification-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { cn } from '@/lib/utils'
 
 /**
@@ -57,7 +57,7 @@ type OnDone = (message: string) => void
 
 export function MarketTab({ quota, canQueue }: { quota: PrintQuota; canQueue: boolean }) {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { profile } = useGamification()
   const coins = profile?.coins ?? 0
 

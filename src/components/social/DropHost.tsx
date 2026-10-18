@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { resolveAssetUrl } from '@/lib/api'
 import { drops as dropsApi, type Drop, type DropStyle, type DropType } from '@/lib/api-polls'
 import { useAuth } from '@/lib/auth-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { useSettings } from '@/lib/settings-context'
 import { useChat } from '@/lib/chat-context'
 import { useMembers, type Member } from '@/lib/members-context'
@@ -29,7 +29,7 @@ const MAX_VISIBLE = 3
 
 export function DropHost() {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { settings } = useSettings()
   const { activeChannelId } = useChat()
   const { byId } = useMembers()

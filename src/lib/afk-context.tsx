@@ -2,7 +2,7 @@ import * as React from 'react'
 import { users as usersApi } from './api'
 import { useAuth } from './auth-context'
 import { useSettings } from './settings-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useVoice } from './voice-context'
 import { isPopout } from './platform'
 import { marcarFala, marcarVolta, silencioMs } from './presenca-de-fala'
@@ -161,7 +161,7 @@ const AfkContext = React.createContext<AfkContextValue | null>(null)
 export function AfkProvider({ children }: { children: React.ReactNode }) {
   const { user, token, applyUser } = useAuth()
   const { settings } = useSettings()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const voice = useVoice()
 
   const [afk, setAfk] = React.useState(false)
@@ -377,10 +377,16 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
   }, [afk, disable])
 
   /** Falar na call conta como estar presente, mesmo sem tocar no teclado. */
-  React.useEffect(() => {
-    const me = voice.participants.find((p) => p.isLocal)
-    if (me?.isSpeaking) marcarFala()
-  }, [voice.participants])
+  // Pela assinatura: com o launcher na bandeja (jogando e falando) a lista de
+  // participantes não marca mais quem fala, e isso continua contando.
+  const { subscribeSpeaking, getSpeaking } = voice
+  React.useEffect(
+    () =>
+      subscribeSpeaking(() => {
+        if (getSpeaking().local) marcarFala()
+      }),
+    [subscribeSpeaking, getSpeaking]
+  )
 
   /**
    * MARCAR SOZINHO — os dois relógios, no mesmo tique.

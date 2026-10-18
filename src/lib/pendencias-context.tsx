@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useAfk } from './afk-context'
 import { useLayout } from './layout-context'
 import { isPopout } from './platform'
@@ -80,7 +80,7 @@ function gravarVistas(userId: string, ids: Iterable<string>): void {
 
 export function PendenciasProvider({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { afk } = useAfk()
   const { openPendencias } = useLayout()
   const navigate = useNavigate()

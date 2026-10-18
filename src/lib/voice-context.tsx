@@ -22,7 +22,7 @@ import {
 } from 'livekit-client'
 import { livekit, resolveAssetUrl, type Channel } from './api'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound, playJoinSound, playDecodedBuffer } from './ui-sounds'
 import { createSoundCache } from './supreme-sound-cache'
@@ -190,6 +190,13 @@ export interface ScreenShareInfo {
   capture: CaptureState
 }
 
+export interface SpeakingNow {
+  /** Alguém da call (você incluído) está falando. */
+  anyone: boolean
+  /** Você está falando. */
+  local: boolean
+}
+
 interface VoiceContextValue {
   room: Room | null
   channel: Channel | null
@@ -197,7 +204,17 @@ interface VoiceContextValue {
   connecting: boolean
   error: string | null
 
+  /**
+   * `isSpeaking` aqui é o que a TELA mostra: só é atualizado com a janela
+   * visível. Na bandeja fica tudo `false` e a troca de quem fala não
+   * re-renderiza ninguém. Quem precisa do sinal de verdade mesmo oculto
+   * (o AFK) usa `subscribeSpeaking`/`getSpeaking`.
+   */
   participants: VoiceParticipant[]
+  /** Avisa a cada mudança de quem está falando — com a janela visível ou não. */
+  subscribeSpeaking: (listener: () => void) => () => void
+  /** Quem está falando agora, medido na hora (não passa por estado do React). */
+  getSpeaking: () => SpeakingNow
   screenShares: ScreenShareFeed[]
   /** Webcams ligadas na call, incluindo a sua. */
   cameras: CameraFeed[]
@@ -362,7 +379,7 @@ class RawMicRequested extends Error {}
 
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { settings, update: updateSettings } = useSettings()
   const { byId } = useMembers()
 
@@ -474,15 +491,57 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   /** Guardado à parte porque o `syncParticipants` roda antes da sala existir. */
   const roomForSyncRef = React.useRef<Room | null>(null)
 
+  /**
+   * QUEM FALA, FORA DO ESTADO DO REACT (auditoria out/2026, item 3.1).
+   *
+   * Antes, cada "fulano começou/parou de falar" virava uma lista de
+   * participantes nova e re-renderizava os ~27 consumidores de `useVoice()`,
+   * inclusive com o launcher na bandeja. Agora a mudança chega primeiro aqui
+   * (o AFK escuta, porque falar conta como presença com a janela oculta) e só
+   * vai pra lista — os anéis da tela — com a janela visível (decisão do dono:
+   * minimizado ou na bandeja, o anel pode sumir).
+   */
+  const speakingListenersRef = React.useRef(new Set<() => void>())
+
+  const subscribeSpeaking = React.useCallback((listener: () => void) => {
+    speakingListenersRef.current.add(listener)
+    return () => {
+      speakingListenersRef.current.delete(listener)
+    }
+  }, [])
+
+  const getSpeaking = React.useCallback((): SpeakingNow => {
+    const current = roomForSyncRef.current
+    if (!current) return { anyone: false, local: false }
+    const detector = speakingRef.current
+    const speaks = (p: Participant): boolean =>
+      detector?.watching(p.identity) ? detector.isSpeaking(p.identity) : p.isSpeaking
+    const local = speaks(current.localParticipant)
+    let anyone = local
+    if (!anyone) {
+      for (const p of current.remoteParticipants.values()) {
+        if (speaks(p)) {
+          anyone = true
+          break
+        }
+      }
+    }
+    return { anyone, local }
+  }, [])
+
+  /** Mudou quem fala: avisa os ouvintes e, com a janela visível, a tela. */
+  const speakingChanged = React.useCallback(() => {
+    for (const listener of speakingListenersRef.current) listener()
+    const current = roomForSyncRef.current
+    if (current && !document.hidden) syncParticipantsRef.current(current)
+  }, [])
+
   const speakingDetector = React.useCallback((): SpeakingDetector => {
     if (!speakingRef.current) {
-      speakingRef.current = createSpeakingDetector(() => {
-        const current = roomForSyncRef.current
-        if (current) syncParticipantsRef.current(current)
-      })
+      speakingRef.current = createSpeakingDetector(() => speakingChanged())
     }
     return speakingRef.current
-  }, [])
+  }, [speakingChanged])
 
   /**
    * ASSINATURA SOB DEMANDA (ver lib/screen-share-policy).
@@ -932,9 +991,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         // Medição local quando existe (rápida e sem lista de dominantes);
         // pra quem ainda não tem faixa medida, o sinal do servidor — que é
         // o comportamento antigo, e é melhor que anel nenhum.
-        isSpeaking: detector?.watching(p.identity)
-          ? detector.isSpeaking(p.identity)
-          : p.isSpeaking,
+        // Janela oculta: ninguém vê o anel, e um valor que não muda é o que
+        // deixa a troca de quem fala sem re-render (ver `speakingChanged`).
+        isSpeaking: document.hidden
+          ? false
+          : detector?.watching(p.identity)
+            ? detector.isSpeaking(p.identity)
+            : p.isSpeaking,
         micEnabled: p.isMicrophoneEnabled,
         isScreenSharing: p.isScreenShareEnabled,
         cameraEnabled: p.isCameraEnabled
@@ -1242,7 +1305,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           syncCameraFeed(publication, participant, true)
           syncParticipants(next)
         })
-        next.on(RoomEvent.ActiveSpeakersChanged, () => syncParticipants(next))
+        // Sinal do servidor (pra quem ainda não tem faixa medida aqui): mesmo
+        // caminho do detector local — ouvintes sempre, tela só visível.
+        next.on(RoomEvent.ActiveSpeakersChanged, () => {
+          if (roomForSyncRef.current === next) speakingChanged()
+          else syncParticipants(next)
+        })
         next.on(RoomEvent.LocalTrackPublished, (publication: LocalTrackPublication) => {
           // A propria transmissao entra no palco como qualquer outra: e o
           // unico jeito de quem compartilha conferir o que foi pro ar.
@@ -2378,6 +2446,17 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   // `await __voiceStats()` no DevTools: codec, fps, GPU ou CPU, perda, bitrate.
   React.useEffect(() => exposeVoiceStats(room), [room])
 
+  // Janela some ou volta: a lista é refeita uma vez — oculta, os anéis
+  // apagam; visível, voltam com quem está falando agora.
+  React.useEffect(() => {
+    const onVisibility = (): void => {
+      const current = roomForSyncRef.current
+      if (current) syncParticipantsRef.current(current)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
+
   const value = React.useMemo<VoiceContextValue>(
     () => ({
       room,
@@ -2386,6 +2465,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       connecting,
       error,
       participants,
+      subscribeSpeaking,
+      getSpeaking,
       screenShares,
       cameras,
       micEnabled,
@@ -2426,6 +2507,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       connecting,
       error,
       participants,
+      subscribeSpeaking,
+      getSpeaking,
       screenShares,
       cameras,
       micEnabled,

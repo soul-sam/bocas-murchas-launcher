@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useSettings } from './settings-context'
 import { playUiSound } from './ui-sounds'
 import { isPopout } from './platform'
@@ -43,7 +43,7 @@ interface NudgeContextValue {
 const NudgeContext = React.createContext<NudgeContextValue | null>(null)
 
 export function NudgeProvider({ children }: { children: React.ReactNode }) {
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { settings } = useSettings()
   const { afk } = useAfk()
 

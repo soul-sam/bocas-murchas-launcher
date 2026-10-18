@@ -12,7 +12,7 @@ import {
   type PollType
 } from '@/lib/api-polls'
 import { useAuth } from '@/lib/auth-context'
-import { useSocket } from '@/lib/socket-context'
+import { useSocketClient } from '@/lib/socket-context'
 import { useMembers } from '@/lib/members-context'
 import type { CardProps } from './index'
 import { CardFrame } from './index'
@@ -62,7 +62,7 @@ function formatTimeLeft(ms: number): string {
 
 export function PollCard({ metadata, compact }: CardProps<PollCardMetadata>) {
   const { token, user } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
   const { byId } = useMembers()
 
   const pollId = metadata.pollId

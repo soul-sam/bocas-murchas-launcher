@@ -8,7 +8,7 @@ import {
 } from './api-emojis'
 import { resolveAssetUrl } from './api'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 
 export type { CustomEmoji, Sticker, StickerPack } from './api-emojis'
 
@@ -73,7 +73,7 @@ function upsertEmoji(list: CustomEmoji[], emoji: CustomEmoji): CustomEmoji[] {
 
 export function EmojiProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
-  const { socket } = useSocket()
+  const { socket } = useSocketClient()
 
   const [emojis, setEmojis] = React.useState<CustomEmoji[]>([])
   const [packs, setPacks] = React.useState<StickerPack[]>([])

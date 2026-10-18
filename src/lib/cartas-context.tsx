@@ -2,7 +2,7 @@ import * as React from 'react'
 import type { Socket } from 'socket.io-client'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth-context'
-import { useSocket } from './socket-context'
+import { useSocketClient } from './socket-context'
 import { useSettings } from './settings-context'
 import { useSoundboard } from './soundboard-context'
 import { playUiSound, type UiSound } from './ui-sounds'
@@ -109,7 +109,7 @@ const GAME_TITLE: Record<CardGame, string> = { truco: 'truco', cacheta: 'cacheta
 
 export function CartasProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const { socket, connected } = useSocket()
+  const { socket, connected } = useSocketClient()
   const { settings } = useSettings()
   const { playIncoming } = useSoundboard()
   const navigate = useNavigate()
