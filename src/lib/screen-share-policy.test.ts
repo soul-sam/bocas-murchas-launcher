@@ -42,6 +42,15 @@ test('assistindo com a janela minimizada: corta o video, mantem o audio', () => 
   assert.equal(shouldSubscribe(audio('screen_share_audio'), ctx), true)
 })
 
+test('janela minimizada ou na bandeja: camera de ninguem e assinada', () => {
+  // Decisao do dono (out/2026): sem janela visivel nao ha card pra pintar, e
+  // cada webcam aberta e um decodificador de video rodando a toa.
+  assert.equal(shouldSubscribe(video('camera'), { watching: false, hidden: true }), false)
+  assert.equal(shouldSubscribe(video('camera'), { watching: true, hidden: true }), false)
+  // O microfone continua: a call segue com a janela oculta.
+  assert.equal(shouldSubscribe(audio('microphone'), { watching: false, hidden: true }), true)
+})
+
 test('ensurdecido: nenhum audio chega, imagem continua', () => {
   const ctx = { watching: true, hidden: false, deafened: true }
   assert.equal(shouldSubscribe(audio('microphone'), ctx), false)

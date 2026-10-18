@@ -655,7 +655,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   )
 
   /**
-   * Janela escondida/minimizada: corta o VIDEO da tela no servidor. Nao e
+   * Janela escondida/minimizada: corta o VIDEO da tela e as CAMERAS dos
+   * outros no servidor (o card da camera sai do palco e volta sozinho). Nao e
    * so "pausar": sem assinatura nao chega pacote, nao tem decodificador vivo
    * e a memoria dos buffers vai embora. Voltando, o video e pedido de novo
    * — quem assiste continua assistindo, so pagou o custo de um keyframe.

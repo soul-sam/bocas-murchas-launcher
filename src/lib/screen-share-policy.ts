@@ -27,9 +27,9 @@ export interface SubscriptionContext {
   watching: boolean
   /**
    * A janela esta escondida ou minimizada (`document.visibilityState`). Nesse
-   * estado nao existe pixel pra pintar: o VIDEO da tela e cortado no servidor
-   * e o decodificador liberado. O audio continua — quem minimiza pra jogar
-   * ainda quer ouvir o jogo do amigo.
+   * estado nao existe pixel pra pintar: o VIDEO da tela e as CAMERAS sao
+   * cortados no servidor e os decodificadores liberados. O audio continua —
+   * quem minimiza pra jogar ainda quer ouvir a call e o jogo do amigo.
    */
   hidden: boolean
   /**
@@ -46,8 +46,9 @@ export interface SubscriptionContext {
  * Decide se uma publicacao remota deve estar assinada.
  *
  * - Microfone: sempre, menos ensurdecido. E a call.
- * - Camera: sempre. O adaptiveStream pausa quando nao tem card visivel, e a
- *   webcam e 360p — nao e ela que derruba o FPS de ninguem.
+ * - Camera: so com a janela visivel. Minimizado ou na bandeja nao ha card
+ *   nenhum, e o adaptiveStream so pausa DEPOIS que a faixa chegou — o pacote
+ *   e o decodificador continuavam (decisao do dono, out/2026).
  * - Video da tela: SO quando a pessoa esta assistindo E a janela esta visivel.
  * - Audio da tela: SO quando a pessoa esta assistindo (visivel ou nao) e nao
  *   esta ensurdecida.
@@ -64,7 +65,7 @@ export function shouldSubscribe(
     case 'microphone':
       return !context.deafened
     case 'camera':
-      return true
+      return !context.hidden
     case 'screen_share':
       return context.watching && !context.hidden
     case 'screen_share_audio':
