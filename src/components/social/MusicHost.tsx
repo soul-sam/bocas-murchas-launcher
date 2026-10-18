@@ -58,16 +58,6 @@ import {
  * null e quem desenha é o WatchStage.
  */
 
-/**
- * Quanto a música espera pra voltar ao volume cheio depois que a sala cala.
- *
- * Subir na hora faria a música pular a cada respiração no meio de uma frase —
- * o detector de fala já segura 220ms, e mesmo assim uma conversa normal tem
- * silêncios curtos o tempo todo. Descer é instantâneo (ninguém quer ouvir o
- * refrão por cima da primeira sílaba de quem falou); subir é preguiçoso.
- */
-const DUCK_RELEASE_MS = 900
-
 /** Até aqui (s) o "voltar" vai pra anterior; depois disso recomeça a faixa. */
 const RESTART_THRESHOLD_SEC = 5
 
@@ -144,38 +134,9 @@ function MusicBar({ session }: { session: WatchSession }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // --- abaixar quando alguém fala -------------------------------------------
-  /**
-   * O `isSpeaking` vem do medidor local (lib/speaking-detector), que mede o
-   * áudio de cada faixa aqui na máquina — acende na primeira sílaba e vale
-   * pra todo mundo ao mesmo tempo, não só pros "dominantes" que o servidor
-   * escolhe. É por isso que dá pra usá-lo como gatilho de volume: um sinal
-   * que chega meio segundo atrasado abaixaria a música depois da frase.
-   *
-   * A própria voz conta. Quem está falando também não quer se ouvir por cima
-   * do refrão.
-   */
-  const someoneSpeaking = voice.participants.some((participant) => participant.isSpeaking)
-  const duckEnabled = settings.music.duck
-  const [ducked, setDucked] = React.useState(false)
-
-  React.useEffect(() => {
-    if (!duckEnabled) {
-      setDucked(false)
-      return
-    }
-    if (someoneSpeaking) {
-      setDucked(true)
-      return
-    }
-    const timer = setTimeout(() => setDucked(false), DUCK_RELEASE_MS)
-    return () => clearTimeout(timer)
-  }, [someoneSpeaking, duckEnabled])
-
-  // `playerVolume` é a curva do ouvido (ver lib/youtube): o slider guarda
-  // POSIÇÃO, o player recebe amplitude. O abaixar-quando-alguém-fala é
-  // aplicado na posição, senão o "um quarto" viraria um dezesseis avos.
-  const effectiveVolume = playerVolume(ducked ? volume * settings.music.duckLevel : volume)
+  // A música não abaixa mais quando alguém fala (decisão do dono, out/2026):
+  // tirou a única dependência dela no medidor de fala da call.
+  const effectiveVolume = playerVolume(volume)
 
   // --- player ---------------------------------------------------------------
   /**
@@ -488,10 +449,7 @@ function MusicBar({ session }: { session: WatchSession }) {
                 title={muted ? 'Voltar o som (só meu)' : 'Mutar a música (só pra mim)'}
                 className={cn(
                   'ml-auto shrink-0 transition-colors',
-                  muted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground',
-                  // Abaixou sozinho porque alguém está falando: o ícone conta,
-                  // senão a pessoa mexe no slider achando que o volume caiu.
-                  !muted && ducked && 'text-acid'
+                  muted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -505,11 +463,7 @@ function MusicBar({ session }: { session: WatchSession }) {
                 value={muted ? 0 : volume}
                 onChange={(event) => changeVolume(Number(event.target.value))}
                 aria-label="Volume da música (só meu)"
-                title={
-                  ducked
-                    ? `Volume: ${volume}% — abaixado agora porque tem gente falando`
-                    : `Volume da música: ${muted ? 0 : volume}% (só pra mim)`
-                }
+                title={`Volume da música: ${muted ? 0 : volume}% (só pra mim)`}
                 className={cn('mini-slider w-16 shrink-0', muted && 'is-muted')}
               />
 

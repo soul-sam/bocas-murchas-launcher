@@ -244,16 +244,6 @@ export type ScreenShareQuality = '720p30' | '1080p30' | '1080p60'
 export interface MusicSettings {
   /** 0..1. Multiplicado por 100 antes de ir pro player do YouTube. */
   volume: number
-  /**
-   * Abaixar a musica sozinho enquanto alguem fala na call.
-   *
-   * E o motivo de a musica em call normalmente nao dar certo: ou fica alta e
-   * cobre a conversa, ou fica tao baixa que nao vale a pena. Ver
-   * components/social/MusicHost.tsx pro tempo de subida e descida.
-   */
-  duck: boolean
-  /** Quanto do volume sobra enquanto alguem fala. 0..1 (0.25 = um quarto). */
-  duckLevel: number
 }
 
 export function isScreenShareQuality(value: unknown): value is ScreenShareQuality {
@@ -1164,11 +1154,7 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
   music: {
     // Musica de fundo entra mais baixa que um video que a galera sentou pra
     // ver: 45% e o ponto em que da pra conversar por cima sem ninguem gritar.
-    volume: 0.45,
-    duck: true,
-    // Um quarto: continua audivel (a musica nao "some" no meio da frase), mas
-    // sai da frente da voz. Zero viraria um liga-desliga a cada silaba.
-    duckLevel: 0.25
+    volume: 0.45
   },
   chat: {
     compact: false,

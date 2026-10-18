@@ -127,11 +127,9 @@ function normalizeMusic(raw: Partial<MusicSettings> | undefined): MusicSettings 
   const d = DEFAULTS.music
   const m = raw ?? {}
   return {
-    volume: clamp(Number(m.volume), 0, 1, d.volume),
-    duck: m.duck ?? d.duck,
-    // Teto de 0.9: "abaixar pra 95%" nao abaixa nada e faria a pessoa achar
-    // que o recurso esta quebrado quando na verdade esta ligado e sem efeito.
-    duckLevel: clamp(Number(m.duckLevel), 0, 0.9, d.duckLevel)
+    // `duck`/`duckLevel` (abaixar quando alguem fala) sairam em out/2026,
+    // decisao do dono; o que ficou salvo no arquivo e ignorado aqui.
+    volume: clamp(Number(m.volume), 0, 1, d.volume)
   }
 }
 
