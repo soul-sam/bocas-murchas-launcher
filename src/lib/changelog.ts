@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.75.0',
+    headline: 'Launcher mais leve',
+    items: [
+      'O launcher gasta bem menos com a janela parada ou na bandeja: molduras, nomes e brilhos animados param quando você não está olhando (janela sem foco ou um minuto sem mexer) e voltam no primeiro movimento.',
+      'Jogos, impressão, loja, conquistas e o seletor de emoji só carregam quando você abre, então o launcher abre mais leve.',
+      'Chat: cada canal abre com as últimas 20 mensagens; pra ver mais, é só rolar pra cima.',
+      'Com o launcher minimizado ou na bandeja, as câmeras da call não carregam e voltam sozinhas quando você abre a janela.',
+      'Clipes da call: o buffer gasta bem menos, só grava com mais alguém na call, e o clipe sai sempre com 30 segundos.'
+    ],
+    note: 'A música da call não abaixa mais sozinha quando alguém fala; a opção saiu das Configurações.'
+  },
+  {
     version: '1.74.0',
     headline: 'Truco de dupla e pote à vista',
     items: [
