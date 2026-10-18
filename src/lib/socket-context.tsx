@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { applyPresenceJoin, applyPresenceLeave } from './presence-diff'
 import { io, type Socket } from 'socket.io-client'
 import {
   API_ORIGIN,
@@ -157,7 +158,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
 
     const client = io(API_ORIGIN, {
-      auth: { token },
+      // `caps`: este launcher entende presença por diferença — o servidor
+      // manda só quem chegou/saiu em vez da lista inteira (lib/presence-diff).
+      auth: { token, caps: ['presence-diff'] },
       /**
        * Websocket primeiro, long-polling de reserva.
        *
@@ -262,6 +265,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       if (data?.activities && typeof data.activities === 'object') {
         setActivities(data.activities)
       }
+    }
+
+    // Presença por diferença: só a pessoa que chegou ou saiu. O retrato
+    // completo (`userOnline` ao conectar) continua sendo a base.
+    const handlePresenceJoin = (data: { user?: OnlineUser }): void => {
+      if (!data?.user?.id) return
+      const person = data.user
+      setOnlineUsers((prev) => applyPresenceJoin(prev, person))
+      if (person.id === userRef.current?.id) syncSelf(person)
+    }
+
+    const handlePresenceLeave = (data: { userId?: string }): void => {
+      if (!data?.userId) return
+      const userId = data.userId
+      setOnlineUsers((prev) => applyPresenceLeave(prev, userId))
     }
 
     const handleActivityChanged = (data: {
@@ -438,6 +456,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     client.on('connect_error', handleConnectError)
     client.on('userOnline', handlePresence)
     client.on('userOffline', handlePresence)
+    client.on('presence:join', handlePresenceJoin)
+    client.on('presence:leave', handlePresenceLeave)
     client.on('voiceState', handleVoiceState)
     client.on('voiceUserJoined', handleVoiceChanged)
     client.on('voiceUserLeft', handleVoiceChanged)
@@ -456,6 +476,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       client.off('connect_error', handleConnectError)
       client.off('userOnline', handlePresence)
       client.off('userOffline', handlePresence)
+      client.off('presence:join', handlePresenceJoin)
+      client.off('presence:leave', handlePresenceLeave)
       client.off('voiceState', handleVoiceState)
       client.off('voiceUserJoined', handleVoiceChanged)
       client.off('voiceUserLeft', handleVoiceChanged)
