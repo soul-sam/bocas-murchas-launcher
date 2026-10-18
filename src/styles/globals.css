@@ -930,15 +930,29 @@
     to { opacity: 1; transform: none; }
   }
   /* Halo que respira em volta da logo quando ha o que ver (aposta aberta,
-     aviso novo). Sombra e nao anel de SVG: nao mexe em layout. */
+     aviso novo, call). Sombra e nao anel de SVG: nao mexe em layout. A sombra
+     fica PARADA num ::after e so a opacidade anima — animar o box-shadow
+     repintava a sobreposicao (tela inteira, em cima do jogo) a cada frame;
+     opacidade o compositor resolve sozinho. Os dois donos da classe (aba e
+     medalhao em Tabs.tsx) ja sao `absolute`, entao o ::after se ancora neles. */
   @keyframes ov-halo {
-    0%, 100% { box-shadow: 0 0 0 0 rgb(var(--neon-rgb) / 0); }
-    50% { box-shadow: 0 0 16px 3px rgb(var(--neon-rgb) / 0.4); }
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
   }
   .ov-in-right { animation: ov-in-right 160ms ease-out both; }
   .ov-in-left { animation: ov-in-left 160ms ease-out both; }
   .ov-pop { animation: ov-pop 140ms ease-out both; }
-  .ov-halo { animation: ov-halo 1.8s ease-in-out infinite; }
+  .ov-halo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 16px 3px rgb(var(--neon-rgb) / 0.4);
+    pointer-events: none;
+    opacity: 0;
+    will-change: opacity;
+    animation: ov-halo 1.8s ease-in-out infinite;
+  }
 
   /* Rolagem fina e sem trilho: o trilho solido do app inteiro virava uma
      faixa chapada dentro do painel translucido. */

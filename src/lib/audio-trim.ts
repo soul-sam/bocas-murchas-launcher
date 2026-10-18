@@ -40,6 +40,24 @@ const FADE_MS = 5
 
 let shared: AudioContext | null = null
 
+/** Trechos tocando agora no contexto compartilhado. */
+let playing = 0
+let idleTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Contexto rodando segura a saída de áudio aberta (o Windows não deixa o PC
+ * dormir) e um thread de áudio ligado — e este vivia pra sempre depois do
+ * primeiro recorte. Suspende uns segundos depois do último trecho; o
+ * `playRegion` seguinte resume. Decodificar funciona com ele suspenso.
+ */
+function scheduleSuspend(): void {
+  if (idleTimer) clearTimeout(idleTimer)
+  idleTimer = setTimeout(() => {
+    idleTimer = null
+    if (playing === 0 && shared?.state === 'running') void shared.suspend().catch(() => {})
+  }, 3_000)
+}
+
 /**
  * Um AudioContext pro app inteiro.
  *
@@ -265,7 +283,12 @@ export function playRegion(
   gain.gain.linearRampToValueAtTime(0, at + seconds)
 
   source.connect(gain).connect(ctx.destination)
-  source.onended = onEnded
+  playing++
+  source.onended = () => {
+    playing = Math.max(0, playing - 1)
+    if (playing === 0) scheduleSuspend()
+    onEnded()
+  }
   source.start(at, Math.max(0, startMs / 1000), seconds)
 
   return {

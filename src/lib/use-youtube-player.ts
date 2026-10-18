@@ -182,6 +182,16 @@ export function useYoutubePlayer(input: YoutubePlayerInput): YoutubePlayer {
   const stateRef = React.useRef<YtPlayerState>(YT_STATE.unstarted)
   const endedHandledRef = React.useRef<string | null>(null)
 
+  // Volta da bandeja: a barra de progresso pega o tempo que o ref guardou
+  // enquanto a janela estava oculta (lá o `infoDelivery` não mexe no estado).
+  React.useEffect(() => {
+    const onVisible = (): void => {
+      if (!document.hidden && !inputRef.current.scrubbing) setCurrentTime(timeRef.current)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
+
   const send = React.useCallback(
     (func: YtCommand, args: unknown[] = []) => {
       sendPlayerCommand(iframeRef.current, playerId, func, args)
@@ -256,7 +266,10 @@ export function useYoutubePlayer(input: YoutubePlayerInput): YoutubePlayer {
 
           if (typeof info.currentTime === 'number' && Number.isFinite(info.currentTime)) {
             timeRef.current = info.currentTime
-            if (!inputRef.current.scrubbing) setCurrentTime(info.currentTime)
+            // Janela oculta: ninguém vê a barra de progresso, e cada
+            // `infoDelivery` virava um render do host. O ref segue certo e a
+            // tela recebe o valor ao voltar (efeito de visibilidade abaixo).
+            if (!inputRef.current.scrubbing && !document.hidden) setCurrentTime(info.currentTime)
           }
           if (typeof info.duration === 'number' && info.duration > 0) setDuration(info.duration)
 

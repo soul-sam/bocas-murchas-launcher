@@ -191,8 +191,28 @@ async function querySlp(host: string, port: number): Promise<ServerStatus> {
 
 // ---------------- Polling + diff + notification ----------------
 
+/** Chave do último status enviado: o que a tela mostra, sem relógio. */
+let lastSentKey = ''
+
+/**
+ * Só manda quando algo VISÍVEL mudou. `fetchedAt` muda a cada volta e a
+ * latência oscila alguns ms — antes, isso re-renderizava a árvore inteira da
+ * janela principal a cada 30 s, até escondida na bandeja. Latência conta em
+ * degraus de 10 ms (é o que o card mostra de útil).
+ */
+function statusKey(status: ServerStatus | null): string {
+  if (!status) return ''
+  const { fetchedAt: _fetchedAt, latencyMs, ...rest } = status
+  return JSON.stringify({ ...rest, latency: latencyMs === undefined ? null : Math.round(latencyMs / 10) })
+}
+
 function broadcast(): void {
+  const key = statusKey(lastStatus)
+  if (key === lastSentKey) return
+  lastSentKey = key
   for (const win of BrowserWindow.getAllWindows()) {
+    // A sobreposição não mostra o status do servidor.
+    if (win.webContents.getURL().includes('/overlay.html')) continue
     win.webContents.send('server-status:status', lastStatus)
   }
 }

@@ -9,11 +9,10 @@ import { printApi, type PrintState } from './api-print'
  * Uma requisição só (`/print/state`) traz impressora, fila, cota e permissão —
  * a página não precisa costurar quatro chamadas pra desenhar a primeira vez.
  *
- * Sobre a atualização: quando o agente da impressora existir, ele empurra
- * telemetria por socket e isto passa a ouvir `print:*`. Enquanto não existe,
- * um poll de 15s enquanto a aba está aberta é honesto e barato — e o
- * `visibilitychange` evita ficar batendo na API com o launcher minimizado na
- * bandeja, que é onde ele passa a maior parte do dia.
+ * Sobre a atualização: o agente da impressora empurra tudo por socket
+ * (`print:*`, abaixo). O poll ficou só como rede de segurança pra evento
+ * perdido numa reconexão — 60 s, e nunca com a janela oculta na bandeja, que
+ * é onde o launcher passa a maior parte do dia.
  */
 
 interface PrintContextValue {
@@ -32,7 +31,8 @@ interface PrintContextValue {
 
 const PrintContext = React.createContext<PrintContextValue | null>(null)
 
-const POLL_MS = 15_000
+/** Rede de segurança: os eventos `print:*` já trazem cada mudança. */
+const POLL_MS = 60_000
 
 export function PrintProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()

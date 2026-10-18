@@ -35,8 +35,10 @@ export function ServerStatusProvider({ children }: { children: React.ReactNode }
     }
   }, [])
 
+  const value = React.useMemo(() => ({ status, refresh, refreshing }), [status, refresh, refreshing])
+
   return (
-    <ServerStatusContext.Provider value={{ status, refresh, refreshing }}>
+    <ServerStatusContext.Provider value={value}>
       {children}
     </ServerStatusContext.Provider>
   )

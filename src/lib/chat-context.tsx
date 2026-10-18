@@ -881,7 +881,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (typing.length === 0) return
     const timer = setInterval(() => {
       const cutoff = Date.now() - TYPING_TTL_MS
-      setTyping((prev) => prev.filter((t) => t.at > cutoff))
+      // Mesma lista quando ninguém expirou: um array novo por segundo fazia o
+      // chat inteiro renderizar enquanto alguém estivesse digitando.
+      setTyping((prev) => {
+        const next = prev.filter((t) => t.at > cutoff)
+        return next.length === prev.length ? prev : next
+      })
     }, 1_000)
     return () => clearInterval(timer)
   }, [typing.length])

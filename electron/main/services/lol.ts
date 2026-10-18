@@ -69,6 +69,12 @@ const DISCOVERY_INTERVAL_MS = 5_000
 const DISCOVERY_IDLE_INTERVAL_MS = 30_000
 const DISCOVERY_FAST_TICKS = 12
 const POLL_INTERVAL_MS = 2_000
+/**
+ * Cliente aberto parado (sem fila, ou no saguão): ninguém espera reação em
+ * 2 s, e o cliente fica assim por horas. Fila, aceitar partida, seleção e jogo
+ * continuam no ritmo rápido — a fila leva bem mais que 5 s pra achar partida.
+ */
+const IDLE_POLL_INTERVAL_MS = 5_000
 const LIVE_INTERVAL_MS = 5_000
 const EOG_INTERVAL_MS = 3_000
 const EOG_MAX_WAIT_MS = 60_000
@@ -371,10 +377,14 @@ function discoveryInterval(): number {
     : DISCOVERY_INTERVAL_MS
 }
 
+function sessionInterval(s: { lastPhase: LolPhase | null }): number {
+  return s.lastPhase === 'none' || s.lastPhase === 'lobby' ? IDLE_POLL_INTERVAL_MS : POLL_INTERVAL_MS
+}
+
 function schedule(gen: number): void {
   if (gen !== generation) return
   clearTimer()
-  timer = setTimeout(() => void runTick(gen), session ? POLL_INTERVAL_MS : discoveryInterval())
+  timer = setTimeout(() => void runTick(gen), session ? sessionInterval(session) : discoveryInterval())
 }
 
 function runTick(gen: number): Promise<void> {
