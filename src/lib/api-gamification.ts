@@ -283,6 +283,22 @@ export interface GiftNotice {
   message: string | null
 }
 
+/** Payload de `gamification:donation` — chega em quem RECEBEU. */
+export interface DonationNotice {
+  fromId: string
+  fromName: string
+  amount: number
+}
+
+export interface DonationResult {
+  coins: number
+  amount: number
+  to: { id: string; displayName: string }
+}
+
+/** Teto de uma doação — espelha `DONATION.max` da API (lib/gamification/rules.ts). */
+export const DONATION_MAX = 5000
+
 export interface ShopResponse {
   coins: number
   items: ShopItem[]
@@ -685,6 +701,8 @@ export function xpReasonLabel(reason: string | undefined | null): string {
   // Murchos de nível vêm como `levelup:<nível>` (e `levelup:backfill` no
   // ajuste retroativo), então não dá pra ter uma chave fixa no mapa.
   if (reason.startsWith('gift:')) return 'presente'
+  if (reason.startsWith('donation:')) return 'doação'
+  if (reason.startsWith('donation_received:')) return 'doação recebida'
   // Easter-egg achado (API: modules/easter-eggs.ts) — o nome do ovo já saiu no toast da badge.
   if (reason.startsWith('egg:')) return 'achou um ovo'
   // Recompensa por hora impressa (API: lib/print-queue/quota-math.ts) — `print_reward:<jobId>`.
@@ -948,6 +966,15 @@ export const gamification = {
       method: 'POST',
       token,
       body: JSON.stringify({ cosmeticId, toUserId, message: message || undefined })
+    })
+  },
+
+  /** Doação: eu pago, `toUserId` recebe `amount` murchos (1 a DONATION_MAX). */
+  async donate(token: string, toUserId: string, amount: number): Promise<{ donation: DonationResult }> {
+    return request('/gamification/donate', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ toUserId, amount })
     })
   },
 

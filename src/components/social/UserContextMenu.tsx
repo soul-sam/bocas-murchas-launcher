@@ -11,7 +11,7 @@ import {
   Headphones,
   Trash2
 } from 'lucide-react'
-import { ChatIcon, ProfileIcon } from '@/lib/bocas-icons'
+import { ChatIcon, MurchosIcon, ProfileIcon } from '@/lib/bocas-icons'
 import { VOICE_VOLUME_MAX } from '@/lib/participant-volume'
 import {
   DropdownMenu,
@@ -29,6 +29,7 @@ import { useVoice } from '@/lib/voice-context'
 import { useNudge } from '@/lib/nudge-context'
 import { useSettings } from '@/lib/settings-context'
 import { useOverlays } from '@/lib/overlay-context'
+import { DonateDialog } from './DonateDialog'
 
 /**
  * Menu de botao direito nos usuarios.
@@ -69,6 +70,13 @@ export function UserContextMenu() {
    */
   const conversation = conversations.find((c) => c.other.id === userId)
 
+  /**
+   * Pra quem o diálogo de doação está aberto. Fica AQUI e não no menu: o menu
+   * some ao escolher o item, e o diálogo precisa continuar de pé depois disso.
+   */
+  const [donateTarget, setDonateTarget] = React.useState<{ id: string; displayName: string } | null>(null)
+  const donateDialog = <DonateDialog target={donateTarget} onClose={() => setDonateTarget(null)} />
+
   const copy = React.useCallback((text: string) => {
     /**
      * A API moderna falha calada quando a janela esta sem foco — e o menu de
@@ -97,193 +105,205 @@ export function UserContextMenu() {
     void promise.catch(fallback)
   }, [])
 
-  if (!userMenu) return null
+  if (!userMenu) return donateDialog
 
   const displayName = target?.displayName ?? 'Usuário'
 
   return (
-    <DropdownMenu
-      modal={false}
-      open
-      onOpenChange={(next) => {
-        if (!next) closeUserMenu()
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        {/* Ancora invisivel no ponto do clique: e ela que o Radix usa pra
-            posicionar (e pra virar o menu pra cima perto da borda de baixo). */}
-        <span
-          tabIndex={-1}
-          className="pointer-events-none fixed h-0 w-0"
-          style={{ left: userMenu.x, top: userMenu.y }}
-        />
-      </DropdownMenuTrigger>
+    <>
+      {donateDialog}
+      <DropdownMenu
+        modal={false}
+        open
+        onOpenChange={(next) => {
+          if (!next) closeUserMenu()
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          {/* Ancora invisivel no ponto do clique: e ela que o Radix usa pra
+              posicionar (e pra virar o menu pra cima perto da borda de baixo). */}
+          <span
+            tabIndex={-1}
+            className="pointer-events-none fixed h-0 w-0"
+            style={{ left: userMenu.x, top: userMenu.y }}
+          />
+        </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" side="bottom" sideOffset={2} className="w-60">
-        <DropdownMenuLabel className="truncate">
-          {displayName}
-          {isSelf && <span className="ml-1 normal-case tracking-normal">(você)</span>}
-        </DropdownMenuLabel>
+        <DropdownMenuContent align="start" side="bottom" sideOffset={2} className="w-60">
+          <DropdownMenuLabel className="truncate">
+            {displayName}
+            {isSelf && <span className="ml-1 normal-case tracking-normal">(você)</span>}
+          </DropdownMenuLabel>
 
-        {/* Primeira coisa do menu, pra todo mundo (inclusive eu): o perfil
-            inteiro. Clicar na foto ja abre, mas a foto nem sempre esta a
-            vista — numa linha do chat em modo compacto, por exemplo. */}
-        <DropdownMenuItem onSelect={() => openProfile(userId)}>
-          <ProfileIcon className="h-3.5 w-3.5" />
-          Ver perfil
-        </DropdownMenuItem>
+          {/* Primeira coisa do menu, pra todo mundo (inclusive eu): o perfil
+              inteiro. Clicar na foto ja abre, mas a foto nem sempre esta a
+              vista — numa linha do chat em modo compacto, por exemplo. */}
+          <DropdownMenuItem onSelect={() => openProfile(userId)}>
+            <ProfileIcon className="h-3.5 w-3.5" />
+            Ver perfil
+          </DropdownMenuItem>
 
-        {!isSelf && (
-          <>
-            {/* Primeira coisa do menu: é a ação mais pedida e a única que não
-                tinha caminho nenhum na interface antes. */}
-            <DropdownMenuItem onSelect={() => void openDm(userId)}>
-              <ChatIcon className="h-3.5 w-3.5" />
-              Mandar mensagem
-            </DropdownMenuItem>
-
-            {conversation && (
-              // Nao apaga mensagem nenhuma — so tira o papo da barra. Por isso
-              // nao pergunta "tem certeza?": a conversa volta inteira na
-              // proxima mensagem ou em "Mandar mensagem".
-              <DropdownMenuItem
-                onSelect={() => void closeDm(conversation.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Excluir conversa
+          {!isSelf && (
+            <>
+              {/* Primeira coisa do menu: é a ação mais pedida e a única que não
+                  tinha caminho nenhum na interface antes. */}
+              <DropdownMenuItem onSelect={() => void openDm(userId)}>
+                <ChatIcon className="h-3.5 w-3.5" />
+                Mandar mensagem
               </DropdownMenuItem>
-            )}
 
-            <DropdownMenuSeparator />
-
-            {/* Fora de um DropdownMenuItem de proposito: item de menu fecha no
-                clique, e arrastar um slider dispara clique o tempo todo. */}
-            <div className="px-2 pb-1.5 pt-1">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-[11.5px] text-muted-foreground">
-                  Volume
-                </span>
-                <span
-                  className={cn(
-                    'font-mono text-[11.5px]',
-                    muted ? 'text-destructive' : 'text-muted-foreground'
-                  )}
+              {conversation && (
+                // Nao apaga mensagem nenhuma — so tira o papo da barra. Por isso
+                // nao pergunta "tem certeza?": a conversa volta inteira na
+                // proxima mensagem ou em "Mandar mensagem".
+                <DropdownMenuItem
+                  onSelect={() => void closeDm(conversation.id)}
+                  className="text-destructive focus:text-destructive"
                 >
-                  {Math.round(volume * 100)}%
-                </span>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Excluir conversa
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSeparator />
+
+              {/* Fora de um DropdownMenuItem de proposito: item de menu fecha no
+                  clique, e arrastar um slider dispara clique o tempo todo. */}
+              <div className="px-2 pb-1.5 pt-1">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-[11.5px] text-muted-foreground">
+                    Volume
+                  </span>
+                  <span
+                    className={cn(
+                      'font-mono text-[11.5px]',
+                      muted ? 'text-destructive' : 'text-muted-foreground'
+                    )}
+                  >
+                    {Math.round(volume * 100)}%
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label={muted ? 'Voltar a ouvir' : 'Mutar só pra mim'}
+                    onClick={() => voice.setUserVolume(userId, muted ? 1 : 0)}
+                    className={cn(
+                      'shrink-0 transition-colors',
+                      muted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {muted ? (
+                      <VolumeX className="h-3.5 w-3.5" />
+                    ) : (
+                      <Volume2 className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+
+                  <input
+                    type="range"
+                    min={0}
+                    max={VOICE_VOLUME_MAX}
+                    step={0.05}
+                    value={volume}
+                    onChange={(e) => voice.setUserVolume(userId, Number(e.target.value))}
+                    onDoubleClick={() => voice.setUserVolume(userId, 1)}
+                    aria-label={`Volume de ${displayName}`}
+                    className={cn('mini-slider min-w-0 flex-1', muted && 'is-muted')}
+                  />
+                </div>
+
+                {!inMyCall && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    vale na próxima call
+                  </p>
+                )}
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label={muted ? 'Voltar a ouvir' : 'Mutar só pra mim'}
-                  onClick={() => voice.setUserVolume(userId, muted ? 1 : 0)}
-                  className={cn(
-                    'shrink-0 transition-colors',
-                    muted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  {muted ? (
+              <DropdownMenuItem
+                onSelect={() => voice.setUserVolume(userId, muted ? 1 : 0)}
+                danger={!muted}
+              >
+                {muted ? (
+                  <>
+                    <Headphones className="h-3.5 w-3.5" />
+                    Voltar a ouvir
+                  </>
+                ) : (
+                  <>
                     <VolumeX className="h-3.5 w-3.5" />
-                  ) : (
-                    <Volume2 className="h-3.5 w-3.5" />
-                  )}
-                </button>
+                    Mutar só pra mim
+                  </>
+                )}
+              </DropdownMenuItem>
 
-                <input
-                  type="range"
-                  min={0}
-                  max={VOICE_VOLUME_MAX}
-                  step={0.05}
-                  value={volume}
-                  onChange={(e) => voice.setUserVolume(userId, Number(e.target.value))}
-                  onDoubleClick={() => voice.setUserVolume(userId, 1)}
-                  aria-label={`Volume de ${displayName}`}
-                  className={cn('mini-slider min-w-0 flex-1', muted && 'is-muted')}
-                />
-              </div>
+              <DropdownMenuItem
+                disabled={volume === 1}
+                onSelect={() => voice.setUserVolume(userId, 1)}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Voltar pro volume padrão
+              </DropdownMenuItem>
 
-              {!inMyCall && (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  vale na próxima call
-                </p>
+              <DropdownMenuSeparator />
+
+              {/* Quem esta na minha call esta online por definicao — a lista de
+                  membros pode estar atrasada, e desabilitar por causa dela
+                  deixaria o botao morto sem motivo. */}
+              {/* Quem avisou que saiu não é cutucado — e o menu diz isso ANTES
+                  do clique. O servidor também recusa, mas descobrir pelo erro é
+                  descobrir tarde. Ver lib/afk-context. */}
+              <DropdownMenuItem
+                disabled={targetIsAway || (!target?.isOnline && !inMyCall)}
+                onSelect={() => nudgeUser(userId)}
+              >
+                <Zap className="h-3.5 w-3.5" />
+                <span className="min-w-0 flex-1 truncate">
+                  {targetIsAway ? 'Cutucar — saiu' : 'Cutucar'}
+                </span>
+              </DropdownMenuItem>
+
+              {/* Só pra quem está na call comigo: é o "toma, paga o teu" de quem
+                  está jogando junto. */}
+              {inMyCall && (
+                <DropdownMenuItem onSelect={() => setDonateTarget({ id: userId, displayName })}>
+                  <MurchosIcon className="h-3.5 w-3.5" />
+                  Doar Murchos
+                </DropdownMenuItem>
               )}
-            </div>
+            </>
+          )}
 
-            <DropdownMenuItem
-              onSelect={() => voice.setUserVolume(userId, muted ? 1 : 0)}
-              danger={!muted}
-            >
-              {muted ? (
-                <>
-                  <Headphones className="h-3.5 w-3.5" />
-                  Voltar a ouvir
-                </>
-              ) : (
-                <>
-                  <VolumeX className="h-3.5 w-3.5" />
-                  Mutar só pra mim
-                </>
-              )}
-            </DropdownMenuItem>
+          {isSelf && (
+            <>
+              <DropdownMenuItem onSelect={openProfileEditor}>
+                <UserCog className="h-3.5 w-3.5" />
+                Editar perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={openSettings}>
+                <Settings className="h-3.5 w-3.5" />
+                Configurações
+              </DropdownMenuItem>
+            </>
+          )}
 
-            <DropdownMenuItem
-              disabled={volume === 1}
-              onSelect={() => voice.setUserVolume(userId, 1)}
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Voltar pro volume padrão
-            </DropdownMenuItem>
+          <DropdownMenuSeparator />
 
-            <DropdownMenuSeparator />
+          <DropdownMenuItem
+            disabled={!target?.username}
+            onSelect={() => target?.username && copy(`@${target.username}`)}
+          >
+            <AtSign className="h-3.5 w-3.5" />
+            Copiar usuário
+          </DropdownMenuItem>
 
-            {/* Quem esta na minha call esta online por definicao — a lista de
-                membros pode estar atrasada, e desabilitar por causa dela
-                deixaria o botao morto sem motivo. */}
-            {/* Quem avisou que saiu não é cutucado — e o menu diz isso ANTES
-                do clique. O servidor também recusa, mas descobrir pelo erro é
-                descobrir tarde. Ver lib/afk-context. */}
-            <DropdownMenuItem
-              disabled={targetIsAway || (!target?.isOnline && !inMyCall)}
-              onSelect={() => nudgeUser(userId)}
-            >
-              <Zap className="h-3.5 w-3.5" />
-              <span className="min-w-0 flex-1 truncate">
-                {targetIsAway ? 'Cutucar — saiu' : 'Cutucar'}
-              </span>
-            </DropdownMenuItem>
-          </>
-        )}
-
-        {isSelf && (
-          <>
-            <DropdownMenuItem onSelect={openProfileEditor}>
-              <UserCog className="h-3.5 w-3.5" />
-              Editar perfil
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={openSettings}>
-              <Settings className="h-3.5 w-3.5" />
-              Configurações
-            </DropdownMenuItem>
-          </>
-        )}
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem
-          disabled={!target?.username}
-          onSelect={() => target?.username && copy(`@${target.username}`)}
-        >
-          <AtSign className="h-3.5 w-3.5" />
-          Copiar usuário
-        </DropdownMenuItem>
-
-        <DropdownMenuItem onSelect={() => copy(userId)}>
-          <Hash className="h-3.5 w-3.5" />
-          Copiar ID
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuItem onSelect={() => copy(userId)}>
+            <Hash className="h-3.5 w-3.5" />
+            Copiar ID
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   )
 }

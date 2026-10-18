@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.76.0',
+    headline: 'Doar murchos na call',
+    items: [
+      'Botão direito em alguém que está na call com você → "Doar Murchos": escolhe quanto (até 5.000 por vez) e o valor sai do seu saldo direto pro da pessoa, que recebe um aviso com o seu nome.'
+    ],
+    note: 'Murcho recebido de doação não conta no ranking de murchos ganhos.'
+  },
+  {
     version: '1.75.2',
     headline: 'Launcher mais leve',
     items: [

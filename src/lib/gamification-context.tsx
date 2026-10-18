@@ -11,6 +11,8 @@ import {
   type Badge,
   type CosmeticType,
   type GamificationProfile,
+  type DonationNotice,
+  type DonationResult,
   type GiftNotice,
   type GiftResult,
   type LiveWagerGame,
@@ -88,6 +90,8 @@ interface GamificationContextValue {
   buy: (cosmeticId: string) => Promise<ShopItem>
   /** Presente: debita meu saldo, o item vai pra `toUserId`. */
   gift: (cosmeticId: string, toUserId: string, message?: string) => Promise<GiftResult>
+  /** Doa murchos direto pra alguém (botão direito na call). */
+  donate: (toUserId: string, amount: number) => Promise<DonationResult>
   /** `slot` 2 só vale pra emoji (precisa do item `emojiSlot:2`). */
   equip: (type: CosmeticType, cosmeticId: string | null, slot?: 1 | 2, colors?: [string, string]) => Promise<void>
   /** Texto de um cosmético (título) pelo id; cai no id "limpo" se o catálogo não chegou. */
@@ -416,6 +420,17 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     [token]
   )
 
+  const donate = React.useCallback(
+    async (toUserId: string, amount: number): Promise<DonationResult> => {
+      if (!token) throw new ApiError(401, 'Sem sessão')
+      const res = await api.donate(token, toUserId, amount)
+      setProfile((prev) => (prev ? { ...prev, coins: res.donation.coins } : prev))
+      setShop((prev) => (prev ? { ...prev, coins: res.donation.coins } : prev))
+      return res.donation
+    },
+    [token]
+  )
+
   const equip = React.useCallback(
     async (type: CosmeticType, cosmeticId: string | null, slot?: 1 | 2, colors?: [string, string]) => {
       if (!token) throw new ApiError(401, 'Sem sessão')
@@ -722,7 +737,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       // Murchos de subida de nível já saem no toast de `levelup`; um segundo
       // toast com o mesmo número seria eco.
       const fromLevelUp = typeof data.reason === 'string' && data.reason.startsWith('levelup:')
-      if (data.delta !== 0 && !fromLevelUp) {
+      // Doação recebida tem toast próprio, com o nome de quem doou (handleDonation).
+      const fromDonation = typeof data.reason === 'string' && data.reason.startsWith('donation_received:')
+      if (data.delta !== 0 && !fromLevelUp && !fromDonation) {
         pushToast({
           kind: 'coins',
           title: `${data.delta > 0 ? '+' : '−'}${Math.abs(data.delta)} murchos`,
@@ -746,10 +763,21 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       void loadShop()
     }
 
+    const handleDonation = (data: DonationNotice): void => {
+      if (!data || typeof data.amount !== 'number') return
+      pushToast({
+        kind: 'gift',
+        title: `🪙 ${data.fromName} te doou ${data.amount.toLocaleString('pt-BR')} murchos`,
+        ttlMs: 8_000
+      })
+      sound('coins')
+    }
+
     const handleSupremeBroken = (data: { url?: string }): void =>
       warnBrokenSound('entrada/saída', data?.url)
 
     socket.on('gamification:gift', handleGift)
+    socket.on('gamification:donation', handleDonation)
     socket.on('gamification:supremeSoundBroken', handleSupremeBroken)
     socket.on('gamification:xp', handleXp)
     socket.on('gamification:levelup', handleLevelUp)
@@ -762,6 +790,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       socket.off('gamification:badge', handleBadge)
       socket.off('gamification:coins', handleCoins)
       socket.off('gamification:gift', handleGift)
+      socket.off('gamification:donation', handleDonation)
       socket.off('gamification:supremeSoundBroken', handleSupremeBroken)
     }
   }, [socket, pushToast, warnBrokenSound, sound, scheduleRefresh, loadShop])
@@ -783,6 +812,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       loadShop,
       buy,
       gift,
+      donate,
       equip,
       cosmeticName,
       cosmeticEmoji,
@@ -805,6 +835,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       loadShop,
       buy,
       gift,
+      donate,
       equip,
       cosmeticName,
       cosmeticEmoji,
