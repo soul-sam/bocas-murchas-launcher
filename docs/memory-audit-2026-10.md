@@ -341,6 +341,20 @@ Esforço: P (< 1 h), M (meio dia), G (≥ 1 dia). Risco = risco de regressão.
 | 1.13 | **Gravador de clipes** (medido ≈ 7,5 % de um núcleo): curto prazo — não gravar quando ninguém fala (mic mudo **ou** sozinho na call, não só mudo+ensurdecido), e trocar o tick 1 s por booleano (1.2). Médio prazo — substituir os 3 MediaRecorder defasados por um ring buffer PCM (worklet ou ScriptProcessor no AudioContext da mistura, int16, 30 s ≈ 5,8 MB estéreo 48 kHz) e codificar só ao salvar o clipe | medição 6→7 | M | médio (clipe tem que continuar saindo igual; testar atalho com mic aberto/fechado) | medição 6 repetida: renderer oculto em call sozinho ≤ ~2 % com buffer ligado; clipe salvo toca com 30 s |
 | 1.14 | **Animações infinitas (confirmado na medição 8):** (a) espelhar em `html.game-running` exatamente os seletores dos blocos `prefers-reduced-motion` de `effects.css`/`globals.css` (`frame-supreme::before`, `name-flow`, `fx-spark`, `rarity-supreme-card::before`, `fx-fire`, `frame-fire*`, aurora `body::after`); (b) nova classe `html.idle-motion` aplicada quando a janela perde o foco ou após N min sem input, com a mesma lista; (c) reescrever `frame-supreme` e `name-flow` para animar só `transform`/`opacity` (camada composta) em vez de custom property/`background-position` | medição 4 vs 8 | P (a, b) / M (c) | baixo (a, b) / médio (c: visual de item pago, validar com o dono) | janela visível sozinho na call sem foco: GPU-process ≤ ~10 %; com foco, após (c), próximo disso |
 
+**Estado da Fase 1 (18/10/2026):**
+
+| # | Estado | Onde |
+|---|---|---|
+| 1.1, 1.3, 1.4, 1.5, 1.7, 1.11, 1.12 | feito | launcher `ad2ec1e` |
+| 1.2, 1.13 | feito (tick → booleano; sem gravar sozinho; anel PCM + opus ao clipar) | launcher `efd5b1e`, `9b2a29a` |
+| 1.6, 1.14 (a, b) | feito (`motion-idle` + `game-running` pausam a lista inteira) | launcher `9936039` |
+| 1.14 (c) | não feito — reescrever `frame-supreme`/`name-flow` mexe no visual de item pago | — |
+| 1.8 | feito no cliente: pedido só no 1º connect (servidor já envia em toda conexão) | launcher `b8afeb0` |
+| 1.9 | feito: `gamification:house` e `voiceChannelUsers` removidos; `mapPing*` mantido (pode ter cliente web fora deste repo) | API branch `perf/auditoria-out-2026` `ed1ab1b` |
+| 1.10 | feito: índices + teto 1–100 em canal e DM | API idem |
+
+A API **não foi para a `main`** de propósito: o push na `main` faz deploy automático (o `prisma db push` do boot cria os dois índices). Merge e deploy ficam com o dono. Os commits do launcher estão na `main` local, sem push e sem tag.
+
 ### Fase 2 — Melhorias intermediárias
 
 | # | Ação | Ataca | Depende de | Esforço | Risco | Validação |
