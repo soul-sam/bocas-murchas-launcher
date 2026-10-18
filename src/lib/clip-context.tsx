@@ -54,8 +54,6 @@ export interface PendingClip extends Capture {
 interface ClipContextValue {
   /** Dá pra clipar agora? (buffer ligado, na call, e já com áudio suficiente) */
   canClip: boolean
-  /** Quantos ms o buffer já tem. Vira a dica "pega os últimos 24s". */
-  bufferedMs: number
 
   /** Captura os últimos segundos e abre a confirmação. */
   capture: () => Promise<void>
@@ -75,8 +73,11 @@ interface ClipContextValue {
 
 const ClipContext = React.createContext<ClipContextValue | null>(null)
 
-/** De quanto em quanto a tela relê o tamanho do buffer. */
+/** De quanto em quanto confere se o buffer já encheu o mínimo pra clipar. */
 const BUFFER_TICK_MS = 1_000
+
+/** Abaixo disso o clipe sairia curto demais pra valer a tela de confirmação. */
+const MIN_BUFFER_MS = 3_000
 
 export function ClipProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
@@ -89,7 +90,7 @@ export function ClipProvider({ children }: { children: React.ReactNode }) {
   const [saving, setSaving] = React.useState(false)
   const [clips, setClips] = React.useState<Clip[]>([])
   const [loading, setLoading] = React.useState(true)
-  const [bufferedMs, setBufferedMs] = React.useState(0)
+  const [bufferReady, setBufferReady] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
   const recorderRef = React.useRef<ClipRecorder | null>(null)
@@ -99,7 +100,15 @@ export function ClipProvider({ children }: { children: React.ReactNode }) {
   // Mudo e ensurdecido não há o que clipar — e o gravador rodando segura a
   // saída de áudio aberta (o Windows não deixa o PC dormir). Volta a gravar,
   // do zero, assim que a pessoa volta a ouvir ou falar.
-  const connected = voice.connected && !(voice.deafened && !voice.micEnabled)
+  //
+  // Sozinho na call também não grava: os três gravadores custam ~7% de um
+  // núcleo sem parar (medido em out/2026, docs/memory-audit-2026-10.md) e
+  // ninguém clipa a própria espera. O buffer começa quando o primeiro amigo
+  // entra.
+  const alone = !voice.participants.some((p) => !p.isLocal)
+  const connected = voice.connected && !alone && !(voice.deafened && !voice.micEnabled)
+  const aloneRef = React.useRef(false)
+  aloneRef.current = voice.connected && alone
 
   // Refs pro atalho global, que é registrado uma vez e não pode depender de
   // valores fechados num render antigo.
@@ -116,7 +125,7 @@ export function ClipProvider({ children }: { children: React.ReactNode }) {
     if (!enabled || !connected || !room) {
       recorderRef.current?.destroy()
       recorderRef.current = null
-      setBufferedMs(0)
+      setBufferReady(false)
       return
     }
 
@@ -200,7 +209,15 @@ export function ClipProvider({ children }: { children: React.ReactNode }) {
     room.on(RoomEvent.LocalTrackUnpublished, onLocalUnpublished)
     room.on(RoomEvent.ParticipantDisconnected, onDisconnected)
 
-    const tick = window.setInterval(() => setBufferedMs(recorder.bufferedMs()), BUFFER_TICK_MS)
+    // Só até o buffer passar do mínimo: depois disso o gravador mais velho
+    // nunca fica abaixo de 20s, e reler a idade dele toda hora fazia o
+    // contexto inteiro (atalhos, sobreposição, compositor) renderizar 1x/s
+    // a call toda.
+    const tick = window.setInterval(() => {
+      if (recorder.bufferedMs() <= MIN_BUFFER_MS) return
+      setBufferReady(true)
+      window.clearInterval(tick)
+    }, BUFFER_TICK_MS)
 
     return () => {
       window.clearInterval(tick)
@@ -211,7 +228,7 @@ export function ClipProvider({ children }: { children: React.ReactNode }) {
       room.off(RoomEvent.ParticipantDisconnected, onDisconnected)
       recorder.destroy()
       if (recorderRef.current === recorder) recorderRef.current = null
-      setBufferedMs(0)
+      setBufferReady(false)
     }
   }, [enabled, connected, room])
 
@@ -271,7 +288,7 @@ export function ClipProvider({ children }: { children: React.ReactNode }) {
   const capture = React.useCallback(async () => {
     const recorder = recorderRef.current
     if (!recorder) {
-      setError('Entra numa call primeiro.')
+      setError(aloneRef.current ? 'Sozinho na call não tem o que clipar.' : 'Entra numa call primeiro.')
       return
     }
 
@@ -376,12 +393,11 @@ export function ClipProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(timer)
   }, [error])
 
-  const canClip = enabled && connected && bufferedMs > 3_000
+  const canClip = enabled && connected && bufferReady
 
   const value = React.useMemo<ClipContextValue>(
     () => ({
       canClip,
-      bufferedMs,
       capture,
       pending,
       discard,
@@ -395,7 +411,6 @@ export function ClipProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       canClip,
-      bufferedMs,
       capture,
       pending,
       discard,
