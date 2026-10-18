@@ -1280,6 +1280,18 @@ html.game-running .animate-pulse {
   animation: none !important;
 }
 
+/* `html.motion-idle` (lib/motion-idle.ts): janela sem foco ou um minuto sem
+   input. Pausa em vez de tirar — congela no quadro atual. As do avatar, nome
+   e tema estão no fim de styles/effects.css. */
+html.motion-idle .animate-scan,
+html.motion-idle .animate-flicker,
+html.motion-idle .animate-float,
+html.motion-idle .animate-glow-pulse,
+html.motion-idle .animate-rainbow,
+html.motion-idle .animate-pulse {
+  animation-play-state: paused !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-scan,
   .animate-flicker,

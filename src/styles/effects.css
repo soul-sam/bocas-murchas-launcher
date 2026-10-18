@@ -120,8 +120,9 @@
 
 /* --- lendário: Rei dos Bocas (fogo) ----------------------------------------
    O ÚNICO com gradiente animado: escuro embaixo, a cor no meio, quase branco
-   na ponta da chama; sobe e desce com uma tremida de opacidade. Só
-   background-position e opacity: o compositor resolve sem repintar. */
+   na ponta da chama; sobe e desce com uma tremida de opacidade.
+   background-position NÃO fica só no compositor: repinta o texto a cada
+   frame. Por isso pausa com a janela parada (ver o fim do arquivo). */
 .fx-fire {
   background-image: linear-gradient(0deg, var(--fx-dd) 0%, var(--fx) 45%, var(--fx-lt) 80%, var(--fx-hi) 100%);
   background-size: 100% 220%;
@@ -504,3 +505,45 @@
 .name-flow { animation: name-flow 6s linear infinite; }
 @keyframes name-flow { from { background-position: 0% 0; } to { background-position: 200% 0; } }
 @media (prefers-reduced-motion: reduce) { .name-flow { animation: none; } }
+
+/* --- Pausa: jogo rodando ou ninguém olhando --------------------------------
+   Todas as animações infinitas deste arquivo repintam a janela a cada frame:
+   as de custom property (`frame-supreme`) e de background-position
+   (`name-flow`, `fx-fire`) não ficam só no compositor, apesar do que o
+   comentário do fogo acima supõe. Medido em out/2026: com a janela visível e
+   parada, elas custavam ~60% de um núcleo no processo da GPU
+   (docs/memory-audit-2026-10.md, medições 4 e 8).
+
+   `game-running` (activity-context) devolve a GPU pro jogo; `motion-idle`
+   (lib/motion-idle.ts) entra com a janela sem foco ou um minuto sem input.
+   Pausa em vez de `animation: none`: congela no quadro atual, sem pulo
+   quando volta. A lista é a mesma dos blocos de reduced-motion acima — quem
+   criar animação infinita nova põe aqui também. */
+html.game-running .fx-fire,
+html.game-running .frame-fire,
+html.game-running .frame-fire-ring::before,
+html.game-running .fx-supreme .fx-spark,
+html.game-running .frame-supreme::before,
+html.game-running .supreme-mouth-anim,
+html.game-running .supreme-mouth-anim .supreme-mouth-shine,
+html.game-running .supreme-mouth-kiss .supreme-mouth-lips,
+html.game-running .supreme-mouth-kiss .supreme-mouth-shine,
+html.game-running .supreme-mouth-kiss .supreme-mouth-heart,
+html.game-running .rarity-supreme-card::before,
+html.game-running .name-flow,
+html.game-running[data-theme='aurora'] body::after,
+html.motion-idle .fx-fire,
+html.motion-idle .frame-fire,
+html.motion-idle .frame-fire-ring::before,
+html.motion-idle .fx-supreme .fx-spark,
+html.motion-idle .frame-supreme::before,
+html.motion-idle .supreme-mouth-anim,
+html.motion-idle .supreme-mouth-anim .supreme-mouth-shine,
+html.motion-idle .supreme-mouth-kiss .supreme-mouth-lips,
+html.motion-idle .supreme-mouth-kiss .supreme-mouth-shine,
+html.motion-idle .supreme-mouth-kiss .supreme-mouth-heart,
+html.motion-idle .rarity-supreme-card::before,
+html.motion-idle .name-flow,
+html.motion-idle[data-theme='aurora'] body::after {
+  animation-play-state: paused !important;
+}
