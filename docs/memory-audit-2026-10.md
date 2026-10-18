@@ -350,10 +350,10 @@ Esforço: P (< 1 h), M (meio dia), G (≥ 1 dia). Risco = risco de regressão.
 | 1.6, 1.14 (a, b) | feito (`motion-idle` + `game-running` pausam a lista inteira) | launcher `9936039` |
 | 1.14 (c) | não feito — reescrever `frame-supreme`/`name-flow` mexe no visual de item pago | — |
 | 1.8 | feito no cliente: pedido só no 1º connect (servidor já envia em toda conexão) | launcher `b8afeb0` |
-| 1.9 | feito: `gamification:house` e `voiceChannelUsers` removidos; `mapPing*` mantido (pode ter cliente web fora deste repo) | API branch `perf/auditoria-out-2026` `ed1ab1b` |
+| 1.9 | feito só `voiceChannelUsers` (removido). `gamification:house` **mantido**: o launcher 1.74.0 passou a escutá-lo (pote sempre à vista) — a auditoria leu a 1.73.0. `mapPing*` mantido (pode ter cliente web fora deste repo) | API branch `perf/auditoria-out-2026` (`ed1ab1b` + `2d76c33`) |
 | 1.10 | feito: índices + teto 1–100 em canal e DM | API idem |
 
-A API **não foi para a `main`** de propósito: o push na `main` faz deploy automático (o `prisma db push` do boot cria os dois índices). Merge e deploy ficam com o dono. Os commits do launcher estão na `main` local, sem push e sem tag.
+Os commits do launcher foram reaplicados sobre `origin/main` (1.74.0) na branch `perf/auditoria-out-2026` (worktree `~/.bm-worktrees/launcher-perf`); 179/179 testes e typecheck ok lá. A API **não foi para a `main`** de propósito: o push na `main` faz deploy automático (o `prisma db push` do boot cria os dois índices). Merge e deploy ficam com o dono. Os commits do launcher estão na `main` local, sem push e sem tag.
 
 ### Fase 2 — Melhorias intermediárias
 
