@@ -1025,7 +1025,7 @@ function ZoeiraTab() {
             type="range"
             min={0}
             max={1}
-            step={0.05}
+            step={0.01}
             value={settings.soundboardVolume}
             onChange={(e) => void update({ soundboardVolume: Number(e.target.value) })}
             className="ram-slider flex-1"
@@ -1048,7 +1048,7 @@ function ZoeiraTab() {
             type="range"
             min={0}
             max={1}
-            step={0.05}
+            step={0.01}
             value={settings.music.volume}
             onChange={(e) =>
               void update({ music: { ...settings.music, volume: Number(e.target.value) } })

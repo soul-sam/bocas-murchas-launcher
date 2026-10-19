@@ -180,7 +180,7 @@ export function SoundboardPanel() {
             type="range"
             min={0}
             max={1}
-            step={0.05}
+            step={0.01}
             value={settings.soundboardVolume}
             onChange={(e) => void update({ soundboardVolume: Number(e.target.value) })}
             className="ram-slider ml-auto w-32"
@@ -546,7 +546,7 @@ function SoundMenu({
                 type="range"
                 min={0.05}
                 max={1}
-                step={0.05}
+                step={0.01}
                 value={volume}
                 onChange={(e) => setVolume(Number(e.target.value))}
                 className="ram-slider w-full"
