@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { YT_EMBED_ORIGIN, isDeadVideoError, parsePlayerMessage, parseYouTubeUrl } from './youtube.ts'
+import { YT_EMBED_ORIGIN, isDeadVideoError, parsePlayerMessage, playerVolume, parseYouTubeUrl } from './youtube.ts'
 
 const ID = 'dQw4w9WgXcQ'
 
@@ -51,4 +51,18 @@ test('parsePlayerMessage só aceita a origem do player e o id esperado', () => {
 test('isDeadVideoError separa vídeo morto de engasgo', () => {
   for (const code of [2, 100, 101, 150]) assert.equal(isDeadVideoError(code), true, String(code))
   for (const code of [5, 153, 0, null, undefined]) assert.equal(isDeadVideoError(code), false, String(code))
+})
+
+test('playerVolume: slider ligado nunca vira silêncio (volume < 10 não tocava)', () => {
+  assert.equal(playerVolume(0), 0)
+  for (let slider = 1; slider <= 100; slider++) {
+    assert.ok(playerVolume(slider) >= 1, `slider ${slider} -> ${playerVolume(slider)}`)
+  }
+  assert.equal(playerVolume(100), 100)
+})
+
+test('playerVolume: curva cresce sem degrau pra trás', () => {
+  for (let slider = 1; slider <= 100; slider++) {
+    assert.ok(playerVolume(slider) >= playerVolume(slider - 1))
+  }
 })

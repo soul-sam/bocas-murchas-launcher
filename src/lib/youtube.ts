@@ -105,10 +105,15 @@ export function youtubeThumbnail(videoId: string): string {
  * fica de fato baixinho e o meio vira meio. O número que aparece na tela
  * continua sendo a POSIÇÃO, não a amplitude — ninguém quer ler "20" e ouvir
  * "4", e é a posição que a pessoa memoriza.
+ *
+ * O PÉ DA CURVA COMEÇA EM 1, NÃO EM 0. O `setVolume` só entende inteiro, e o
+ * quadrado puro arredondava o slider 1..7 pra 0 (e 8..9 pra 1): "abaixo de 10
+ * não toca". Agora a curva vai de 1 a 100 — só o slider em 0 é silêncio.
  */
 export function playerVolume(sliderPercent: number): number {
   const position = Math.max(0, Math.min(100, sliderPercent)) / 100
-  return Math.round(position * position * 100)
+  if (position === 0) return 0
+  return Math.round(1 + position * position * 99)
 }
 
 /**
