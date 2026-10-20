@@ -43,9 +43,10 @@ export interface ChangelogEntry {
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
     version: '1.76.0',
-    headline: 'Doar murchos na call',
+    headline: 'Doar murchos e modo treino',
     items: [
-      'Botão direito em alguém que está na call com você → "Doar Murchos": escolhe quanto (até 5.000 por vez) e o valor sai do seu saldo direto pro da pessoa, que recebe um aviso com o seu nome.'
+      'Botão direito em alguém que está na call com você → "Doar Murchos": escolhe quanto (até 5.000 por vez) e o valor sai do seu saldo direto pro da pessoa, que recebe um aviso com o seu nome.',
+      'Xadrez e dama ganharam o "Modo treino": joga sozinho, sem mesa nem aposta, movendo as duas cores, com desfazer e recomeçar.'
     ],
     note: 'Murcho recebido de doação não conta no ranking de murchos ganhos.'
   },

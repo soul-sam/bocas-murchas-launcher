@@ -21,3 +21,12 @@ export function practiceHeadline(
 export function practiceTurnLabel(game: string, variant: string | null, turn: Side): string {
   return `Vez das ${sideLabel(game, variant, turn).toLowerCase()}`
 }
+
+/**
+ * Lances do treino no formato da lista de lances. O servidor manda só o texto;
+ * o lado sai da ordem, porque no contrato `white` é sempre quem abre (ver
+ * board-sides) — inclusive na dama americana, onde quem abre são as pretas.
+ */
+export function practicePlies(moves: readonly string[]): { text: string; side: Side }[] {
+  return moves.map((text, i) => ({ text, side: i % 2 === 0 ? 'white' : 'black' }))
+}

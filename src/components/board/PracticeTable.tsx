@@ -10,7 +10,7 @@ import {
   type PracticeAck,
   type PracticeView
 } from '@/lib/api-board'
-import { practiceHeadline, practiceTurnLabel } from '@/lib/board-practice'
+import { practiceHeadline, practicePlies, practiceTurnLabel } from '@/lib/board-practice'
 import { useLayout } from '@/lib/layout-context'
 import { useSocket } from '@/lib/socket-context'
 import { cn } from '@/lib/utils'
@@ -217,7 +217,12 @@ export function PracticeTable({ game, onExit }: { game: BoardGame; onExit: () =>
           <div className="flex min-h-[8rem] flex-col rounded-brutal border border-line">
             <h4 className="border-b border-line px-3 py-1.5 text-xs font-semibold text-foreground">Lances</h4>
             <div className="flex max-h-64 min-h-0 flex-1 flex-col overflow-y-auto">
-              <MoveList moves={view.moves} />
+              <MoveList
+                game={view.game}
+                variant={view.variant}
+                plies={practicePlies(view.moves)}
+                current={view.moves.length}
+              />
             </div>
           </div>
 

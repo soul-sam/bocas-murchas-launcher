@@ -106,7 +106,7 @@ export interface BoardAck { ok: boolean; error?: string; table?: BoardTableView 
 
 /** Modo treino: partida sozinha, sem relógio; a pessoa joga os dois lados. */
 export interface PracticeView {
-  game: BoardGame
+  game: GridGame
   variant: DraughtsVariant | null
   /** Mesmo formato de `BoardTableView.position`. */
   position: string
