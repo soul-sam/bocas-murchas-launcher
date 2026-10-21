@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { AlertTriangle, CalendarClock, Landmark, Loader2, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, CalendarClock, Landmark, Loader2, ShieldCheck, X } from 'lucide-react'
 import { MurchosIcon } from '@/lib/bocas-icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,9 +10,8 @@ import { daysUntil, loanInterest, loanTotalAtTerm, parseLoanAmount, percentText 
 import { formatCompact } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useGamification } from '@/lib/gamification-context'
-import { useLayout } from '@/lib/layout-context'
+import { useOverlays } from '@/lib/overlay-context'
 import { cn } from '@/lib/utils'
-import { ArenaHeader, ArenaTabs } from './ArenaChrome'
 import { InvestTab } from './InvestTab'
 import { ConsortiumTab } from './ConsortiumTab'
 
@@ -26,8 +25,12 @@ import { ConsortiumTab } from './ConsortiumTab'
  *
  * Dois estados: sem dívida, a oferta (quanto dá, por quanto tempo, quanto
  * volta); com dívida, quanto falta, quando vence e o pagamento. Busca ao
- * abrir, depois de cada ação e de minuto em minuto com o painel aberto — o
+ * abrir, depois de cada ação e de minuto em minuto com o modal aberto — o
  * desconto automático mexe na dívida sem ninguém clicar.
+ *
+ * Camada própria (div fixed + clique fora fecha), NÃO Radix Dialog, pelo
+ * mesmo motivo da lojinha: mora em GlobalOverlays e quem abre pode sumir —
+ * ver lib/interaction-guard.ts.
  */
 
 const fmt = (n: number): string => n.toLocaleString('pt-BR')
@@ -56,9 +59,21 @@ function savedTab(): BankTab {
  * (ConsortiumTab). Cada aba busca o seu; a última aberta fica lembrada nesta
  * máquina.
  */
-export function BankPanel() {
-  const { closeBank: close } = useLayout()
+export function BankModal() {
+  const { bankOpen: open, closeBank: close } = useOverlays()
   const [tab, setTab] = React.useState<BankTab>(savedTab)
+
+  React.useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent): void => {
+      // Esc que já fechou uma camada de dentro (dica, popover) não fecha esta.
+      if (event.key === 'Escape' && !event.defaultPrevented) close()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, close])
+
+  if (!open) return null
 
   const pick = (next: BankTab): void => {
     setTab(next)
@@ -70,35 +85,63 @@ export function BankPanel() {
   }
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-line bg-void xl:w-80">
-      <ArenaHeader title="Banco da Casa" onClose={close} />
-      <ArenaTabs current="bank" />
-      <div role="tablist" aria-label="Balcão do Banco" className="grid shrink-0 grid-cols-3 gap-1 border-b border-line px-2 py-1.5">
-        {BANK_TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => pick(t.id)}
-            className={cn(
-              'rounded-brutal border px-1 py-1 text-[11.5px] transition-colors',
-              tab === t.id
-                ? 'border-burn/60 bg-burn/10 text-burn'
-                : 'border-transparent text-muted-foreground hover:bg-void-light hover:text-foreground'
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+    <div className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/70 p-3 sm:p-6" onClick={close}>
+      <div
+        role="dialog"
+        aria-label="Banco da Casa"
+        className="card-acid relative flex h-[90dvh] w-full max-w-4xl flex-col rounded-brutal p-4 sm:h-[85dvh] sm:p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          aria-label="Fechar"
+          onClick={close}
+          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-5 w-5" />
+        </button>
 
-      <div className="scroll-stable min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-        {tab === 'loan' && <LoanTab />}
-        {tab === 'invest' && <InvestTab />}
-        {tab === 'consortium' && <ConsortiumTab />}
+        <div className="mb-3 flex items-center gap-3 pr-8 sm:mb-4">
+          <Landmark className="hidden h-7 w-7 text-acid sm:block" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <h2 className="title-brutal text-2xl">Banco da Casa</h2>
+            <p className="text-[11.5px] text-muted-foreground">Empréstimo, CDB e consórcio, tudo da reserva da Casa.</p>
+          </div>
+        </div>
+
+        <div role="tablist" aria-label="Balcão do Banco" className="mb-3 flex flex-wrap items-center gap-1">
+          {BANK_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => pick(t.id)}
+              className={cn(
+                'rounded-brutal border px-3 py-1.5 text-xs transition-colors',
+                tab === t.id
+                  ? 'border-burn/60 bg-burn/10 text-burn'
+                  : 'border-transparent text-muted-foreground hover:bg-void-light hover:text-foreground'
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Duas colunas do md pra cima: os balcões foram escritos pra coluna
+            de 288px, então cada seção continua estreita e o modal só as
+            distribui. `break-inside-avoid` não deixa um formulário rachar ao
+            meio entre as colunas. */}
+        <div className="scroll-stable min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="gap-3 md:columns-2 [&>*]:mb-3 [&>*]:break-inside-avoid">
+            {tab === 'loan' && <LoanTab />}
+            {tab === 'invest' && <InvestTab />}
+            {tab === 'consortium' && <ConsortiumTab />}
+          </div>
+        </div>
       </div>
-    </aside>
+    </div>
   )
 }
 

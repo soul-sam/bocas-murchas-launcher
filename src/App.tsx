@@ -101,6 +101,7 @@ const PrintPage = named(() => import('@/pages/PrintPage'), 'PrintPage')
 const WrappedModal = named(() => import('@/components/social/WrappedModal'), 'WrappedModal')
 const ShopModal = named(() => import('@/components/social/ShopModal'), 'ShopModal')
 const AchievementsModal = named(() => import('@/components/social/AchievementsModal'), 'AchievementsModal')
+const BankModal = named(() => import('@/components/social/BankModal'), 'BankModal')
 const AdminModal = named(() => import('@/components/AdminModal'), 'AdminModal')
 const CostsModal = named(() => import('@/components/CostsModal'), 'CostsModal')
 
@@ -273,6 +274,7 @@ function GlobalOverlays() {
     closeProfileEditor,
     shopOpen,
     achievementsOpen,
+    bankOpen,
     adminOpen,
     wrappedOpen,
     costsOpen
@@ -316,6 +318,9 @@ function GlobalOverlays() {
       </WhenOpen>
       <WhenOpen open={achievementsOpen}>
         <AchievementsModal />
+      </WhenOpen>
+      <WhenOpen open={bankOpen}>
+        <BankModal />
       </WhenOpen>
       <WhenOpen open={adminOpen}>
         <AdminModal />
