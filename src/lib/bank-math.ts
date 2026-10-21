@@ -13,11 +13,20 @@ export interface BankRulesLike {
   chargeCap: number
 }
 
-/** Juro simples de um empréstimo de `principal` quitado depois de `days` dias. */
+/**
+ * Juro composto de um empréstimo de `principal` quitado depois de `days` dias
+ * (o servidor: `compoundInterest` em rules.ts, mesmo epsilon).
+ */
 export function loanInterest(principal: number, days: number, rules: BankRulesLike): number {
   const counted = Math.max(rules.minDays, Math.ceil(Math.max(0, days)))
-  const interest = Math.ceil(principal * rules.dailyRate * counted)
+  const raw = principal * (Math.pow(1 + rules.dailyRate, counted) - 1)
+  const interest = Math.max(0, Math.ceil(raw - 1e-6))
   return Math.min(Math.floor(principal * rules.chargeCap), interest)
+}
+
+/** A taxa diária composta em 30 dias: 2% ao dia viram ~81,1%. */
+export function monthlyRate(dailyRate: number): number {
+  return Math.pow(1 + dailyRate, 30) - 1
 }
 
 /** Quanto se devolve quitando no último dia do prazo. */

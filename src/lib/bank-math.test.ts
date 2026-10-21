@@ -1,25 +1,29 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { cartaChance, daysUntil, loanInterest, loanTotalAtTerm, maxYield, parseLoanAmount, percentText } from './bank-math.ts'
+import { cartaChance, daysUntil, loanInterest, loanTotalAtTerm, maxYield, monthlyRate, parseLoanAmount, percentText } from './bank-math.ts'
 
 // As mesmas regras do servidor (BANK em rules.ts da API).
-const RULES = { dailyRate: 0.007, minDays: 3, lateFee: 0.1, chargeCap: 0.5 }
+const RULES = { dailyRate: 0.02, minDays: 3, lateFee: 0.3, chargeCap: 2 }
 
-test('banco: juro simples por dia, com mínimo de 3 dias', () => {
-  assert.equal(loanInterest(1000, 0, RULES), 21)
-  assert.equal(loanInterest(1000, 3, RULES), 21)
-  assert.equal(loanInterest(1000, 10, RULES), 70)
-  assert.equal(loanInterest(1000, 9.2, RULES), 70) // dia começado conta
+test('banco: juro composto por dia, com mínimo de 3 dias', () => {
+  assert.equal(loanInterest(1000, 0, RULES), 62)
+  assert.equal(loanInterest(1000, 3, RULES), 62)
+  assert.equal(loanInterest(1000, 10, RULES), 219)
+  assert.equal(loanInterest(1000, 9.2, RULES), 219) // dia começado conta
 })
 
 test('banco: prévia do total no fim do prazo bate com o servidor', () => {
-  assert.equal(loanTotalAtTerm(1000, 7, RULES), 1049)
-  assert.equal(loanTotalAtTerm(1000, 14, RULES), 1098)
-  assert.equal(loanTotalAtTerm(1000, 28, RULES), 1196)
+  assert.equal(loanTotalAtTerm(1000, 7, RULES), 1149)
+  assert.equal(loanTotalAtTerm(1000, 14, RULES), 1320)
+  assert.equal(loanTotalAtTerm(1000, 28, RULES), 1742)
 })
 
 test('banco: encargo nunca passa do teto', () => {
-  assert.equal(loanInterest(1000, 1000, RULES), 500)
+  assert.equal(loanInterest(1000, 1000, RULES), 2000)
+})
+
+test('banco: 2% ao dia compostos dão ~81,1% em 30 dias', () => {
+  assert.equal(percentText(monthlyRate(0.02)), '81,1%')
 })
 
 test('banco: valor digitado só inteiro dentro da faixa', () => {

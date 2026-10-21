@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Hint } from '@/components/ui/tooltip'
 import { ApiError } from '@/lib/api'
 import { bankApi, type BankView, type LoanView } from '@/lib/api-bank'
-import { daysUntil, loanInterest, loanTotalAtTerm, parseLoanAmount, percentText } from '@/lib/bank-math'
+import { daysUntil, loanInterest, loanTotalAtTerm, monthlyRate, parseLoanAmount, percentText } from '@/lib/bank-math'
 import { formatCompact } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useGamification } from '@/lib/gamification-context'
@@ -267,12 +267,9 @@ function Offer({ bank, onTaken }: { bank: BankView; onTaken: (loan: LoanView) =>
           Pegar emprestado
         </h4>
         <p className="text-xs leading-snug text-muted-foreground">{offer.reason ?? 'O Banco não pode emprestar agora.'}</p>
-        {offer.income > 0 && (
-          <p className="mt-1.5 text-[11px] text-muted-foreground">
-            Sua renda de atividade nos últimos {rules.incomeWindowDays} dias:{' '}
-            <span className="font-mono text-foreground">{fmt(offer.income)}</span>
-          </p>
-        )}
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Seu limite: <span className="font-mono text-foreground">{fmt(offer.limit)}</span>
+        </p>
       </section>
     )
   }
@@ -301,12 +298,15 @@ function Offer({ bank, onTaken }: { bank: BankView; onTaken: (loan: LoanView) =>
       </h4>
       <p className="text-[11.5px] leading-snug text-muted-foreground">
         Você pode pegar até <span className="font-mono text-burn">{fmt(offer.max)}</span>
-        {offer.max < offer.limit ? (
-          <> agora (seu limite é {fmt(offer.limit)}, mas a reserva tem menos)</>
-        ) : (
-          <> — {percentText(rules.incomeShare)} do que você ganhou nos últimos {rules.incomeWindowDays} dias</>
-        )}
+        {offer.max < offer.limit ? <> agora (seu limite é {fmt(offer.limit)}, mas a reserva tem menos)</> : <>, seu limite</>}
         .
+        {offer.growth.next > offer.limit && (
+          <>
+            {' '}
+            Pegando <span className="font-mono text-foreground">{fmt(offer.growth.minPrincipal)}</span> ou mais e
+            quitando no prazo, ele sobe pra <span className="font-mono text-acid-text">{fmt(offer.growth.next)}</span>.
+          </>
+        )}
       </p>
 
       <form
@@ -376,11 +376,11 @@ function Offer({ bank, onTaken }: { bank: BankView; onTaken: (loan: LoanView) =>
               Quitando no prazo, você devolve{' '}
               <span className="font-mono text-foreground">{fmt(loanTotalAtTerm(preview, term, rules))}</span>{' '}
               (<span className="font-mono">{fmt(loanInterest(preview, term, rules))}</span> de juro). Quitar antes
-              paga menos: são {percentText(rules.dailyRate)} por dia, no mínimo {rules.minDays} dias.
+              paga menos: são {percentText(rules.dailyRate)} ao dia, compostos, no mínimo {rules.minDays} dias.
             </>
           ) : (
             <>
-              Juro de {percentText(rules.dailyRate)} por dia corrido (mínimo {rules.minDays} dias). Quitar antes paga
+              Juro composto de {percentText(rules.dailyRate)} ao dia (mínimo {rules.minDays} dias). Quitar antes paga
               menos.
             </>
           )}
@@ -421,6 +421,7 @@ function Debt({
   const days = daysUntil(loan.dueAt)
   const due = new Date(loan.dueAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
   const withhold = state.late ? rules.withhold.late : rules.withhold.current
+  const withholdWager = state.late ? rules.withhold.wagerProfitLate : rules.withhold.wagerProfit
 
   const pay = async (what: number | undefined): Promise<void> => {
     if (!token || busy) return
@@ -480,11 +481,12 @@ function Debt({
       </dl>
 
       <p className="mt-2.5 text-[11.5px] leading-snug text-muted-foreground">
-        Desconto automático: <span className="text-foreground">{percentText(withhold)}</span> do que você ganhar
-        (atividade e prêmio de aposta) vai direto pra dívida.
+        Desconto automático: <span className="text-foreground">{percentText(withhold)}</span> do que você ganhar em
+        atividade e <span className="text-foreground">{percentText(withholdWager)}</span> do lucro de aposta vão direto
+        pra dívida.
         {state.late
-          ? ' Vencido: lojinha, aposta e mesa valendo ficam travadas até quitar.'
-          : ` Enquanto deve: sem doação, gorjeta, presente nem mesa valendo, e aposta até ${rules.wagerCapWhileOwing}.`}
+          ? ' Vencido: lojinha e mesa valendo ficam travadas até quitar, e quitar atrasado baixa o seu limite.'
+          : ' Enquanto deve: sem doação, gorjeta, presente nem mesa valendo.'}
       </p>
 
       <form
@@ -540,14 +542,22 @@ function Rules({ bank }: { bank: BankView }) {
       </h4>
       <ul className="space-y-1.5 text-xs leading-snug text-muted-foreground">
         <li>
-          Limite: <span className="text-foreground">{percentText(rules.incomeShare)}</span> do que você ganhou em
-          atividade nos últimos {rules.incomeWindowDays} dias, até {fmt(rules.maxPrincipal)}. Aposta e doação não
-          contam.
+          Limite seu, começando em {fmt(rules.limit.start)}. Pegou {percentText(rules.limit.usage)} ou mais dele e
+          quitou no prazo: sobe {percentText(rules.limit.up - 1)}. Quitou atrasado: cai{' '}
+          {percentText(1 - rules.limit.late)}; mais de {rules.limit.severeLateDays} dias de atraso, cai{' '}
+          {percentText(1 - rules.limit.severe)}. Vai de {fmt(rules.limit.floor)} a {fmt(rules.limit.max)}.
         </li>
         <li>
-          Juro simples de <span className="text-foreground">{percentText(rules.dailyRate)} ao dia</span>. Passou do
-          prazo, multa de {percentText(rules.lateFee)}; juro e multa nunca passam de{' '}
+          Juro composto de <span className="text-foreground">{percentText(rules.dailyRate)} ao dia</span> (
+          {percentText(monthlyRate(rules.dailyRate))} em 30 dias) sobre o que você ainda deve, no mínimo{' '}
+          {rules.minDays} dias: pagar uma parte antes já baixa o juro dos dias seguintes. Passou do prazo,
+          multa de {percentText(rules.lateFee)} do que você pegou; juro e multa nunca passam de{' '}
           {percentText(rules.chargeCap)} do que você pegou.
+        </li>
+        <li>
+          Enquanto deve, {percentText(rules.withhold.current)} do que você ganha em atividade e{' '}
+          {percentText(rules.withhold.wagerProfit)} do lucro de aposta abatem a dívida sozinhos (vencido:{' '}
+          {percentText(rules.withhold.late)} e {percentText(rules.withhold.wagerProfitLate)}). Aposta continua liberada.
         </li>
         <li>
           Metade do juro é queimada (segura a inflação); um quarto vai pro rendimento de quem aplicou no CDB e um
