@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { daysUntil, loanInterest, loanTotalAtTerm, parseLoanAmount, percentText } from './bank-math.ts'
+import { cartaChance, daysUntil, loanInterest, loanTotalAtTerm, maxYield, parseLoanAmount, percentText } from './bank-math.ts'
 
 // As mesmas regras do servidor (BANK em rules.ts da API).
 const RULES = { dailyRate: 0.007, minDays: 3, lateFee: 0.1, chargeCap: 0.5 }
@@ -36,4 +36,17 @@ test('banco: textos curtos', () => {
   assert.equal(percentText(0.007), '0,7%')
   assert.equal(percentText(0.1), '10%')
   assert.equal(daysUntil(new Date(Date.UTC(2026, 9, 27)).toISOString(), Date.UTC(2026, 9, 20)), 7)
+})
+
+test('cdb: o teto de rendimento é 1% por semana, arredondado pra baixo', () => {
+  assert.equal(maxYield(5000, 4, 0.01), 200)
+  assert.equal(maxYield(3000, 2, 0.01), 60)
+  assert.equal(maxYield(150, 2, 0.01), 2)
+  assert.equal(maxYield(99, 4, 0.01), 0)
+})
+
+test('consórcio: um sorteio por semana entre quem ainda espera', () => {
+  assert.equal(cartaChance(5), 0.2)
+  assert.equal(cartaChance(1), 1)
+  assert.equal(cartaChance(0), 0)
 })

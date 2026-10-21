@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { X, Loader2, Check, Tag, Sparkles, Frame, Smile, Volume2, Play, Palette, Paintbrush } from 'lucide-react'
+import { X, Loader2, Check, Tag, Sparkles, Frame, Smile, Volume2, Play, Palette, Paintbrush, Ticket } from 'lucide-react'
 import { GiftIcon, MurchosIcon, ShopIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
@@ -174,6 +174,10 @@ export function ShopModal() {
     }
   }
   const coins = profile?.coins ?? shop?.coins ?? 0
+  // Carta do consórcio: vale aqui (compra e presente) e o servidor usa ela
+  // antes do saldo, então o que dá pra comprar é a soma dos dois.
+  const carta = shop?.carta ?? 0
+  const power = coins + carta
 
   // O segundo slot de emoji mora na aba Emojis, na frente da prateleira.
   const items = (shop?.items ?? [])
@@ -296,6 +300,16 @@ export function ShopModal() {
               <span className="tabular-nums">{coins.toLocaleString('pt-BR')}</span>
               <span className="text-[11.5px] opacity-70">murchos</span>
             </div>
+            {carta > 0 && (
+              <div
+                className="flex items-center gap-1.5 rounded-brutal border-2 border-acid-dark/60 bg-acid/10 px-3 py-1.5 font-mono text-sm text-acid-text"
+                title="Carta do consórcio: a compra usa ela antes do saldo"
+              >
+                <Ticket className="h-4 w-4" aria-hidden />
+                <span className="tabular-nums">{carta.toLocaleString('pt-BR')}</span>
+                <span className="text-[11.5px] opacity-70">de carta</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -379,7 +393,7 @@ export function ShopModal() {
         {gifting ? (
           <GiftPanel
             item={gifting}
-            coins={coins}
+            coins={power}
             onClose={() => setGifting(null)}
             onSent={(toName) => {
               setGifting(null)
@@ -418,7 +432,7 @@ export function ShopModal() {
                   key={item.id}
                   item={item}
                   me={{ name: me.displayName, avatar: resolveAssetUrl(me.avatar), color, gradient: me.profileGradient }}
-                  coins={coins}
+                  coins={power}
                   ownedColors={ownedColors}
                   token={token}
                   onEquipColors={handleEquipColors}

@@ -302,6 +302,11 @@ export const DONATION_MAX = 5000
 export interface ShopResponse {
   coins: number
   items: ShopItem[]
+  /**
+   * Carta de crédito do consórcio que vale na lojinha (compra e presente),
+   * além do saldo. O servidor usa ela antes do saldo. Servidor antigo: ausente.
+   */
+  carta?: number
 }
 
 /**
@@ -401,6 +406,8 @@ export interface WagerHouse {
   exposure?: number
   credito?: number
   fundoAno?: number
+  /** Pote do rendimento do CDB da Casa, esperando o próximo fechamento. */
+  rendimento?: number
   /** Banca livre (banca − exposição). Vem no board. */
   free?: number
 }
@@ -411,6 +418,8 @@ export interface HouseCloseInfo {
   banca: number
   surplus: number
   burned: number
+  /** Pro rendimento de quem aplicou no CDB (servidor antigo não manda). */
+  toYield?: number
   toJackpot: number
   toBonus: number
   toCredit: number
@@ -440,6 +449,8 @@ export interface WagerHouseInfo extends WagerHouse {
   openedAt?: string | null
   /** Emprestado pelo Banco e ainda não devolvido. */
   lent?: number
+  /** Aplicado no CDB da Casa agora. */
+  invested?: number
   paid: { count: number; total: number }
   wins: JackpotWinInfo[]
   /**
@@ -451,7 +462,7 @@ export interface WagerHouseInfo extends WagerHouse {
   rules: {
     minBettors: number
     liquidityTarget?: number
-    close?: { burn: number; jackpot: number; bonusFund: number; credito: number; fundoAno: number }
+    close?: { burn: number; rendimento?: number; jackpot: number; bonusFund: number; credito: number; fundoAno: number }
     maxBetProfitShare?: number
     maxMatchProfitShare?: number
     margin?: number
@@ -774,12 +785,21 @@ export function xpReasonLabel(reason: string | undefined | null): string {
   // Murchos de nível vêm como `levelup:<nível>` (e `levelup:backfill` no
   // ajuste retroativo), então não dá pra ter uma chave fixa no mapa.
   if (reason.startsWith('gift:')) return 'presente'
+  if (reason.startsWith('shop:')) return 'lojinha'
   if (reason.startsWith('donation:')) return 'doação'
   if (reason.startsWith('donation_received:')) return 'doação recebida'
   // Banco da Casa (API: lib/gamification/bank.ts) e Prêmio do Ano (year-award.ts).
   if (reason.startsWith('loan_payment:')) return 'pagamento ao Banco da Casa'
   if (reason.startsWith('loan:')) return 'empréstimo do Banco da Casa'
   if (reason.startsWith('year_award:')) return 'Prêmio do Ano'
+  // CDB da Casa (API: lib/gamification/invest.ts) e consórcio (consortium.ts).
+  if (reason.startsWith('invest_redeem:')) return 'aplicação do CDB venceu'
+  if (reason.startsWith('invest_withdraw:')) return 'saque do CDB'
+  if (reason.startsWith('invest:')) return 'aplicação no CDB da Casa'
+  if (reason.startsWith('consorcio_atraso:')) return 'parcela atrasada do consórcio'
+  if (reason.startsWith('consorcio_carta:')) return 'carta do consórcio'
+  if (reason.startsWith('consorcio_devolucao:')) return 'devolução do consórcio'
+  if (reason.startsWith('consorcio:')) return 'parcela do consórcio'
   // Easter-egg achado (API: modules/easter-eggs.ts) — o nome do ovo já saiu no toast da badge.
   if (reason.startsWith('egg:')) return 'achou um ovo'
   // Recompensa por hora impressa (API: lib/print-queue/quota-math.ts) — `print_reward:<jobId>`.
@@ -1024,7 +1044,7 @@ export const gamification = {
   async buy(
     token: string,
     cosmeticId: string
-  ): Promise<{ profile: GamificationProfile; item: ShopItem }> {
+  ): Promise<{ profile: GamificationProfile; item: ShopItem; carta?: number }> {
     return request('/gamification/shop/buy', {
       method: 'POST',
       token,
@@ -1038,7 +1058,7 @@ export const gamification = {
     cosmeticId: string,
     toUserId: string,
     message?: string
-  ): Promise<{ profile: GamificationProfile; gift: GiftResult }> {
+  ): Promise<{ profile: GamificationProfile; gift: GiftResult; carta?: number }> {
     return request('/gamification/shop/gift', {
       method: 'POST',
       token,

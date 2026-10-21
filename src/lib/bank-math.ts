@@ -36,6 +36,21 @@ export function percentText(fraction: number): string {
   return `${String(value).replace('.', ',')}%`
 }
 
+/**
+ * O máximo que uma aplicação do CDB pode render no prazo: o teto semanal em
+ * todos os fechamentos. O de verdade sai do pote da semana e pode ser menos
+ * (ou zero) — a tela diz "até".
+ */
+export function maxYield(amount: number, termWeeks: number, maxWeeklyRate: number): number {
+  const perWeek = Math.floor(Math.max(0, amount) * maxWeeklyRate + 1e-9)
+  return perWeek * Math.max(0, Math.floor(termWeeks))
+}
+
+/** Chance de sair a carta no próximo sorteio, com `pending` ainda esperando. */
+export function cartaChance(pending: number): number {
+  return pending > 0 ? 1 / pending : 0
+}
+
 /** Valor digitado no campo: só inteiro dentro de [min, max], senão null. */
 export function parseLoanAmount(raw: string, min: number, max: number): number | null {
   const trimmed = raw.trim()

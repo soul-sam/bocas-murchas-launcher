@@ -398,7 +398,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       setShop((prev) =>
         prev
           ? {
+              ...prev,
               coins: res.profile?.coins ?? prev.coins,
+              carta: res.carta ?? prev.carta,
               items: prev.items.map((item) =>
                 item.id === cosmeticId ? { ...item, ...res.item, owned: true } : item
               )
@@ -415,7 +417,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       if (!token) throw new ApiError(401, 'Sem sessão')
       const res = await api.gift(token, cosmeticId, toUserId, message)
       if (res.profile) setProfile(res.profile)
-      setShop((prev) => (prev ? { ...prev, coins: res.gift.coins } : prev))
+      setShop((prev) => (prev ? { ...prev, coins: res.gift.coins, carta: res.carta ?? prev.carta } : prev))
       return res.gift
     },
     [token]
@@ -728,8 +730,19 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       sound('coins')
     }
 
+    // A compra paga com carta do consórcio chega como DOIS avisos: a carta
+    // virando saldo e o débito da loja logo depois. Guardamos a carta pra o
+    // aviso da compra dizer quanto saiu dela (senão "−5.000" sem o saldo mexer).
+    let cartaRecent: { amount: number; at: number } | null = null
+
     const handleCoins = (data: { delta: number; coins: number; reason: string }): void => {
       if (!data || typeof data.delta !== 'number') return
+      const reason = typeof data.reason === 'string' ? data.reason : ''
+      if (reason.startsWith('consorcio_carta:') && data.delta > 0) cartaRecent = { amount: data.delta, at: Date.now() }
+      const shopDebit = data.delta < 0 && (reason.startsWith('shop:') || reason.startsWith('gift:'))
+      const fromCarta =
+        shopDebit && cartaRecent && Date.now() - cartaRecent.at < 10_000 ? Math.min(cartaRecent.amount, -data.delta) : 0
+      if (shopDebit) cartaRecent = null
       setProfile((prev) =>
         prev
           ? { ...prev, coins: typeof data.coins === 'number' ? data.coins : prev.coins + data.delta }
@@ -743,13 +756,20 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       const fromLevelUp = typeof data.reason === 'string' && data.reason.startsWith('levelup:')
       // Doação recebida tem toast próprio, com o nome de quem doou (handleDonation).
       const fromDonation = typeof data.reason === 'string' && data.reason.startsWith('donation_received:')
-      // O empréstimo sai no toast do próprio painel do Banco, com o prazo.
-      const fromLoan = typeof data.reason === 'string' && data.reason.startsWith('loan:')
-      if (data.delta !== 0 && !fromLevelUp && !fromDonation && !fromLoan) {
+      // O empréstimo sai no toast do próprio painel do Banco, com o prazo; a
+      // aplicação e o saque do CDB também. A carta do consórcio vira saldo só
+      // dentro de uma compra (o toast é o da compra) ou no saque (o do painel).
+      const quiet = ['loan:', 'invest:', 'invest_withdraw:', 'consorcio_carta:']
+      const fromPanel = typeof data.reason === 'string' && quiet.some((p) => data.reason.startsWith(p))
+      if (data.delta !== 0 && !fromLevelUp && !fromDonation && !fromPanel) {
+        const label = xpReasonLabel(data.reason)
         pushToast({
           kind: 'coins',
           title: `${data.delta > 0 ? '+' : '−'}${Math.abs(data.delta)} murchos`,
-          body: xpReasonLabel(data.reason) || undefined
+          body:
+            fromCarta > 0
+              ? `${label} · ${fromCarta.toLocaleString('pt-BR')} ${fromCarta === -data.delta ? 'pagos com a carta' : 'da carta'}`
+              : label || undefined
         })
         if (data.delta > 0) sound('coins', true)
       }

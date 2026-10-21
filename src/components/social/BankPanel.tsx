@@ -13,6 +13,8 @@ import { useGamification } from '@/lib/gamification-context'
 import { useLayout } from '@/lib/layout-context'
 import { cn } from '@/lib/utils'
 import { ArenaHeader, ArenaTabs } from './ArenaChrome'
+import { InvestTab } from './InvestTab'
+import { ConsortiumTab } from './ConsortiumTab'
 
 /**
  * BANCO DA CASA — empréstimo de murcho, de reserva integral.
@@ -30,8 +32,77 @@ import { ArenaHeader, ArenaTabs } from './ArenaChrome'
 
 const fmt = (n: number): string => n.toLocaleString('pt-BR')
 
+type BankTab = 'loan' | 'invest' | 'consortium'
+
+const BANK_TABS: Array<{ id: BankTab; label: string }> = [
+  { id: 'loan', label: 'Empréstimo' },
+  { id: 'invest', label: 'Investir' },
+  { id: 'consortium', label: 'Consórcio' }
+]
+
+const TAB_KEY = 'bocas:bank-tab'
+
+function savedTab(): BankTab {
+  try {
+    const raw = localStorage.getItem(TAB_KEY)
+    return BANK_TABS.some((t) => t.id === raw) ? (raw as BankTab) : 'loan'
+  } catch {
+    return 'loan'
+  }
+}
+
+/**
+ * O Banco tem três balcões: empréstimo, CDB da Casa (InvestTab) e consórcio
+ * (ConsortiumTab). Cada aba busca o seu; a última aberta fica lembrada nesta
+ * máquina.
+ */
 export function BankPanel() {
   const { closeBank: close } = useLayout()
+  const [tab, setTab] = React.useState<BankTab>(savedTab)
+
+  const pick = (next: BankTab): void => {
+    setTab(next)
+    try {
+      localStorage.setItem(TAB_KEY, next)
+    } catch {
+      // Sem storage (aba anônima): só não lembra.
+    }
+  }
+
+  return (
+    <aside className="flex w-72 shrink-0 flex-col border-l border-line bg-void xl:w-80">
+      <ArenaHeader title="Banco da Casa" onClose={close} />
+      <ArenaTabs current="bank" />
+      <div role="tablist" aria-label="Balcão do Banco" className="grid shrink-0 grid-cols-3 gap-1 border-b border-line px-2 py-1.5">
+        {BANK_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => pick(t.id)}
+            className={cn(
+              'rounded-brutal border px-1 py-1 text-[11.5px] transition-colors',
+              tab === t.id
+                ? 'border-burn/60 bg-burn/10 text-burn'
+                : 'border-transparent text-muted-foreground hover:bg-void-light hover:text-foreground'
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="scroll-stable min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+        {tab === 'loan' && <LoanTab />}
+        {tab === 'invest' && <InvestTab />}
+        {tab === 'consortium' && <ConsortiumTab />}
+      </div>
+    </aside>
+  )
+}
+
+function LoanTab() {
   const { token } = useAuth()
   const { profile, pushToast } = useGamification()
 
@@ -56,11 +127,7 @@ export function BankPanel() {
   const coins = profile?.coins ?? 0
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-line bg-void xl:w-80">
-      <ArenaHeader title="Banco da Casa" onClose={close} />
-      <ArenaTabs current="bank" />
-
-      <div className="scroll-stable min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+    <>
         {bank === undefined && (
           <div className="flex justify-center py-8 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -102,8 +169,7 @@ export function BankPanel() {
             {bank.history.length > 0 && <History loans={bank.history} />}
           </>
         )}
-      </div>
-    </aside>
+    </>
   )
 }
 
@@ -441,7 +507,8 @@ function Rules({ bank }: { bank: BankView }) {
           {percentText(rules.chargeCap)} do que você pegou.
         </li>
         <li>
-          Metade do juro é queimada (segura a inflação); o resto volta pra reserva e pro{' '}
+          Metade do juro é queimada (segura a inflação); um quarto vai pro rendimento de quem aplicou no CDB e um
+          quarto pro{' '}
           <Hint label="Prêmio do Ano" description="Os três primeiros do recap do ano levam o Fundo do Ano." side="left">
             <span className="cursor-help text-foreground underline decoration-dotted underline-offset-2">Prêmio do Ano</span>
           </Hint>

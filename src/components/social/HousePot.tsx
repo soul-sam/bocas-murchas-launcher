@@ -194,7 +194,7 @@ export function HousePot({
           label="queimado"
           value={house?.sunk ?? null}
           hint="Queimado de vez"
-          description={`${pct(house?.rules.close?.burn, 0.35)}% do que a banca junta acima da reserva some no fechamento, e metade do juro do Banco também. É o que segura o murcho de inflacionar.`}
+          description={`${pct(house?.rules.close?.burn, 0.2)}% do que a banca junta acima da reserva some no fechamento, e metade do juro do Banco também — mais o rendimento do CDB acima do teto. É o que segura o murcho de inflacionar.`}
         />
         <Tile
           Icon={CrownIcon}
@@ -210,8 +210,9 @@ export function HousePot({
           {house.lastClose.surplus > 0 ? (
             <>
               Último fechamento: <span className="font-mono text-foreground">{formatCompact(house.lastClose.surplus)}</span>{' '}
-              repartidos — {formatCompact(house.lastClose.burned)} queimados, {formatCompact(house.lastClose.toJackpot)} pro
-              pote, {formatCompact(house.lastClose.toYear)} pro ano.
+              repartidos — {formatCompact(house.lastClose.burned)} queimados,{' '}
+              {house.lastClose.toYield ? <>{formatCompact(house.lastClose.toYield)} pro CDB, </> : null}
+              {formatCompact(house.lastClose.toJackpot)} pro pote, {formatCompact(house.lastClose.toYear)} pro ano.
             </>
           ) : (
             'Último fechamento sem excedente: a banca guardou tudo pra cobrir as apostas.'
