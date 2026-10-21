@@ -139,11 +139,26 @@ export const spotify = {
   async tracks(
     token: string,
     playlistId: string,
+    offset = 0,
     signal?: AbortSignal
   ): Promise<{ tracks: MusicResult[]; total: number; hasMore: boolean }> {
     return request<{ tracks: MusicResult[]; total: number; hasMore: boolean }>(
-      `/music/spotify/playlists/${encodeURIComponent(playlistId)}/tracks?limit=50`,
+      `/music/spotify/playlists/${encodeURIComponent(playlistId)}/tracks?limit=50&offset=${offset}`,
       { token, signal }
+    )
+  },
+
+  /**
+   * Procura o vídeo de até 50 faixas de uma vez — o "Tocar" da playlist.
+   * Para quando a cota do dia do grupo acaba (`quota: true`).
+   */
+  async resolveMany(
+    token: string,
+    spotifyIds: string[]
+  ): Promise<{ tracks: MusicResult[]; failed: number; quota: boolean }> {
+    return request<{ tracks: MusicResult[]; failed: number; quota: boolean }>(
+      '/music/spotify/resolve',
+      { token, method: 'POST', body: JSON.stringify({ spotifyIds }) }
     )
   }
 }
