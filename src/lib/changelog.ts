@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.78.0',
+    headline: 'CDB da Casa e consórcio',
+    items: [
+      'Banco ganhou duas abas. Investir: aplique até 5.000 murchos por 2 ou 4 semanas e eles rendem todo domingo, até 1% por semana. O rendimento sai do lucro da Casa na semana, não é impresso: semana fraca rende menos.',
+      'Consórcio: entre num grupo Épico (5.000), Lendário (10.000) ou Supremo (25.000). Com 4 a 6 pessoas, todo domingo a parcela sai do saldo e um do grupo é sorteado com a carta. Até o fim, todo mundo que ficou recebe.',
+      'A carta do consórcio vale na lojinha, na compra e no presente, antes do saldo. A lojinha mostra quanto de carta você tem.',
+      'Parcela sem saldo vira atraso: o grupo não fica no prejuízo, e o que você ganhar vai pra ela até quitar.'
+    ],
+    note: 'Sacar a aplicação antes do prazo devolve tudo que você pôs, mas o rendimento acumulado é queimado.'
+  },
+  {
     version: '1.77.0',
     headline: 'A Casa, o Banco e o Prêmio do Ano',
     items: [
