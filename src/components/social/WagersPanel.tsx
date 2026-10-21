@@ -16,7 +16,6 @@ import { resolveAssetUrl } from '@/lib/api'
 import {
   formatCompact,
   JACKPOT_MIN_BETTORS,
-  WAGER_PAYOUT_MULTIPLIER,
   WAGER_WINDOW_MS,
   type LiveWagerGame,
   nameStyle
@@ -111,7 +110,7 @@ export function WagersPanel() {
           {matches[0]?.maxAmount != null && (
             <Hint
               label="Teto por aposta"
-              description="Começa em 50 e sobe a cada aposta feita, até 5.000."
+              description="Começa em 50 e sobe a cada aposta feita, até 5.000 — mas a banca da Casa só aceita o lucro que consegue pagar, e quem deve ao Banco aposta até 250."
               side="left"
             >
               <p className="cursor-help text-right text-[11px] text-muted-foreground">
@@ -335,8 +334,13 @@ function HowItWorks() {
           <span className="text-foreground">{minutes} minutos</span>.
         </li>
         <li>
-          Acertou o resultado, recebe <span className="text-foreground">{WAGER_PAYOUT_MULTIPLIER}x</span> o
-          que apostou. Errou, perde.
+          A <span className="text-foreground">Casa</span> é quem está do outro lado: a odd sai da
+          winrate de quem joga, com uma margem pequena pra Casa. Acertou, a banca paga; errou, a banca
+          fica com o que você apostou.
+        </li>
+        <li>
+          A banca só aceita o lucro que consegue pagar. Quando ela está curta, o teto da aposta cai; o
+          fechamento de domingo reparte o que sobrar entre queima, pote, bônus, Banco e Prêmio do Ano.
         </li>
         <li>
           Mais gente apostando na mesma partida rende bônus de grupo:{' '}

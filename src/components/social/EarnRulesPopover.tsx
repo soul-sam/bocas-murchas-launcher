@@ -139,8 +139,9 @@ function RulesList({ rules }: { rules: EarnRules }) {
           toda partida paga, vitória paga mais
         </Row>
         <Row Icon={BetIcon} label="Apostando">
-          quem acerta leva o dobro do que apostou; só nos {Math.round(wager.betWindowMs / 60000)}{' '}
-          primeiros minutos da partida, uma aposta por partida
+          a Casa paga a odd de quem joga (moeda honesta paga{' '}
+          {String(wager.payoutMultiplier).replace('.', ',')}x); só nos{' '}
+          {Math.round(wager.betWindowMs / 60000)} primeiros minutos da partida, uma aposta por partida
         </Row>
         <Row Icon={BetIcon} label="Seu teto de aposta" value={`${wager.myMax}`}>
           começa em {wager.startMax} e sobe a cada aposta até {wager.max}, na{' '}

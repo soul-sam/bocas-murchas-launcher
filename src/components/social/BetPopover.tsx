@@ -7,7 +7,9 @@ import { ApiError } from '@/lib/api'
 import {
   WAGER_MAX,
   WAGER_MIN,
+  WAGER_PAYOUT_MULTIPLIER,
   formatCompact,
+  oddText,
   type MatchPlayer,
   type SelfWagerBoard,
   GROUP_BONUS_MIN_BETTORS,
@@ -45,8 +47,9 @@ import { cn } from '@/lib/utils'
  *
  * NA PRÓPRIA PARTIDA o formulário muda de forma, porque as regras são outras
  * (ver SELF_WAGER no servidor): não há escolha de lado — é sempre vitória —,
- * a janela é a mesma de 5 min, e o retorno não é 2x fixo, é a odd da própria
- * winrate, que vem pronta em `game.self.odds`. O board de quem está na minha
+ * a janela é a mesma de 5 min, e o retorno é a odd da própria winrate, que
+ * vem pronta em `game.self.odds`. No colega a odd é a winrate DELE, com a
+ * margem da Casa, e vem em `game.odds` (desde out/2026). O board de quem está na minha
  * partida mas não é minha sessão vem com `mine` e sem `self`: ali a aposta
  * não cabe, e o texto manda a pessoa apostar na própria.
  */
@@ -203,6 +206,9 @@ export function BetPopover({
             sessionId={game.session.id}
             coins={profile?.coins ?? 0}
             max={game.maxAmount}
+            odds={game.odds}
+            limits={game.limits}
+            houseCapped={game.houseCapped}
             closesAt={game.closesAt}
             groupBonus={game.groupBonus}
             tft={tft}
@@ -337,14 +343,19 @@ const PRESETS = [10, 50, 100]
  * Formulário da aposta: lado + valor. Compartilhado com o cartão de aposta
  * no chat, por isso não sabe nada de popover.
  *
- * `max` é o teto PESSOAL vindo do servidor (rampa de 50 até 5000). Sem ele
- * cai no teto do sistema — o servidor recusa de qualquer jeito, mas aí a
- * pessoa só descobre depois de clicar.
+ * `max` é o teto PESSOAL vindo do servidor (rampa de 50 até 5000, cortada
+ * pela folga da banca da Casa e pelo Banco). Sem ele cai no teto do sistema —
+ * o servidor recusa de qualquer jeito, mas aí a pessoa só descobre depois de
+ * clicar. `limits` traz o teto de cada palpite (a odd muda quanto lucro cabe
+ * na banca); `odds`, quanto cada palpite paga no colega.
  */
 export function BetForm({
   sessionId,
   coins,
   max = WAGER_MAX,
+  odds,
+  limits,
+  houseCapped,
   closesAt,
   self,
   groupBonus,
@@ -356,6 +367,12 @@ export function BetForm({
   coins: number
   /** Teto pessoal desta aposta. */
   max?: number
+  /** Quanto paga cada palpite no colega. Ausente = servidor antigo (2x). */
+  odds?: { win: number; loss: number }
+  /** Teto por palpite. Ausente = `max` pros dois. */
+  limits?: { win: number; loss: number }
+  /** O teto está abaixo da rampa porque a banca da Casa não cobre mais. */
+  houseCapped?: boolean
   /** ISO do fim da janela, pro contador. */
   closesAt?: string
   /**
@@ -374,11 +391,15 @@ export function BetForm({
   className?: string
 }) {
   const { placeWager } = useGamification()
-  const limit = Math.min(WAGER_MAX, Math.max(WAGER_MIN, Math.floor(max)))
-  const presets = React.useMemo(() => PRESETS.filter((p) => p <= limit), [limit])
   // Em si mesmo não existe lado: apostar na própria derrota é dinheiro de
   // graça, e o servidor recusa. O estado fica travado em 'win'.
   const [prediction, setPrediction] = React.useState<WagerPrediction>('win')
+  // Sem piso: se a banca da Casa não cobre nem o mínimo, o formulário diz isso
+  // em vez de oferecer um valor que o servidor vai recusar.
+  const sideMax = self ? max : (limits?.[prediction] ?? max)
+  const limit = Math.max(0, Math.min(WAGER_MAX, Math.floor(sideMax)))
+  const noRoom = limit < WAGER_MIN
+  const presets = React.useMemo(() => PRESETS.filter((p) => p <= limit), [limit])
   const [amount, setAmount] = React.useState<number>(presets[0] ?? WAGER_MIN)
   const [custom, setCustom] = React.useState('')
   const [busy, setBusy] = React.useState(false)
@@ -411,7 +432,12 @@ export function BetForm({
     }
   }
 
-  const payout = tft ? value * 2 : self ? Math.round(value * self.odds.multiplier) : value * 2
+  const sideOdd = (side: WagerPrediction): number => odds?.[side] ?? WAGER_PAYOUT_MULTIPLIER
+  const payout = tft
+    ? value * 2
+    : self
+      ? Math.round(value * self.odds.multiplier)
+      : Math.round(value * sideOdd(prediction))
   // Quem abre o formulário ainda não apostou: a aposta dele é mais uma pessoa.
   const bonus = groupBonusPreview(value, (groupBonus?.bettors ?? 0) + 1)
 
@@ -424,14 +450,14 @@ export function BetForm({
               <TrendingUp className="h-2.5 w-2.5" />
               {tft ? 'seu top 4' : 'sua vitória'}
             </span>
-            <span className="text-burn">{tft ? 'até 2x' : `${self.odds.multiplier.toFixed(2)}x`}</span>
+            <span className="text-burn">{tft ? 'até 2x' : oddText(self.odds.multiplier)}</span>
           </h3>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
             {tft
               ? 'Paga pela colocação, igual pra todo mundo.'
               : self.odds.sample > 0
               ? `${self.odds.wins}/${self.odds.sample} vitórias recentes — quanto melhor você joga, menos a aposta paga.`
-              : 'Sem histórico ainda: paga o dobro, com teto menor.'}
+              : 'Sem histórico ainda: odd de moeda (com a margem da Casa) e teto menor.'}
           </p>
         </div>
       ) : (
@@ -443,6 +469,7 @@ export function BetForm({
             icon={<TrendingUp className="h-3 w-3" />}
           >
             {sideLabel('win', tft)}
+            {!tft && odds && <span className="ml-1 normal-case opacity-80">{oddText(odds.win)}</span>}
           </SideButton>
           <SideButton
             active={prediction === 'loss'}
@@ -451,8 +478,17 @@ export function BetForm({
             icon={<TrendingDown className="h-3 w-3" />}
           >
             {sideLabel('loss', tft)}
+            {!tft && odds && <span className="ml-1 normal-case opacity-80">{oddText(odds.loss)}</span>}
           </SideButton>
         </div>
+      )}
+
+      {noRoom && (
+        <p className="rounded-brutal border border-line bg-void/60 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
+          {houseCapped
+            ? 'A banca da Casa está sem folga pra esse palpite agora: ela só aceita o lucro que consegue pagar. O fechamento de domingo reabastece.'
+            : 'Quem está com empréstimo vencido no Banco da Casa não aposta até quitar.'}
+        </p>
       )}
 
       <div className="flex items-center gap-1">
@@ -513,9 +549,17 @@ export function BetForm({
           <MurchosIcon className="h-2.5 w-2.5 text-burn" />
           você tem {formatCompact(coins)}
         </span>
-        <span title={limit < WAGER_MAX ? `Seu teto sobe a cada aposta, até ${WAGER_MAX}` : undefined}>
+        <span
+          title={
+            houseCapped
+              ? 'Teto da banca da Casa: ela só aceita o lucro que consegue pagar'
+              : limit < WAGER_MAX
+                ? `Seu teto sobe a cada aposta, até ${WAGER_MAX}`
+                : undefined
+          }
+        >
           {WAGER_MIN}–{limit}
-          {limit < WAGER_MAX && <span className="text-burn"> ↑</span>}
+          {limit < WAGER_MAX && !houseCapped && <span className="text-burn"> ↑</span>}
         </span>
       </div>
 
@@ -557,9 +601,11 @@ export function BetForm({
       {!error && valid && !affordable && (
         <p className="text-xs text-destructive">Não tem murchos pra isso.</p>
       )}
-      {!error && custom !== '' && value > limit && (
+      {!error && custom !== '' && value > limit && !noRoom && (
         <p className="text-xs text-destructive">
-          Seu teto agora é {limit}. Ele sobe a cada aposta, até {WAGER_MAX}.
+          {houseCapped
+            ? `A banca da Casa cobre até ${limit} nesse palpite agora.`
+            : `Seu teto agora é ${limit}. Ele sobe a cada aposta, até ${WAGER_MAX}.`}
         </p>
       )}
 

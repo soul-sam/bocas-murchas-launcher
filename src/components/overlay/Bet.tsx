@@ -31,6 +31,11 @@ import { countdown, groupBonusPreview, useSendLock, windowLeft } from './parts'
  * dois deixa claro o que cada botão mexe.
  */
 
+/** "1,84x" — a odd com vírgula (cópia local: a sobreposição não importa API). */
+function oddLabel(multiplier: number): string {
+  return `${multiplier.toFixed(2).replace('.', ',')}x`
+}
+
 /** Passo da régua, dos botões e da roda. A aposta mínima do sistema é 10. */
 const STEP = 10
 /** Segurar o botão: espera isto, depois repete neste ritmo. */
@@ -51,7 +56,14 @@ const DEFAULT_AMOUNT = 50
 let lastAmount: number | null = null
 
 export type BetSide = 'win' | 'loss'
-export type BetMode = { kind: 'target' } | { kind: 'self'; multiplier: number }
+/**
+ * No colega, `odds` e `limits` vêm do board (a odd sai da winrate DELE, com a
+ * margem da Casa, e o teto de cada palpite depende de quanto lucro cabe na
+ * banca). Sem eles (servidor antigo) é 2x e o teto único.
+ */
+export type BetMode =
+  | { kind: 'target'; odds?: { win: number; loss: number }; limits?: { win: number; loss: number } }
+  | { kind: 'self'; multiplier: number }
 
 /** Prende em [min, max] e arredonda pro passo. O mínimo e o limite são exatos. */
 export function snapAmount(value: number, min: number, max: number): number {
@@ -114,12 +126,15 @@ export function BetComposer({
   onBet: (side: BetSide, amount: number) => void
   className?: string
 }) {
-  /** Até onde dá pra ir AGORA: o teto do servidor ou a carteira, o menor. */
-  const limit = Math.min(max, coins)
-  const canBet = limit >= min
-  const walletBound = coins < max
-
   const [side, setSide] = React.useState<BetSide>('win')
+  /** O teto do palpite escolhido (no colega a banca corta cada lado). */
+  const sideMax = mode.kind === 'target' && mode.limits ? Math.min(max, mode.limits[side]) : max
+  /** Até onde dá pra ir AGORA: o teto do servidor ou a carteira, o menor. */
+  const limit = Math.min(sideMax, coins)
+  const canBet = limit >= min
+  const walletBound = coins < sideMax
+  /** A banca da Casa, e não a carteira, é o que impede apostar. */
+  const houseBound = coins >= min && sideMax < min
   const [amount, setAmount] = React.useState(() =>
     snapAmount(lastAmount ?? DEFAULT_AMOUNT, min, Math.max(min, limit))
   )
@@ -153,7 +168,12 @@ export function BetComposer({
   const left = countdown(closesAt, now)
   const fraction = windowLeft(closesAt, now, windowMs)
   const chosen: BetSide = mode.kind === 'self' ? 'win' : side
-  const payout = mode.kind === 'self' && !tft ? Math.round(amount * mode.multiplier) : amount * 2
+  const sideOdd = (s: BetSide): number => (mode.kind === 'target' ? (mode.odds?.[s] ?? 2) : 2)
+  const payout = tft
+    ? amount * 2
+    : mode.kind === 'self'
+      ? Math.round(amount * mode.multiplier)
+      : Math.round(amount * sideOdd(side))
   const bonus = groupBonusPreview(amount, bettors + 1)
   const sideName = (s: BetSide): string =>
     tft ? (s === 'win' ? 'top 4' : 'bot 4') : s === 'win' ? 'vitória' : 'derrota'
@@ -201,6 +221,9 @@ export function BetComposer({
             icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden />}
           >
             {sideName('win')}
+            {!tft && mode.odds && (
+              <span className="ml-1 font-mono tabular-nums opacity-80">{oddLabel(mode.odds.win)}</span>
+            )}
           </SideButton>
           <SideButton
             active={side === 'loss'}
@@ -210,15 +233,25 @@ export function BetComposer({
             icon={<TrendingDown className="h-3.5 w-3.5" aria-hidden />}
           >
             {sideName('loss')}
+            {!tft && mode.odds && (
+              <span className="ml-1 font-mono tabular-nums opacity-80">{oddLabel(mode.odds.loss)}</span>
+            )}
           </SideButton>
         </div>
       )}
 
       {!canBet ? (
-        <p className="text-[11.5px] leading-snug text-destructive">
-          Você não tem murchos pra apostar{mode.kind === 'self' ? ' em você' : ''} — o mínimo é{' '}
-          <span className="font-mono">{min}</span>.
-        </p>
+        houseBound ? (
+          <p className="text-[11.5px] leading-snug text-muted-foreground">
+            A banca da Casa está sem folga pra esse palpite agora: ela só aceita o lucro que consegue
+            pagar.
+          </p>
+        ) : (
+          <p className="text-[11.5px] leading-snug text-destructive">
+            Você não tem murchos pra apostar{mode.kind === 'self' ? ' em você' : ''} — o mínimo é{' '}
+            <span className="font-mono">{min}</span>.
+          </p>
+        )
       ) : (
         <>
           <AmountPicker amount={amount} min={min} limit={limit} onPick={pick} onStep={stepBy} />

@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.77.0',
+    headline: 'A Casa, o Banco e o Prêmio do Ano',
+    items: [
+      'A Casa agora é quem está do outro lado da aposta: a odd sai da winrate de quem joga (inclusive na aposta no colega, que deixou de ser 2x fixo), com uma margem pequena pra Casa. O botão de cada palpite mostra quanto ele paga.',
+      'A banca da Casa só aceita o lucro que consegue pagar: quando ela está curta, o teto da aposta cai e o formulário diz por quê.',
+      'Todo domingo a Casa fecha a semana e reparte o que a banca juntou: uma parte é queimada, o resto vai pro pote, pro bônus de grupo, pro Banco e pro Prêmio do Ano. O painel de apostas mostra os caixas e o último fechamento.',
+      'Banco da Casa (ícone novo na Arena): empréstimo de murcho pela sua renda dos últimos 28 dias, juro de 0,7% ao dia, prazo de 1 a 4 semanas. Enquanto deve, metade do que você ganha vai direto pra dívida.',
+      'Prêmio do Ano no Recap: quem mais ganhou prêmio no recap semanal leva o Fundo do Ano (50/30/20) logo depois da última semana do ano. Feeder e falido não contam: viram o Murcho do Ano.'
+    ],
+    note: 'Aposta de espectador no xadrez, dama e bilhar com gente só de um lado agora devolve o valor em vez de pagar 2x: não há do outro lado quem pague.'
+  },
+  {
     version: '1.76.0',
     headline: 'Doar murchos e modo treino',
     items: [

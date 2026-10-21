@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { X, ScrollText } from 'lucide-react'
+import { Landmark, X, ScrollText } from 'lucide-react'
 import { BetIcon, MedalIcon, ShopIcon, TrophyIcon } from '@/lib/bocas-icons'
 import { PokerIcon } from '@/components/poker/PokerGlyphs'
 import type { IconComponent } from '@/lib/icon-component'
@@ -24,11 +24,14 @@ import { useGamification } from '@/lib/gamification-context'
  * sair do ranking e cair nas apostas é um passeio.
  */
 
-export type ArenaItem = 'ranking' | 'wagers' | 'poker' | 'achievements' | 'shop' | 'recap'
+export type ArenaItem = 'ranking' | 'wagers' | 'bank' | 'poker' | 'achievements' | 'shop' | 'recap'
 
 export const ARENA_ICON: Record<ArenaItem, IconComponent> = {
   ranking: TrophyIcon,
   wagers: BetIcon,
+  // Banco da Casa (empréstimo). `HandCoins` é dinheiro de verdade no guia de
+  // ícones; o prédio do banco não confunde com nada.
+  bank: Landmark,
   // O pôquer é uma TELA (pages/PokerPage, rota /poker), como o Minecraft.
   poker: PokerIcon,
   achievements: MedalIcon,
@@ -39,14 +42,15 @@ export const ARENA_ICON: Record<ArenaItem, IconComponent> = {
 export const ARENA_LABEL: Record<ArenaItem, string> = {
   ranking: 'Ranking',
   wagers: 'Apostas',
+  bank: 'Banco',
   poker: 'Pôquer',
   achievements: 'Conquistas',
   shop: 'Lojinha',
   recap: 'Recap'
 }
 
-/** Os três que ocupam a coluna da direita (os outros dois são modais). */
-export type ArenaPanel = Extract<ArenaItem, 'ranking' | 'wagers' | 'recap'>
+/** Os que ocupam a coluna da direita (lojinha e conquistas são modais). */
+export type ArenaPanel = Extract<ArenaItem, 'ranking' | 'wagers' | 'bank' | 'recap'>
 
 /**
  * Quantas PARTIDAS estão abertas pra aposta. `liveGames` traz um board por
@@ -90,18 +94,26 @@ export function ArenaHeader({
 }
 
 export function ArenaTabs({ current }: { current: ArenaPanel }) {
-  const { openLeaderboard, openWagers, openRecap } = useLayout()
+  const { openLeaderboard, openWagers, openBank, openRecap } = useLayout()
   const live = useLiveMatchCount()
 
-  const tabs: Array<{ id: ArenaPanel; go: () => void; count?: number }> = [
+  // O Banco entra como a quarta aba SÓ COM ÍCONE: a 288px, quatro abas com
+  // rótulo ficavam com ~65px cada e o "Ranking" virava "Ran…". As três de
+  // sempre continuam como eram; o título do painel diz onde você está.
+  const tabs: Array<{ id: ArenaPanel; go: () => void; count?: number; iconOnly?: boolean }> = [
     { id: 'ranking', go: openLeaderboard },
     { id: 'wagers', go: openWagers, count: live },
-    { id: 'recap', go: openRecap }
+    { id: 'recap', go: openRecap },
+    { id: 'bank', go: openBank, iconOnly: true }
   ]
 
   return (
-    <div role="tablist" aria-label="Arena" className="grid shrink-0 grid-cols-3 gap-1 border-b border-line p-2">
-      {tabs.map(({ id, go, count }) => {
+    <div
+      role="tablist"
+      aria-label="Arena"
+      className="grid shrink-0 grid-cols-[1fr_1fr_1fr_auto] gap-1 border-b border-line p-2"
+    >
+      {tabs.map(({ id, go, count, iconOnly }) => {
         const Icon = ARENA_ICON[id]
         const active = id === current
         return (
@@ -110,6 +122,8 @@ export function ArenaTabs({ current }: { current: ArenaPanel }) {
             type="button"
             role="tab"
             aria-selected={active}
+            aria-label={iconOnly ? ARENA_LABEL[id] : undefined}
+            title={iconOnly ? ARENA_LABEL[id] : undefined}
             onClick={() => {
               if (!active) go()
             }}
@@ -121,7 +135,7 @@ export function ArenaTabs({ current }: { current: ArenaPanel }) {
             )}
           >
             <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span className="truncate">{ARENA_LABEL[id]}</span>
+            {!iconOnly && <span className="truncate">{ARENA_LABEL[id]}</span>}
             {/* No canto, e não na linha: a 288px a aba tem ~90px, e o chip
                 inline comia o rótulo ("A…"). */}
             {!!count && count > 0 && <LiveCount count={count} className="absolute -right-1 -top-1.5" />}

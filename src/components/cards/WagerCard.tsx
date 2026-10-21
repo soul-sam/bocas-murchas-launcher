@@ -256,6 +256,9 @@ export function WagerCard({ metadata }: CardProps<WagerCardMeta>) {
             sessionId={live?.session.id ?? metadata.sessionId}
             coins={profile?.coins ?? 0}
             max={live?.maxAmount}
+            odds={live?.odds}
+            limits={live?.limits}
+            houseCapped={live?.houseCapped}
             groupBonus={live?.groupBonus ?? metadata.groupBonus}
             tft={tft}
             closesAt={Number.isFinite(closesAtMs) ? new Date(closesAtMs).toISOString() : undefined}

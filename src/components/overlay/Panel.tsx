@@ -818,7 +818,7 @@ function TargetRow({
       ) : open ? (
         <BetComposer
           className="mt-2.5"
-          mode={{ kind: 'target' }}
+          mode={{ kind: 'target', odds: target.odds, limits: target.limits }}
           min={wagerMin}
           max={target.maxAmount}
           coins={coins}

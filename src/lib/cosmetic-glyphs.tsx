@@ -81,6 +81,15 @@ export const BADGE_GLYPH: Record<string, ReactNode> = {
   sortudo: <path d="M4 4.5v9a8 7 0 0 0 16 0v-9h-4v9a4 3 0 0 1-8 0v-9ZM12 4.5v4M10 6.5h4" />,
   // carteira rasgada
   falido: <path d="M4 8.5 17 3.5v5M4 8.5h16v12l-4-3-4 3-4-3-4 3ZM16 12.5h4" />,
+  // coroa sobre a taça: o primeiro do Prêmio do Ano
+  'bocas-do-ano': <path d="M7 3.5 8.5 6 12 3.5 15.5 6 17 3.5v4H7ZM6 9.5h12v2a6 6 0 0 1-12 0ZM12 17.5v3M8.5 20.5h7" />,
+  // flor caída: o Murcho do Ano (feeder e falido no recap)
+  'murcho-do-ano': (
+    <>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M11.5 10.5 19 18M15 14l-1.5 3.5M19 18l1.5 2.5" />
+    </>
+  ),
   // cinco cabeças
   fivestack: (
     <>

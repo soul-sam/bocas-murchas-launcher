@@ -3,6 +3,7 @@ import { ApiError, resolveAssetUrl } from './api'
 import { supremeSoundApi } from './api-supreme-sound'
 import {
   WAGER_PAYOUT_MULTIPLIER,
+  boardOdd,
   gamification as api,
   cosmeticEmoji as glyphOf,
   cosmeticFallbackName,
@@ -537,28 +538,27 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       if (typeof snap?.jackpot !== 'number' || typeof snap.bonusFund !== 'number') return
       const prev = houseRef.current
       if (!prev) return
-      if (
-        prev.jackpot === snap.jackpot &&
-        prev.bonusFund === snap.bonusFund &&
-        (snap.sunk == null || prev.sunk === snap.sunk)
-      ) {
-        return
-      }
+      // Todo caixa do cofre conta: a banca anda a cada aposta liquidada, a
+      // reserva a cada empréstimo, mesmo com o pote parado.
+      const keys = ['jackpot', 'bonusFund', 'sunk', 'banca', 'exposure', 'credito', 'fundoAno'] as const
+      const changed = keys.some((k) => typeof snap[k] === 'number' && snap[k] !== prev[k])
+      if (!changed) return
       if (snap.jackpot < prev.jackpot) {
         void refreshHouse()
         return
       }
-      setHouse((cur) =>
-        cur
-          ? {
-              ...cur,
-              jackpot: snap.jackpot,
-              bonusFund: snap.bonusFund,
-              sunk: snap.sunk ?? cur.sunk,
-              updatedAt: new Date().toISOString()
-            }
-          : cur
-      )
+      setHouse((cur) => {
+        if (!cur) return cur
+        const next = { ...cur, updatedAt: new Date().toISOString() }
+        for (const k of keys) {
+          const value = snap[k]
+          if (typeof value === 'number') next[k] = value
+        }
+        if (typeof next.banca === 'number' && typeof next.exposure === 'number') {
+          next.free = Math.max(0, next.banca - next.exposure)
+        }
+        return next
+      })
     },
     [refreshHouse]
   )
@@ -611,9 +611,13 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         // ele que carrega a odd. Vale igual pros outros boards da mesma
         // partida: a aposta é uma só e foi registrada nesta sessão.
         const self = Boolean(target?.self)
-        const potential = target?.self
-          ? Math.round(amount * target.self.odds.multiplier)
-          : amount * WAGER_PAYOUT_MULTIPLIER
+        // O servidor devolve a odd que travou; sem ela (servidor antigo), a do board.
+        const potential =
+          typeof res.wager?.potential === 'number'
+            ? res.wager.potential
+            : target?.self
+              ? Math.round(amount * target.self.odds.multiplier)
+              : Math.round(amount * (target ? boardOdd(target, prediction) : WAGER_PAYOUT_MULTIPLIER))
 
         return prev.map((game) => {
           if (game.matchId !== matchId && game.session.id !== sessionId) return game
@@ -739,7 +743,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       const fromLevelUp = typeof data.reason === 'string' && data.reason.startsWith('levelup:')
       // Doação recebida tem toast próprio, com o nome de quem doou (handleDonation).
       const fromDonation = typeof data.reason === 'string' && data.reason.startsWith('donation_received:')
-      if (data.delta !== 0 && !fromLevelUp && !fromDonation) {
+      // O empréstimo sai no toast do próprio painel do Banco, com o prazo.
+      const fromLoan = typeof data.reason === 'string' && data.reason.startsWith('loan:')
+      if (data.delta !== 0 && !fromLevelUp && !fromDonation && !fromLoan) {
         pushToast({
           kind: 'coins',
           title: `${data.delta > 0 ? '+' : '−'}${Math.abs(data.delta)} murchos`,

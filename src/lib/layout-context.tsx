@@ -204,6 +204,12 @@ interface LayoutContextValue {
   openWagers: () => void
   closeWagers: () => void
 
+  /** Banco da Casa: empréstimo de murcho, reserva e dívida. */
+  bankOpen: boolean
+  toggleBank: () => void
+  openBank: () => void
+  closeBank: () => void
+
   /** Recap da semana (e a porta pra retrospectiva do ano). */
   recapOpen: boolean
   toggleRecap: () => void
@@ -263,6 +269,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
     | 'agenda'
     | 'leaderboard'
     | 'wagers'
+    | 'bank'
     | 'recap'
     | 'suggestions'
     | 'clips'
@@ -284,6 +291,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   const agendaOpen = panel === 'agenda'
   const leaderboardOpen = panel === 'leaderboard'
   const wagersOpen = panel === 'wagers'
+  const bankOpen = panel === 'bank'
   const recapOpen = panel === 'recap'
   const suggestionsOpen = panel === 'suggestions'
   const clipsOpen = panel === 'clips'
@@ -403,6 +411,10 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       toggleWagers: () => togglePanel('wagers'),
       openWagers: () => setPanel('wagers'),
       closeWagers: () => closePanel('wagers'),
+      bankOpen,
+      toggleBank: () => togglePanel('bank'),
+      openBank: () => setPanel('bank'),
+      closeBank: () => closePanel('bank'),
       recapOpen,
       toggleRecap: () => togglePanel('recap'),
       openRecap: () => setPanel('recap'),
@@ -432,6 +444,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       suggestionsOpen,
       leaderboardOpen,
       wagersOpen,
+      bankOpen,
       recapOpen,
       pendenciasOpen,
       togglePanel,

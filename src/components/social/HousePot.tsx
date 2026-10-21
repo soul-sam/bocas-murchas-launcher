@@ -1,7 +1,8 @@
 import * as React from 'react'
-import { ChevronDown, ChevronUp, Flame, Vault } from 'lucide-react'
-import { TrophyIcon } from '@/lib/bocas-icons'
+import { ChevronDown, ChevronUp, Flame, Landmark, Vault } from 'lucide-react'
+import { CrownIcon, TrophyIcon } from '@/lib/bocas-icons'
 import { Hint } from '@/components/ui/tooltip'
+import type { IconComponent } from '@/lib/icon-component'
 import {
   formatCompact,
   JACKPOT_MIN_BETTORS,
@@ -24,6 +25,10 @@ import { cn } from '@/lib/utils'
  * `/wagers/house` (carregado no login, andando pelo socket) e diz, além do
  * valor: se alguma partida está disputando o pote agora, quanto falta pra uma
  * disputar, quanto entrou na semana e quem levou os últimos.
+ *
+ * Desde out/2026 a Casa é a contraparte das apostas: os quadrinhos mostram a
+ * BANCA (o que paga quem acerta), o fundo do bônus, o que já foi queimado e o
+ * Fundo do Ano — tudo que o fechamento de domingo reparte.
  *
  * `fallback` é o cofre de um board, pra servidor que ainda não tem a rota.
  */
@@ -107,7 +112,7 @@ export function HousePot({
         {house && house.week.toJackpot > 0 && (
           <Hint
             label="Entrou no pote nesta semana"
-            description={`As apostas em partida perderam ${house.week.lost.toLocaleString('pt-BR')} murchos desde segunda; ${pct(house.rules.jackpot, 0.3)}% disso vem pro pote. Rake do pôquer e aposta de minigame também enchem o cofre.`}
+            description={`Saiu do fechamento de domingo: ${pct(house.rules.close?.jackpot, 0.15)}% do que a banca da Casa juntou acima da reserva dela vai pro pote.`}
             side="left"
           >
             <span className="cursor-help font-mono text-[11px] text-acid-text">
@@ -168,35 +173,51 @@ export function HousePot({
         </p>
       </div>
 
-      {/* Os outros dois destinos do que se perde. */}
+      {/* Os caixas da Casa: quem paga, o que banca o bônus, o que sumiu e o do ano. */}
       <div className="mt-3 grid grid-cols-2 gap-1.5">
-        <Hint
-          label="Fundo de bônus"
-          description={`Recebe ${pct(house?.rules.bonusFund, 0.4)}% do que se perde e paga o bônus de grupo: +15% por apostador além do primeiro, até +60%. Fundo baixo, bônus menor.`}
-          side="bottom"
-        >
-          <div className="cursor-help rounded-brutal border border-line bg-void/60 px-2 py-1.5">
-            <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-              <Vault className="h-3 w-3" aria-hidden />
-              fundo de bônus
-            </p>
-            <p className="font-mono text-sm text-foreground">{bonusFund != null ? formatCompact(bonusFund) : '—'}</p>
-          </div>
-        </Hint>
-        <Hint
-          label="Sumiu de vez"
-          description={`${pct(house?.rules.sink, 0.3)}% do que se perde em aposta some, pra o murcho não inflacionar.`}
-          side="bottom"
-        >
-          <div className="cursor-help rounded-brutal border border-line bg-void/60 px-2 py-1.5">
-            <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-              <Flame className="h-3 w-3" aria-hidden />
-              sumiu
-            </p>
-            <p className="font-mono text-sm text-foreground">{house ? formatCompact(house.sunk) : '—'}</p>
-          </div>
-        </Hint>
+        <Tile
+          Icon={Landmark}
+          label="banca livre"
+          value={house?.free ?? (house?.banca != null ? house.banca - (house.exposure ?? 0) : null)}
+          hint="Banca da Casa"
+          description={`É ela que paga o lucro de quem acerta e fica com o que se perde. Só aceita aposta cujo lucro consegue pagar: no máximo ${pct(house?.rules.maxBetProfitShare, 0.05)}% dela numa aposta e ${pct(house?.rules.maxMatchProfitShare, 0.15)}% numa partida.${house?.exposure ? ` Agora ${house.exposure.toLocaleString('pt-BR')} estão prometidos a apostas abertas.` : ''}`}
+        />
+        <Tile
+          Icon={Vault}
+          label="fundo de bônus"
+          value={bonusFund}
+          hint="Fundo de bônus"
+          description={`Paga o bônus de grupo: com ${min}+ apostando, +15% por apostador além do primeiro, até +60%. Recebe ${pct(house?.rules.close?.bonusFund, 0.15)}% do fechamento de domingo. Fundo baixo, bônus menor.`}
+        />
+        <Tile
+          Icon={Flame}
+          label="queimado"
+          value={house?.sunk ?? null}
+          hint="Queimado de vez"
+          description={`${pct(house?.rules.close?.burn, 0.35)}% do que a banca junta acima da reserva some no fechamento, e metade do juro do Banco também. É o que segura o murcho de inflacionar.`}
+        />
+        <Tile
+          Icon={CrownIcon}
+          label="fundo do ano"
+          value={house?.fundoAno ?? null}
+          hint="Prêmio do Ano"
+          description={`Paga os três primeiros do recap do ano (50/30/20). Recebe ${pct(house?.rules.close?.fundoAno, 0.2)}% do fechamento de domingo e um quarto do juro do Banco.`}
+        />
       </div>
+
+      {house?.lastClose && (
+        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+          {house.lastClose.surplus > 0 ? (
+            <>
+              Último fechamento: <span className="font-mono text-foreground">{formatCompact(house.lastClose.surplus)}</span>{' '}
+              repartidos — {formatCompact(house.lastClose.burned)} queimados, {formatCompact(house.lastClose.toJackpot)} pro
+              pote, {formatCompact(house.lastClose.toYear)} pro ano.
+            </>
+          ) : (
+            'Último fechamento sem excedente: a banca guardou tudo pra cobrir as apostas.'
+          )}
+        </p>
+      )}
 
       {/* Quem já levou. */}
       {house && (
@@ -241,6 +262,32 @@ export function HousePot({
         </div>
       )}
     </section>
+  )
+}
+
+function Tile({
+  Icon,
+  label,
+  value,
+  hint,
+  description
+}: {
+  Icon: IconComponent
+  label: string
+  value: number | null
+  hint: string
+  description: string
+}) {
+  return (
+    <Hint label={hint} description={description} side="bottom">
+      <div className="cursor-help rounded-brutal border border-line bg-void/60 px-2 py-1.5">
+        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Icon className="h-3 w-3" aria-hidden />
+          {label}
+        </p>
+        <p className="font-mono text-sm text-foreground">{value != null ? formatCompact(value) : '—'}</p>
+      </div>
+    </Hint>
   )
 }
 

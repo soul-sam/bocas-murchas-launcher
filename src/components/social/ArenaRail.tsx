@@ -24,8 +24,8 @@ import { ARENA_ICON, ARENA_LABEL, LiveCount, useLiveMatchCount, type ArenaItem }
  * conquistas, recap), a tabela e as apostas. Quem não sabia que atrás do
  * troféu havia lojinha nunca achava a lojinha. Agora são cinco ícones em
  * coluna, com a mesma cara dos de cima: Ranking (o troféu, com o nível),
- * Apostas (com a contagem de partidas abertas), Conquistas, Lojinha (com os
- * murchos) e Recap. Os três primeiros estados vivem na coluna da direita da
+ * Apostas (com a contagem de partidas abertas), Banco (com a dívida, se
+ * houver), Conquistas, Lojinha (com os murchos) e Recap. Os três primeiros estados vivem na coluna da direita da
  * tela social (layout-context); conquistas e lojinha são modais.
  *
  * NO CELULAR a barra deita no rodapé e não cabem mais cinco ícones: o troféu
@@ -55,12 +55,15 @@ export function ArenaRail() {
     isPhone,
     leaderboardOpen,
     wagersOpen,
+    bankOpen,
     recapOpen,
     toggleLeaderboard,
     toggleWagers,
+    toggleBank,
     toggleRecap,
     openLeaderboard,
     openWagers,
+    openBank,
     openRecap
   } = useLayout()
   const { openShop, openAchievements, shopOpen, achievementsOpen } = useOverlays()
@@ -115,6 +118,18 @@ export function ArenaRail() {
         )
     },
     {
+      id: 'bank',
+      active: bankOpen && onSocial,
+      run: panel(toggleBank, openBank),
+      hint:
+        house?.credito != null
+          ? `Banco da Casa: empréstimo de murcho. Reserva agora: ${house.credito.toLocaleString('pt-BR')}.`
+          : 'Banco da Casa: empréstimo de murcho, da reserva que a Casa junta.',
+      meta: house?.credito != null && (
+        <span className="font-mono text-[11.5px] text-muted-foreground">{formatCompact(house.credito)}</span>
+      )
+    },
+    {
       id: 'achievements',
       active: achievementsOpen,
       run: () => openAchievements(),
@@ -152,7 +167,7 @@ export function ArenaRail() {
             <button
               type="button"
               aria-label="Arena"
-              title="Arena: ranking, apostas, conquistas, lojinha e recap"
+              title="Arena: ranking, apostas, banco, conquistas, lojinha e recap"
               className={cn(RAIL_BUTTON, anyActive ? RAIL_ACTIVE : RAIL_IDLE)}
             >
               <Trophy className="h-5 w-5" />

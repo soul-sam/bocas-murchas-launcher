@@ -337,7 +337,16 @@ export interface EarnRules {
     rampBets: number
     /** Janela pra apostar, do início da partida. */
     betWindowMs: number
+    /** Odd de estreante (sem histórico). A de verdade vem no board. */
     payoutMultiplier: number
+    /** Como a Casa precifica (a odd de cada pessoa vem no board). */
+    odds?: {
+      margin: number
+      prior: number
+      sampleSize: number
+      minMultiplier: number
+      maxMultiplier: number
+    }
     /**
      * Aposta na PRÓPRIA partida. A odd não vem aqui: ela é por jogo e muda a
      * cada partida, então chega em `LiveWagerGame.self.odds`.
@@ -374,15 +383,39 @@ export interface WagerGroupBonus {
 }
 
 /**
- * Cofre da casa. As perdas de aposta enchem os dois: `bonusFund` paga o bônus
- * de grupo, e `jackpot` é o pote que sai numa partida com 4+ apostadores em
- * que todo mundo acertou.
+ * Cofre da Casa (out/2026). A Casa é a contraparte das apostas: a `banca`
+ * recebe o que é perdido e paga o lucro de quem acerta; `exposure` é o lucro
+ * já prometido a apostas abertas. No fechamento de domingo o que passa da
+ * meta da banca vai pra queima, pro `jackpot` (pote: partida com 4+
+ * apostadores em que todo mundo acertou), pro `bonusFund` (bônus de grupo),
+ * pro `credito` (reserva do Banco) e pro `fundoAno` (Prêmio do Ano).
+ *
+ * Os caixas novos são opcionais: servidor antigo não manda.
  */
 export interface WagerHouse {
   jackpot: number
   bonusFund: number
-  /** Quanto já sumiu de vez (o ralo). Só vem no `/wagers/house` e no socket. */
+  /** Quanto já foi queimado de vez (o ralo). Só vem no `/wagers/house` e no socket. */
   sunk?: number
+  banca?: number
+  exposure?: number
+  credito?: number
+  fundoAno?: number
+  /** Banca livre (banca − exposição). Vem no board. */
+  free?: number
+}
+
+/** Um fechamento semanal da banca. */
+export interface HouseCloseInfo {
+  weekStart: string
+  banca: number
+  surplus: number
+  burned: number
+  toJackpot: number
+  toBonus: number
+  toCredit: number
+  toYear: number
+  at: string
 }
 
 /** Um pote já pago, com quem levou e quanto cada um. */
@@ -403,11 +436,26 @@ export interface JackpotWinInfo {
 export interface WagerHouseInfo extends WagerHouse {
   sunk: number
   updatedAt: string
+  /** Quando a Casa abriu como contraparte (null = servidor antigo). */
+  openedAt?: string | null
+  /** Emprestado pelo Banco e ainda não devolvido. */
+  lent?: number
   paid: { count: number; total: number }
   wins: JackpotWinInfo[]
-  /** Semana corrente, só das apostas em partida: perdido e o que foi pro pote. */
-  week: { start: string; lost: number; toJackpot: number }
-  rules: { minBettors: number; sink: number; bonusFund: number; jackpot: number }
+  /**
+   * Semana corrente, só das apostas em partida: perdido, lucro que a Casa
+   * pagou e o que foi pro pote (no fechamento de domingo).
+   */
+  week: { start: string; lost: number; won?: number; toJackpot: number }
+  lastClose?: HouseCloseInfo | null
+  rules: {
+    minBettors: number
+    liquidityTarget?: number
+    close?: { burn: number; jackpot: number; bonusFund: number; credito: number; fundoAno: number }
+    maxBetProfitShare?: number
+    maxMatchProfitShare?: number
+    margin?: number
+  }
 }
 
 /** Quantos apostadores distintos a partida precisa pra disputar o pote. */
@@ -462,10 +510,10 @@ export interface WagerBet {
   self: boolean
 }
 
-/** Odd de apostar em si mesmo: `1 ÷ winrate`, presa entre 1,3x e 3x. */
+/** Odd de apostar em si mesmo: a winrate com a margem da Casa, presa entre 1,2x e 3x. */
 export interface SelfWagerOdds {
   multiplier: number
-  /** Partidas na conta. Abaixo de `minSample` a odd é a de estreante. */
+  /** Partidas na conta. Abaixo de `minSample` o teto de aposta é o de estreante. */
   sample: number
   wins: number
 }
@@ -516,8 +564,33 @@ export interface LiveWagerGame {
   open: boolean
   /** ISO de quando a janela de aposta fecha. */
   closesAt: string
-  /** Teto de aposta atual de quem pediu (rampa de 50 até 5000). */
+  /**
+   * Teto de aposta atual de quem pediu: a rampa (50 até 5000), a folga da
+   * banca da Casa e o Banco (quem deve aposta pouco). É o MENOR dos dois
+   * palpites; `limits` traz cada um.
+   */
   maxAmount: number
+  /** Quanto paga cada palpite no colega (a odd sai da winrate dele). Ausente em servidor antigo. */
+  odds?: { win: number; loss: number }
+  /** Teto por palpite. Ausente em servidor antigo. */
+  limits?: { win: number; loss: number }
+  /** O teto ficou abaixo da rampa porque a banca da Casa não cobre mais. */
+  houseCapped?: boolean
+}
+
+/** Quanto um palpite no colega paga, pela odd do board (servidor antigo = 2x). */
+export function boardOdd(game: Pick<LiveWagerGame, 'odds'>, prediction: WagerPrediction): number {
+  return game.odds?.[prediction] ?? WAGER_PAYOUT_MULTIPLIER
+}
+
+/** Teto de um palpite no board (servidor antigo = o teto único). */
+export function boardLimit(game: Pick<LiveWagerGame, 'limits' | 'maxAmount'>, prediction: WagerPrediction): number {
+  return game.limits?.[prediction] ?? game.maxAmount
+}
+
+/** "1,84x" — odd em texto curto, com vírgula. */
+export function oddText(multiplier: number): string {
+  return `${multiplier.toFixed(2).replace('.', ',')}x`
 }
 
 export interface MatchPlayer {
@@ -651,9 +724,9 @@ export const WAGER_RAMP_BETS = 100
 export const WAGER_WINDOW_MS = 5 * 60 * 1000
 
 /**
- * Quanto a aposta no COLEGA paga (2x, fixo). A aposta em si mesmo não tem
- * constante porque a odd é pessoal e muda a cada partida: vem do servidor em
- * `LiveWagerGame.self.odds.multiplier`.
+ * Quanto a aposta no colega pagava antes da Casa virar contraparte (2x fixo).
+ * Desde out/2026 a odd é pessoal e vem no board (`LiveWagerGame.odds`); isto
+ * só sobra como fallback de servidor antigo (`boardOdd`).
  */
 export const WAGER_PAYOUT_MULTIPLIER = 2
 
@@ -703,6 +776,10 @@ export function xpReasonLabel(reason: string | undefined | null): string {
   if (reason.startsWith('gift:')) return 'presente'
   if (reason.startsWith('donation:')) return 'doação'
   if (reason.startsWith('donation_received:')) return 'doação recebida'
+  // Banco da Casa (API: lib/gamification/bank.ts) e Prêmio do Ano (year-award.ts).
+  if (reason.startsWith('loan_payment:')) return 'pagamento ao Banco da Casa'
+  if (reason.startsWith('loan:')) return 'empréstimo do Banco da Casa'
+  if (reason.startsWith('year_award:')) return 'Prêmio do Ano'
   // Easter-egg achado (API: modules/easter-eggs.ts) — o nome do ovo já saiu no toast da badge.
   if (reason.startsWith('egg:')) return 'achou um ovo'
   // Recompensa por hora impressa (API: lib/print-queue/quota-math.ts) — `print_reward:<jobId>`.

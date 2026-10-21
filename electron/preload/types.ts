@@ -546,6 +546,13 @@ export interface OverlayBetTarget {
   /** Teto pessoal de quem esta apostando — sobe de 50 a 5000 conforme aposta. */
   maxAmount: number
   /**
+   * Quanto paga cada palpite: a odd sai da winrate de quem joga, com a margem
+   * da Casa. Ausente = servidor antigo (2x).
+   */
+  odds?: { win: number; loss: number }
+  /** Teto de cada palpite (a banca da Casa corta o lucro de cada lado). */
+  limits?: { win: number; loss: number }
+  /**
    * Apostadores distintos ja nesta partida. E o que a previa do bonus de grupo
    * precisa: +15% por pessoa alem da primeira, e quem abre o formulario e mais
    * uma.

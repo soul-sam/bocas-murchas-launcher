@@ -16,6 +16,7 @@ import { AwardIcon, BadgeIcon } from '@/lib/cosmetic-icons'
 import { cn } from '@/lib/utils'
 import { ArenaHeader, ArenaTabs } from './ArenaChrome'
 import { WagerRanking } from './WagerRanking'
+import { YearAward } from './YearAward'
 
 /**
  * RECAP — a semana do grupo, e as anteriores.
@@ -110,6 +111,9 @@ export function RecapPanel() {
 
         {/* Apostas: segue a semana na tela; sem recap, a semana corrente. */}
         {recaps !== undefined && <WagerRanking weekStart={recap?.weekStart} />}
+
+        {/* O ano: quem mais ganhou prêmio no recap leva o Fundo do Ano. */}
+        <YearAward />
 
         {/* A retrospectiva fica sempre alcançável — inclusive sem recap nenhum,
             porque o ano tem mais que semanas. */}
