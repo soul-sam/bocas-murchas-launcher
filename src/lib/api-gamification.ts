@@ -15,6 +15,7 @@ import { isShopThemeId, type ShopThemeId } from '../../electron/preload/types'
  *   GET  /gamification/shop                     -> { coins, items }
  *   GET  /gamification/earn-rules               -> tabela de ganho de murcho
  *   POST /gamification/shop/buy { cosmeticId }  -> { profile, item }   402 sem saldo, 409 já tem
+ *   POST /gamification/shop/refund { cosmeticId } -> { profile, item, carta, refund }   400 fora das 24h
  *   POST /gamification/equip { type, cosmeticId|null, slot? } -> { user }   slot 2 só p/ emoji
  *   POST /gamification/checkin                  -> { profile, awarded|null }
  *   GET  /gamification/wagers/live              -> { games }
@@ -265,6 +266,16 @@ export interface ShopItem {
   data: Record<string, unknown> | null
   owned: boolean
   equipped: boolean
+  /** Até quando dá pra reembolsar a compra (ISO), ou null. API antiga não manda. */
+  refundableUntil?: string | null
+}
+
+export interface ShopRefundResult {
+  cosmeticId: string
+  /** Voltou pro saldo (vem do Banco). */
+  coins: number
+  /** Voltou pra carta do consórcio. */
+  carta: number
 }
 
 export interface GiftResult {
@@ -1053,6 +1064,18 @@ export const gamification = {
     cosmeticId: string
   ): Promise<{ profile: GamificationProfile; item: ShopItem; carta?: number }> {
     return request('/gamification/shop/buy', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ cosmeticId })
+    })
+  },
+
+  /** Desfaz uma compra minha em até 24h: o item sai e o preço volta. */
+  async refund(
+    token: string,
+    cosmeticId: string
+  ): Promise<{ profile: GamificationProfile; item: ShopItem | null; carta?: number; refund: ShopRefundResult }> {
+    return request('/gamification/shop/refund', {
       method: 'POST',
       token,
       body: JSON.stringify({ cosmeticId })

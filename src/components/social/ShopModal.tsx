@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { X, Loader2, Check, Tag, Sparkles, Frame, Smile, Volume2, Play, Palette, Paintbrush, Ticket } from 'lucide-react'
+import { X, Loader2, Check, Tag, Sparkles, Frame, Smile, Volume2, Play, Palette, Paintbrush, Ticket, Undo2 } from 'lucide-react'
 import { GiftIcon, MurchosIcon, ShopIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { ApiError, resolveAssetUrl } from '@/lib/api'
@@ -38,6 +38,7 @@ import { NameEmoji } from './NameEmoji'
 import { TitleTag } from '@/lib/cosmetic-icons'
 import { parseGradient } from '@/lib/name-gradient'
 import { needsColors, ownedNameColors, type OwnedColor } from '@/lib/supreme-shop'
+import { refundDeadline, refundTimeLeft } from '@/lib/shop-refund'
 import { SupremeColorPicker } from './supreme/SupremeColorPicker'
 import { SupremeThemePicker } from './supreme/SupremeThemePicker'
 import { SupremeSoundEditor } from './supreme/SupremeSoundEditor'
@@ -80,7 +81,7 @@ export function ShopModal() {
   const { shopOpen: open, closeShop: close } = useOverlays()
   const { user, token } = useAuth()
   const { byId } = useMembers()
-  const { shop, loadShop, buy, equip, profile, catalog, pushToast } = useGamification()
+  const { shop, loadShop, buy, refundPurchase, equip, profile, catalog, pushToast } = useGamification()
   const { settings, update: updateSettings } = useSettings()
 
   const [tab, setTab] = React.useState<CosmeticType>('theme')
@@ -225,6 +226,29 @@ export function ShopModal() {
               : err.message
           : 'Não deu pra comprar agora.'
       )
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleRefund = async (item: ShopItem): Promise<void> => {
+    setBusy(item.id)
+    setError(null)
+    try {
+      // Tema é configuração local: o servidor não sabe que está em uso.
+      if (item.type === 'theme' && item.equipped) await updateSettings({ theme: DEFAULT_SETTINGS.theme })
+      const refund = await refundPurchase(item.id)
+      setConfirming(null)
+      pushToast({
+        kind: 'info',
+        title: `${item.name} reembolsado`,
+        body:
+          refund.carta > 0
+            ? `${refund.coins.toLocaleString('pt-BR')} murchos de volta e ${refund.carta.toLocaleString('pt-BR')} na carta`
+            : `${refund.coins.toLocaleString('pt-BR')} murchos de volta`
+      })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Não deu pra reembolsar agora.')
     } finally {
       setBusy(null)
     }
@@ -442,6 +466,7 @@ export function ShopModal() {
                   onAskBuy={() => setConfirming(item.id)}
                   onCancel={() => setConfirming(null)}
                   onBuy={() => void handleBuy(item)}
+                  onRefund={() => void handleRefund(item)}
                   onAskGift={() => {
                     setConfirming(null)
                     setError(null)
@@ -510,6 +535,7 @@ function ItemTile({
   onAskBuy,
   onCancel,
   onBuy,
+  onRefund,
   onAskGift,
   onEquip,
   onUnequip,
@@ -529,6 +555,8 @@ function ItemTile({
   onAskBuy: () => void
   onCancel: () => void
   onBuy: () => void
+  /** Desfaz a compra (até 24h depois). O "confirmar" usa o mesmo `confirming`. */
+  onRefund: () => void
   /** Abre o painel "pra quem?" — dá pra presentear item que eu já tenho. */
   onAskGift: () => void
   onEquip: () => void
@@ -543,6 +571,7 @@ function ItemTile({
   const style = RARITY_STYLE[tier] ?? RARITY_STYLE.common
   const affordable = coins >= item.price
   const blockedByColors = needsColors(item.id, ownedColors.length)
+  const refundUntil = refundDeadline(item)
   const { settings } = useSettings()
   const supremeCfg = settings.supremeTheme
   const [configuring, setConfiguring] = React.useState(false)
@@ -848,6 +877,44 @@ function ItemTile({
       {!item.owned && blockedByColors && (
         <p className="text-[11.5px] text-muted-foreground">Precisa de 2 cores de nome</p>
       )}
+      {refundUntil &&
+        (confirming ? (
+          <div className="flex flex-col gap-1 rounded-brutal border border-destructive/40 bg-destructive/5 p-1.5">
+            <p className="text-[11.5px] leading-snug text-muted-foreground">
+              O item sai e o que você pagou volta (a parte da carta volta pra carta).
+            </p>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onRefund}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-brutal border border-destructive/60 px-2 py-1 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/15 disabled:opacity-50"
+              >
+                {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Undo2 className="h-3 w-3" />}
+                Reembolsar
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onCancel}
+                className="rounded-brutal border border-border px-2 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Não
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onAskBuy}
+            title={`Dá pra desfazer a compra até ${refundUntil.toLocaleString('pt-BR', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`}
+            className="flex items-center justify-center gap-1.5 rounded-brutal border border-line px-2 py-1 text-[11.5px] font-semibold text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive disabled:opacity-50"
+          >
+            <Undo2 className="h-3 w-3" />
+            Reembolsar · {refundTimeLeft(refundUntil)}
+          </button>
+        ))}
       {configurable && (
         <>
           <button

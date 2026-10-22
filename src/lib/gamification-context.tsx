@@ -18,6 +18,7 @@ import {
   type GiftResult,
   type LiveWagerGame,
   type ShopItem,
+  type ShopRefundResult,
   type ShopResponse,
   type WagerHouse,
   type WagerHouseInfo,
@@ -89,6 +90,8 @@ interface GamificationContextValue {
   shop: ShopResponse | null
   loadShop: () => Promise<ShopResponse | null>
   buy: (cosmeticId: string) => Promise<ShopItem>
+  /** Desfaz uma compra minha (até 24h depois): o item sai e o preço volta. */
+  refundPurchase: (cosmeticId: string) => Promise<ShopRefundResult>
   /** Presente: debita meu saldo, o item vai pra `toUserId`. */
   gift: (cosmeticId: string, toUserId: string, message?: string) => Promise<GiftResult>
   /** Doa murchos direto pra alguém (botão direito na call). */
@@ -410,6 +413,19 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       return res.item
     },
     [token]
+  )
+
+  const refundPurchase = React.useCallback(
+    async (cosmeticId: string): Promise<ShopRefundResult> => {
+      if (!token) throw new ApiError(401, 'Sem sessão')
+      const res = await api.refund(token, cosmeticId)
+      if (res.profile) setProfile(res.profile)
+      // O reembolso pode ter tirado o item de um slot (e a cor do nome): a
+      // vitrine inteira volta do servidor em vez de adivinhar aqui.
+      await loadShop()
+      return res.refund
+    },
+    [token, loadShop]
   )
 
   const gift = React.useCallback(
@@ -837,6 +853,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       shop,
       loadShop,
       buy,
+      refundPurchase,
       gift,
       donate,
       equip,
@@ -860,6 +877,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       shop,
       loadShop,
       buy,
+      refundPurchase,
       gift,
       donate,
       equip,

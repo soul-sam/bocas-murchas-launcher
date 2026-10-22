@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.89.0',
+    headline: 'Reembolso na lojinha',
+    items: [
+      'Comprou e se arrependeu? Até 24h depois da compra aparece "Reembolsar" no item.',
+      'O item sai do inventário e o que você pagou volta, pago pelo Banco. A parte paga com carta do consórcio volta pra carta.',
+      'Presente não tem reembolso.'
+    ],
+    note: 'Conquistas da lojinha (Freguês, Kit Supremo e cia.) só contam a compra depois que o prazo de reembolso dela passa.'
+  },
+  {
     version: '1.88.0',
     headline: 'Odds das apostas sem margem da Casa',
     items: [
