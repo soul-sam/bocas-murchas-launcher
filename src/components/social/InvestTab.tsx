@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
  *     "CDB automático" ligado, às 23h o saldo inteiro vem pra cá.
  *   - CONGELADO: 7/15/30/60 dias com rendimento do prazo travado na hora.
  *     Sair antes leva só uma fatia do que já rendeu (a tela mostra quanto).
- * O murcho aplicado vira reserva do Banco, e a Casa sempre devolve.
+ * O murcho aplicado entra no Banco, e a Casa sempre devolve.
  *
  * O CDB antigo (2/4 semanas, rendimento do pote) só aparece pra quem ainda
  * tem aplicação aberta nele.
@@ -150,7 +150,7 @@ export function InvestTab() {
           onWithdrawn={(forfeited) =>
             toast(
               'Aplicação sacada',
-              forfeited > 0 ? `O principal voltou; ${fmt(forfeited)} de rendimento foram queimados.` : 'O principal voltou inteiro.'
+              forfeited > 0 ? `O principal voltou; ${fmt(forfeited)} de rendimento voltaram pro Banco.` : 'O principal voltou inteiro.'
             )
           }
         />
@@ -553,7 +553,7 @@ function LegacyDeposits({ deposits, onWithdrawn }: { deposits: DepositView[]; on
                 <div className="mt-1.5 space-y-1.5">
                   <p className="text-muted-foreground">
                     Sacar antes devolve os {fmt(d.amount)} e{' '}
-                    {d.earned > 0 ? <>queima os {fmt(d.earned)} de rendimento.</> : <>não rendeu nada ainda.</>}
+                    {d.earned > 0 ? <>os {fmt(d.earned)} de rendimento voltam pro Banco.</> : <>não rendeu nada ainda.</>}
                   </p>
                   <div className="flex gap-1.5">
                     <Button
@@ -614,7 +614,7 @@ function CdbRules({ cdb }: { cdb: CdbView }) {
             {percentText(second.share)}; depois disso, {percentText(third.share)}.
           </li>
         )}
-        <li>Sem teto: aplique quanto quiser. O murcho aplicado vira reserva do Banco, e a Casa sempre devolve.</li>
+        <li>Sem teto: aplique quanto quiser. O murcho aplicado entra no Banco, e a Casa sempre devolve.</li>
         <li>Quem deve ao Banco ou ao consórcio não aplica, mas resgatar sempre pode.</li>
       </ul>
     </section>

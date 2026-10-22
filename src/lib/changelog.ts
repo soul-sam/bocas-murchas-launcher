@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.83.0',
+    headline: 'Nada mais queima: tudo volta pro Banco',
+    items: [
+      'Murcho não some mais. O que você gasta na lojinha e em presente, a metade do juro dos empréstimos e as taxas do consórcio agora vão pro Banco da Casa e voltam a girar.',
+      'Banca e reserva viraram uma coisa só: o Banco. É dele que saem os empréstimos, o lucro de quem acerta aposta e os resgates do CDB.',
+      'Com o Banco maior, o teto da aposta sobe sozinho, até os 5.000 de sempre.',
+      'No fechamento de domingo, o excedente vai pro CDB, pro pote, pro bônus e pro Prêmio do Ano, e o resto fica no Banco.'
+    ]
+  },
+  {
     version: '1.82.0',
     headline: 'CDB diário e congelado',
     items: [

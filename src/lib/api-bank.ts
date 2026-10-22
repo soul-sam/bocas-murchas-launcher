@@ -3,7 +3,7 @@ import { request } from './api'
 /**
  * BANCO DA CASA e PRÊMIO DO ANO — contrato com /api/gamification.
  *
- *   GET  /gamification/bank            -> { bank } reserva, dívida, oferta, regras
+ *   GET  /gamification/bank            -> { bank } livre no Banco, dívida, oferta, regras
  *   POST /gamification/bank/loan       -> { amount, termDays } -> { loan, coins }
  *   POST /gamification/bank/pay        -> { amount? } (vazio = quitar) -> { loan, coins, paid }
  *   GET  /gamification/year-award      -> { award } placar do ano, fundo e prévia
@@ -159,7 +159,7 @@ export interface TermView {
   now: { fraction: number; accrued: number; share: number; earned: number; total: number }
 }
 
-/** CDB novo: diário e congelado. O murcho aplicado vira reserva do Banco. */
+/** CDB novo: diário e congelado. O murcho aplicado entra no Banco. */
 export interface CdbView {
   savings: { total: number; earning: number; pending: number; earned: number; auto: boolean }
   terms: TermView[]
