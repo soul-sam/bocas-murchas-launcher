@@ -42,6 +42,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.82.0',
+    headline: 'CDB diário e congelado',
+    items: [
+      'CDB diário: rende 10% ao mês, todo dia à meia-noite, e você resgata quando quiser, sem multa.',
+      'CDB automático: liga na aba Investir e todo dia às 23h o seu saldo vai sozinho pro CDB diário. Pra gastar, resgate.',
+      'CDB congelado: 7 dias rende 10%, 15 dias 25%, 30 dias 50% e 60 dias 100%. Venceu, volta sozinho pro saldo.',
+      'Sair do congelado antes leva só parte do que já rendeu: menos de 30% do prazo, nada; depois 30%, 50% ou 70%, conforme o tempo que ficou.',
+      'Sem teto: aplique quanto quiser. O murcho aplicado vira reserva do Banco, e a Casa sempre devolve.'
+    ],
+    note: 'Quem tem CDB de 2 ou 4 semanas aberto segue nas regras antigas até vencer.'
+  },
+  {
     version: '1.81.0',
     headline: 'Volto logo, com motivo',
     items: [

@@ -181,10 +181,14 @@ function Consortiums({ consortium, onGo }: { consortium: ConsortiumView | null; 
 function Deposits({ invest, onGo }: { invest: InvestView | null; onGo: Go }) {
   if (invest === null) return null
 
+  const savings = invest.cdb?.savings
+  const terms = invest.cdb?.terms ?? []
+  const empty = invest.open.length === 0 && terms.length === 0 && !(savings && savings.total > 0)
+
   return (
     <section className="rounded-brutal border border-line bg-void/60 p-3">
       <h4 className="mb-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">CDB aplicado</h4>
-      {invest.open.length === 0 ? (
+      {empty ? (
         <p className="text-xs text-muted-foreground">
           Nada aplicado.{' '}
           <button
@@ -197,6 +201,25 @@ function Deposits({ invest, onGo }: { invest: InvestView | null; onGo: Go }) {
         </p>
       ) : (
         <ul className="space-y-1.5">
+          {savings && savings.total > 0 && (
+            <Row
+              tone="ok"
+              title={`Diário${savings.auto ? ' · automático' : ''}${savings.earned > 0 ? ` · +${fmt(savings.earned)} rendido` : ''}`}
+              detail="resgate quando quiser"
+              amount={savings.total}
+              onClick={() => onGo('invest')}
+            />
+          )}
+          {terms.map((t) => (
+            <Row
+              key={t.id}
+              tone="ok"
+              title={`Congelado ${t.termDays} dias · +${fmt(Math.floor(t.amount * t.rate))} no fim`}
+              detail={`vence ${day(t.maturesAt)}${dueIn(t.maturesAt)}`}
+              amount={t.amount}
+              onClick={() => onGo('invest')}
+            />
+          ))}
           {invest.open.map((d) => {
             const started = new Date(d.startsAt).getTime() <= Date.now()
             return (

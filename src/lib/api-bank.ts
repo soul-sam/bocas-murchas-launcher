@@ -11,6 +11,11 @@ import { request } from './api'
  *   GET  /gamification/invest                 -> { invest } aplicações, teto, último rendimento
  *   POST /gamification/invest                 -> { amount, termWeeks } -> { deposit, coins }
  *   POST /gamification/invest/:id/withdraw    -> { deposit, coins, forfeited }
+ *   POST /gamification/invest/daily           -> { amount } -> { coins }
+ *   POST /gamification/invest/daily/withdraw  -> { amount? } (vazio = tudo) -> { coins, paid, minted }
+ *   POST /gamification/invest/daily/auto      -> { on } -> { auto }
+ *   POST /gamification/invest/term            -> { amount, days } -> { deposit, coins }
+ *   POST /gamification/invest/term/:id/withdraw -> { coins, paid, earned, lost }
  *
  *   GET  /gamification/consortium             -> { consortium } planos, meus grupos, carta
  *   POST /gamification/consortium/join        -> { plan } -> { groupId, consortium }
@@ -140,7 +145,41 @@ export interface InvestYieldInfo {
   eligible: number
 }
 
+/** CDB congelado (7/15/30/60 dias). `now` = se sair agora. */
+export interface TermView {
+  id: string
+  amount: number
+  termDays: number
+  rate: number
+  status: 'open' | 'redeemed' | 'withdrawn' | string
+  paid: number
+  createdAt: string
+  maturesAt: string
+  closedAt: string | null
+  now: { fraction: number; accrued: number; share: number; earned: number; total: number }
+}
+
+/** CDB novo: diário e congelado. O murcho aplicado vira reserva do Banco. */
+export interface CdbView {
+  savings: { total: number; earning: number; pending: number; earned: number; auto: boolean }
+  terms: TermView[]
+  termHistory: TermView[]
+  eligible: boolean
+  reason: string | null
+  rules: {
+    minDeposit: number
+    monthlyRate: number
+    dailyRate: number
+    terms: Array<{ days: number; rate: number }>
+    early: Array<{ from: number; share: number }>
+    sweepHour: number
+  }
+}
+
 export interface InvestView {
+  /** CDB novo. Sem ele (API antiga), a aba mostra só o antigo. */
+  cdb?: CdbView
+  /** CDB antigo (2/4 semanas): só termina o que já está aberto. */
   open: DepositView[]
   history: DepositView[]
   room: number
@@ -245,6 +284,31 @@ export const bankApi = {
 
   async withdraw(token: string, id: string): Promise<{ deposit: DepositView; coins: number; forfeited: number }> {
     return request(`/gamification/invest/${encodeURIComponent(id)}/withdraw`, { method: 'POST', token, body: '{}' })
+  },
+
+  async savingsDeposit(token: string, amount: number): Promise<{ coins: number }> {
+    return request('/gamification/invest/daily', { method: 'POST', token, body: JSON.stringify({ amount }) })
+  },
+
+  /** `amount` omitido = resgatar tudo. */
+  async savingsWithdraw(token: string, amount?: number): Promise<{ coins: number; paid: number; minted: number }> {
+    return request('/gamification/invest/daily/withdraw', {
+      method: 'POST',
+      token,
+      body: JSON.stringify(amount === undefined ? {} : { amount })
+    })
+  },
+
+  async savingsAuto(token: string, on: boolean): Promise<{ auto: boolean }> {
+    return request('/gamification/invest/daily/auto', { method: 'POST', token, body: JSON.stringify({ on }) })
+  },
+
+  async termDeposit(token: string, amount: number, days: number): Promise<{ deposit: TermView; coins: number }> {
+    return request('/gamification/invest/term', { method: 'POST', token, body: JSON.stringify({ amount, days }) })
+  },
+
+  async termWithdraw(token: string, id: string): Promise<{ coins: number; paid: number; earned: number; lost: number }> {
+    return request(`/gamification/invest/term/${encodeURIComponent(id)}/withdraw`, { method: 'POST', token, body: '{}' })
   },
 
   async consortium(token: string): Promise<ConsortiumView | null> {
