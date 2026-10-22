@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { InvestTab } from './InvestTab'
 import { ConsortiumTab } from './ConsortiumTab'
 import { WalletTab } from './WalletTab'
+import { DashboardTab } from './DashboardTab'
 
 /**
  * BANCO DA CASA — empréstimo de murcho, de reserva integral.
@@ -36,9 +37,9 @@ import { WalletTab } from './WalletTab'
 
 const fmt = (n: number): string => n.toLocaleString('pt-BR')
 
-type BankTab = 'wallet' | 'loan' | 'invest' | 'consortium'
+type BankTab = 'wallet' | 'dashboard' | 'loan' | 'invest' | 'consortium'
 
-// A Carteira fica sozinha à esquerda; os balcões, à direita.
+// Carteira e Dashboard à esquerda; os balcões, à direita.
 const COUNTERS: Array<{ id: BankTab; label: string }> = [
   { id: 'loan', label: 'Empréstimo' },
   { id: 'invest', label: 'Investir' },
@@ -46,8 +47,9 @@ const COUNTERS: Array<{ id: BankTab; label: string }> = [
 ]
 
 /**
- * O Banco abre sempre na Carteira (WalletTab: saldo, consórcios, dívidas) e
- * tem três balcões: empréstimo, CDB da Casa (InvestTab) e consórcio
+ * O Banco abre sempre na Carteira (WalletTab: saldo, consórcios, dívidas),
+ * tem o Dashboard ao lado (DashboardTab: patrimônio e juros no tempo) e três
+ * balcões: empréstimo, CDB da Casa (InvestTab) e consórcio
  * (ConsortiumTab). Cada aba busca o seu.
  */
 export function BankModal() {
@@ -116,6 +118,7 @@ export function BankModal() {
 
         <div role="tablist" aria-label="Balcão do Banco" className="mb-3 flex flex-wrap items-center gap-1">
           {tabButton({ id: 'wallet', label: 'Carteira' })}
+          {tabButton({ id: 'dashboard', label: 'Dashboard' })}
           <div className="ml-auto flex flex-wrap items-center gap-1">{COUNTERS.map(tabButton)}</div>
         </div>
 
@@ -124,6 +127,8 @@ export function BankModal() {
             distribui. `break-inside-avoid` não deixa um formulário rachar ao
             meio entre as colunas. */}
         <div className="scroll-stable min-h-0 flex-1 overflow-y-auto pr-1">
+          {/* O Dashboard usa a largura inteira: gráfico não cabe na coluna. */}
+          {tab === 'dashboard' && <DashboardTab />}
           <div className="gap-3 md:columns-2 [&>*]:mb-3 [&>*]:break-inside-avoid">
             {tab === 'wallet' && <WalletTab onGo={setTab} />}
             {tab === 'loan' && <LoanTab />}

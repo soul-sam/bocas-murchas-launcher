@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.87.0',
+    headline: 'Dashboard no Banco',
+    items: [
+      'Nova aba Dashboard, ao lado da Carteira: seu patrimônio (saldo, CDB e carta, menos dívidas) e como ele andou nos últimos 7, 30 ou 90 dias.',
+      'Mostra quanto o CDB te rendeu de juros na última semana e um gráfico de juros por dia.',
+      'Os dias antes de hoje são estimados pelo seu extrato; daqui pra frente o Banco guarda uma foto por dia.'
+    ]
+  },
+  {
     version: '1.86.0',
     headline: 'Parcela do consórcio sai do CDB diário',
     items: [

@@ -253,6 +253,28 @@ export interface ConsortiumView {
   }
 }
 
+/** Patrimônio de um dia (GET /gamification/bank/dashboard). */
+export interface WealthPoint {
+  day: string
+  coins: number
+  savings: number
+  terms: number
+  deposits: number
+  carta: number
+  debt: number
+  net: number
+  /** Reconstruído do extrato (antes das fotos diárias, 22/10/2026): aproximado. */
+  estimated: boolean
+}
+
+export interface WealthDashboard {
+  days: number
+  series: WealthPoint[]
+  now: Omit<WealthPoint, 'day' | 'estimated'>
+  interestWeek: { savings: number; terms: number; deposits: number; total: number }
+  interestDaily: Array<{ day: string; amount: number }>
+}
+
 export const bankApi = {
   async view(token: string): Promise<BankView | null> {
     const res = await request<{ bank?: BankView }>('/gamification/bank', { token })
@@ -312,6 +334,11 @@ export const bankApi = {
 
   async termWithdraw(token: string, id: string): Promise<{ coins: number; paid: number; earned: number; lost: number }> {
     return request(`/gamification/invest/term/${encodeURIComponent(id)}/withdraw`, { method: 'POST', token, body: '{}' })
+  },
+
+  async dashboard(token: string, days: number): Promise<WealthDashboard | null> {
+    const res = await request<{ dashboard?: WealthDashboard }>(`/gamification/bank/dashboard?days=${days}`, { token })
+    return res?.dashboard ?? null
   },
 
   async consortium(token: string): Promise<ConsortiumView | null> {
