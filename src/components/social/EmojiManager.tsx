@@ -8,6 +8,7 @@ import {
   Loader2,
   Upload,
   Smile,
+  PackageOpen,
   Sticker as StickerIcon
 } from 'lucide-react'
 import {
@@ -23,6 +24,7 @@ import { resolveAssetUrl } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useEmojis, type CustomEmoji, type StickerPack } from '@/lib/emoji-context'
 import { EmojiImage } from './CustomEmojiImg'
+import { EmojiPackImport } from './EmojiPackImport'
 
 /**
  * Gerenciador de emojis e stickers do servidor.
@@ -35,6 +37,10 @@ import { EmojiImage } from './CustomEmojiImg'
  * por admin; pack e sticker so admin apaga (o banco nao guarda dono de pack).
  * Os botoes que a pessoa nao pode usar nem aparecem — um botao que da 403 e
  * pior que botao nenhum.
+ *
+ * Pack de emoji (.zip ou varias imagens) entra pelo "Importar pack" ou
+ * arrastando em cima da aba — ver EmojiPackImport. Na lista, o que veio de
+ * pack aparece agrupado e pode ser apagado de uma vez.
  */
 
 export type ManagerTab = 'emojis' | 'stickers'
@@ -138,7 +144,7 @@ function TabButton({
 
 function EmojisTab() {
   const { token, user } = useAuth()
-  const { emojis, uploadEmoji, renameEmoji, removeEmoji } = useEmojis()
+  const { emojis, uploadEmoji, renameEmoji, removeEmoji, removeEmojiPack } = useEmojis()
 
   const [file, setFile] = React.useState<File | null>(null)
   const [preview, setPreview] = React.useState<string | null>(null)
@@ -149,6 +155,8 @@ function EmojisTab() {
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [editName, setEditName] = React.useState('')
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null)
+  const [importFiles, setImportFiles] = React.useState<File[] | null>(null)
+  const [dragging, setDragging] = React.useState(false)
 
   const isAdmin = user?.role === 'admin'
 
@@ -218,16 +226,70 @@ function EmojisTab() {
     void run(() => removeEmoji(id))
   }
 
+  const removePack = (pack: string): void => {
+    setConfirmDelete(null)
+    void run(() => removeEmojiPack(pack))
+  }
+
   const visible = React.useMemo(() => {
     const term = filter.trim().toLowerCase()
     if (!term) return emojis
     return emojis.filter(
-      (e) => e.name.includes(term) || e.uploadedBy.displayName.toLowerCase().includes(term)
+      (e) =>
+        e.name.includes(term) ||
+        e.uploadedBy.displayName.toLowerCase().includes(term) ||
+        !!e.pack?.toLowerCase().includes(term)
     )
   }, [emojis, filter])
 
+  // Avulsos primeiro, depois cada pack em ordem alfabetica. So ganha
+  // cabecalho quando existe pack — servidor sem pack fica como sempre foi.
+  const groups = React.useMemo(() => {
+    const byPack = new Map<string, CustomEmoji[]>()
+    const loose: CustomEmoji[] = []
+    for (const e of visible) {
+      if (!e.pack) loose.push(e)
+      else byPack.set(e.pack, [...(byPack.get(e.pack) ?? []), e])
+    }
+    const packs = [...byPack.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([pack, list]) => ({ pack: pack as string | null, list }))
+    return loose.length ? [{ pack: null, list: loose }, ...packs] : packs
+  }, [visible])
+  const hasPacks = groups.some((g) => g.pack)
+
+  const pickImport = (list: FileList | null | undefined): void => {
+    const picked = list ? Array.from(list) : []
+    if (picked.length === 0) return
+    setError(null)
+    setImportFiles(picked)
+  }
+
+  if (importFiles) {
+    return <EmojiPackImport files={importFiles} onClose={() => setImportFiles(null)} />
+  }
+
   return (
-    <>
+    <div
+      className={cn(
+        'relative flex min-h-0 flex-1 flex-col',
+        dragging && 'rounded-brutal outline-dashed outline-1 outline-acid/60'
+      )}
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes('Files')) return
+        e.preventDefault()
+        setDragging(true)
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false)
+      }}
+      onDrop={(e) => {
+        if (!e.dataTransfer.files.length) return
+        e.preventDefault()
+        setDragging(false)
+        pickImport(e.dataTransfer.files)
+      }}
+    >
       {/* Formulario de upload */}
       <div className="mb-3 flex shrink-0 items-center gap-2 rounded-brutal border border-line bg-void-light/30 p-2">
         <label
@@ -268,17 +330,39 @@ function EmojisTab() {
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1 h-3.5 w-3.5" />}
           Subir
         </Button>
+
+        <label
+          title="Importar pack: um .zip ou várias imagens de uma vez (dá pra arrastar aqui)"
+          className={cn(
+            'inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-brutal border border-line-strong px-2.5 text-xs text-foreground transition-colors hover:border-acid/60 hover:bg-acid/5',
+            busy && 'pointer-events-none opacity-50'
+          )}
+        >
+          <PackageOpen className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Importar pack</span>
+          <input
+            type="file"
+            multiple
+            accept=".zip,application/zip,application/x-zip-compressed,image/png,image/gif,image/webp,image/jpeg"
+            className="hidden"
+            onChange={(e) => {
+              pickImport(e.target.files)
+              e.target.value = ''
+            }}
+          />
+        </label>
       </div>
 
       <p className="mb-2 shrink-0 font-mono text-[11.5px] text-muted-foreground">
-        png, gif, webp ou jpg até 256 KB · qualquer um pode subir · {emojis.length}/300
+        png, gif, webp ou jpg até 256 KB · pack em .zip ou arrastando · qualquer um pode subir ·{' '}
+        {emojis.length}/300
       </p>
 
       {emojis.length > 12 && (
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="filtrar por nome ou quem subiu"
+          placeholder="filtrar por nome, pack ou quem subiu"
           className="input-terminal mb-2 w-full shrink-0 rounded-brutal px-2 py-1.5 text-sm"
         />
       )}
@@ -286,78 +370,95 @@ function EmojisTab() {
       {error && <p className="mb-2 shrink-0 text-[11px] text-destructive">{error}</p>}
 
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-        {visible.map((emoji) => {
-          const canEdit = isAdmin || emoji.uploadedBy.id === user?.id
-          const isEditing = editingId === emoji.id
+        {groups.map((group) => (
+          <React.Fragment key={group.pack ?? ''}>
+            {hasPacks && (
+              <PackHeader
+                pack={group.pack}
+                list={group.list}
+                userId={user?.id}
+                isAdmin={isAdmin}
+                busy={busy}
+                confirming={!!group.pack && confirmDelete === 'pack:' + group.pack}
+                onAskDelete={() => group.pack && setConfirmDelete('pack:' + group.pack)}
+                onCancel={() => setConfirmDelete(null)}
+                onConfirm={() => group.pack && removePack(group.pack)}
+              />
+            )}
+            {group.list.map((emoji) => {
+              const canEdit = isAdmin || emoji.uploadedBy.id === user?.id
+              const isEditing = editingId === emoji.id
 
-          return (
-            <div
-              key={emoji.id}
-              className="flex items-center gap-2 rounded-brutal border border-line bg-void-light/30 px-2 py-1.5"
-            >
-              <EmojiImage emoji={emoji} className="h-7 w-7 shrink-0" />
+              return (
+                <div
+                  key={emoji.id}
+                  className="flex items-center gap-2 rounded-brutal border border-line bg-void-light/30 px-2 py-1.5"
+                >
+                  <EmojiImage emoji={emoji} className="h-7 w-7 shrink-0" />
 
-              {isEditing ? (
-                <input
-                  autoFocus
-                  value={editName}
-                  onChange={(e) => setEditName(toEmojiName(e.target.value))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') rename(emoji)
-                    if (e.key === 'Escape') setEditingId(null)
-                  }}
-                  onBlur={() => rename(emoji)}
-                  className="input-terminal min-w-0 flex-1 rounded-brutal px-1.5 py-0.5 font-mono text-sm"
-                />
-              ) : (
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-mono text-sm text-foreground">
-                    :{emoji.name}:
-                  </span>
-                  <span className="block truncate text-[11px] text-muted-foreground">
-                    {emoji.uploadedBy.displayName}
-                  </span>
-                </span>
-              )}
-
-              {canEdit && (
-                <div className="flex shrink-0 items-center gap-0.5">
-                  <IconButton
-                    label="Renomear"
-                    disabled={busy}
-                    onClick={() => {
-                      setEditName(emoji.name)
-                      setEditingId(emoji.id)
-                    }}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </IconButton>
-
-                  {/* Confirmacao no proprio botao, sem modal em cima de modal. */}
-                  {confirmDelete === emoji.id ? (
-                    <>
-                      <IconButton label="Confirmar" danger onClick={() => remove(emoji.id)}>
-                        <Check className="h-3.5 w-3.5" />
-                      </IconButton>
-                      <IconButton label="Cancelar" onClick={() => setConfirmDelete(null)}>
-                        <X className="h-3.5 w-3.5" />
-                      </IconButton>
-                    </>
+                  {isEditing ? (
+                    <input
+                      autoFocus
+                      value={editName}
+                      onChange={(e) => setEditName(toEmojiName(e.target.value))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') rename(emoji)
+                        if (e.key === 'Escape') setEditingId(null)
+                      }}
+                      onBlur={() => rename(emoji)}
+                      className="input-terminal min-w-0 flex-1 rounded-brutal px-1.5 py-0.5 font-mono text-sm"
+                    />
                   ) : (
-                    <IconButton
-                      label="Apagar"
-                      danger
-                      disabled={busy}
-                      onClick={() => setConfirmDelete(emoji.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </IconButton>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-mono text-sm text-foreground">
+                        :{emoji.name}:
+                      </span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        {emoji.uploadedBy.displayName}
+                      </span>
+                    </span>
+                  )}
+
+                  {canEdit && (
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <IconButton
+                        label="Renomear"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditName(emoji.name)
+                          setEditingId(emoji.id)
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </IconButton>
+
+                      {/* Confirmacao no proprio botao, sem modal em cima de modal. */}
+                      {confirmDelete === emoji.id ? (
+                        <>
+                          <IconButton label="Confirmar" danger onClick={() => remove(emoji.id)}>
+                            <Check className="h-3.5 w-3.5" />
+                          </IconButton>
+                          <IconButton label="Cancelar" onClick={() => setConfirmDelete(null)}>
+                            <X className="h-3.5 w-3.5" />
+                          </IconButton>
+                        </>
+                      ) : (
+                        <IconButton
+                          label="Apagar"
+                          danger
+                          disabled={busy}
+                          onClick={() => setConfirmDelete(emoji.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </IconButton>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          )
-        })}
+              )
+            })}
+          </React.Fragment>
+        ))}
 
         {visible.length === 0 && (
           <p className="py-10 text-center text-sm text-muted-foreground">
@@ -367,7 +468,67 @@ function EmojisTab() {
           </p>
         )}
       </div>
-    </>
+    </div>
+  )
+}
+
+/**
+ * Cabecalho de um grupo da lista. Apagar segue a API: admin leva o pack
+ * inteiro; quem nao e admin apaga so os que subiu — e o botao diz isso quando
+ * o pack tem emoji de mais gente.
+ */
+function PackHeader({
+  pack,
+  list,
+  userId,
+  isAdmin,
+  busy,
+  confirming,
+  onAskDelete,
+  onCancel,
+  onConfirm
+}: {
+  pack: string | null
+  list: CustomEmoji[]
+  userId: string | undefined
+  isAdmin: boolean
+  busy: boolean
+  confirming: boolean
+  onAskDelete: () => void
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const mine = list.filter((e) => e.uploadedBy.id === userId).length
+  const people = [...new Set(list.map((e) => e.uploadedBy.displayName))]
+  const canDelete = !!pack && (isAdmin || mine > 0)
+  const deleteLabel =
+    isAdmin || mine === list.length ? `Apagar o pack (${list.length})` : `Apagar os seus (${mine})`
+
+  return (
+    <div className="flex items-center gap-2 px-0.5 pb-0.5 pt-2 first:pt-0">
+      <h3 className="min-w-0 truncate font-mono text-[11.5px] uppercase tracking-widest text-foreground">
+        {pack ?? 'Avulsos'}
+      </h3>
+      <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+        {list.length}
+        {pack && people.length > 0 && ` · ${people.length > 2 ? `${people.length} pessoas` : people.join(', ')}`}
+      </span>
+      {canDelete &&
+        (confirming ? (
+          <>
+            <IconButton label="Confirmar" danger onClick={onConfirm}>
+              <Check className="h-3.5 w-3.5" />
+            </IconButton>
+            <IconButton label="Cancelar" onClick={onCancel}>
+              <X className="h-3.5 w-3.5" />
+            </IconButton>
+          </>
+        ) : (
+          <IconButton label={deleteLabel} danger disabled={busy} onClick={onAskDelete}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </IconButton>
+        ))}
+    </div>
   )
 }
 

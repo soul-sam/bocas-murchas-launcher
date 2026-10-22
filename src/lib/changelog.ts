@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.92.0',
+    headline: 'Importar pack de emojis',
+    items: [
+      'No gerenciador de emojis tem "Importar pack": escolhe um .zip ou várias imagens de uma vez (ou arrasta pra cima da aba).',
+      'Cada imagem vira :nome_do_arquivo:, e nome repetido ganha _2. Dá pra renomear e desmarcar antes de subir.',
+      'Imagem parada maior que 256 KB é encolhida sozinha; GIF grande demais avisa em vez de subir.',
+      'Na lista, os emojis ficam agrupados por pack, e dá pra apagar o pack inteiro de uma vez.'
+    ]
+  },
+  {
     version: '1.91.0',
     headline: 'Ranking de murchos conta só ganho de verdade',
     items: [

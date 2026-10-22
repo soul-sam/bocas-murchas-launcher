@@ -48,9 +48,11 @@ interface EmojiContextValue {
   packs: StickerPack[]
   loading: boolean
 
-  uploadEmoji: (file: File, name: string) => Promise<CustomEmoji>
+  uploadEmoji: (file: File, name: string, pack?: string) => Promise<CustomEmoji>
   renameEmoji: (id: string, name: string) => Promise<void>
   removeEmoji: (id: string) => Promise<void>
+  /** Admin leva o pack inteiro; os outros, so o que subiram. */
+  removeEmojiPack: (pack: string) => Promise<number>
 
   createPack: (name: string, description?: string) => Promise<StickerPack>
   uploadSticker: (packId: string, file: File, name: string) => Promise<Sticker>
@@ -72,7 +74,7 @@ function upsertEmoji(list: CustomEmoji[], emoji: CustomEmoji): CustomEmoji[] {
 }
 
 export function EmojiProvider({ children }: { children: React.ReactNode }) {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const { socket } = useSocketClient()
 
   const [emojis, setEmojis] = React.useState<CustomEmoji[]>([])
@@ -160,9 +162,9 @@ export function EmojiProvider({ children }: { children: React.ReactNode }) {
   // ele deixaria o gerenciador com cara de travado depois de cada clique.
 
   const uploadEmoji = React.useCallback(
-    async (file: File, name: string) => {
+    async (file: File, name: string, pack?: string) => {
       if (!token) throw new Error('Sem sessão')
-      const emoji = await emojisApi.create(token, file, name)
+      const emoji = await emojisApi.create(token, file, name, pack)
       setEmojis((prev) => upsertEmoji(prev, emoji))
       return emoji
     },
@@ -185,6 +187,21 @@ export function EmojiProvider({ children }: { children: React.ReactNode }) {
       setEmojis((prev) => prev.filter((e) => e.id !== id))
     },
     [token]
+  )
+
+  const removeEmojiPack = React.useCallback(
+    async (pack: string) => {
+      if (!token) throw new Error('Sem sessão')
+      const removed = await emojisApi.removePack(token, pack)
+      // Mesma regra do servidor (packDeleteWhere): o socket confirma um
+      // `emoji:removed` por emoji logo depois.
+      const isAdmin = user?.role === 'admin'
+      setEmojis((prev) =>
+        prev.filter((e) => e.pack !== pack || (!isAdmin && e.uploadedBy.id !== user?.id))
+      )
+      return removed
+    },
+    [token, user]
   )
 
   const createPack = React.useCallback(
@@ -245,6 +262,7 @@ export function EmojiProvider({ children }: { children: React.ReactNode }) {
       uploadEmoji,
       renameEmoji,
       removeEmoji,
+      removeEmojiPack,
       createPack,
       uploadSticker,
       removeSticker,
@@ -259,6 +277,7 @@ export function EmojiProvider({ children }: { children: React.ReactNode }) {
       uploadEmoji,
       renameEmoji,
       removeEmoji,
+      removeEmojiPack,
       createPack,
       uploadSticker,
       removeSticker,

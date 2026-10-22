@@ -14,6 +14,8 @@ export interface CustomEmoji {
   name: string
   /** Relativa (/static/emojis/...) — passar por resolveAssetUrl antes de usar. */
   url: string
+  /** Pack de onde veio (importado de uma vez); null = subido avulso. API antiga nao manda. */
+  pack?: string | null
   uploadedBy: { id: string; displayName: string }
   createdAt: string
 }
@@ -40,10 +42,13 @@ export const emojisApi = {
     return res.emojis
   },
 
-  async create(token: string, file: File, name: string): Promise<CustomEmoji> {
+  async create(token: string, file: File, name: string, pack?: string): Promise<CustomEmoji> {
     const form = new FormData()
-    form.append('file', file)
+    // Campos ANTES do arquivo: o multer so garante no req.body o que chegou
+    // antes do arquivo no fluxo.
     form.append('name', name)
+    if (pack) form.append('pack', pack)
+    form.append('file', file)
     const res = await upload<{ emoji: CustomEmoji }>('/emojis', form, token)
     return res.emoji
   },
@@ -59,6 +64,15 @@ export const emojisApi = {
 
   async remove(token: string, id: string): Promise<void> {
     await request<{ message: string }>(`/emojis/${id}`, { method: 'DELETE', token })
+  },
+
+  /** Apaga o pack: admin leva tudo, os outros so o que subiram. Devolve quantos foram. */
+  async removePack(token: string, pack: string): Promise<number> {
+    const res = await request<{ removed: number }>(`/emojis/pack/${encodeURIComponent(pack)}`, {
+      method: 'DELETE',
+      token
+    })
+    return res.removed
   }
 }
 
