@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.84.0',
+    headline: 'Capa do jeito que você quer',
+    items: [
+      'Trocar a capa (arquivo ou GIF) agora abre um recorte: arraste a imagem e aproxime pela régua ou pela roda do mouse pra escolher o pedaço que aparece.',
+      'GIF recortado continua animado.',
+      'Na call, foto em GIF fica parada e só mexe enquanto a pessoa fala. Assim dá pra ver quem está falando. Vale também nas mesas de pôquer, cartas e tabuleiro.'
+    ]
+  },
+  {
     version: '1.83.0',
     headline: 'Nada mais queima: tudo volta pro Banco',
     items: [
