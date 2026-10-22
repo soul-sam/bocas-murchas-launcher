@@ -82,6 +82,7 @@ export function ConsortiumTab() {
       {view.arrears > 0 && (
         <Arrears
           amount={view.arrears}
+          rules={view.rules}
           busy={busy === 'arrears'}
           // O débito já aparece no aviso de murchos (socket), com o rótulo da parcela.
           onPay={() => void act('arrears', () => bankApi.payArrears(token))}
@@ -153,7 +154,17 @@ export function ConsortiumTab() {
   )
 }
 
-function Arrears({ amount, busy, onPay }: { amount: number; busy: boolean; onPay: () => void }) {
+function Arrears({
+  amount,
+  rules,
+  busy,
+  onPay
+}: {
+  amount: number
+  rules: ConsortiumView['rules']
+  busy: boolean
+  onPay: () => void
+}) {
   return (
     <section className="rounded-brutal border border-destructive/50 bg-destructive/[0.06] p-3">
       <h4 className="flex items-center gap-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
@@ -165,7 +176,9 @@ function Arrears({ amount, busy, onPay }: { amount: number; busy: boolean; onPay
         <span className="text-xs text-muted-foreground">pra quitar</span>
       </div>
       <p className="mt-2 text-[11.5px] leading-snug text-muted-foreground">
-        Até quitar, o que você ganhar (atividade e prêmio de aposta) vai pra ela, e transferência fica travada.
+        Já com multa de {percentText(rules.lateFee ?? 0.1)} e juro de {percentText(rules.lateDailyRate ?? 0.02)} ao dia,
+        que continua correndo. Até quitar, o que você ganhar (atividade e prêmio de aposta) vai pra ela, e
+        transferência fica travada.
       </p>
       <Button type="button" className="mt-2.5 w-full" disabled={busy} onClick={onPay}>
         {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
@@ -412,8 +425,10 @@ function Rules({ view }: { view: ConsortiumView }) {
           {percentText(rules.cashOutFee)} de desconto.
         </li>
         <li>
-          Parcela sem saldo vira atraso: o fundo e o Banco cobrem o grupo, e você paga com o que ganhar. De quem não foi
-          sorteado, o atraso sai da carta.
+          No domingo, se o saldo não cobre a parcela, o que falta sai do seu CDB diário (o congelado não é mexido). Sem
+          os dois, vira atraso com multa de {percentText(rules.lateFee ?? 0.1)} e juro de{' '}
+          {percentText(rules.lateDailyRate ?? 0.02)} ao dia (pro Banco): o fundo e o Banco cobrem o grupo, e você paga
+          com o que ganhar. De quem não foi sorteado, o atraso sai da carta.
         </li>
         <li>
           Desistir antes da carta para as parcelas; o que você pagou volta no fim, menos {percentText(rules.quitPenalty)}.

@@ -247,6 +247,9 @@ export interface ConsortiumView {
     quitPenalty: number
     cartaGraceDays: number
     cashOutFee: number
+    /** Multa e juro diário do atraso (servidor antigo não manda). */
+    lateFee?: number
+    lateDailyRate?: number
   }
 }
 

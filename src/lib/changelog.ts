@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.86.0',
+    headline: 'Parcela do consórcio sai do CDB diário',
+    items: [
+      'No domingo, se o saldo não cobrir a parcela do consórcio, o que falta é resgatado sozinho do seu CDB diário. O congelado nunca é mexido.',
+      'Parcela que não der pra cobrar nem assim vira atraso com multa de 10% na hora e juro de 2% ao dia até quitar. Multa e juro vão pro Banco.'
+    ]
+  },
+  {
     version: '1.85.0',
     headline: 'Recompensa agora sai do Banco',
     items: [
