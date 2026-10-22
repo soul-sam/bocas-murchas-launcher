@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.90.0',
+    headline: 'Itens da lojinha contam no patrimônio',
+    items: [
+      'O gráfico de patrimônio do Banco agora soma os cosméticos que você tem, pelo preço de hoje na loja.',
+      'Vale pra todo o histórico: cada item conta a partir do dia em que chegou, comprado, ganho ou de presente.',
+      'Item reembolsado conta só entre a compra e o reembolso.'
+    ]
+  },
+  {
     version: '1.89.0',
     headline: 'Reembolso na lojinha',
     items: [

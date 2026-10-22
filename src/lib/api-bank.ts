@@ -261,6 +261,8 @@ export interface WealthPoint {
   terms: number
   deposits: number
   carta: number
+  /** Cosméticos que tem, pelo preço de hoje na loja. */
+  items: number
   debt: number
   net: number
   /** Reconstruído do extrato (antes das fotos diárias, 22/10/2026): aproximado. */

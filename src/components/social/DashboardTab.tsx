@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils'
  * DASHBOARD — a aba do Banco ao lado da Carteira: o patrimônio dia a dia e o
  * juro que o CDB rendeu.
  *
- * Patrimônio = saldo + CDB (diário, congelado, antigo) + carta − dívida. O
+ * Patrimônio = saldo + CDB (diário, congelado, antigo) + carta + itens da
+ * loja (pelo preço de hoje) − dívida. O
  * servidor grava uma foto por dia desde 22/10/2026; antes disso o ponto é
  * estimado pelo extrato (linha tracejada). Gráficos em SVG à mão (o launcher
  * não tem biblioteca de gráfico): uma série cada, então sem legenda — o título
@@ -246,6 +247,7 @@ function WealthChart({ series }: { series: WealthPoint[] }) {
               <Row label="saldo" value={point.coins} />
               <Row label="CDB" value={point.savings + point.terms + point.deposits} />
               {point.carta > 0 && <Row label="carta" value={point.carta} />}
+              {point.items > 0 && <Row label="itens" value={point.items} />}
               {point.debt > 0 && <Row label="dívida" value={-point.debt} />}
             </dl>
           </Tooltip>
@@ -332,6 +334,7 @@ function Breakdown({ now }: { now: WealthDashboard['now'] }) {
     { label: 'CDB congelado (saindo hoje)', value: now.terms },
     { label: 'CDB antigo', value: now.deposits },
     { label: 'Carta do consórcio', value: now.carta },
+    { label: 'Itens da loja', value: now.items ?? 0 },
     { label: 'Dívidas', value: -now.debt }
   ].filter((r) => r.value !== 0 || r.label === 'Saldo')
   return (
