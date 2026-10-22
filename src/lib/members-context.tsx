@@ -124,6 +124,7 @@ export function MembersProvider({ children }: { children: React.ReactNode }) {
               // `null` e "limpou o recado"; so `undefined` e "nao veio".
               customStatus:
                 presence.customStatus === undefined ? edited.customStatus : presence.customStatus,
+              awayNote: presence.awayNote === undefined ? edited.awayNote : presence.awayNote,
               profileColor: presence.profileColor ?? edited.profileColor
             }
           : edited

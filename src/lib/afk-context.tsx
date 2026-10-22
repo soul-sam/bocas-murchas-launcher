@@ -103,6 +103,9 @@ export const AFK_AUTO_NOTE = 'Longe do teclado'
  */
 export const AFK_SILENCE_NOTE = 'Sumido da conversa'
 
+/** O motivo que a pessoa escreve ao sair. O mesmo teto do servidor. */
+export const AFK_REASON_MAX = 64
+
 /**
  * Os textos que o AFK antigo gravava no `customStatus` das pessoas.
  *
@@ -149,7 +152,10 @@ interface AfkContextValue {
   note: string | null
   /** Foi o launcher que marcou (ocioso ou silêncio), não você. */
   automatic: boolean
-  /** Liga o AFK. Sem recado, usa o padrão. */
+  /**
+   * Liga o AFK. O texto é o MOTIVO ("almoço") e vai pros outros junto com o
+   * crachá; sem ele, só o crachá.
+   */
   enable: (note?: string) => void
   /** Desliga e devolve o status e o recado que você tinha antes. */
   disable: () => void
@@ -214,6 +220,16 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
   tokenRef.current = token
 
   /**
+   * O MOTIVO que foi pro servidor — só quando a pessoa ESCREVEU um ao sair.
+   *
+   * Sem motivo, os outros veem só o crachá "ausente" de sempre; com motivo,
+   * veem "almoço", "reunião"... ao lado. Os textos padrão daqui ("Volto
+   * logo!", "Longe do teclado") não viajam: dizer "Volto logo!" pros outros
+   * é o mesmo que o crachá já diz. Guardado em ref pra reconexão repetir.
+   */
+  const remoteNoteRef = React.useRef<string | null>(null)
+
+  /**
    * FAXINA DO ESTRAGO ANTIGO: limpa o recado que o AFK antigo deixou gravado.
    *
    * Uma vez por sessão, e só quando o texto bate exatamente com um dos nossos
@@ -241,7 +257,8 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
   const applyRemote = React.useCallback((status: 'away' | 'online' | 'dnd') => {
     const auth = tokenRef.current
     if (!auth) return
-    void usersApi.setStatus(auth, status).catch(() => {})
+    const note = status === 'away' ? remoteNoteRef.current : null
+    void usersApi.setStatus(auth, status, note).catch(() => {})
   }, [])
 
   /**
@@ -271,7 +288,11 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
 
       previousRef.current = { status: user?.status ?? 'online' }
 
-      const message = nextNote?.trim() || (auto ? AFK_AUTO_NOTE : AFK_NOTE)
+      // Na mão, o texto é o motivo que a pessoa escreveu; no automático, é o
+      // rótulo do relógio que marcou (e esse não viaja — ver remoteNoteRef).
+      const typed = auto ? '' : (nextNote?.trim().slice(0, AFK_REASON_MAX) ?? '')
+      const message = typed || (auto ? nextNote?.trim() || AFK_AUTO_NOTE : AFK_NOTE)
+      remoteNoteRef.current = typed || null
 
       setAfk(true)
       setNote(message)
@@ -313,6 +334,7 @@ export function AfkProvider({ children }: { children: React.ReactNode }) {
     previousRef.current = null
     armedRef.current = false
     motivoRef.current = null
+    remoteNoteRef.current = null
 
     setAfk(false)
     setNote(null)

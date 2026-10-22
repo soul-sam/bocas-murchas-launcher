@@ -45,6 +45,7 @@ import { CANAIS_MAX, CANAIS_MIN, useLayout } from '@/lib/layout-context'
 import { useActivity } from '@/lib/activity-context'
 import { useMembers } from '@/lib/members-context'
 import { AFK_AUTO_NOTE } from '@/lib/afk-context'
+import { AwayReasonDialog } from './AwayReasonDialog'
 import { NameEmoji } from './NameEmoji'
 import { NameEffect } from './NameEffect'
 import { ChannelGlyph } from './ChannelGlyph'
@@ -118,7 +119,9 @@ export function ChannelSidebar({
     sidebarWidth,
     setSidebarWidth
   } = useLayout()
-  const { afk, toggle: toggleAfk } = useAfk()
+  const { afk, note: afkNote, toggle: toggleAfk } = useAfk()
+  /** "Volto logo!" com motivo — ver AwayReasonDialog. */
+  const [reasonOpen, setReasonOpen] = React.useState(false)
 
   /**
    * Quem está falando NA MINHA call.
@@ -453,7 +456,7 @@ export function ChannelSidebar({
                             label={occupant.displayName}
                             description={
                               away
-                                ? AFK_AUTO_NOTE
+                                ? member?.awayNote || AFK_AUTO_NOTE
                                 : isSharing
                                   ? 'Está transmitindo — clique pra ver'
                                   : undefined
@@ -507,7 +510,7 @@ export function ChannelSidebar({
                             {away && (
                               <Coffee
                                 className="h-3 w-3 shrink-0 text-burn"
-                                aria-label={AFK_AUTO_NOTE}
+                                aria-label={member?.awayNote || AFK_AUTO_NOTE}
                               />
                             )}
                             {(isSharing || flags?.muted || flags?.deafened) && (
@@ -709,7 +712,14 @@ export function ChannelSidebar({
                   </span>
                   <NameEmoji id={user?.emoji} id2={user?.emoji2} gradient={user?.profileGradient} />
                 </span>
-                {myActivity ? (
+                {/* Ausente, o rodapé mostra o que os outros estão lendo —
+                    o motivo, ou o rótulo do relógio que marcou. */}
+                {afk && afkNote ? (
+                  <span className="flex items-center gap-1 truncate text-[11px] text-burn/90">
+                    <Coffee className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">{afkNote}</span>
+                  </span>
+                ) : myActivity ? (
                   <ActivityLine activity={myActivity} />
                 ) : (
                   <span className="block truncate text-[11px] text-muted-foreground">
@@ -739,6 +749,14 @@ export function ChannelSidebar({
               <Coffee className="h-3.5 w-3.5 shrink-0" />
               {afk ? 'Voltei!' : 'Volto logo!'}
             </DropdownMenuItem>
+            {/* Trocar o motivo estando ausente não existe: qualquer clique na
+                janela já é "voltei". Quem quer outro motivo volta e sai de novo. */}
+            {!afk && (
+              <DropdownMenuItem onSelect={() => setReasonOpen(true)}>
+                <Coffee className="h-3.5 w-3.5 shrink-0" />
+                Volto logo, com motivo…
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onOpenProfile}>Editar perfil</DropdownMenuItem>
             {user?.role === 'admin' && (
@@ -767,14 +785,20 @@ export function ChannelSidebar({
               afk
                 ? 'Tira o aviso, devolve seu status e o áudio como estava. Também sai sozinho quando você mexer na janela.'
                 : voice.connected
-                  ? 'Avisa a galera que você saiu, desliga as cutucadas e muda seu mic e o som até você voltar.'
-                  : 'Avisa a galera que você saiu e desliga as cutucadas até você voltar.'
+                  ? 'Avisa a galera que você saiu, desliga as cutucadas e muda seu mic e o som até você voltar. Botão direito pra dizer o motivo.'
+                  : 'Avisa a galera que você saiu e desliga as cutucadas até você voltar. Botão direito pra dizer o motivo.'
             }
             active={afk}
             onClick={toggleAfk}
+            onContextMenu={(event) => {
+              if (afk) return
+              event.preventDefault()
+              setReasonOpen(true)
+            }}
           >
             <Coffee className="h-3.5 w-3.5" />
           </DockButton>
+          <AwayReasonDialog open={reasonOpen} onOpenChange={setReasonOpen} />
 
           <DockButton
             label={voice.micEnabled ? 'Silenciar' : 'Reativar mic'}

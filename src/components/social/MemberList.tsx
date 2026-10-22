@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Shield, Search, Volume2, ScreenShare, X } from 'lucide-react'
+import { Coffee, Shield, Search, Volume2, ScreenShare, X } from 'lucide-react'
 import { MurchosIcon } from '@/lib/bocas-icons'
 import { UserAvatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -235,7 +235,7 @@ function Group({
                           crachá. O resto dos cargos está no cartão de perfil,
                           a um clique. */}
                       {cargo && <CargoChip cargo={cargo} compact />}
-                      {away && <AwayBadge />}
+                      {away && <AwayBadge note={member.awayNote} />}
                     </span>
 
                     {/* Jogo ganha da call: "em partida 12:30" diz mais do que
@@ -244,8 +244,15 @@ function Group({
                         dizer: é enfeite, não informação. */}
                     {/* O RECADO GANHA DE TUDO: é o que a pessoa escolheu
                         dizer. A ausência não disputa esta linha — ela é o
-                        crachá ali em cima, ao lado do nome. */}
-                    {member.customStatus ? (
+                        crachá ali em cima, ao lado do nome. Só o MOTIVO da
+                        ausência passa na frente: ele é de agora, e foi a
+                        própria pessoa que escreveu ao sair. */}
+                    {away && member.awayNote ? (
+                      <span className="flex items-center gap-1 truncate text-[11.5px] text-burn/90">
+                        <Coffee className="h-2.5 w-2.5 shrink-0" />
+                        <span className="truncate">{member.awayNote}</span>
+                      </span>
+                    ) : member.customStatus ? (
                       <StatusText
                         text={member.customStatus}
                         className="flex items-center gap-0.5 truncate text-[11.5px] text-muted-foreground"

@@ -52,6 +52,8 @@ export interface OnlineUser {
    */
   status?: UserStatus
   customStatus?: string | null
+  /** Motivo do "Volto logo!" — ver lib/afk-context. */
+  awayNote?: string | null
   profileColor?: string | null
 }
 
@@ -442,6 +444,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
                 avatar: keep(fresh.avatar, person.avatar),
                 status: keep(fresh.status, person.status),
                 customStatus: keep(fresh.customStatus, person.customStatus),
+                awayNote: keep(fresh.awayNote, person.awayNote),
                 profileColor: keep(fresh.profileColor, person.profileColor)
               }
             : person

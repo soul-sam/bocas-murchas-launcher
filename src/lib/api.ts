@@ -209,6 +209,8 @@ export interface AuthUser {
   links?: string | null
   status?: UserStatus
   customStatus?: string | null
+  /** Motivo do "Volto logo!" ("almoço"). Só vem preenchido com status 'away'. */
+  awayNote?: string | null
   lastSeen?: string
   createdAt?: string
   voiceChannelId?: string | null
@@ -362,11 +364,12 @@ export const users = {
     return res.user
   },
 
-  async setStatus(token: string, status: UserStatus): Promise<void> {
+  /** `note` é o motivo da ausência; o servidor só guarda junto com 'away'. */
+  async setStatus(token: string, status: UserStatus, note?: string | null): Promise<void> {
     await request('/users/me/status', {
       method: 'PUT',
       token,
-      body: JSON.stringify({ status })
+      body: JSON.stringify({ status, note: note ?? null })
     })
   },
 

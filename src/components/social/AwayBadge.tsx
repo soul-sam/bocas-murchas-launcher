@@ -20,9 +20,10 @@ import { CustomEmojiImg } from './CustomEmojiImg'
  * O crachá de "não está na cadeira".
  *
  * Some sozinho quando o status deixa de ser `away` — não há texto pendurado em
- * lugar nenhum pra limpar depois.
+ * lugar nenhum pra limpar depois. O motivo (`awayNote`, quando a pessoa deu
+ * um) vai na dica; a linha de baixo da lista também o mostra — ver MemberList.
  */
-export function AwayBadge({ className }: { className?: string }) {
+export function AwayBadge({ className, note }: { className?: string; note?: string | null }) {
   return (
     <span
       className={cn(
@@ -30,7 +31,7 @@ export function AwayBadge({ className }: { className?: string }) {
         'bg-burn/10 px-1.5 py-px font-mono text-[11px] uppercase tracking-wide text-burn/90',
         className
       )}
-      title={AFK_AUTO_NOTE}
+      title={note || AFK_AUTO_NOTE}
     >
       <Coffee className="h-2.5 w-2.5 shrink-0" />
       ausente

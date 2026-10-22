@@ -533,6 +533,9 @@ export function ProfileBody({
           <span className="inline-flex items-center gap-1.5">
             <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[status] ?? STATUS_DOT.offline)} />
             {STATUS_LABEL[status] ?? status}
+            {status === 'away' && member.awayNote && (
+              <span className="text-burn/90">— {member.awayNote}</span>
+            )}
           </span>
           {since && <span>· no grupo desde {since}</span>}
           {sponsor && (
