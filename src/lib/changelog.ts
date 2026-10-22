@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.80.0',
+    headline: 'Banco abre na Carteira',
+    items: [
+      'O Banco agora abre na aba Carteira: seu saldo, as dívidas abertas, os consórcios que estão correndo e o CDB aplicado, tudo num lugar só.',
+      'Cada consórcio mostra a parcela da semana, a data da próxima e quantas já foram pagas.',
+      'Clicar em qualquer item leva direto pro balcão dele. Empréstimo, Investir e Consórcio ficam nas abas da direita.'
+    ]
+  },
+  {
     version: '1.79.0',
     headline: 'Empréstimo novo e playlist do Spotify inteira',
     items: [

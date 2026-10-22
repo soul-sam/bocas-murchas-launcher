@@ -14,6 +14,7 @@ import { useOverlays } from '@/lib/overlay-context'
 import { cn } from '@/lib/utils'
 import { InvestTab } from './InvestTab'
 import { ConsortiumTab } from './ConsortiumTab'
+import { WalletTab } from './WalletTab'
 
 /**
  * BANCO DA CASA — empréstimo de murcho, de reserva integral.
@@ -35,33 +36,28 @@ import { ConsortiumTab } from './ConsortiumTab'
 
 const fmt = (n: number): string => n.toLocaleString('pt-BR')
 
-type BankTab = 'loan' | 'invest' | 'consortium'
+type BankTab = 'wallet' | 'loan' | 'invest' | 'consortium'
 
-const BANK_TABS: Array<{ id: BankTab; label: string }> = [
+// A Carteira fica sozinha à esquerda; os balcões, à direita.
+const COUNTERS: Array<{ id: BankTab; label: string }> = [
   { id: 'loan', label: 'Empréstimo' },
   { id: 'invest', label: 'Investir' },
   { id: 'consortium', label: 'Consórcio' }
 ]
 
-const TAB_KEY = 'bocas:bank-tab'
-
-function savedTab(): BankTab {
-  try {
-    const raw = localStorage.getItem(TAB_KEY)
-    return BANK_TABS.some((t) => t.id === raw) ? (raw as BankTab) : 'loan'
-  } catch {
-    return 'loan'
-  }
-}
-
 /**
- * O Banco tem três balcões: empréstimo, CDB da Casa (InvestTab) e consórcio
- * (ConsortiumTab). Cada aba busca o seu; a última aberta fica lembrada nesta
- * máquina.
+ * O Banco abre sempre na Carteira (WalletTab: saldo, consórcios, dívidas) e
+ * tem três balcões: empréstimo, CDB da Casa (InvestTab) e consórcio
+ * (ConsortiumTab). Cada aba busca o seu.
  */
 export function BankModal() {
   const { bankOpen: open, closeBank: close } = useOverlays()
-  const [tab, setTab] = React.useState<BankTab>(savedTab)
+  const [tab, setTab] = React.useState<BankTab>('wallet')
+
+  // O modal fica montado fechado: volta pra Carteira a cada abertura.
+  React.useEffect(() => {
+    if (open) setTab('wallet')
+  }, [open])
 
   React.useEffect(() => {
     if (!open) return
@@ -75,14 +71,23 @@ export function BankModal() {
 
   if (!open) return null
 
-  const pick = (next: BankTab): void => {
-    setTab(next)
-    try {
-      localStorage.setItem(TAB_KEY, next)
-    } catch {
-      // Sem storage (aba anônima): só não lembra.
-    }
-  }
+  const tabButton = (t: { id: BankTab; label: string }) => (
+    <button
+      key={t.id}
+      type="button"
+      role="tab"
+      aria-selected={tab === t.id}
+      onClick={() => setTab(t.id)}
+      className={cn(
+        'rounded-brutal border px-3 py-1.5 text-xs transition-colors',
+        tab === t.id
+          ? 'border-burn/60 bg-burn/10 text-burn'
+          : 'border-transparent text-muted-foreground hover:bg-void-light hover:text-foreground'
+      )}
+    >
+      {t.label}
+    </button>
+  )
 
   return (
     <div className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/70 p-3 sm:p-6" onClick={close}>
@@ -110,23 +115,8 @@ export function BankModal() {
         </div>
 
         <div role="tablist" aria-label="Balcão do Banco" className="mb-3 flex flex-wrap items-center gap-1">
-          {BANK_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              onClick={() => pick(t.id)}
-              className={cn(
-                'rounded-brutal border px-3 py-1.5 text-xs transition-colors',
-                tab === t.id
-                  ? 'border-burn/60 bg-burn/10 text-burn'
-                  : 'border-transparent text-muted-foreground hover:bg-void-light hover:text-foreground'
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
+          {tabButton({ id: 'wallet', label: 'Carteira' })}
+          <div className="ml-auto flex flex-wrap items-center gap-1">{COUNTERS.map(tabButton)}</div>
         </div>
 
         {/* Duas colunas do md pra cima: os balcões foram escritos pra coluna
@@ -135,6 +125,7 @@ export function BankModal() {
             meio entre as colunas. */}
         <div className="scroll-stable min-h-0 flex-1 overflow-y-auto pr-1">
           <div className="gap-3 md:columns-2 [&>*]:mb-3 [&>*]:break-inside-avoid">
+            {tab === 'wallet' && <WalletTab onGo={setTab} />}
             {tab === 'loan' && <LoanTab />}
             {tab === 'invest' && <InvestTab />}
             {tab === 'consortium' && <ConsortiumTab />}
