@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.81.0',
+    headline: 'Volto logo, com motivo',
+    items: [
+      'Botão direito no café (ou "Volto logo, com motivo…" no menu do seu nome) abre um campo pra dizer por que você saiu: almoço, banho, reunião, o que for.',
+      'O motivo aparece pra galera do lado do "ausente" na lista de membros, no seu perfil e na call, e quem tentar te cutucar fica sabendo.',
+      'Voltou, o motivo some sozinho. Seu recado continua como estava.'
+    ],
+    note: 'O clique normal no café continua igual: sai na hora, sem motivo.'
+  },
+  {
     version: '1.80.0',
     headline: 'Banco abre na Carteira',
     items: [
