@@ -55,18 +55,15 @@ export function ArenaRail() {
     isPhone,
     leaderboardOpen,
     wagersOpen,
-    bankOpen,
     recapOpen,
     toggleLeaderboard,
     toggleWagers,
-    toggleBank,
     toggleRecap,
     openLeaderboard,
     openWagers,
-    openBank,
     openRecap
   } = useLayout()
-  const { openShop, openAchievements, shopOpen, achievementsOpen } = useOverlays()
+  const { openShop, openAchievements, openBank, shopOpen, achievementsOpen, bankOpen } = useOverlays()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const onSocial = pathname === '/'
@@ -119,8 +116,8 @@ export function ArenaRail() {
     },
     {
       id: 'bank',
-      active: bankOpen && onSocial,
-      run: panel(toggleBank, openBank),
+      active: bankOpen,
+      run: openBank,
       hint:
         house?.credito != null
           ? `Banco da Casa: empréstimo de murcho. Reserva agora: ${house.credito.toLocaleString('pt-BR')}.`

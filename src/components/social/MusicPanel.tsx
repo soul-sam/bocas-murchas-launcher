@@ -12,6 +12,7 @@ import {
   Loader2,
   Play,
   Search,
+  Shuffle,
   X
 } from 'lucide-react'
 import { MusicIcon } from '@/lib/bocas-icons'
@@ -23,6 +24,7 @@ import { useWatch, type WatchTrack } from '@/lib/watch-context'
 import { useFocusTrap } from '@/lib/use-focus-trap'
 import { openExternal } from '@/lib/rich-text'
 import { parseYouTubeUrl } from '@/lib/youtube'
+import { collectPages, playablePlaylists, shuffled, withSpotifyVideos } from '@/lib/playlist-utils'
 import { MusicQueue } from '@/components/music/MusicQueue'
 import { PlaylistPicker, type PickerTrack } from '@/components/music/PlaylistPicker'
 import { MurchaPlaylists } from '@/components/music/MurchaPlaylists'
@@ -52,9 +54,9 @@ import {
  *
  * Quem toca é sempre o YouTube. A ponte entre a faixa do Spotify e o vídeo é
  * o /music/resolve, e ela é gravada: música que o grupo já tocou volta com o
- * `videoId` junto e toca no clique, sem espera e sem gastar cota. É por isso
- * que a lista marca quais já estão prontas — e por isso "mandar a playlist pra
- * fila" só manda essas.
+ * `videoId` junto e toca no clique, sem espera e sem gastar cota. Tocar uma
+ * playlist do Spotify inteira procura as que faltam de uma vez, sob a cota do
+ * dia do grupo — quando ela acaba, vai só o que já tinha vídeo.
  *
  * SEM AS CHAVES NO SERVIDOR a busca responde 503 e o painel vira só o campo de
  * colar link, que não depende de chave nenhuma. Mesma degradação do seletor de
@@ -76,6 +78,9 @@ const LINK_POLL_TIMEOUT_MS = 3 * 60 * 1000
  * curto o bastante pra não virar enfeite permanente numa busca que fica aberta.
  */
 const ADDED_MS = 2_500
+
+/** Teto de faixas mandadas de uma vez — o mesmo da Playlist Murcha. */
+const SEND_MAX = 500
 
 type Status = 'idle' | 'loading' | 'off' | 'error'
 type Tab = 'search' | 'queue' | 'playlists' | 'library'
@@ -449,22 +454,6 @@ export function MusicPanel() {
               addedIds={added}
               onPick={(track, queue) => void pick(track, queue)}
               onSave={(track) => setSaving(track)}
-              onQueueMany={async (tracks) => {
-                for (const track of tracks) {
-                  const ok = await send(
-                    {
-                      videoId: track.videoId!,
-                      title: track.title,
-                      artist: track.artist,
-                      artUrl: track.artUrl
-                    },
-                    true
-                  )
-                  if (!ok) return false
-                  markAdded(track.spotifyId)
-                }
-                return true
-              }}
             />
           ) : status === 'error' ? (
             <p className="px-3 py-4 text-sm text-destructive">{error}</p>
@@ -576,19 +565,18 @@ function SpotifyLibrary({
   busyId,
   onPick,
   onSave,
-  onQueueMany,
   addedIds
 }: {
   busyId: string | null
   onPick: (track: MusicResult, queue: boolean) => void
   /** "Adicionar à playlist" de uma faixa. */
   onSave: (track: MusicResult) => void
-  /** Devolve false se a sala recusou (fila cheia, sem call). */
-  onQueueMany: (tracks: MusicResult[]) => Promise<boolean>
   /** Quem acabou de entrar na fila, pro mesmo sinal da busca. */
   addedIds: ReadonlySet<string>
 }) {
   const { token } = useAuth()
+  const watch = useWatch()
+  const voice = useVoice()
 
   const [status, setStatus] = React.useState<SpotifyStatus | null>(null)
   const [playlists, setPlaylists] = React.useState<SpotifyPlaylist[] | null>(null)
@@ -597,7 +585,12 @@ function SpotifyLibrary({
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [waitingLink, setWaitingLink] = React.useState(false)
-  const [sending, setSending] = React.useState(false)
+  /** Ainda chegando páginas da playlist aberta (o Spotify manda de 50 em 50). */
+  const [fetching, setFetching] = React.useState(false)
+  const [sending, setSending] = React.useState<'play' | 'shuffle' | null>(null)
+  const [note, setNote] = React.useState<string | null>(null)
+  /** Qual playlist está aberta AGORA — página atrasada de outra não entra. */
+  const openRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
     if (!token) return
@@ -613,7 +606,7 @@ function SpotifyLibrary({
     setLoading(true)
     void spotifyApi
       .playlists(token)
-      .then((page) => setPlaylists(page.playlists))
+      .then((page) => setPlaylists(playablePlaylists(page.playlists)))
       .catch((err) => {
         /**
          * 409 é "o vínculo morreu" — a pessoa revogou o acesso no painel do
@@ -673,24 +666,95 @@ function SpotifyLibrary({
     return () => clearInterval(timer)
   }, [waitingLink, token])
 
+  /**
+   * Abre e lê a playlist INTEIRA (até o teto do envio): "Tocar" manda todas,
+   * não só a primeira página. A lista aparece já com a primeira página e vai
+   * crescendo enquanto as outras chegam.
+   */
   const openPlaylist = async (playlist: { id: string; name: string }): Promise<void> => {
     if (!token) return
+    openRef.current = playlist.id
     setOpen(playlist)
     setTracks(null)
     setLoading(true)
+    setFetching(true)
     setError(null)
+    setNote(null)
     try {
-      const page = await spotifyApi.tracks(token, playlist.id)
-      setTracks(page.tracks)
+      await collectPages(
+        (offset) => spotifyApi.tracks(token, playlist.id, offset),
+        SEND_MAX,
+        (soFar) => {
+          if (openRef.current !== playlist.id) return
+          setTracks(soFar)
+          setLoading(false)
+        }
+      )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não deu pra ler essa playlist.')
+      if (openRef.current === playlist.id)
+        setError(err instanceof Error ? err.message : 'Não deu pra ler essa playlist.')
     } finally {
-      setLoading(false)
+      if (openRef.current === playlist.id) {
+        setLoading(false)
+        setFetching(false)
+      }
+    }
+  }
+
+  /**
+   * Manda a playlist inteira pra fila da call, como a Playlist Murcha.
+   * Aleatório embaralha AQUI, a lista toda. As faixas sem vídeo são procuradas
+   * no YouTube de uma vez; quando a cota do dia acaba, vai o que já tinha.
+   */
+  const playAll = async (shuffle: boolean): Promise<void> => {
+    const list = tracks ?? []
+    if (!token || sending || list.length === 0) return
+    setSending(shuffle ? 'shuffle' : 'play')
+    setError(null)
+    setNote(null)
+    try {
+      const ordered = shuffle ? shuffled(list) : list
+      const { ready, failed, quota } = await withSpotifyVideos(ordered, (ids) =>
+        spotifyApi.resolveMany(token, ids)
+      )
+      if (quota)
+        setError('A busca do YouTube gastou a cota do dia — só as que já tinham vídeo foram.')
+      else if (failed > 0)
+        setError(
+          `${failed} ${failed === 1 ? 'música não foi achada' : 'músicas não foram achadas'} no YouTube.`
+        )
+      if (ready.length === 0) return
+
+      const ack = await watch.queueMany(
+        ready.map((track) => ({
+          videoId: track.videoId,
+          title: track.title,
+          artist: track.artist,
+          artUrl: track.artUrl
+        }))
+      )
+      if (!ack.ok) {
+        setError(ack.error ?? 'Não deu.')
+        return
+      }
+      const added = ack.added ?? 0
+      setNote(
+        added === 0
+          ? 'A fila está cheia.'
+          : `${added} ${added === 1 ? 'música foi' : 'músicas foram'} pra call${
+              added < ready.length ? ' — o resto não coube na fila' : ''
+            }.`
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não deu.')
+    } finally {
+      setSending(null)
     }
   }
 
   const unlink = async (): Promise<void> => {
     if (!token) return
+    openRef.current = null
     await spotifyApi.unlink(token).catch(() => {})
     setStatus({ available: true, linked: false, displayName: null, linkedAt: null })
     setPlaylists(null)
@@ -755,7 +819,14 @@ function SpotifyLibrary({
 
   // --- vinculada ------------------------------------------------------------
   if (open) {
-    const prontas = (tracks ?? []).filter((track) => track.videoId)
+    const list = tracks ?? []
+    const inCall = voice.connected
+    const blocked = !inCall || list.length === 0 || fetching || sending !== null
+    const why = !inCall
+      ? 'Entra numa call primeiro'
+      : fetching
+        ? 'Esperando a playlist terminar de carregar'
+        : undefined
 
     return (
       <div>
@@ -763,61 +834,69 @@ function SpotifyLibrary({
           <button
             type="button"
             onClick={() => {
+              openRef.current = null
               setOpen(null)
               setTracks(null)
               setError(null)
+              setNote(null)
+              setFetching(false)
             }}
             className="flex shrink-0 items-center gap-1 rounded-brutal p-1 text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
           <span className="min-w-0 flex-1 truncate text-sm text-foreground">{open.name}</span>
-
-          {prontas.length > 0 && (
-            <button
-              type="button"
-              disabled={sending}
-              onClick={async () => {
-                setSending(true)
-                await onQueueMany(prontas)
-                setSending(false)
-              }}
-              title={`Manda as ${prontas.length} que já estão prontas pro rodízio da fila`}
-              className="flex shrink-0 items-center gap-1 rounded-brutal border border-acid/60 px-2 py-0.5 text-[11.5px] text-acid transition-colors hover:bg-acid/10 disabled:opacity-50"
-            >
-              {sending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <ListPlus className="h-3 w-3" />
-              )}
-              {prontas.length} pra fila
-            </button>
+          {fetching && !loading && (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
           )}
         </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
+          <button
+            type="button"
+            disabled={blocked}
+            onClick={() => void playAll(false)}
+            title={why ?? 'Manda a playlist pra fila da call'}
+            className="flex items-center gap-1.5 rounded-brutal border-2 border-acid bg-acid/10 px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-acid transition-colors hover:bg-acid/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {sending === 'play' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+            Tocar
+          </button>
+          <button
+            type="button"
+            disabled={blocked}
+            onClick={() => void playAll(true)}
+            title={why ?? 'Manda a playlist embaralhada pra fila da call'}
+            className="flex items-center gap-1.5 rounded-brutal border-2 border-line px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-acid/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {sending === 'shuffle' ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Shuffle className="h-3 w-3" />
+            )}
+            Aleatório
+          </button>
+          <span className="ml-auto text-[11.5px] text-muted-foreground">
+            {list.length} {list.length === 1 ? 'música' : 'músicas'}
+          </span>
+        </div>
+
+        {note && <p className="border-b border-line px-3 py-2 text-sm text-acid">{note}</p>}
 
         {loading ? (
           <p className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             carregando…
           </p>
-        ) : error ? (
-          <p className="px-3 py-4 text-sm text-destructive">{error}</p>
-        ) : (tracks ?? []).length === 0 ? (
+        ) : list.length === 0 && !error ? (
           <p className="px-3 py-4 text-sm text-muted-foreground">Essa playlist está vazia.</p>
         ) : (
           <>
-            {/*
-              A conta honesta do que "mandar pra fila" faz. Só as já conhecidas
-              entram de uma vez: cada música nova custa uma busca no YouTube, e
-              o grupo tem menos de cem por dia (ver MusicTrack no schema da
-              API). As outras entram no clique, uma a uma.
-            */}
-            <p className="border-b border-line px-3 py-1.5 text-[11.5px] text-muted-foreground">
-              {prontas.length} de {(tracks ?? []).length} já foram tocadas pelo grupo e entram na
-              hora. As outras o launcher procura no YouTube quando você clicar.
-            </p>
+            {error && (
+              <p className="border-b border-line px-3 py-2 text-sm text-destructive">{error}</p>
+            )}
             <ol>
-              {(tracks ?? []).map((track) => (
+              {list.map((track) => (
                 <ResultRow
                   key={track.spotifyId}
                   track={track}
@@ -877,7 +956,8 @@ function SpotifyLibrary({
         <p className="px-3 py-4 text-sm text-destructive">{error}</p>
       ) : (playlists ?? []).length === 0 ? (
         <p className="px-3 py-4 text-sm text-muted-foreground">
-          Você não tem playlist nenhuma nessa conta.
+          Nenhuma playlist sua nessa conta. O Spotify só libera as músicas das playlists que você
+          criou ou colabora — as salvas de outras pessoas não aparecem aqui.
         </p>
       ) : (
         (playlists ?? []).map((playlist) => (
@@ -899,9 +979,7 @@ function SpotifyLibrary({
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm text-foreground">{playlist.name}</span>
               <span className="block truncate text-[11.5px] text-muted-foreground">
-                {playlist.readable === false
-                  ? 'salva de outra pessoa — o Spotify não libera as músicas'
-                  : `${playlist.total} ${playlist.total === 1 ? 'música' : 'músicas'}`}
+                {playlist.total} {playlist.total === 1 ? 'música' : 'músicas'}
               </span>
             </span>
           </button>

@@ -49,8 +49,8 @@ export const ARENA_LABEL: Record<ArenaItem, string> = {
   recap: 'Recap'
 }
 
-/** Os que ocupam a coluna da direita (lojinha e conquistas são modais). */
-export type ArenaPanel = Extract<ArenaItem, 'ranking' | 'wagers' | 'bank' | 'recap'>
+/** Os que ocupam a coluna da direita (lojinha, conquistas e banco são modais). */
+export type ArenaPanel = Extract<ArenaItem, 'ranking' | 'wagers' | 'recap'>
 
 /**
  * Quantas PARTIDAS estão abertas pra aposta. `liveGames` traz um board por
@@ -94,26 +94,22 @@ export function ArenaHeader({
 }
 
 export function ArenaTabs({ current }: { current: ArenaPanel }) {
-  const { openLeaderboard, openWagers, openBank, openRecap } = useLayout()
+  const { openLeaderboard, openWagers, openRecap } = useLayout()
   const live = useLiveMatchCount()
 
-  // O Banco entra como a quarta aba SÓ COM ÍCONE: a 288px, quatro abas com
-  // rótulo ficavam com ~65px cada e o "Ranking" virava "Ran…". As três de
-  // sempre continuam como eram; o título do painel diz onde você está.
-  const tabs: Array<{ id: ArenaPanel; go: () => void; count?: number; iconOnly?: boolean }> = [
+  const tabs: Array<{ id: ArenaPanel; go: () => void; count?: number }> = [
     { id: 'ranking', go: openLeaderboard },
     { id: 'wagers', go: openWagers, count: live },
-    { id: 'recap', go: openRecap },
-    { id: 'bank', go: openBank, iconOnly: true }
+    { id: 'recap', go: openRecap }
   ]
 
   return (
     <div
       role="tablist"
       aria-label="Arena"
-      className="grid shrink-0 grid-cols-[1fr_1fr_1fr_auto] gap-1 border-b border-line p-2"
+      className="grid shrink-0 grid-cols-3 gap-1 border-b border-line p-2"
     >
-      {tabs.map(({ id, go, count, iconOnly }) => {
+      {tabs.map(({ id, go, count }) => {
         const Icon = ARENA_ICON[id]
         const active = id === current
         return (
@@ -122,8 +118,6 @@ export function ArenaTabs({ current }: { current: ArenaPanel }) {
             type="button"
             role="tab"
             aria-selected={active}
-            aria-label={iconOnly ? ARENA_LABEL[id] : undefined}
-            title={iconOnly ? ARENA_LABEL[id] : undefined}
             onClick={() => {
               if (!active) go()
             }}
@@ -135,7 +129,7 @@ export function ArenaTabs({ current }: { current: ArenaPanel }) {
             )}
           >
             <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            {!iconOnly && <span className="truncate">{ARENA_LABEL[id]}</span>}
+            <span className="truncate">{ARENA_LABEL[id]}</span>
             {/* No canto, e não na linha: a 288px a aba tem ~90px, e o chip
                 inline comia o rótulo ("A…"). */}
             {!!count && count > 0 && <LiveCount count={count} className="absolute -right-1 -top-1.5" />}

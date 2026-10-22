@@ -49,9 +49,11 @@ export interface LoanView {
 export interface LoanOffer {
   eligible: boolean
   reason: string | null
+  /** Limite individual: sobe quitando no prazo, cai atrasando (ver `rules.limit`). */
   limit: number
   max: number
-  income: number
+  /** Pegando pelo menos `minPrincipal` e quitando no prazo, o limite vira `next`. */
+  growth: { minPrincipal: number; next: number }
 }
 
 export interface BankRules {
@@ -61,11 +63,18 @@ export interface BankRules {
   lateFee: number
   chargeCap: number
   minLoan: number
-  maxPrincipal: number
-  incomeShare: number
-  incomeWindowDays: number
-  withhold: { current: number; late: number }
-  wagerCapWhileOwing: number
+  limit: {
+    start: number
+    floor: number
+    max: number
+    usage: number
+    up: number
+    late: number
+    severe: number
+    severeLateDays: number
+  }
+  /** `current`/`late`: renda de atividade. `wagerProfit*`: lucro de aposta. */
+  withhold: { current: number; late: number; wagerProfit: number; wagerProfitLate: number }
 }
 
 export interface BankView {

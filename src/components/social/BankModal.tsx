@@ -1,20 +1,20 @@
 import * as React from 'react'
-import { AlertTriangle, CalendarClock, Landmark, Loader2, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, CalendarClock, Landmark, Loader2, ShieldCheck, X } from 'lucide-react'
 import { MurchosIcon } from '@/lib/bocas-icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Hint } from '@/components/ui/tooltip'
 import { ApiError } from '@/lib/api'
 import { bankApi, type BankView, type LoanView } from '@/lib/api-bank'
-import { daysUntil, loanInterest, loanTotalAtTerm, parseLoanAmount, percentText } from '@/lib/bank-math'
+import { daysUntil, loanInterest, loanTotalAtTerm, monthlyRate, parseLoanAmount, percentText } from '@/lib/bank-math'
 import { formatCompact } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { useGamification } from '@/lib/gamification-context'
-import { useLayout } from '@/lib/layout-context'
+import { useOverlays } from '@/lib/overlay-context'
 import { cn } from '@/lib/utils'
-import { ArenaHeader, ArenaTabs } from './ArenaChrome'
 import { InvestTab } from './InvestTab'
 import { ConsortiumTab } from './ConsortiumTab'
+import { WalletTab } from './WalletTab'
 
 /**
  * BANCO DA CASA — empréstimo de murcho, de reserva integral.
@@ -26,79 +26,113 @@ import { ConsortiumTab } from './ConsortiumTab'
  *
  * Dois estados: sem dívida, a oferta (quanto dá, por quanto tempo, quanto
  * volta); com dívida, quanto falta, quando vence e o pagamento. Busca ao
- * abrir, depois de cada ação e de minuto em minuto com o painel aberto — o
+ * abrir, depois de cada ação e de minuto em minuto com o modal aberto — o
  * desconto automático mexe na dívida sem ninguém clicar.
+ *
+ * Camada própria (div fixed + clique fora fecha), NÃO Radix Dialog, pelo
+ * mesmo motivo da lojinha: mora em GlobalOverlays e quem abre pode sumir —
+ * ver lib/interaction-guard.ts.
  */
 
 const fmt = (n: number): string => n.toLocaleString('pt-BR')
 
-type BankTab = 'loan' | 'invest' | 'consortium'
+type BankTab = 'wallet' | 'loan' | 'invest' | 'consortium'
 
-const BANK_TABS: Array<{ id: BankTab; label: string }> = [
+// A Carteira fica sozinha à esquerda; os balcões, à direita.
+const COUNTERS: Array<{ id: BankTab; label: string }> = [
   { id: 'loan', label: 'Empréstimo' },
   { id: 'invest', label: 'Investir' },
   { id: 'consortium', label: 'Consórcio' }
 ]
 
-const TAB_KEY = 'bocas:bank-tab'
-
-function savedTab(): BankTab {
-  try {
-    const raw = localStorage.getItem(TAB_KEY)
-    return BANK_TABS.some((t) => t.id === raw) ? (raw as BankTab) : 'loan'
-  } catch {
-    return 'loan'
-  }
-}
-
 /**
- * O Banco tem três balcões: empréstimo, CDB da Casa (InvestTab) e consórcio
- * (ConsortiumTab). Cada aba busca o seu; a última aberta fica lembrada nesta
- * máquina.
+ * O Banco abre sempre na Carteira (WalletTab: saldo, consórcios, dívidas) e
+ * tem três balcões: empréstimo, CDB da Casa (InvestTab) e consórcio
+ * (ConsortiumTab). Cada aba busca o seu.
  */
-export function BankPanel() {
-  const { closeBank: close } = useLayout()
-  const [tab, setTab] = React.useState<BankTab>(savedTab)
+export function BankModal() {
+  const { bankOpen: open, closeBank: close } = useOverlays()
+  const [tab, setTab] = React.useState<BankTab>('wallet')
 
-  const pick = (next: BankTab): void => {
-    setTab(next)
-    try {
-      localStorage.setItem(TAB_KEY, next)
-    } catch {
-      // Sem storage (aba anônima): só não lembra.
+  // O modal fica montado fechado: volta pra Carteira a cada abertura.
+  React.useEffect(() => {
+    if (open) setTab('wallet')
+  }, [open])
+
+  React.useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent): void => {
+      // Esc que já fechou uma camada de dentro (dica, popover) não fecha esta.
+      if (event.key === 'Escape' && !event.defaultPrevented) close()
     }
-  }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, close])
+
+  if (!open) return null
+
+  const tabButton = (t: { id: BankTab; label: string }) => (
+    <button
+      key={t.id}
+      type="button"
+      role="tab"
+      aria-selected={tab === t.id}
+      onClick={() => setTab(t.id)}
+      className={cn(
+        'rounded-brutal border px-3 py-1.5 text-xs transition-colors',
+        tab === t.id
+          ? 'border-burn/60 bg-burn/10 text-burn'
+          : 'border-transparent text-muted-foreground hover:bg-void-light hover:text-foreground'
+      )}
+    >
+      {t.label}
+    </button>
+  )
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-line bg-void xl:w-80">
-      <ArenaHeader title="Banco da Casa" onClose={close} />
-      <ArenaTabs current="bank" />
-      <div role="tablist" aria-label="Balcão do Banco" className="grid shrink-0 grid-cols-3 gap-1 border-b border-line px-2 py-1.5">
-        {BANK_TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => pick(t.id)}
-            className={cn(
-              'rounded-brutal border px-1 py-1 text-[11.5px] transition-colors',
-              tab === t.id
-                ? 'border-burn/60 bg-burn/10 text-burn'
-                : 'border-transparent text-muted-foreground hover:bg-void-light hover:text-foreground'
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+    <div className="fixed inset-0 z-dialogo flex items-center justify-center bg-black/70 p-3 sm:p-6" onClick={close}>
+      <div
+        role="dialog"
+        aria-label="Banco da Casa"
+        className="card-acid relative flex h-[90dvh] w-full max-w-4xl flex-col rounded-brutal p-4 sm:h-[85dvh] sm:p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          aria-label="Fechar"
+          onClick={close}
+          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-5 w-5" />
+        </button>
 
-      <div className="scroll-stable min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-        {tab === 'loan' && <LoanTab />}
-        {tab === 'invest' && <InvestTab />}
-        {tab === 'consortium' && <ConsortiumTab />}
+        <div className="mb-3 flex items-center gap-3 pr-8 sm:mb-4">
+          <Landmark className="hidden h-7 w-7 text-acid sm:block" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <h2 className="title-brutal text-2xl">Banco da Casa</h2>
+            <p className="text-[11.5px] text-muted-foreground">Empréstimo, CDB e consórcio, tudo da reserva da Casa.</p>
+          </div>
+        </div>
+
+        <div role="tablist" aria-label="Balcão do Banco" className="mb-3 flex flex-wrap items-center gap-1">
+          {tabButton({ id: 'wallet', label: 'Carteira' })}
+          <div className="ml-auto flex flex-wrap items-center gap-1">{COUNTERS.map(tabButton)}</div>
+        </div>
+
+        {/* Duas colunas do md pra cima: os balcões foram escritos pra coluna
+            de 288px, então cada seção continua estreita e o modal só as
+            distribui. `break-inside-avoid` não deixa um formulário rachar ao
+            meio entre as colunas. */}
+        <div className="scroll-stable min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="gap-3 md:columns-2 [&>*]:mb-3 [&>*]:break-inside-avoid">
+            {tab === 'wallet' && <WalletTab onGo={setTab} />}
+            {tab === 'loan' && <LoanTab />}
+            {tab === 'invest' && <InvestTab />}
+            {tab === 'consortium' && <ConsortiumTab />}
+          </div>
+        </div>
       </div>
-    </aside>
+    </div>
   )
 }
 
@@ -224,12 +258,9 @@ function Offer({ bank, onTaken }: { bank: BankView; onTaken: (loan: LoanView) =>
           Pegar emprestado
         </h4>
         <p className="text-xs leading-snug text-muted-foreground">{offer.reason ?? 'O Banco não pode emprestar agora.'}</p>
-        {offer.income > 0 && (
-          <p className="mt-1.5 text-[11px] text-muted-foreground">
-            Sua renda de atividade nos últimos {rules.incomeWindowDays} dias:{' '}
-            <span className="font-mono text-foreground">{fmt(offer.income)}</span>
-          </p>
-        )}
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Seu limite: <span className="font-mono text-foreground">{fmt(offer.limit)}</span>
+        </p>
       </section>
     )
   }
@@ -258,12 +289,15 @@ function Offer({ bank, onTaken }: { bank: BankView; onTaken: (loan: LoanView) =>
       </h4>
       <p className="text-[11.5px] leading-snug text-muted-foreground">
         Você pode pegar até <span className="font-mono text-burn">{fmt(offer.max)}</span>
-        {offer.max < offer.limit ? (
-          <> agora (seu limite é {fmt(offer.limit)}, mas a reserva tem menos)</>
-        ) : (
-          <> — {percentText(rules.incomeShare)} do que você ganhou nos últimos {rules.incomeWindowDays} dias</>
-        )}
+        {offer.max < offer.limit ? <> agora (seu limite é {fmt(offer.limit)}, mas a reserva tem menos)</> : <>, seu limite</>}
         .
+        {offer.growth.next > offer.limit && (
+          <>
+            {' '}
+            Pegando <span className="font-mono text-foreground">{fmt(offer.growth.minPrincipal)}</span> ou mais e
+            quitando no prazo, ele sobe pra <span className="font-mono text-acid-text">{fmt(offer.growth.next)}</span>.
+          </>
+        )}
       </p>
 
       <form
@@ -333,11 +367,11 @@ function Offer({ bank, onTaken }: { bank: BankView; onTaken: (loan: LoanView) =>
               Quitando no prazo, você devolve{' '}
               <span className="font-mono text-foreground">{fmt(loanTotalAtTerm(preview, term, rules))}</span>{' '}
               (<span className="font-mono">{fmt(loanInterest(preview, term, rules))}</span> de juro). Quitar antes
-              paga menos: são {percentText(rules.dailyRate)} por dia, no mínimo {rules.minDays} dias.
+              paga menos: são {percentText(rules.dailyRate)} ao dia, compostos, no mínimo {rules.minDays} dias.
             </>
           ) : (
             <>
-              Juro de {percentText(rules.dailyRate)} por dia corrido (mínimo {rules.minDays} dias). Quitar antes paga
+              Juro composto de {percentText(rules.dailyRate)} ao dia (mínimo {rules.minDays} dias). Quitar antes paga
               menos.
             </>
           )}
@@ -378,6 +412,7 @@ function Debt({
   const days = daysUntil(loan.dueAt)
   const due = new Date(loan.dueAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
   const withhold = state.late ? rules.withhold.late : rules.withhold.current
+  const withholdWager = state.late ? rules.withhold.wagerProfitLate : rules.withhold.wagerProfit
 
   const pay = async (what: number | undefined): Promise<void> => {
     if (!token || busy) return
@@ -437,11 +472,12 @@ function Debt({
       </dl>
 
       <p className="mt-2.5 text-[11.5px] leading-snug text-muted-foreground">
-        Desconto automático: <span className="text-foreground">{percentText(withhold)}</span> do que você ganhar
-        (atividade e prêmio de aposta) vai direto pra dívida.
+        Desconto automático: <span className="text-foreground">{percentText(withhold)}</span> do que você ganhar em
+        atividade e <span className="text-foreground">{percentText(withholdWager)}</span> do lucro de aposta vão direto
+        pra dívida.
         {state.late
-          ? ' Vencido: lojinha, aposta e mesa valendo ficam travadas até quitar.'
-          : ` Enquanto deve: sem doação, gorjeta, presente nem mesa valendo, e aposta até ${rules.wagerCapWhileOwing}.`}
+          ? ' Vencido: lojinha e mesa valendo ficam travadas até quitar, e quitar atrasado baixa o seu limite.'
+          : ' Enquanto deve: sem doação, gorjeta, presente nem mesa valendo.'}
       </p>
 
       <form
@@ -497,14 +533,22 @@ function Rules({ bank }: { bank: BankView }) {
       </h4>
       <ul className="space-y-1.5 text-xs leading-snug text-muted-foreground">
         <li>
-          Limite: <span className="text-foreground">{percentText(rules.incomeShare)}</span> do que você ganhou em
-          atividade nos últimos {rules.incomeWindowDays} dias, até {fmt(rules.maxPrincipal)}. Aposta e doação não
-          contam.
+          Limite seu, começando em {fmt(rules.limit.start)}. Pegou {percentText(rules.limit.usage)} ou mais dele e
+          quitou no prazo: sobe {percentText(rules.limit.up - 1)}. Quitou atrasado: cai{' '}
+          {percentText(1 - rules.limit.late)}; mais de {rules.limit.severeLateDays} dias de atraso, cai{' '}
+          {percentText(1 - rules.limit.severe)}. Vai de {fmt(rules.limit.floor)} a {fmt(rules.limit.max)}.
         </li>
         <li>
-          Juro simples de <span className="text-foreground">{percentText(rules.dailyRate)} ao dia</span>. Passou do
-          prazo, multa de {percentText(rules.lateFee)}; juro e multa nunca passam de{' '}
+          Juro composto de <span className="text-foreground">{percentText(rules.dailyRate)} ao dia</span> (
+          {percentText(monthlyRate(rules.dailyRate))} em 30 dias) sobre o que você ainda deve, no mínimo{' '}
+          {rules.minDays} dias: pagar uma parte antes já baixa o juro dos dias seguintes. Passou do prazo,
+          multa de {percentText(rules.lateFee)} do que você pegou; juro e multa nunca passam de{' '}
           {percentText(rules.chargeCap)} do que você pegou.
+        </li>
+        <li>
+          Enquanto deve, {percentText(rules.withhold.current)} do que você ganha em atividade e{' '}
+          {percentText(rules.withhold.wagerProfit)} do lucro de aposta abatem a dívida sozinhos (vencido:{' '}
+          {percentText(rules.withhold.late)} e {percentText(rules.withhold.wagerProfitLate)}). Aposta continua liberada.
         </li>
         <li>
           Metade do juro é queimada (segura a inflação); um quarto vai pro rendimento de quem aplicou no CDB e um

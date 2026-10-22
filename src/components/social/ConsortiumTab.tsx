@@ -176,7 +176,12 @@ function Arrears({ amount, busy, onPay }: { amount: number; busy: boolean; onPay
 }
 
 function Carta({ amount }: { amount: number }) {
-  const { openShop } = useOverlays()
+  const { openShop, closeBank } = useOverlays()
+  // Troca de modal: banco e lojinha são camadas irmãs, e o banco ficaria por cima.
+  const goShop = (): void => {
+    closeBank()
+    openShop()
+  }
   return (
     <section className="rounded-brutal border border-acid-dark/60 bg-acid/[0.05] p-3">
       <h4 className="flex items-center gap-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
@@ -190,7 +195,7 @@ function Carta({ amount }: { amount: number }) {
       <p className="mt-2 text-[11.5px] leading-snug text-muted-foreground">
         Compra e presente usam a carta antes do saldo.
       </p>
-      <Button type="button" variant="secondary" className="mt-2.5 w-full" onClick={openShop}>
+      <Button type="button" variant="secondary" className="mt-2.5 w-full" onClick={goShop}>
         <ShopIcon className="mr-1.5 h-4 w-4" />
         Abrir a lojinha
       </Button>

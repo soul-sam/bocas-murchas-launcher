@@ -16,7 +16,6 @@ import { AgendaPanel } from '@/components/social/AgendaPanel'
 import { SuggestionsPanel } from '@/components/social/SuggestionsPanel'
 import { LeaderboardPanel } from '@/components/social/LeaderboardPanel'
 import { WagersPanel } from '@/components/social/WagersPanel'
-import { BankPanel } from '@/components/social/BankPanel'
 import { RecapPanel } from '@/components/social/RecapPanel'
 import { PendenciasPanel } from '@/components/social/PendenciasPanel'
 import { useOverlays } from '@/lib/overlay-context'
@@ -52,7 +51,6 @@ export function SocialPage() {
     agendaOpen,
     leaderboardOpen,
     wagersOpen,
-    bankOpen,
     recapOpen,
     pendenciasOpen,
     suggestionsOpen
@@ -122,8 +120,6 @@ export function SocialPage() {
       <LeaderboardPanel />
     ) : wagersOpen ? (
       <WagersPanel />
-    ) : bankOpen ? (
-      <BankPanel />
     ) : recapOpen ? (
       <RecapPanel />
     ) : pendenciasOpen ? (

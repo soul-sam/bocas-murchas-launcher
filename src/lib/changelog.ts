@@ -42,6 +42,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.80.0',
+    headline: 'Banco abre na Carteira',
+    items: [
+      'O Banco agora abre na aba Carteira: seu saldo, as dívidas abertas, os consórcios que estão correndo e o CDB aplicado, tudo num lugar só.',
+      'Cada consórcio mostra a parcela da semana, a data da próxima e quantas já foram pagas.',
+      'Clicar em qualquer item leva direto pro balcão dele. Empréstimo, Investir e Consórcio ficam nas abas da direita.'
+    ]
+  },
+  {
+    version: '1.79.0',
+    headline: 'Empréstimo novo e playlist do Spotify inteira',
+    items: [
+      'O Banco agora abre numa janela própria, como a lojinha e as conquistas.',
+      'Seu limite de empréstimo é seu: começa em 5.000 e sobe 25% quando você pega pelo menos 80% dele e quita no prazo. Atrasou, ele cai.',
+      'Juro composto de 2% ao dia sobre o que você ainda deve, no mínimo 3 dias. Pagar uma parte antes já baixa o juro. Passou do prazo: multa de 30%, e juro mais multa param em 200% do que você pegou.',
+      'Enquanto deve, metade do que você ganha em atividade e metade do lucro das apostas vão pra dívida (vencido: tudo da atividade e 75% do lucro). Dá pra apostar normalmente, até vencido.',
+      'Spotify: suas playlists e as colaborativas tocam inteiras, com Tocar e Aleatório.'
+    ],
+    note: 'Quem já tinha empréstimo aberto passa a seguir as regras novas.'
+  },
+  {
     version: '1.78.0',
     headline: 'CDB da Casa e consórcio',
     items: [

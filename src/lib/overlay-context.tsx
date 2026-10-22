@@ -114,6 +114,14 @@ interface OverlayContextValue {
   closeShop: () => void
 
   /**
+   * Banco da Casa (empréstimo, CDB, consórcio). Era painel da coluna da
+   * direita; virou modal como a lojinha — três balcões não cabiam em 288px.
+   */
+  bankOpen: boolean
+  openBank: () => void
+  closeBank: () => void
+
+  /**
    * Painel de conquistas: o catálogo inteiro de badges, quem tem cada uma e
    * o placar de colecionador. `achievementsFocus` é a badge que abre
    * selecionada — clicar num chip de badge em qualquer lugar cai direto nela.
@@ -192,6 +200,7 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
   const [wrappedOpen, setWrappedOpen] = React.useState(false)
   const [wrappedYear, setWrappedYear] = React.useState(() => new Date().getFullYear())
   const [shopOpen, setShopOpen] = React.useState(false)
+  const [bankOpen, setBankOpen] = React.useState(false)
   const [achievementsOpen, setAchievementsOpen] = React.useState(false)
   const [achievementsFocus, setAchievementsFocus] = React.useState<string | null>(null)
   const [profileUserId, setProfileUserId] = React.useState<string | null>(null)
@@ -307,6 +316,10 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       openShop: () => setShopOpen(true),
       closeShop: () => setShopOpen(false),
 
+      bankOpen,
+      openBank: () => setBankOpen(true),
+      closeBank: () => setBankOpen(false),
+
       achievementsOpen,
       achievementsFocus,
       openAchievements: (badgeId?: string) => {
@@ -358,6 +371,7 @@ export function OverlayProvider({ children }: { children: React.ReactNode }) {
       wrappedOpen,
       wrappedYear,
       shopOpen,
+      bankOpen,
       achievementsOpen,
       achievementsFocus,
       profileUserId,
