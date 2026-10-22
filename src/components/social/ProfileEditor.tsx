@@ -38,6 +38,7 @@ import {
   parseLinks,
   resolveAssetUrl,
   type AuthUser,
+  type CropRect,
   type ProfileLink,
   type ProfilePatch
 } from '@/lib/api'
@@ -71,6 +72,7 @@ import { TitleTag } from '@/lib/cosmetic-icons'
 import { StatusComposer } from './StatusComposer'
 import { GAME_CATALOG, GameIcon, gameLabel } from './GameIcon'
 import { GifPicker } from './GifPicker'
+import { ImageCropper } from './ImageCropper'
 import { NameEffect } from './NameEffect'
 import { NameEmoji } from './NameEmoji'
 import { SupremeColorPicker } from './supreme/SupremeColorPicker'
@@ -113,6 +115,13 @@ const MAX_LINKS = 5
 const MAX_GAMES = 6
 
 type GifTarget = 'avatar' | 'banner' | null
+
+/**
+ * Proporção do recorte da capa. A capa aparece em 3,3:1 (cartão), 3,6:1
+ * (modal) e 2,5:1 (celular), sempre em `cover` centralizado; 3:1 é o meio
+ * que perde menos nas três.
+ */
+const BANNER_ASPECT = 3
 
 /** O que o formulário tem, do jeito que vai pro `PUT /users/me`. */
 interface ProfileForm {
@@ -175,6 +184,13 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
   const [working, setWorking] = React.useState<'avatar' | 'banner' | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [gifFor, setGifFor] = React.useState<GifTarget>(null)
+  /**
+   * Capa esperando o recorte: o arquivo escolhido (ou o link do GIF) só sobe
+   * depois que a pessoa diz QUAL PEDAÇO quer — ver ImageCropper.
+   */
+  const [cropping, setCropping] = React.useState<
+    { preview: string; file?: File; url?: string } | null
+  >(null)
   /**
    * Aba controlada por estado, e nao pelo `defaultValue` do Radix.
    *
@@ -255,11 +271,42 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
     setGameDraft('')
     setError(null)
     setGifFor(null)
+    setCropping(null)
     setTab('identidade')
   }, [open, user, byId])
 
+  // O blob: da prévia segura o arquivo na memória até ser revogado.
+  React.useEffect(() => {
+    const preview = cropping?.preview
+    if (!preview?.startsWith('blob:')) return
+    return () => URL.revokeObjectURL(preview)
+  }, [cropping?.preview])
+
+  /** Capa sobe recortada: o recorte que a pessoa escolheu vai junto. */
+  const applyCrop = async (crop: CropRect): Promise<void> => {
+    if (!token || !cropping) return
+    setWorking('banner')
+    setError(null)
+    try {
+      const result = cropping.file
+        ? await uploadsApi.image(token, 'banner', cropping.file, crop)
+        : await uploadsApi.fromUrl(token, 'banner', cropping.url ?? '', crop)
+      setBanner(result.url)
+      setCropping(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao subir a capa')
+    } finally {
+      setWorking(null)
+    }
+  }
+
   const handleFile = async (kind: 'avatar' | 'banner', file: File | null): Promise<void> => {
     if (!file || !token) return
+    if (kind === 'banner') {
+      setError(null)
+      setCropping({ preview: URL.createObjectURL(file), file })
+      return
+    }
     setWorking(kind)
     setError(null)
     try {
@@ -280,6 +327,11 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
   const handleUrl = async (kind: 'avatar' | 'banner', url: string): Promise<void> => {
     if (!token) return
     setGifFor(null)
+    if (kind === 'banner') {
+      setError(null)
+      setCropping({ preview: url, url })
+      return
+    }
     setWorking(kind)
     setError(null)
     try {
@@ -392,6 +444,11 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
         // Com o seletor de GIF na tela, Esc é "voltar" pro formulário, não
         // fechar o editor com tudo que ainda não foi salvo.
         onEscapeKeyDown={(event) => {
+          if (cropping && working !== 'banner') {
+            event.preventDefault()
+            setCropping(null)
+            return
+          }
           if (!gifFor) return
           event.preventDefault()
           setGifFor(null)
@@ -402,7 +459,15 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
           <DialogDescription>É assim que a galera te vê — mexa e veja na hora</DialogDescription>
         </DialogHeader>
 
-        {gifFor ? (
+        {cropping ? (
+          <ImageCropper
+            src={cropping.preview}
+            aspect={BANNER_ASPECT}
+            working={working === 'banner'}
+            onCancel={() => setCropping(null)}
+            onConfirm={(crop) => void applyCrop(crop)}
+          />
+        ) : gifFor ? (
           <GifPicker
             kind={gifFor}
             onPick={(url) => void handleUrl(gifFor, url)}
@@ -777,7 +842,9 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
 
         {error && <p className="mt-2 shrink-0 text-xs text-destructive">{error}</p>}
 
-        {!gifFor && (
+        {/* Recortando, quem manda é o Aplicar/Cancelar do recortador:
+            Salvar aqui gravaria o perfil com a capa ANTIGA. */}
+        {!gifFor && !cropping && (
           <DialogFooter>
             <Button variant="ghost" onClick={onClose} disabled={busy}>
               Cancelar
@@ -861,7 +928,7 @@ function MediaControls({
   className?: string
 }) {
   const noun = kind === 'avatar' ? 'foto' : 'capa'
-  const hint = kind === 'avatar' ? 'quadrada · até 4 MB · GIF vale' : 'deitada · até 4 MB · GIF vale'
+  const hint = kind === 'avatar' ? 'quadrada · até 4 MB · GIF vale' : 'deitada · até 4 MB · GIF vale · você escolhe o pedaço'
   const base =
     'flex h-8 items-center gap-1.5 rounded-brutal border border-line-strong bg-void/80 px-2.5 text-xs font-medium text-foreground backdrop-blur-sm transition-colors hover:border-acid/60 hover:text-acid'
 
@@ -876,7 +943,12 @@ function MediaControls({
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              onFile(e.target.files?.[0] ?? null)
+              // Escolher o MESMO arquivo de novo (pra recortar outro pedaço)
+              // não dispararia `change` sem limpar o campo.
+              e.target.value = ''
+            }}
           />
         </label>
       </Hint>

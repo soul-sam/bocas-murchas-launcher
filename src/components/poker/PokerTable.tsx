@@ -1689,6 +1689,7 @@ function SeatSpot({
             <UserAvatar
               userId={seat.userId}
               speaking={speakingIds.has(seat.userId)}
+              stillUnlessSpeaking
               src={resolveAssetUrl(member?.avatar ?? seat.avatar)}
               name={seat.displayName}
               ringColor={member?.profileColor ?? undefined}
@@ -1869,6 +1870,7 @@ function HeroSeat({
             <UserAvatar
               userId={seat.userId}
               speaking={speakingIds.has(seat.userId)}
+              stillUnlessSpeaking
               src={resolveAssetUrl(member?.avatar ?? seat.avatar)}
               name={seat.displayName}
               ringColor={member?.profileColor ?? undefined}

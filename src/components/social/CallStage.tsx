@@ -481,6 +481,7 @@ function AvatarTile({
           name={member?.displayName ?? participant.name}
           ringColor={member?.profileColor}
           speaking={participant.isSpeaking}
+          stillUnlessSpeaking
           frame={participant.isSpeaking ? member?.avatarFrame : null}
           frameColor={member?.profileColor}
           frameGradient={member?.profileGradient}
@@ -632,6 +633,7 @@ export function ParticipantChip({
           name={member?.displayName ?? participant.name}
           ringColor={member?.profileColor}
           speaking={participant.isSpeaking}
+          stillUnlessSpeaking
           frame={participant.isSpeaking ? member?.avatarFrame : null}
           frameColor={member?.profileColor}
           frameGradient={member?.profileGradient}

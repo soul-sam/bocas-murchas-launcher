@@ -34,6 +34,52 @@ export const AvatarImage = React.forwardRef<
 ))
 AvatarImage.displayName = 'AvatarImage'
 
+/** GIF ou WebP: os formatos que podem estar animados. PNG/JPG nem passam pelo canvas. */
+function isAnimatedSrc(src: string): boolean {
+  return /\.(gif|webp)(?:[?#]|$)/i.test(src) || /giphy\.com/i.test(src)
+}
+
+/**
+ * UM QUADRO do GIF, num canvas.
+ *
+ * Um <img> fora do documento não anima: desenhá-lo no canvas assim que
+ * carrega congela o primeiro quadro. Desenhar imagem de outra origem num
+ * canvas só "suja" o canvas pra leitura — mostrar pode, que é tudo que se faz
+ * aqui. Até 384px: o maior avatar da call fica abaixo disso.
+ */
+function StillFrame({ src }: { src: string }) {
+  const ref = React.useRef<HTMLCanvasElement | null>(null)
+  const [ready, setReady] = React.useState(false)
+
+  React.useEffect(() => {
+    let alive = true
+    setReady(false)
+    const img = new Image()
+    img.onload = () => {
+      const canvas = ref.current
+      if (!alive || !canvas || !img.naturalWidth) return
+      const k = Math.min(1, 384 / Math.max(img.naturalWidth, img.naturalHeight))
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * k))
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * k))
+      canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height)
+      setReady(true)
+    }
+    img.src = src
+    return () => {
+      alive = false
+    }
+  }, [src])
+
+  return (
+    <canvas
+      ref={ref}
+      aria-hidden
+      data-still-frame
+      className={cn('absolute inset-0 h-full w-full object-cover', !ready && 'invisible')}
+    />
+  )
+}
+
 export const AvatarFallback = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Fallback>,
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
@@ -162,7 +208,8 @@ export function UserAvatar({
   fallbackClassName,
   frameColor,
   frameGradient,
-  frameStatic
+  frameStatic,
+  stillUnlessSpeaking
 }: {
   src?: string
   name: string
@@ -189,6 +236,12 @@ export function UserAvatar({
   /** Moldura parada (anel e boca sem animação): listas com muitas fotos. Avatar <32px já é parado sozinho. */
   frameStatic?: boolean
   /**
+   * Foto em GIF PARADA, e só anima com `speaking`. É a regra da call: com
+   * cinco GIFs se mexendo ao mesmo tempo ninguém sabe quem está falando — a
+   * foto que mexe passa a ser o sinal de quem fala. Ver StillFrame.
+   */
+  stillUnlessSpeaking?: boolean
+  /**
    * Estilo extra no avatar. Existe pro tamanho vindo de MEDIÇÃO, e não de
    * classe: na call o avatar acompanha o tamanho do card, que é calculado em
    * pixels em tempo de execução (ver components/social/CallStage.tsx).
@@ -209,6 +262,7 @@ export function UserAvatar({
   const frameStyle = frameClass(wornFrame)
   const small = isSmallAvatar(className, style)
   const still = frameStatic || small
+  const pausable = !!stillUnlessSpeaking && !!src && isAnimatedSrc(src)
   /**
    * Opcional de propósito: este componente é de `ui/` e pode ser desenhado
    * fora da árvore autenticada (onde o OverlayProvider não existe). Ver
@@ -258,7 +312,13 @@ export function UserAvatar({
           ...style
         }}
       >
-        {src && <AvatarImage src={src} alt="" />}
+        {/* O quadro parado fica SEMPRE por baixo, e o GIF entra por cima
+            quando a pessoa fala: assim a troca não pisca as iniciais enquanto
+            o Radix espera o GIF "carregar" de novo. */}
+        {src && pausable && <StillFrame src={src} />}
+        {src && !(pausable && !speaking) && (
+          <AvatarImage src={src} alt="" className={pausable ? 'relative' : undefined} />
+        )}
         <AvatarFallback className={fallbackClassName}>{name.slice(0, 2)}</AvatarFallback>
       </Avatar>
 

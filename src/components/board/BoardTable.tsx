@@ -860,6 +860,7 @@ function PlayerBar({
         <UserAvatar
           userId={person.userId}
           speaking={speakingIds.has(person.userId)}
+          stillUnlessSpeaking
           src={resolveAssetUrl(member?.avatar ?? person.avatar)}
           name={person.displayName}
           ringColor={member?.profileColor ?? undefined}

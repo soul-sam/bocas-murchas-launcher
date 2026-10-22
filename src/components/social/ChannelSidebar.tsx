@@ -484,6 +484,8 @@ export function ChannelSidebar({
                               src={resolveAssetUrl(occupant.avatar)}
                               name={occupant.displayName}
                               speaking={isSpeaking}
+                              // GIF parado na call, mexendo só com quem fala.
+                              stillUnlessSpeaking
                               // Na call a moldura é o "está falando": parada
                               // o tempo todo, ela não dizia nada.
                               frame={isSpeaking ? undefined : null}

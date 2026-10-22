@@ -401,11 +401,14 @@ export const uploads = {
   async image(
     token: string,
     kind: 'avatar' | 'banner' | 'image',
-    file: File
+    file: File,
+    /** Pedaço escolhido no recortador, em frações da imagem (ver ImageCropDialog). */
+    crop?: CropRect | null
   ): Promise<{ url: string }> {
     const form = new FormData()
     form.append('file', file)
-    return upload<{ url: string }>(`/uploads/${kind}`, form, token)
+    const query = crop ? `?crop=${cropParam(crop)}` : ''
+    return upload<{ url: string }>(`/uploads/${kind}${query}`, form, token)
   },
 
   /**
@@ -452,14 +455,30 @@ export const uploads = {
   async fromUrl(
     token: string,
     kind: 'avatar' | 'banner',
-    url: string
+    url: string,
+    crop?: CropRect | null
   ): Promise<{ url: string; sizeBytes: number; mimeType: string }> {
     return request('/uploads/from-url', {
       method: 'POST',
       token,
-      body: JSON.stringify({ kind, url })
+      body: JSON.stringify({ kind, url, crop: crop ? cropParam(crop) : undefined })
     })
   }
+}
+
+/**
+ * Recorte em FRAÇÕES da imagem original (0..1), não em pixels: a prévia da
+ * tela tem outro tamanho que o arquivo, e o servidor recorta o original.
+ */
+export interface CropRect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+function cropParam(crop: CropRect): string {
+  return [crop.x, crop.y, crop.w, crop.h].map((n) => n.toFixed(5)).join(',')
 }
 
 // ============================================
