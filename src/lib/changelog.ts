@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.85.0',
+    headline: 'Recompensa agora sai do Banco',
+    items: [
+      'Os murchos de atividade, nível, ovo, conquista, impressão e reembolso não são mais criados do nada: o Banco da Casa é quem paga.',
+      'Se o Banco estiver sem murcho livre, você recebe do mesmo jeito: o que faltar é emitido e fica registrado.',
+      'Com isso o murcho circula: o que se perde, se gasta e se paga de juro volta pro Banco, e o Banco paga as recompensas.'
+    ]
+  },
+  {
     version: '1.84.0',
     headline: 'Capa do jeito que você quer',
     items: [
