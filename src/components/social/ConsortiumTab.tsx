@@ -404,7 +404,7 @@ function Rules({ view }: { view: ConsortiumView }) {
           pessoa: todo mundo que fica até o fim recebe.
         </li>
         <li>
-          A parcela é a carta dividida pelo grupo, mais {percentText(rules.adminFee)} de taxa (queimada) e{' '}
+          A parcela é a carta dividida pelo grupo, mais {percentText(rules.adminFee)} de taxa (vai pro Banco) e{' '}
           {percentText(rules.reserveFee)} pro fundo de reserva, que volta no fim pra quem não atrasou.
         </li>
         <li>

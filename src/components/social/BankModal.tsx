@@ -19,9 +19,9 @@ import { WalletTab } from './WalletTab'
 /**
  * BANCO DA CASA — empréstimo de murcho, de reserva integral.
  *
- * O Banco só empresta o que tem na reserva (o cofre da Casa enche ela no
- * fechamento de domingo e com o juro que recebe): pegar emprestado não cria
- * murcho, só move. As regras vêm todas do servidor (`bank.rules`); a tela só
+ * O Banco só empresta o que tem livre (banca e reserva viraram um caixa só,
+ * que recebe aposta perdida, lojinha, juro, taxas e o CDB): pegar emprestado
+ * não cria murcho, só move. As regras vêm todas do servidor (`bank.rules`); a tela só
  * mostra a prévia — juro, total no prazo, o que trava enquanto deve.
  *
  * Dois estados: sem dívida, a oferta (quanto dá, por quanto tempo, quanto
@@ -110,7 +110,7 @@ export function BankModal() {
           <Landmark className="hidden h-7 w-7 text-acid sm:block" aria-hidden />
           <div className="min-w-0 flex-1">
             <h2 className="title-brutal text-2xl">Banco da Casa</h2>
-            <p className="text-[11.5px] text-muted-foreground">Empréstimo, CDB e consórcio, tudo da reserva da Casa.</p>
+            <p className="text-[11.5px] text-muted-foreground">Empréstimo, CDB e consórcio, tudo do caixa da Casa.</p>
           </div>
         </div>
 
@@ -207,13 +207,13 @@ function LoanTab() {
   )
 }
 
-/** A reserva: quanto o Banco tem pra emprestar e quanto está na rua. */
+/** O caixa do Banco: quanto está livre pra emprestar e quanto está na rua. */
 function Reserve({ bank }: { bank: BankView }) {
   return (
     <section className="rounded-brutal border border-acid-dark/60 bg-acid/[0.05] p-3">
       <h4 className="flex items-center gap-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">
         <Landmark className="h-3.5 w-3.5 text-acid-text" aria-hidden />
-        Reserva do Banco
+        Livre no Banco
       </h4>
       <div className="mt-1.5 flex items-baseline gap-1.5">
         <p className="font-mono text-3xl leading-none tabular-nums text-acid-text">{fmt(bank.reserve)}</p>
@@ -225,7 +225,8 @@ function Reserve({ bank }: { bank: BankView }) {
             <span className="font-mono text-foreground">{fmt(bank.lent)}</span> emprestados agora.{' '}
           </>
         ) : null}
-        O Banco só empresta o que tem aqui: pegar emprestado não cria murcho, só move.
+        O Banco só empresta o que tem livre: pegar emprestado não cria murcho, só move. Nada queima: aposta
+        perdida, lojinha, juro e taxas voltam pra cá e giram de novo.
       </p>
     </section>
   )
@@ -289,7 +290,7 @@ function Offer({ bank, onTaken }: { bank: BankView; onTaken: (loan: LoanView) =>
       </h4>
       <p className="text-[11.5px] leading-snug text-muted-foreground">
         Você pode pegar até <span className="font-mono text-burn">{fmt(offer.max)}</span>
-        {offer.max < offer.limit ? <> agora (seu limite é {fmt(offer.limit)}, mas a reserva tem menos)</> : <>, seu limite</>}
+        {offer.max < offer.limit ? <> agora (seu limite é {fmt(offer.limit)}, mas o Banco tem menos livre)</> : <>, seu limite</>}
         .
         {offer.growth.next > offer.limit && (
           <>
@@ -551,8 +552,8 @@ function Rules({ bank }: { bank: BankView }) {
           {percentText(rules.withhold.late)} e {percentText(rules.withhold.wagerProfitLate)}). Aposta continua liberada.
         </li>
         <li>
-          Metade do juro é queimada (segura a inflação); um quarto vai pro rendimento de quem aplicou no CDB e um
-          quarto pro{' '}
+          Metade do juro fica no Banco (volta a girar em empréstimo e aposta); um quarto vai pro rendimento de quem
+          aplicou no CDB e um quarto pro{' '}
           <Hint label="Prêmio do Ano" description="Os três primeiros do recap do ano levam o Fundo do Ano." side="left">
             <span className="cursor-help text-foreground underline decoration-dotted underline-offset-2">Prêmio do Ano</span>
           </Hint>

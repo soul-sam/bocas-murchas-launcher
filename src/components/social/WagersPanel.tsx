@@ -340,7 +340,7 @@ function HowItWorks() {
         </li>
         <li>
           A banca só aceita o lucro que consegue pagar. Quando ela está curta, o teto da aposta cai; o
-          fechamento de domingo reparte o que sobrar entre queima, rendimento do CDB, pote, bônus, Banco e Prêmio do Ano.
+          fechamento de domingo reparte o que sobrar entre rendimento do CDB, pote, bônus e Prêmio do Ano, e o resto fica no Banco.
         </li>
         <li>
           Mais gente apostando na mesma partida rende bônus de grupo:{' '}

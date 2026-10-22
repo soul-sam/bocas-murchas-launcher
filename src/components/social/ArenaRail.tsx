@@ -50,6 +50,8 @@ interface Item {
 
 export function ArenaRail() {
   const { profile, house } = useGamification()
+  // O Banco é a banca (a reserva foi juntada nela): livre = banca − exposição.
+  const bankFree = house?.banca != null ? Math.max(0, house.banca - (house.exposure ?? 0)) : null
   const live = useLiveMatchCount()
   const {
     isPhone,
@@ -119,11 +121,11 @@ export function ArenaRail() {
       active: bankOpen,
       run: openBank,
       hint:
-        house?.credito != null
-          ? `Banco da Casa: empréstimo de murcho. Reserva agora: ${house.credito.toLocaleString('pt-BR')}.`
-          : 'Banco da Casa: empréstimo de murcho, da reserva que a Casa junta.',
-      meta: house?.credito != null && (
-        <span className="font-mono text-[11.5px] text-muted-foreground">{formatCompact(house.credito)}</span>
+        bankFree != null
+          ? `Banco da Casa: empréstimo, CDB e consórcio. Livre agora: ${bankFree.toLocaleString('pt-BR')}.`
+          : 'Banco da Casa: empréstimo, CDB e consórcio.',
+      meta: bankFree != null && (
+        <span className="font-mono text-[11.5px] text-muted-foreground">{formatCompact(bankFree)}</span>
       )
     },
     {

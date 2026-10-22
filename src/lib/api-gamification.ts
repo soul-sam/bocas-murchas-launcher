@@ -390,20 +390,22 @@ export interface WagerGroupBonus {
 /**
  * Cofre da Casa (out/2026). A Casa é a contraparte das apostas: a `banca`
  * recebe o que é perdido e paga o lucro de quem acerta; `exposure` é o lucro
- * já prometido a apostas abertas. No fechamento de domingo o que passa da
- * meta da banca vai pra queima, pro `jackpot` (pote: partida com 4+
- * apostadores em que todo mundo acertou), pro `bonusFund` (bônus de grupo),
- * pro `credito` (reserva do Banco) e pro `fundoAno` (Prêmio do Ano).
+ * já prometido a apostas abertas. Desde 22/10/2026 a banca É o Banco (a
+ * reserva `credito` foi juntada nela) e nada queima. No fechamento de domingo
+ * o que passa da meta vai pro `rendimento` (CDB), pro `jackpot` (pote:
+ * partida com 4+ apostadores em que todo mundo acertou), pro `bonusFund`
+ * (bônus de grupo) e pro `fundoAno` (Prêmio do Ano); o resto fica na banca.
  *
  * Os caixas novos são opcionais: servidor antigo não manda.
  */
 export interface WagerHouse {
   jackpot: number
   bonusFund: number
-  /** Quanto já foi queimado de vez (o ralo). Só vem no `/wagers/house` e no socket. */
+  /** Quanto foi queimado antes de 22/10/2026 (não sobe mais). Só vem no `/wagers/house` e no socket. */
   sunk?: number
   banca?: number
   exposure?: number
+  /** Antiga reserva do Banco: zero desde que foi juntada na banca. */
   credito?: number
   fundoAno?: number
   /** Pote do rendimento do CDB da Casa, esperando o próximo fechamento. */
@@ -451,6 +453,10 @@ export interface WagerHouseInfo extends WagerHouse {
   lent?: number
   /** Aplicado no CDB da Casa agora. */
   invested?: number
+  /** O que o Banco deve ao CDB novo (está na banca, mas é de quem aplicou). */
+  owed?: number
+  /** Do Banco e livre: banca livre menos `owed`. Base do teto de aposta e do fechamento. */
+  own?: number
   paid: { count: number; total: number }
   wins: JackpotWinInfo[]
   /**
@@ -462,7 +468,8 @@ export interface WagerHouseInfo extends WagerHouse {
   rules: {
     minBettors: number
     liquidityTarget?: number
-    close?: { burn: number; rendimento?: number; jackpot: number; bonusFund: number; credito: number; fundoAno: number }
+    /** `burn` e `credito` só vêm de servidor antigo (antes de nada queimar). */
+    close?: { burn?: number; rendimento?: number; jackpot: number; bonusFund: number; credito?: number; fundoAno: number }
     maxBetProfitShare?: number
     maxMatchProfitShare?: number
     margin?: number

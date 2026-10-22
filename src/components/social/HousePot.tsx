@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { ChevronDown, ChevronUp, Flame, Landmark, Vault } from 'lucide-react'
+import { ChevronDown, ChevronUp, HandCoins, Landmark, Vault } from 'lucide-react'
 import { CrownIcon, TrophyIcon } from '@/lib/bocas-icons'
 import { Hint } from '@/components/ui/tooltip'
 import type { IconComponent } from '@/lib/icon-component'
@@ -27,8 +27,9 @@ import { cn } from '@/lib/utils'
  * disputar, quanto entrou na semana e quem levou os últimos.
  *
  * Desde out/2026 a Casa é a contraparte das apostas: os quadrinhos mostram a
- * BANCA (o que paga quem acerta), o fundo do bônus, o que já foi queimado e o
- * Fundo do Ano — tudo que o fechamento de domingo reparte.
+ * BANCA (o Banco: paga quem acerta, empresta, guarda o CDB), o fundo do
+ * bônus, o que está emprestado e o Fundo do Ano. Desde 22/10/2026 nada
+ * queima: o que sumia volta pra banca.
  *
  * `fallback` é o cofre de um board, pra servidor que ainda não tem a rota.
  */
@@ -173,14 +174,14 @@ export function HousePot({
         </p>
       </div>
 
-      {/* Os caixas da Casa: quem paga, o que banca o bônus, o que sumiu e o do ano. */}
+      {/* Os caixas da Casa: quem paga, o que banca o bônus, o que está na rua e o do ano. */}
       <div className="mt-3 grid grid-cols-2 gap-1.5">
         <Tile
           Icon={Landmark}
-          label="banca livre"
+          label="banco livre"
           value={house?.free ?? (house?.banca != null ? house.banca - (house.exposure ?? 0) : null)}
-          hint="Banca da Casa"
-          description={`É ela que paga o lucro de quem acerta e fica com o que se perde. Só aceita aposta cujo lucro consegue pagar: no máximo ${pct(house?.rules.maxBetProfitShare, 0.05)}% dela numa aposta e ${pct(house?.rules.maxMatchProfitShare, 0.15)}% numa partida.${house?.exposure ? ` Agora ${house.exposure.toLocaleString('pt-BR')} estão prometidos a apostas abertas.` : ''}`}
+          hint="Banco da Casa"
+          description={`Paga o lucro de quem acerta, fica com o que se perde, empresta e guarda o CDB. Recebe também a lojinha, os presentes, o juro e as taxas: nada queima, tudo volta a girar. Só aceita aposta cujo lucro consegue pagar com o que é dele (o CDB não conta): no máximo ${pct(house?.rules.maxBetProfitShare, 0.05)}% numa aposta e ${pct(house?.rules.maxMatchProfitShare, 0.15)}% numa partida, e nunca acima do teto de 5.000.${house?.exposure ? ` Agora ${house.exposure.toLocaleString('pt-BR')} estão prometidos a apostas abertas.` : ''}`}
         />
         <Tile
           Icon={Vault}
@@ -190,11 +191,11 @@ export function HousePot({
           description={`Paga o bônus de grupo: com ${min}+ apostando, +15% por apostador além do primeiro, até +60%. Recebe ${pct(house?.rules.close?.bonusFund, 0.15)}% do fechamento de domingo. Fundo baixo, bônus menor.`}
         />
         <Tile
-          Icon={Flame}
-          label="queimado"
-          value={house?.sunk ?? null}
-          hint="Queimado de vez"
-          description={`${pct(house?.rules.close?.burn, 0.2)}% do que a banca junta acima da reserva some no fechamento, e metade do juro do Banco também — mais o rendimento do CDB acima do teto. É o que segura o murcho de inflacionar.`}
+          Icon={HandCoins}
+          label="emprestado"
+          value={house?.lent ?? null}
+          hint="Na rua"
+          description="Emprestado pelo Banco e ainda não devolvido. Volta com juro: metade fica no Banco, um quarto vai pro CDB e um quarto pro Prêmio do Ano."
         />
         <Tile
           Icon={CrownIcon}
@@ -210,9 +211,11 @@ export function HousePot({
           {house.lastClose.surplus > 0 ? (
             <>
               Último fechamento: <span className="font-mono text-foreground">{formatCompact(house.lastClose.surplus)}</span>{' '}
-              repartidos — {formatCompact(house.lastClose.burned)} queimados,{' '}
+              de excedente —{' '}
+              {house.lastClose.burned > 0 ? <>{formatCompact(house.lastClose.burned)} queimados, </> : null}
               {house.lastClose.toYield ? <>{formatCompact(house.lastClose.toYield)} pro CDB, </> : null}
-              {formatCompact(house.lastClose.toJackpot)} pro pote, {formatCompact(house.lastClose.toYear)} pro ano.
+              {formatCompact(house.lastClose.toJackpot)} pro pote, {formatCompact(house.lastClose.toYear)} pro ano
+              {house.lastClose.burned > 0 ? null : <>, o resto ficou no Banco</>}.
             </>
           ) : (
             'Último fechamento sem excedente: a banca guardou tudo pra cobrir as apostas.'
