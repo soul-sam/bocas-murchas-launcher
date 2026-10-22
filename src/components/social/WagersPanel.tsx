@@ -334,8 +334,8 @@ function HowItWorks() {
           <span className="text-foreground">{minutes} minutos</span>.
         </li>
         <li>
-          A <span className="text-foreground">Casa</span> é quem está do outro lado: a odd sai da
-          winrate de quem joga, com uma margem pequena pra Casa. Acertou, a banca paga; errou, a banca
+          A <span className="text-foreground">Casa</span> é quem está do outro lado: no colega paga
+          2x; em você, a odd sai da sua winrate (1,3x a 3x). Acertou, a banca paga; errou, a banca
           fica com o que você apostou.
         </li>
         <li>

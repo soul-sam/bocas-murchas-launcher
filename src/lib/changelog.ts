@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.88.0',
+    headline: 'Odds das apostas sem margem da Casa',
+    items: [
+      'Apostar no colega volta a pagar 2x, na vitória ou na derrota.',
+      'Apostar em você paga 1 ÷ sua winrate nas últimas 20 partidas daquele jogo, entre 1,3x e 3x.',
+      'Com menos de 2 partidas registradas, a aposta em você paga 2x.',
+      'A Casa não tira mais margem da odd: o que aparece é a odd justa.'
+    ]
+  },
+  {
     version: '1.87.0',
     headline: 'Dashboard no Banco',
     items: [
