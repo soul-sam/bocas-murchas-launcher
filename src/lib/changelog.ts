@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.91.0',
+    headline: 'Ranking de murchos conta só ganho de verdade',
+    items: [
+      'Empréstimo, aplicação e resgate de CDB e consórcio não contam mais como ganho: é murcho trocando de bolso.',
+      'Do Banco conta o juro: o que o CDB rendeu soma; juro de empréstimo e taxas do consórcio (administração, atraso, saque da carta, desistência) descontam.',
+      'Xadrez e dama contam o resultado: perder desconta, empate dá zero.',
+      'O Dashboard do Banco agora mostra o ganho total (o mesmo número do ranking desde sempre) e a evolução dele dia a dia.'
+    ],
+    note: 'O ranking foi recalculado pra trás também, então algumas posições mudaram.'
+  },
+  {
     version: '1.90.0',
     headline: 'Itens da lojinha contam no patrimônio',
     items: [

@@ -275,6 +275,8 @@ export interface WealthDashboard {
   now: Omit<WealthPoint, 'day' | 'estimated'>
   interestWeek: { savings: number; terms: number; deposits: number; total: number }
   interestDaily: Array<{ day: string; amount: number }>
+  /** Ganho acumulado desde sempre (régua do ranking de murchos), no fim de cada dia. */
+  earnings: { total: number; series: Array<{ day: string; total: number }> }
 }
 
 export const bankApi = {

@@ -1,13 +1,15 @@
 import * as React from 'react'
 import { Loader2, TrendingDown, TrendingUp } from 'lucide-react'
-import { bankApi, type WealthDashboard, type WealthPoint } from '@/lib/api-bank'
+import { bankApi, type WealthDashboard } from '@/lib/api-bank'
 import { formatCompact } from '@/lib/api-gamification'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 
 /**
- * DASHBOARD — a aba do Banco ao lado da Carteira: o patrimônio dia a dia e o
- * juro que o CDB rendeu.
+ * DASHBOARD — a aba do Banco ao lado da Carteira: o ganho acumulado dia a dia
+ * (a mesma conta do ranking de murchos "desde sempre": sobe com o que entra,
+ * desce com aposta ou mão perdida; gasto e bolso trocado não mexem), o juro
+ * que o CDB rendeu e, embaixo, do que o patrimônio de hoje é feito.
  *
  * Patrimônio = saldo + CDB (diário, congelado, antigo) + carta + itens da
  * loja (pelo preço de hoje) − dívida. O
@@ -77,10 +79,10 @@ export function DashboardTab() {
       {data && (
         <>
           <div className="grid gap-3 md:grid-cols-2">
-            <NetHero data={data} />
+            <EarningsHero data={data} />
             <InterestHero data={data} />
           </div>
-          <WealthChart series={data.series} />
+          <EarningsChart series={data.earnings.series} />
           <InterestChart daily={data.interestDaily} />
           <Breakdown now={data.now} />
         </>
@@ -89,15 +91,15 @@ export function DashboardTab() {
   )
 }
 
-/** O número grande: patrimônio de hoje e quanto mudou no período. */
-function NetHero({ data }: { data: WealthDashboard }) {
-  const first = data.series[0]
-  const change = first ? data.now.net - first.net : 0
+/** O número grande: tudo que já ganhou (= ranking "desde sempre") e quanto mudou no período. */
+function EarningsHero({ data }: { data: WealthDashboard }) {
+  const first = data.earnings.series[0]
+  const change = first ? data.earnings.total - first.total : 0
   const Up = change >= 0 ? TrendingUp : TrendingDown
   return (
     <section className="rounded-brutal border border-acid-dark/60 bg-acid/[0.05] p-3">
-      <h4 className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">Patrimônio</h4>
-      <p className="mt-1.5 font-mono text-3xl leading-none tabular-nums text-acid-text">{fmt(data.now.net)}</p>
+      <h4 className="font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">Ganho total</h4>
+      <p className="mt-1.5 font-mono text-3xl leading-none tabular-nums text-acid-text">{fmt(data.earnings.total)}</p>
       {first && (
         <p className="mt-2 flex items-center gap-1 text-[11.5px] text-muted-foreground">
           <Up className={cn('h-3.5 w-3.5', change >= 0 ? 'text-acid-text' : 'text-destructive')} aria-hidden />
@@ -162,47 +164,44 @@ function niceTicks(min: number, max: number): number[] {
   return [min, Math.round((min + max) / 2), max]
 }
 
-/** Patrimônio no tempo: linha + área, tracejada onde é estimativa. */
-function WealthChart({ series }: { series: WealthPoint[] }) {
+/** Ganho acumulado no tempo: linha + área; o hover mostra o total e o do dia. */
+function EarningsChart({ series }: { series: WealthDashboard['earnings']['series'] }) {
   const [ref, width] = useWidth()
   const [hover, setHover] = React.useState<number | null>(null)
   const height = 180
 
   if (series.length < 2) {
     return (
-      <ChartFrame title="Evolução do patrimônio">
+      <ChartFrame title="Evolução dos ganhos">
         <p className="py-6 text-center text-[11.5px] text-muted-foreground">Ainda não tem dias suficientes pra desenhar.</p>
       </ChartFrame>
     )
   }
 
-  const values = series.map((p) => p.net)
+  const values = series.map((p) => p.total)
   const lo = Math.min(0, ...values)
   const hi = Math.max(...values, lo + 1)
   const w = Math.max(0, width - PAD.left - PAD.right)
   const h = height - PAD.top - PAD.bottom
   const x = (i: number): number => PAD.left + (series.length === 1 ? w / 2 : (i * w) / (series.length - 1))
   const y = (v: number): number => PAD.top + h - ((v - lo) / (hi - lo)) * h
-  const firstReal = series.findIndex((p) => !p.estimated)
-  const split = firstReal < 0 ? series.length - 1 : firstReal
-
   const line = (from: number, to: number): string =>
     series
       .slice(from, to + 1)
-      .map((p, k) => `${k === 0 ? 'M' : 'L'}${x(from + k).toFixed(1)},${y(p.net).toFixed(1)}`)
+      .map((p, k) => `${k === 0 ? 'M' : 'L'}${x(from + k).toFixed(1)},${y(p.total).toFixed(1)}`)
       .join(' ')
   const area = `${line(0, series.length - 1)} L${x(series.length - 1).toFixed(1)},${y(lo).toFixed(1)} L${x(0).toFixed(1)},${y(lo).toFixed(1)} Z`
 
   const point = hover !== null ? series[hover] : null
   return (
-    <ChartFrame title="Evolução do patrimônio" note={split > 0 ? 'Tracejado: estimado pelo extrato, antes das fotos diárias.' : undefined}>
+    <ChartFrame title="Evolução dos ganhos" note="Mesma conta do ranking de murchos desde sempre: aposta, mão perdida e juro de empréstimo descontam; loja e murcho trocando de bolso não.">
       <div ref={ref} className="relative" onPointerLeave={() => setHover(null)}>
         {width > 0 && (
           <svg
             width={width}
             height={height}
             role="img"
-            aria-label={`Patrimônio de ${fmt(values[0])} a ${fmt(values[values.length - 1])} em ${series.length} dias`}
+            aria-label={`Ganho total de ${fmt(values[0])} a ${fmt(values[values.length - 1])} em ${series.length} dias`}
             onPointerMove={(e) => {
               const rect = e.currentTarget.getBoundingClientRect()
               const i = Math.round(((e.clientX - rect.left - PAD.left) / Math.max(1, w)) * (series.length - 1))
@@ -218,10 +217,7 @@ function WealthChart({ series }: { series: WealthPoint[] }) {
               </g>
             ))}
             <path d={area} className="fill-acid/10" />
-            {split > 0 && (
-              <path d={line(0, split)} fill="none" className="stroke-acid" strokeWidth={2} strokeDasharray="4 4" strokeLinejoin="round" />
-            )}
-            <path d={line(split, series.length - 1)} fill="none" className="stroke-acid" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+            <path d={line(0, series.length - 1)} fill="none" className="stroke-acid" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
             <text x={PAD.left} y={height - 4} className="fill-muted-foreground font-mono text-[11px]">
               {dayLabel(series[0].day)}
             </text>
@@ -231,25 +227,20 @@ function WealthChart({ series }: { series: WealthPoint[] }) {
             {hover !== null && point && (
               <g>
                 <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={PAD.top + h} className="stroke-muted-foreground/50" strokeWidth={1} />
-                <circle cx={x(hover)} cy={y(point.net)} r={5} className="fill-acid stroke-void" strokeWidth={2} />
+                <circle cx={x(hover)} cy={y(point.total)} r={5} className="fill-acid stroke-void" strokeWidth={2} />
               </g>
             )}
           </svg>
         )}
         {hover !== null && point && (
           <Tooltip x={x(hover)} width={width}>
-            <p className="font-mono text-[11px] text-muted-foreground">
-              {dayLabel(point.day)}
-              {point.estimated ? ' · estimado' : ''}
-            </p>
-            <p className="font-mono text-sm text-foreground">{fmt(point.net)}</p>
-            <dl className="mt-1 grid grid-cols-[auto_auto] gap-x-3 text-[11px]">
-              <Row label="saldo" value={point.coins} />
-              <Row label="CDB" value={point.savings + point.terms + point.deposits} />
-              {point.carta > 0 && <Row label="carta" value={point.carta} />}
-              {point.items > 0 && <Row label="itens" value={point.items} />}
-              {point.debt > 0 && <Row label="dívida" value={-point.debt} />}
-            </dl>
+            <p className="font-mono text-[11px] text-muted-foreground">{dayLabel(point.day)}</p>
+            <p className="font-mono text-sm text-foreground">{fmt(point.total)}</p>
+            {hover > 0 && (
+              <dl className="mt-1 grid grid-cols-[auto_auto] gap-x-3 text-[11px]">
+                <Row label="no dia" value={point.total - series[hover - 1].total} />
+              </dl>
+            )}
           </Tooltip>
         )}
       </div>
@@ -339,7 +330,7 @@ function Breakdown({ now }: { now: WealthDashboard['now'] }) {
   ].filter((r) => r.value !== 0 || r.label === 'Saldo')
   return (
     <section className="rounded-brutal border border-line bg-void/60 p-3">
-      <h4 className="mb-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">Hoje</h4>
+      <h4 className="mb-1.5 font-mono text-[11.5px] uppercase tracking-widest text-muted-foreground">Patrimônio hoje</h4>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11.5px]">
         {rows.map((r) => (
           <Row key={r.label} label={r.label} value={r.value} />
