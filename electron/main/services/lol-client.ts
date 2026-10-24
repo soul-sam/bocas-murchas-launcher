@@ -207,6 +207,8 @@ const QUEUE_NAMES: Record<number, string> = {
   1110: 'tft',
   1130: 'tft',
   1160: 'tft',
+  // Desafios da Horuja: PvE do TFT, sem aposta (ver src/lib/wager-queue.ts).
+  1220: 'tft_horuja',
   1300: 'nexus_blitz',
   1400: 'ultimate_spellbook',
   1700: 'arena',
@@ -215,7 +217,10 @@ const QUEUE_NAMES: Record<number, string> = {
   2400: 'aram_mayhem',
   2000: 'tutorial',
   2010: 'tutorial',
-  2020: 'tutorial'
+  2020: 'tutorial',
+  // Modo treino. O lobby diz `isCustom`, mas o gameflow manda o id 3140 e
+  // trocava o 'custom' por 'queue_3140' — que passava como PvP na aposta.
+  3140: 'custom'
 }
 
 export function queueName(queueId: number): string {

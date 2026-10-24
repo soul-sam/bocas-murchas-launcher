@@ -42,6 +42,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.93.0',
+    headline: 'Sem aposta em partida contra o computador',
+    items: [
+      'Desafios da Horuja (TFT), modo treino e partida contra bots não aceitam mais aposta.',
+      'Nessas partidas o botão de apostar fica apagado e avisa "Partida não habilitada para aposta".'
+    ]
+  },
+  {
     version: '1.92.0',
     headline: 'Importar pack de emojis',
     items: [

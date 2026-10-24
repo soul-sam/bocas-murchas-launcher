@@ -23,7 +23,8 @@ import {
   type WagerPrediction
 } from '@/lib/api-gamification'
 import { useGamification } from '@/lib/gamification-context'
-import { queueLabel } from '@/lib/activity-context'
+import { queueLabel, useActivity } from '@/lib/activity-context'
+import { isWagerQueue, NON_WAGER_TITLE } from '@/lib/wager-queue'
 import { cn } from '@/lib/utils'
 
 /**
@@ -80,6 +81,7 @@ export function BetPopover({
   children: React.ReactElement
 }) {
   const { liveGames, refreshLiveGames, profile } = useGamification()
+  const { activityOf } = useActivity()
   const [open, setOpen] = React.useState(false)
 
   const game = React.useMemo(
@@ -108,10 +110,15 @@ export function BetPopover({
     if (open) void refreshLiveGames()
   }, [open, refreshLiveGames])
 
-  if (!game) {
+  // Treino, bot, custom, Desafios da Horuja: a API nem lista a partida, então
+  // sem isso o botão ficava eternamente em "ainda não registrada".
+  const blocked = !isWagerQueue(game?.session.queue) || !isWagerQueue(activityOf(userId)?.queue)
+  if (!game || blocked) {
     return React.cloneElement(children, {
       disabled: true,
-      title: 'Partida ainda não registrada no servidor — tenta de novo em instantes'
+      title: blocked
+        ? NON_WAGER_TITLE
+        : 'Partida ainda não registrada no servidor — tenta de novo em instantes'
     } as Record<string, unknown>)
   }
 

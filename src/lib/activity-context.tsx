@@ -60,6 +60,7 @@ const QUEUE_LABEL: Record<string, string> = {
   aram: 'ARAM',
   arena: 'Arena',
   tft: 'TFT',
+  tft_horuja: 'Desafios da Horuja',
   custom: 'Personalizada',
   urf: 'URF',
   coop: 'Coop vs IA'
