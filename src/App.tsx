@@ -100,6 +100,7 @@ const BoardPage = named(() => import('@/pages/BoardPage'), 'BoardPage')
 const GameHallPage = named(() => import('@/pages/GameHallPage'), 'GameHallPage')
 const LolPage = named(() => import('@/pages/LolPage'), 'LolPage')
 const FutebolPage = named(() => import('@/pages/FutebolPage'), 'FutebolPage')
+const LinguaPage = named(() => import('@/pages/LinguaPage'), 'LinguaPage')
 const PrintPage = named(() => import('@/pages/PrintPage'), 'PrintPage')
 const WrappedModal = named(() => import('@/components/social/WrappedModal'), 'WrappedModal')
 const ShopModal = named(() => import('@/components/social/ShopModal'), 'ShopModal')
@@ -584,6 +585,7 @@ export function App() {
                             <Route path="/jogos" element={<GameHallPage />} />
                             <Route path="/lol" element={<LolPage />} />
                             <Route path="/futebol" element={<FutebolPage />} />
+                            <Route path="/lingua" element={<LinguaPage />} />
                             <Route path="/xadrez" element={<BoardPage game="chess" />} />
                             <Route path="/dama" element={<BoardPage game="draughts" />} />
                             <Route path="/bilhar" element={<BoardPage game="pool" />} />

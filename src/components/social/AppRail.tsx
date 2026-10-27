@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, BellRing, LogOut, Keyboard } from 'lucide-react'
+import { Bell, BellRing, LogOut, Keyboard, Languages } from 'lucide-react'
 import { ChatIcon, GameIcon, PrinterIcon, ServerIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -165,6 +165,11 @@ export function AppRail() {
             />
           )}
         </span>
+      </RailLink>
+
+      {/* Língua Murcha: uma lição por língua por dia (pages/LinguaPage). */}
+      <RailLink to="/lingua" label="Língua Murcha">
+        <Languages className="h-5 w-5" />
       </RailLink>
 
       {/* A impressora só existe na barra pra quem tem o cargo "Impressora
