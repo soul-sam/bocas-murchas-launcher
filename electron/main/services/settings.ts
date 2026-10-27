@@ -294,7 +294,10 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     shareMinecraftActivity: raw.shareMinecraftActivity ?? DEFAULTS.shareMinecraftActivity,
     lol: normalizeLol(raw.lol),
     overlay: normalizeOverlay(raw.overlay, raw.lol),
-    futebol: { avisos: typeof raw.futebol?.avisos === 'boolean' ? raw.futebol.avisos : DEFAULTS.futebol.avisos },
+    futebol: {
+      avisos: typeof raw.futebol?.avisos === 'boolean' ? raw.futebol.avisos : DEFAULTS.futebol.avisos,
+      selecao: typeof raw.futebol?.selecao === 'boolean' ? raw.futebol.selecao : DEFAULTS.futebol.selecao
+    },
 
     voice: normalizeVoice(raw.voice),
     hotkeys: normalizeHotkeys(raw.hotkeys),

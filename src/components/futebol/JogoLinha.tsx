@@ -1,7 +1,8 @@
 import * as React from 'react'
-import { Loader2, Minus, Plus, Trash2 } from 'lucide-react'
+import { Loader2, Minus, MonitorPlay, Plus, Trash2 } from 'lucide-react'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
+import { useFutebolOpcional } from '@/lib/futebol-context'
 import {
   GOLS_MAX,
   PONTOS,
@@ -23,7 +24,56 @@ import { Escudo } from './FutebolGlyphs'
  * Antes do apito, o palpite edita ali mesmo (abre uma faixa embaixo da linha):
  * abrir o detalhe pra palpitar seria um clique a mais por jogo numa rodada de
  * dez. Clicar no resto da linha abre o detalhe.
+ *
+ * O botão de ASSISTIR aparece quando a API achou vídeo do jogo (`tv`, vindo
+ * do radar de transmissões) ou quando o jogo está rolando — aí o player abre
+ * mesmo vazio, pra alguém colar o link. O número é quem está assistindo.
  */
+
+/** Dá pra oferecer o player nesse jogo? */
+export function podeAssistir(jogo: Jogo, tv: number | undefined, assistindo: number): boolean {
+  return (tv ?? 0) > 0 || assistindo > 0 || jogo.estado === 'in'
+}
+
+export function BotaoAssistir({
+  jogo,
+  tv,
+  className,
+  onAssistir
+}: {
+  jogo: Jogo
+  tv?: number
+  className?: string
+  /** Quem está num diálogo modal fecha ele: o Radix trava o clique fora, e o player é fora. */
+  onAssistir?: () => void
+}) {
+  const ctx = useFutebolOpcional()
+  if (!ctx) return null
+  const quantos = ctx.assistindo[jogo.id]?.length ?? 0
+  if (!podeAssistir(jogo, tv, quantos)) return null
+  const tocandoEste = ctx.tocando?.jogo.id === jogo.id
+  const rotulo = jogo.estado === 'post' ? 'Ver os melhores momentos' : 'Assistir o jogo'
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (tocandoEste) ctx.setGrande(true)
+        else ctx.assistir(jogo)
+        onAssistir?.()
+      }}
+      aria-label={quantos ? `${rotulo} (${quantos} assistindo)` : rotulo}
+      title={quantos ? `${rotulo} · ${quantos} assistindo` : rotulo}
+      className={cn(
+        'flex shrink-0 items-center gap-1 rounded-brutal border px-1.5 py-1 transition-colors',
+        tocandoEste ? 'border-acid/60 bg-acid/10 text-acid' : 'border-line text-muted-foreground hover:bg-void-light hover:text-acid',
+        className
+      )}
+    >
+      <MonitorPlay className="h-4 w-4" aria-hidden />
+      {quantos > 0 && <span className="font-mono text-[11px] tabular-nums">{quantos}</span>}
+    </button>
+  )
+}
 
 export function pontosTom(pontos: number): string {
   if (pontos >= PONTOS.exato) return 'border-acid bg-acid/15 text-acid'
@@ -65,10 +115,13 @@ export function JogoLinha({
   destaque,
   onAbrir,
   onPalpite,
-  comData
+  comData,
+  tv
 }: {
   jogo: Jogo
   palpites: PalpitesDoJogo | undefined
+  /** Quantos vídeos a API achou do jogo (ver o cabeçalho). */
+  tv?: number
   /** Jogo do meu time: borda acesa. */
   destaque?: boolean
   onAbrir?: (jogo: Jogo) => void
@@ -114,6 +167,8 @@ export function JogoLinha({
             <Time lado={jogo.fora} venceu={jogo.estado === 'post' && jogo.fora.vencedor} placar={temPlacar} />
           </div>
         </button>
+
+        <BotaoAssistir jogo={jogo} tv={tv} />
 
         <div className="flex w-[4.75rem] shrink-0 flex-col items-end gap-1">
           {meu ? (

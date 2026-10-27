@@ -2,7 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   PONTOS,
+  SELECAO_ID,
   diaDe,
+  escolherFonte,
+  selecaoDoJogo,
   palpiteAberto,
   pontosDoPalpite,
   rotuloDoDia,
@@ -98,4 +101,38 @@ test('textoDoGol: grita o gol do meu time, lamenta o gol contra ele, neutro pros
 test('textoDoApito: começo e fim', () => {
   assert.deepEqual(textoDoApito({ tipo: 'inicio', jogo: jogo(0, 0) }), { title: 'Bola rolando', body: 'Flamengo x Vasco' })
   assert.deepEqual(textoDoApito({ tipo: 'fim', jogo: jogo(2, 2) }), { title: 'Fim de jogo', body: 'Flamengo 2 x 2 Vasco' })
+})
+
+const fonte = (videoId: string, tipo: 'aovivo' | 'melhores' | 'completo', embed = true) => ({
+  videoId,
+  titulo: videoId,
+  canal: 'CazéTV',
+  tipo,
+  origem: 'radar' as const,
+  por: null,
+  embed,
+  publicado: null
+})
+
+test('escolherFonte: ao vivo abre a transmissão; encerrado, os melhores momentos', () => {
+  const fontes = [fonte('mm', 'melhores'), fonte('live', 'aovivo'), fonte('full', 'completo')]
+  assert.equal(escolherFonte({ estado: 'in' }, fontes)?.videoId, 'live')
+  assert.equal(escolherFonte({ estado: 'pre' }, fontes)?.videoId, 'live')
+  assert.equal(escolherFonte({ estado: 'post' }, fontes)?.videoId, 'mm')
+  assert.equal(escolherFonte({ estado: 'in' }, []), null)
+})
+
+test('escolherFonte: vídeo que não deixa embutir só ganha se for o único', () => {
+  assert.equal(escolherFonte({ estado: 'in' }, [fonte('bloqueado', 'aovivo', false), fonte('mm', 'melhores')])?.videoId, 'mm')
+  assert.equal(escolherFonte({ estado: 'in' }, [fonte('bloqueado', 'aovivo', false)])?.videoId, 'bloqueado')
+})
+
+test('selecaoDoJogo acha a Seleção dos dois lados, masculina ou feminina', () => {
+  const brasil = { ...jogo(0, 0), fora: lado(SELECAO_ID, 'Brasil', 0) }
+  assert.equal(selecaoDoJogo(brasil), SELECAO_ID)
+  assert.equal(selecaoDoJogo({ casa: lado('2752', 'Brasil', 0), fora: lado('1', 'EUA', 0) }), '2752')
+  assert.equal(selecaoDoJogo(jogo(0, 0)), null)
+  // Gol do Brasil com a Seleção como "meu time": grita.
+  const gol = textoDoGol({ jogo: { ...brasil, fora: lado(SELECAO_ID, 'Brasil', 1) }, timeId: SELECAO_ID, jogador: 'Vini Jr.', minuto: "12'" }, SELECAO_ID)
+  assert.equal(gol.title, 'GOL DO BRASIL!')
 })

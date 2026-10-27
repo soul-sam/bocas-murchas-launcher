@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.95.0',
+    headline: 'Seleção, Copa do Mundo e jogo ao vivo no launcher',
+    items: [
+      'Aba nova "Seleção e Copa" no Futebol: agenda e resultados da Seleção e da Seleção Feminina, com palpite nos próximos jogos.',
+      'Copa do Mundo de 2006 a 2026 (e Copa América, Copa Feminina e Mundial de Clubes): campeão, campanha do Brasil, mata-mata, grupos e artilharia de cada edição.',
+      'Jogo da Seleção avisa todo mundo: gol, começo e fim, mesmo sem palpite. Dá pra desligar no sino da própria aba.',
+      'Assista os jogos no launcher: o botão de tela na linha do jogo abre a transmissão oficial e gratuita do YouTube (CazéTV, ge tv, Canal GOAT, Paulistão) ou os melhores momentos depois do apito.',
+      'O player encolhe pro canto e continua tocando enquanto você conversa. Dá pra arrastar, e o Esc encolhe.',
+      'Achou a live em outro canal? Cole o link do YouTube no jogo e todo mundo vê. O player mostra quem está assistindo, e o "Chamar a galera" posta um convite no chat.',
+      'O Bocas Bot agora sabe da Seleção, das Copas e de onde passa cada jogo.'
+    ]
+  },
+  {
     version: '1.94.0',
     headline: 'Futebol brasileiro no launcher',
     items: [

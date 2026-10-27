@@ -2,7 +2,7 @@
  * CONTAS DO FUTEBOL — sem rede e sem React, pra o `node --test` rodar direto
  * (ver futebol-calc.test.ts). A api-futebol.ts reexporta tudo.
  */
-import type { ApitoEvento, GolEvento, Jogo, Zona } from './api-futebol'
+import type { ApitoEvento, Fonte, GolEvento, Jogo, Zona } from './api-futebol'
 
 /** Mesma pontuação da API (lib/futebol/regras.ts). */
 export const PONTOS = { exato: 10, saldo: 6, resultado: 4, erro: 0 } as const
@@ -89,6 +89,33 @@ export function textoDoGol(ev: GolEvento, meuTimeId: string | null): { title: st
   const meuSofreu = !!meuTimeId && !meuMarcou && (ev.jogo.casa.id === meuTimeId || ev.jogo.fora.id === meuTimeId)
   const title = meuMarcou ? `GOL DO ${time.curto.toUpperCase()}!` : meuSofreu ? `Gol do ${time.curto}...` : `Gol do ${time.curto}`
   return { title, body: autor ? `${placar(ev.jogo)} · ${autor}` : placar(ev.jogo) }
+}
+
+/** Ids da ESPN da Seleção masculina e da feminina (lib/futebol/ligas.ts na API). */
+export const SELECAO_ID = '205'
+export const SELECAO_FEMININA_ID = '2752'
+
+/** O id da Seleção que está no jogo, ou null. */
+export function selecaoDoJogo(jogo: Pick<Jogo, 'casa' | 'fora'>): string | null {
+  for (const id of [jogo.casa.id, jogo.fora.id]) if (id === SELECAO_ID || id === SELECAO_FEMININA_ID) return id
+  return null
+}
+
+/**
+ * A fonte que o player abre sozinho: com o jogo rolando (ou pra começar), a
+ * transmissão; encerrado, melhores momentos antes do jogo inteiro. Vídeo que
+ * não deixa embutir só entra se não houver outro.
+ */
+export function escolherFonte(jogo: Pick<Jogo, 'estado'>, fontes: Fonte[]): Fonte | null {
+  const ordem = jogo.estado === 'post' ? ['melhores', 'completo', 'aovivo'] : ['aovivo', 'completo', 'melhores']
+  const ordenadas = [...fontes].sort((a, b) => ordem.indexOf(a.tipo) - ordem.indexOf(b.tipo))
+  return ordenadas.find((f) => f.embed) ?? ordenadas[0] ?? null
+}
+
+export const TIPO_FONTE: Record<Fonte['tipo'], string> = {
+  aovivo: 'Transmissão',
+  melhores: 'Melhores momentos',
+  completo: 'Jogo completo'
 }
 
 export function textoDoApito(ev: ApitoEvento): { title: string; body: string } {

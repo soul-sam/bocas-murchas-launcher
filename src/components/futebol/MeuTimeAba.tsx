@@ -176,16 +176,32 @@ export function SeletorDeTime({
   )
 }
 
-function PaginaDoTime({
+/** O time no topo da página. Sem ele, é o meu time do coração. */
+export interface CabecalhoDoTime {
+  nome: string
+  escudo: string | null
+  sigla: string
+  cor: string | null
+  /** Linha embaixo do nome quando o time não tem posição na Série A/B. */
+  legenda?: string
+}
+
+/** Calendário de um time (o do coração ou a Seleção) com palpite nos próximos. */
+export function PaginaDoTime({
   teamId,
   ligas,
   onAbrir,
-  onTrocar
+  onTrocar,
+  cabecalho,
+  acoes
 }: {
   teamId: string
   ligas: Liga[]
   onAbrir: (jogo: Jogo) => void
-  onTrocar: () => void
+  onTrocar?: () => void
+  cabecalho?: CabecalhoDoTime
+  /** Botões no lado direito do cabeçalho (no lugar do "Trocar"). */
+  acoes?: React.ReactNode
 }) {
   const { token } = useAuth()
   const { meuTime } = useFutebol()
@@ -224,25 +240,35 @@ function PaginaDoTime({
   return (
     <>
       <section className="flex items-center gap-4 rounded-brutal border border-line bg-void/60 p-4">
-        <Escudo src={meuTime?.teamLogo} sigla={meuTime?.teamAbbr ?? ''} cor={meuTime?.teamColor} className="h-16 w-16" />
+        <Escudo
+          src={cabecalho ? cabecalho.escudo : meuTime?.teamLogo}
+          sigla={cabecalho ? cabecalho.sigla : meuTime?.teamAbbr ?? ''}
+          cor={cabecalho ? cabecalho.cor : meuTime?.teamColor}
+          className="h-16 w-16"
+        />
         <div className="min-w-0 flex-1">
-          <h2 className="title-brutal truncate text-2xl leading-none text-foreground">{meuTime?.teamName}</h2>
+          <h2 className="title-brutal truncate text-2xl leading-none text-foreground">{cabecalho?.nome ?? meuTime?.teamName}</h2>
           {pos ? (
             <p className="mt-1 text-sm text-muted-foreground">
               <span className="font-mono text-acid-text">{pos.linha.posicao}º</span> na {ligaNome} · {pos.linha.pontos}{' '}
               pts em {pos.linha.jogos} jogos · {pos.linha.vitorias}V {pos.linha.empates}E {pos.linha.derrotas}D
             </p>
+          ) : cabecalho?.legenda ? (
+            <p className="mt-1 text-sm text-muted-foreground">{cabecalho.legenda}</p>
           ) : (
-            dados && <p className="mt-1 text-sm text-muted-foreground">Fora da Série A e B agora.</p>
+            dados && !cabecalho && <p className="mt-1 text-sm text-muted-foreground">Fora da Série A e B agora.</p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onTrocar}
-          className="shrink-0 rounded-brutal border border-line px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
-        >
-          Trocar
-        </button>
+        {acoes}
+        {onTrocar && (
+          <button
+            type="button"
+            onClick={onTrocar}
+            className="shrink-0 rounded-brutal border border-line px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
+          >
+            Trocar
+          </button>
+        )}
       </section>
 
       {erro && <Vazio>Sem dados do time agora.</Vazio>}

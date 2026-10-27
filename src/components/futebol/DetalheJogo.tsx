@@ -19,7 +19,7 @@ import {
 } from '@/lib/api-futebol'
 import { cn } from '@/lib/utils'
 import { Escudo, FutebolIcon } from './FutebolGlyphs'
-import { EstadoDoJogo, PalpiteEditor, pontosTom } from './JogoLinha'
+import { BotaoAssistir, EstadoDoJogo, PalpiteEditor, pontosTom } from './JogoLinha'
 
 /**
  * O JOGO ABERTO: placar grande, e em abas o que a ESPN tiver — lances,
@@ -51,13 +51,21 @@ export function DetalheJogoDialog({
   return (
     <Dialog open={!!jogo} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl gap-0 p-0 sm:p-0">
-        {jogo && <Conteudo inicial={jogo} onPalpite={onPalpite} />}
+        {jogo && <Conteudo inicial={jogo} onPalpite={onPalpite} onClose={onClose} />}
       </DialogContent>
     </Dialog>
   )
 }
 
-function Conteudo({ inicial, onPalpite }: { inicial: Jogo; onPalpite?: (jogoId: string, p: MeuPalpite | null) => void }) {
+function Conteudo({
+  inicial,
+  onPalpite,
+  onClose
+}: {
+  inicial: Jogo
+  onPalpite?: (jogoId: string, p: MeuPalpite | null) => void
+  onClose: () => void
+}) {
   const { token } = useAuth()
   const [det, setDet] = React.useState<Detalhe | null>(null)
   const [erro, setErro] = React.useState<string | null>(null)
@@ -101,9 +109,18 @@ function Conteudo({ inicial, onPalpite }: { inicial: Jogo; onPalpite?: (jogoId: 
         <DialogTitle className="sr-only">
           {jogo.casa.nome} x {jogo.fora.nome}
         </DialogTitle>
-        <DialogDescription className="pr-8 text-[11.5px] text-muted-foreground">
-          {[jogo.ligaNome, jogo.fase].filter(Boolean).join(' · ')}
-        </DialogDescription>
+        <div className="flex items-start gap-2 pr-8">
+          <DialogDescription className="min-w-0 flex-1 text-[11.5px] text-muted-foreground">
+            {[jogo.ligaNome, jogo.fase].filter(Boolean).join(' · ')}
+          </DialogDescription>
+          {/* No detalhe o botão aparece sempre que o jogo está perto: é aqui
+              que se cola o link quando o radar não achou nada. */}
+          <BotaoAssistir
+            jogo={jogo}
+            tv={jogo.estado !== 'pre' || new Date(jogo.inicio).getTime() - Date.now() < 3 * 3600_000 ? 1 : 0}
+            onAssistir={onClose}
+          />
+        </div>
 
         <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <TimeGrande lado={jogo.casa} />

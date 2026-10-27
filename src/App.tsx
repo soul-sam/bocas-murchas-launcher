@@ -25,6 +25,7 @@ import { ActivityProvider } from '@/lib/activity-context'
 import { PartyProvider } from '@/lib/party-context'
 import { PokerProvider } from '@/lib/poker-context'
 import { FutebolProvider } from '@/lib/futebol-context'
+import { FutebolPlayer } from '@/components/futebol/FutebolPlayer'
 import { CartasProvider } from '@/lib/cartas-context'
 import { BoardProvider } from '@/lib/board-context'
 import { SmokeProvider } from '@/lib/smoke-context'
@@ -487,6 +488,8 @@ function AuthedLayout() {
                                         notificacao pra conversa certa. */}
                                     <DeepLink />
                                     <AuthedShell />
+                                    {/* Jogo no player continua tocando fora da tela de futebol. */}
+                                    {!isPopout() && <FutebolPlayer />}
                                   </PrintProvider>
                                 </RichTextProvider>
                               </WatchProvider>

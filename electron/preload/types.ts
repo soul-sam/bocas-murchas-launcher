@@ -492,6 +492,8 @@ export interface FutebolSettings {
    * estou em jogo, no balão do Windows com o app atrás.
    */
   avisos: boolean
+  /** Gol, começo e fim de TODO jogo da Seleção (masculina e feminina), torcendo ou não. */
+  selecao: boolean
 }
 
 export interface LolSettings {
@@ -1117,7 +1119,8 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     overlay: true
   },
   futebol: {
-    avisos: true
+    avisos: true,
+    selecao: true
   },
   overlay: {
     enabled: true,

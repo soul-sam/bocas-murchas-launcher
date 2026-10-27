@@ -21,9 +21,18 @@ import { request } from './api'
  *   POST   /palpites { liga, jogoId, home, away } -> { palpite }
  *   DELETE /palpites/:jogoId
  *   GET    /ranking?periodo=            -> { periodo, linhas }
+ *   GET    /copa/:liga?ano=             -> EdicaoDaCopa
+ *   GET    /transmissoes/:liga/:id      -> { jogo, fontes, assistindo }
+ *   POST   /transmissoes/:liga/:id { url } -> { fonte, fontes }
+ *   DELETE /transmissoes/:jogoId/:videoId
+ *   GET    /assistindo                  -> { assistindo: Record<jogoId, userId[]> }
+ *   POST   /assistindo { jogoId|null }  (bate ponto a cada minuto com o player aberto)
+ *   POST   /chamar { liga, jogoId }     card "vem assistir" no feed de jogos
  *
  * Sockets: `futebol:aovivo` (todo mundo), `futebol:torcedor` (todo mundo),
- * `futebol:gol` / `futebol:apito` / `futebol:lembrete` (sala pessoal).
+ * `futebol:gol` / `futebol:apito` / `futebol:lembrete` (sala pessoal, ou todo
+ * mundo com `selecao: true` quando é jogo da Seleção), `futebol:transmissao`
+ * { jogoId } (alguém colou/tirou link) e `futebol:assistindo`.
  */
 
 export type Estado = 'pre' | 'in' | 'post'
@@ -205,6 +214,50 @@ export interface Liga {
   tabela: boolean
   aoVivo: boolean
   zonas?: Zona[]
+  soSelecao?: boolean
+  /** Copa com edições navegáveis (Copa do Mundo, Copa América…), mais nova primeiro. */
+  edicoes?: number[]
+}
+
+export type FaseCopa = 'grupos' | '32avos' | 'oitavas' | 'quartas' | 'semi' | 'terceiro' | 'final'
+
+export interface FaseDaCopa {
+  fase: FaseCopa
+  nome: string
+  jogos: Jogo[]
+}
+
+export interface EdicaoDaCopa {
+  liga: string
+  ano: number
+  grupos: GrupoTabela[]
+  fases: FaseDaCopa[]
+  destaques: { gols: Artilheiro[]; assistencias: Artilheiro[] }
+  campeao: Lado | null
+  vice: Lado | null
+  /** Campanha da Seleção nessa edição, em ordem. */
+  selecao: Jogo[]
+}
+
+export type TipoFonte = 'aovivo' | 'melhores' | 'completo'
+
+/** Um vídeo pra assistir o jogo (só YouTube, só fonte oficial ou colada pela galera). */
+export interface Fonte {
+  videoId: string
+  titulo: string
+  canal: string | null
+  tipo: TipoFonte
+  origem: 'radar' | 'galera'
+  por: string | null
+  /** false = o dono do vídeo não deixa tocar fora do YouTube. */
+  embed: boolean
+  publicado: string | null
+}
+
+export interface Transmissoes {
+  jogo: Jogo
+  fontes: Fonte[]
+  assistindo: string[]
 }
 
 export interface PalpiteComJogo extends MeuPalpite {
@@ -233,12 +286,14 @@ export interface TimeDetalhe {
   posicao: { liga: string; linha: LinhaTabela } | null
 }
 
-/** Metadata do card `futebol` (fim de jogo com os palpites). */
-export interface FutebolCardMeta {
-  kind: 'resultado'
-  jogo: Jogo
-  palpites: Array<{ userId: string; home: number; away: number; pontos: number }>
-}
+/** Metadata do card `futebol`: fim de jogo com os palpites, ou convite pra assistir. */
+export type FutebolCardMeta =
+  | {
+      kind: 'resultado'
+      jogo: Jogo
+      palpites: Array<{ userId: string; home: number; away: number; pontos: number }>
+    }
+  | { kind: 'convite'; jogo: Jogo; fonte: Fonte | null }
 
 /** Eventos da sala pessoal. */
 export interface GolEvento {
@@ -246,29 +301,57 @@ export interface GolEvento {
   timeId: string
   jogador: string | null
   minuto: string
+  /** Jogo da Seleção: veio pra todo mundo, não pela sala pessoal. */
+  selecao?: boolean
 }
 
 export interface ApitoEvento {
   tipo: 'inicio' | 'fim'
   jogo: Jogo
+  selecao?: boolean
 }
 
 export interface LembreteEvento {
   jogo: Jogo
+  selecao?: boolean
+  /** Só na da Seleção: quem já palpitou (o aviso foi pra todo mundo). */
+  palpitaram?: string[]
 }
 
 export const futebol = {
   ligas: (token: string) => request<{ ligas: Liga[] }>('/futebol/ligas', { token }).then((r) => r.ligas),
+  /** `tv`: jogoId -> quantas fontes pra assistir (sem chave = nenhuma). */
   jogos: (token: string, dia: string, liga?: string) =>
-    request<{ dia: string; jogos: Jogo[] }>(
+    request<{ dia: string; jogos: Jogo[]; tv?: Record<string, number> }>(
       `/futebol/jogos?dia=${dia}${liga ? `&liga=${encodeURIComponent(liga)}` : ''}`,
       { token }
-    ).then((r) => r.jogos),
+    ).then((r) => ({ jogos: r.jogos, tv: r.tv ?? {} })),
   aoVivo: (token: string) => request<{ jogos: Jogo[] }>('/futebol/aovivo', { token }).then((r) => r.jogos),
-  tabela: (token: string, liga: string) =>
-    request<{ liga: string; grupos: GrupoTabela[]; zonas: Zona[] }>(`/futebol/tabela/${encodeURIComponent(liga)}`, {
-      token
+  tabela: (token: string, liga: string, ano?: number) =>
+    request<{ liga: string; grupos: GrupoTabela[]; zonas: Zona[] }>(
+      `/futebol/tabela/${encodeURIComponent(liga)}${ano ? `?ano=${ano}` : ''}`,
+      { token }
+    ),
+  copa: (token: string, liga: string, ano?: number) =>
+    request<EdicaoDaCopa>(`/futebol/copa/${encodeURIComponent(liga)}${ano ? `?ano=${ano}` : ''}`, { token }),
+  transmissoes: (token: string, liga: string, id: string) =>
+    request<Transmissoes>(`/futebol/transmissoes/${encodeURIComponent(liga)}/${encodeURIComponent(id)}`, { token }),
+  colarTransmissao: (token: string, liga: string, id: string, url: string) =>
+    request<{ fonte: Fonte; fontes: Fonte[] }>(
+      `/futebol/transmissoes/${encodeURIComponent(liga)}/${encodeURIComponent(id)}`,
+      { token, method: 'POST', body: JSON.stringify({ url }) }
+    ),
+  tirarTransmissao: (token: string, jogoId: string, videoId: string) =>
+    request<{ ok: true }>(`/futebol/transmissoes/${encodeURIComponent(jogoId)}/${encodeURIComponent(videoId)}`, {
+      token,
+      method: 'DELETE'
     }),
+  assistindo: (token: string) =>
+    request<{ assistindo: Record<string, string[]> }>('/futebol/assistindo', { token }).then((r) => r.assistindo),
+  marcarAssistindo: (token: string, jogoId: string | null) =>
+    request<{ ok: true }>('/futebol/assistindo', { token, method: 'POST', body: JSON.stringify({ jogoId }) }),
+  chamar: (token: string, liga: string, jogoId: string) =>
+    request<{ ok: true }>('/futebol/chamar', { token, method: 'POST', body: JSON.stringify({ liga, jogoId }) }),
   destaques: (token: string, liga: string) =>
     request<{ gols: Artilheiro[]; assistencias: Artilheiro[] }>(`/futebol/destaques/${encodeURIComponent(liga)}`, {
       token

@@ -7,6 +7,7 @@ import { TabelaAba } from '@/components/futebol/TabelaAba'
 import { PalpitesAba } from '@/components/futebol/PalpitesAba'
 import { MeuTimeAba } from '@/components/futebol/MeuTimeAba'
 import { NoticiasAba } from '@/components/futebol/NoticiasAba'
+import { SelecaoAba } from '@/components/futebol/SelecaoAba'
 import { Chips, Secao, Vazio } from '@/components/futebol/comum'
 import { useAuth } from '@/lib/auth-context'
 import { useSettings } from '@/lib/settings-context'
@@ -24,8 +25,9 @@ import {
 import { cn } from '@/lib/utils'
 
 /**
- * FUTEBOL — a tela. Cinco abas: Jogos (o dia, com placar ao vivo e o palpite
- * na própria linha), Tabela (zonas, quem do grupo torce pra quem, artilharia),
+ * FUTEBOL — a tela. Seis abas: Jogos (o dia, com placar ao vivo, o palpite na
+ * própria linha e o botão de assistir), Tabela (zonas, quem do grupo torce
+ * pra quem, artilharia), Seleção e Copa (a Seleção e as copas por edição),
  * Bolão (ranking dos palpites), Meu time e Notícias.
  *
  * Os dados vêm da ESPN pela API (lib/futebol na API). O placar ao vivo chega
@@ -35,11 +37,12 @@ import { cn } from '@/lib/utils'
  * de ao vivo.
  */
 
-type Aba = 'jogos' | 'tabela' | 'bolao' | 'time' | 'noticias'
+type Aba = 'jogos' | 'tabela' | 'selecao' | 'bolao' | 'time' | 'noticias'
 
 const ABAS: Array<{ id: Aba; nome: string }> = [
   { id: 'jogos', nome: 'Jogos' },
   { id: 'tabela', nome: 'Tabela' },
+  { id: 'selecao', nome: 'Seleção e Copa' },
   { id: 'bolao', nome: 'Bolão' },
   { id: 'time', nome: 'Meu time' },
   { id: 'noticias', nome: 'Notícias' }
@@ -86,7 +89,7 @@ export function FutebolPage() {
     ? `${meuJogo.casa.curto} ${meuJogo.casa.gols ?? 0} x ${meuJogo.fora.gols ?? 0} ${meuJogo.fora.curto} · ${meuJogo.rotulo}`
     : meuTime
       ? `Torcendo pro ${meuTime.teamName}`
-      : 'Brasileirão, Copa do Brasil, Libertadores e estaduais ao vivo'
+      : 'Brasileirão, Seleção, Copa, Libertadores e estaduais ao vivo'
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
@@ -100,11 +103,11 @@ export function FutebolPage() {
         </div>
         <button
           type="button"
-          onClick={() => void update({ futebol: { avisos: !avisos } })}
+          onClick={() => void update({ futebol: { ...settings.futebol, avisos: !avisos } })}
           aria-pressed={avisos}
           title={
             avisos
-              ? 'Avisos ligados: gol, começo e fim do jogo do seu time e dos jogos em que palpitou'
+              ? 'Avisos ligados: gol, começo e fim do jogo do seu time, da Seleção e dos jogos em que palpitou'
               : 'Avisos desligados'
           }
           className={cn(
@@ -143,6 +146,7 @@ export function FutebolPage() {
         <div className="mx-auto flex max-w-3xl flex-col gap-6">
           {aba === 'jogos' && <JogosAba ligas={ligas} onAbrir={setAberto} mudou={mudou} />}
           {aba === 'tabela' && <TabelaAba ligas={ligas} />}
+          {aba === 'selecao' && <SelecaoAba ligas={ligas} onAbrir={setAberto} />}
           {aba === 'bolao' && <PalpitesAba />}
           {aba === 'time' && <MeuTimeAba ligas={ligas} onAbrir={setAberto} />}
           {aba === 'noticias' && <NoticiasAba ligas={ligas} />}
@@ -167,6 +171,7 @@ function JogosAba({ ligas, onAbrir, mudou }: { ligas: Liga[]; onAbrir: (j: Jogo)
   const [dia, setDia] = React.useState(hoje)
   const [liga, setLiga] = React.useState<string>(TODAS)
   const [jogos, setJogos] = React.useState<Jogo[] | null>(null)
+  const [tv, setTv] = React.useState<Record<string, number>>({})
   const [palpites, setPalpites] = React.useState<Record<string, PalpitesDoJogo>>({})
   const [erro, setErro] = React.useState<string | null>(null)
   const [recarregando, setRecarregando] = React.useState(false)
@@ -179,8 +184,9 @@ function JogosAba({ ligas, onAbrir, mudou }: { ligas: Liga[]; onAbrir: (j: Jogo)
       if (!silencioso) setJogos(null)
       setRecarregando(true)
       try {
-        const lista = await futebol.jogos(token, dia)
+        const { jogos: lista, tv: comVideo } = await futebol.jogos(token, dia)
         setJogos(lista)
+        setTv(comVideo)
         setErro(null)
         setPalpites(await futebol.palpites(token, lista.map((j) => j.id)).catch(() => ({})))
       } catch {
@@ -250,6 +256,7 @@ function JogosAba({ ligas, onAbrir, mudou }: { ligas: Liga[]; onAbrir: (j: Jogo)
       destaque={destaque}
       onAbrir={onAbrir}
       onPalpite={mudouPalpite}
+      tv={tv[j.id]}
     />
   )
 

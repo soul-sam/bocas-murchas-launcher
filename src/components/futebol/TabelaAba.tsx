@@ -91,7 +91,8 @@ export function TabelaAba({ ligas }: { ligas: Liga[] }) {
   )
 }
 
-function Tabela({ grupo, zonas }: { grupo: GrupoTabela; zonas: Zona[] }) {
+/** `compacta`: só P, J e SG — os 12 grupos da Copa lado a lado não cabem com as 9 colunas. */
+export function Tabela({ grupo, zonas, compacta }: { grupo: GrupoTabela; zonas: Zona[]; compacta?: boolean }) {
   const { torcidas, meuTime } = useFutebol()
   const { byId } = useMembers()
   const fas = React.useMemo(() => {
@@ -111,10 +112,14 @@ function Tabela({ grupo, zonas }: { grupo: GrupoTabela; zonas: Zona[] }) {
               <th className="py-1.5 text-left font-normal">Time</th>
               <th className="w-9 py-1.5 text-center font-normal text-foreground">P</th>
               <th className="w-8 py-1.5 text-center font-normal">J</th>
-              <th className="hidden w-8 py-1.5 text-center font-normal sm:table-cell">V</th>
-              <th className="hidden w-8 py-1.5 text-center font-normal sm:table-cell">E</th>
-              <th className="hidden w-8 py-1.5 text-center font-normal sm:table-cell">D</th>
-              <th className="hidden w-10 py-1.5 text-center font-normal md:table-cell">GP</th>
+              {!compacta && (
+                <>
+                  <th className="hidden w-8 py-1.5 text-center font-normal sm:table-cell">V</th>
+                  <th className="hidden w-8 py-1.5 text-center font-normal sm:table-cell">E</th>
+                  <th className="hidden w-8 py-1.5 text-center font-normal sm:table-cell">D</th>
+                  <th className="hidden w-10 py-1.5 text-center font-normal md:table-cell">GP</th>
+                </>
+              )}
               <th className="w-10 py-1.5 pr-2 text-center font-normal">SG</th>
             </tr>
           </thead>
@@ -155,10 +160,14 @@ function Tabela({ grupo, zonas }: { grupo: GrupoTabela; zonas: Zona[] }) {
                   </td>
                   <td className="py-1.5 text-center font-mono tabular-nums text-foreground">{l.pontos}</td>
                   <td className="py-1.5 text-center font-mono tabular-nums text-muted-foreground">{l.jogos}</td>
-                  <td className="hidden py-1.5 text-center font-mono tabular-nums text-muted-foreground sm:table-cell">{l.vitorias}</td>
-                  <td className="hidden py-1.5 text-center font-mono tabular-nums text-muted-foreground sm:table-cell">{l.empates}</td>
-                  <td className="hidden py-1.5 text-center font-mono tabular-nums text-muted-foreground sm:table-cell">{l.derrotas}</td>
-                  <td className="hidden py-1.5 text-center font-mono tabular-nums text-muted-foreground md:table-cell">{l.golsPro}</td>
+                  {!compacta && (
+                    <>
+                      <td className="hidden py-1.5 text-center font-mono tabular-nums text-muted-foreground sm:table-cell">{l.vitorias}</td>
+                      <td className="hidden py-1.5 text-center font-mono tabular-nums text-muted-foreground sm:table-cell">{l.empates}</td>
+                      <td className="hidden py-1.5 text-center font-mono tabular-nums text-muted-foreground sm:table-cell">{l.derrotas}</td>
+                      <td className="hidden py-1.5 text-center font-mono tabular-nums text-muted-foreground md:table-cell">{l.golsPro}</td>
+                    </>
+                  )}
                   <td className="py-1.5 pr-2 text-center font-mono tabular-nums text-muted-foreground">
                     {l.saldo > 0 ? `+${l.saldo}` : l.saldo}
                   </td>
@@ -172,7 +181,7 @@ function Tabela({ grupo, zonas }: { grupo: GrupoTabela; zonas: Zona[] }) {
   )
 }
 
-function Destaque({ titulo, lista, unidade }: { titulo: string; lista: Artilheiro[]; unidade: string }) {
+export function Destaque({ titulo, lista, unidade }: { titulo: string; lista: Artilheiro[]; unidade: string }) {
   if (lista.length === 0) return null
   return (
     <section>
