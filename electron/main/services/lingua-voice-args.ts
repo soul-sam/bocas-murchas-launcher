@@ -16,6 +16,12 @@ export const VOICE_BCP47: Readonly<Record<string, string>> = {
 
 const ALLOWED_BCP47 = new Set(Object.values(VOICE_BCP47))
 
+/** PowerShell por caminho absoluto (não depende do PATH). */
+export function powershellPath(): string {
+  const root = process.env.SystemRoot ?? 'C:\\Windows'
+  return `${root}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`
+}
+
 /** Nome da capability do Windows pra voz. null se o BCP47 não é um dos 7. */
 export function voiceCapabilityName(bcp47: string): string | null {
   if (!ALLOWED_BCP47.has(bcp47)) return null
@@ -27,9 +33,13 @@ export function buildInstallArgs(lang: string): string[] | null {
   const bcp47 = Object.hasOwn(VOICE_BCP47, lang) ? VOICE_BCP47[lang] : lang
   const name = voiceCapabilityName(bcp47)
   if (!name) return null
+  // Start-Process -Wait não propaga o exit code do processo elevado: -PassThru
+  // + `exit $p.ExitCode`. O interno sai com 1 se a instalação falhar.
+  const ps = powershellPath()
+  const inner = `-NoProfile -Command try { Add-WindowsCapability -Online -Name ${name} -ErrorAction Stop } catch { exit 1 }`
   return [
     '-NoProfile',
     '-Command',
-    `Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile -Command Add-WindowsCapability -Online -Name ${name}'`
+    `$p = Start-Process '${ps}' -Verb RunAs -Wait -PassThru -ArgumentList '${inner}'; exit $p.ExitCode`
   ]
 }

@@ -31,6 +31,15 @@ test('pickVoice: sem voz -> null; outra língua não casa', () => {
   assert.equal(pickVoice([{ lang: 'es-ES', name: 'Helena' }], 'de'), null)
 })
 
+test('pickVoice zh: prefere zh-CN; tradicional nunca serve de fallback', () => {
+  const tw = { lang: 'zh-TW', name: 'HanHan' }
+  const hk = { lang: 'zh-HK', name: 'Danny' }
+  const cn = { lang: 'zh-CN', name: 'Huihui' }
+  assert.equal(pickVoice([tw, hk, cn], 'zh')?.name, 'Huihui')
+  assert.equal(pickVoice([tw, hk], 'zh'), null)
+  assert.equal(pickVoice([tw, { lang: 'zh-Hans', name: 'Hans' }], 'zh')?.name, 'Hans')
+})
+
 test('VOICE_LANG do renderer bate com o mapa do main', () => {
   assert.deepEqual(VOICE_LANG, VOICE_BCP47)
 })
@@ -39,7 +48,10 @@ test('buildInstallArgs: monta a capability certa', () => {
   const args = buildInstallArgs('ja')
   assert.ok(args)
   assert.match(args[2], /Language\.TextToSpeech~~~ja-JP~0\.0\.1\.0/)
-  assert.match(args[2], /-Verb RunAs -Wait/)
+  assert.match(args[2], /-Verb RunAs -Wait -PassThru/)
+  assert.match(args[2], /exit \$p\.ExitCode/)
+  assert.match(args[2], /-ErrorAction Stop \} catch \{ exit 1 \}/)
+  assert.match(args[2], /System32\\WindowsPowerShell\\v1\.0\\powershell\.exe/)
   assert.equal(voiceCapabilityName('zh-CN'), 'Language.TextToSpeech~~~zh-CN~0.0.1.0')
 })
 
