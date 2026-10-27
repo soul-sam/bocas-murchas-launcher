@@ -58,6 +58,7 @@ import { getMainWindow, showMainWindow } from './services/main-window.js'
 import { bringBack, closePopout, flashPopout, focusPopout, getPopoutState, openPopout } from './services/popout.js'
 import type { PopoutKind, TrayCommand } from '../preload/types.js'
 import { app, powerMonitor } from 'electron'
+import { installVoice as installLinguaVoice } from './services/lingua-voice.js'
 
 function serializeError(err: unknown): { message: string; code?: string } {
   if (err instanceof Error) {
@@ -234,6 +235,11 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('app:apply-autostart', async () => applyAutostart())
 
   ipcMain.handle('app:launched-at-login', async () => launchedAtLogin())
+
+  ipcMain.handle('lingua:install-voice', async (_e, lang: string) => installLinguaVoice(String(lang)))
+  ipcMain.handle('lingua:open-speech-settings', async () => {
+    await shell.openExternal('ms-settings:speech')
+  })
 
   ipcMain.handle('app:version', async () => app.getVersion())
 

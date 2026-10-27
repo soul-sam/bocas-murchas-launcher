@@ -1434,6 +1434,16 @@ export interface BocasAPI {
      */
     setMode: (patch: Partial<OverlayMode>) => Promise<void>
   }
+  /** Língua Murcha: voz de leitura (TTS) do Windows. */
+  lingua: {
+    /**
+     * Instala a voz da língua (en|ja|fr|it|es|de|zh) via UAC. `restartNeeded`:
+     * o Chromium só enxerga a voz nova depois de reiniciar o app.
+     */
+    installVoice: (lang: string) => Promise<{ ok: boolean; error?: string; restartNeeded?: boolean }>
+    /** Abre Configurações > Fala do Windows (ms-settings:speech). */
+    openSpeechSettings: () => Promise<void>
+  }
   app: {
     /** Aplica iniciar-com-o-Windows AGORA (a preferencia ja foi salva). */
     applyAutostart: () => Promise<{ enabled: boolean; supported: boolean }>

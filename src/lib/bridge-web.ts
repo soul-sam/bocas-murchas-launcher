@@ -461,6 +461,11 @@ function criarPonte(): BocasAPI {
       onIdleDock: semEventos,
     },
 
+    lingua: {
+      installVoice: async () => ({ ok: false, error: 'web' }),
+      openSpeechSettings: async () => {},
+    },
+
     app: {
       applyAutostart: async () => ({ enabled: false, supported: false }),
       launchedAtLogin: async () => false,

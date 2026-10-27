@@ -138,6 +138,10 @@ const api: BocasAPI = {
     onState: (cb) => on('popout:state', cb),
     onBringBack: (cb) => on('popout:bring-back', cb)
   },
+  lingua: {
+    installVoice: (lang) => ipcRenderer.invoke('lingua:install-voice', lang),
+    openSpeechSettings: () => ipcRenderer.invoke('lingua:open-speech-settings')
+  },
   app: {
     applyAutostart: () => ipcRenderer.invoke('app:apply-autostart'),
     launchedAtLogin: () => ipcRenderer.invoke('app:launched-at-login'),
