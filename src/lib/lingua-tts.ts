@@ -69,10 +69,15 @@ export async function hasVoice(lang: Lang): Promise<boolean> {
   return pickVoice(await loadVoices(), lang) !== null
 }
 
-/** Fala `text` na voz da língua; resolve ao terminar. Sem voz: resolve sem falar. */
-export async function speak(text: string, lang: Lang): Promise<void> {
+/**
+ * Fala `text` na voz da língua; resolve ao terminar. Sem voz: resolve sem falar.
+ * `stillWanted`: conferido depois de carregar as vozes — se a tela já saiu ou
+ * a pergunta já mudou, não fala.
+ */
+export async function speak(text: string, lang: Lang, stillWanted?: () => boolean): Promise<void> {
   const voice = pickVoice(await loadVoices(), lang)
   if (!voice) return
+  if (stillWanted && !stillWanted()) return
   speechSynthesis.cancel()
   await new Promise<void>((resolve) => {
     const u = new SpeechSynthesisUtterance(text)

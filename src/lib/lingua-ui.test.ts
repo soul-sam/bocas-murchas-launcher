@@ -73,6 +73,7 @@ test('errorMessage: no_lives oferece compra só com preço', () => {
 test('errorMessage: códigos conhecidos viram frase; frase passa; código estranho vira genérico', () => {
   assert.equal(errorMessage('insufficient_funds'), 'Murchos insuficientes pra comprar vida.')
   assert.equal(errorMessage('no_more_purchases'), 'Já comprou as 2 vidas de hoje.')
+  assert.equal(errorMessage('not_awaiting'), 'Essa lição já tinha continuado ou fechado.')
   assert.equal(errorMessage('Erro ao iniciar lição'), 'Erro ao iniciar lição')
   assert.equal(errorMessage('weird_code'), 'Deu ruim. Tenta de novo.')
   assert.match(errorMessage(null), /conexão/)

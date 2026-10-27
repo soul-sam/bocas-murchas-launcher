@@ -11,9 +11,20 @@ type Step = 'ask' | 'installing' | 'restart' | 'manual'
 
 /**
  * Língua sem voz no sistema: oferece instalar pelo launcher (UAC). Falhou ou
- * é a versão web → passo a passo do Windows. Sempre dá pra seguir sem som.
+ * é a versão web → passo a passo do Windows. Sempre dá pra seguir sem som
+ * (só pelo botão: fechar o diálogo não começa a lição).
  */
-export function VoiceSetup({ lang, onContinue }: { lang: Lang; onContinue: () => void }) {
+export function VoiceSetup({
+  lang,
+  onContinue,
+  onCancel
+}: {
+  lang: Lang
+  /** "Continuar sem som": segue pra lição (começa o dia). */
+  onContinue: () => void
+  /** Fechou o diálogo (Esc, fora, X): volta pra lista sem mandar nada pro servidor. */
+  onCancel: () => void
+}) {
   const [step, setStep] = React.useState<Step>(isWeb() ? 'manual' : 'ask')
   const [error, setError] = React.useState<string | null>(null)
 
@@ -34,7 +45,7 @@ export function VoiceSetup({ lang, onContinue }: { lang: Lang; onContinue: () =>
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && step !== 'installing' && onContinue()}>
+    <Dialog open onOpenChange={(open) => !open && step !== 'installing' && onCancel()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

@@ -78,7 +78,14 @@ export function LinguaPage() {
 
   const buyLife = async () => {
     if (!token) return
-    setLives(await lingua.buyLife(token))
+    try {
+      setLives(await lingua.buyLife(token))
+    } catch (e) {
+      // Preço/compras mudaram por fora: recarrega pra não mostrar preço velho.
+      const code = errorCode(e)
+      if (code === 'no_more_purchases' || code === 'insufficient_funds') loadMe()
+      throw e
+    }
     void refreshProfile()
   }
 
@@ -128,6 +135,17 @@ export function LinguaPage() {
     if (!state.level) setPicking(lang)
     else void proceed(lang)
   }
+
+  // Reabriu a página com lição em andamento (ou parada sem vida): retoma
+  // sozinho, uma vez — sair da lição e voltar pra lista não reabre.
+  const autoResumed = React.useRef(false)
+  React.useEffect(() => {
+    if (!me || autoResumed.current) return
+    autoResumed.current = true
+    const pending = me.langs.find((l) => l.today === 'active' || l.today === 'awaiting_life')
+    if (pending?.level) void proceed(pending.lang)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só na primeira carga do /me
+  }, [me])
 
   const backToList = (message: string | null) => {
     setLesson(null)
@@ -283,6 +301,7 @@ export function LinguaPage() {
             setVoiceFor(null)
             void begin(lang, level)
           }}
+          onCancel={() => setVoiceFor(null)}
         />
       )}
 

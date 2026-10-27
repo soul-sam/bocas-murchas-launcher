@@ -127,6 +127,8 @@ export function errorMessage(code: string | null, nextPrice: number | null = nul
       return 'Já comprou as 2 vidas de hoje.'
     case 'invalid_lang':
       return 'Língua desconhecida.'
+    case 'not_awaiting':
+      return 'Essa lição já tinha continuado ou fechado.'
     case 'attempt_not_found':
       return 'Lição não encontrada. Recarregue a página.'
   }

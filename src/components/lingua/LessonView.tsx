@@ -6,7 +6,6 @@ import {
   type AttemptStatus,
   type AttemptView,
   type FinishResult,
-  type Lang,
   type LivesView
 } from '@/lib/api-lingua'
 import { errorCode, errorMessage, LANG_NAME, optionSpeech, promptSpeech } from '@/lib/lingua-ui'
@@ -28,13 +27,13 @@ function stopSpeech() {
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel()
 }
 
-function SpeakButton({ text, lang, label }: { text: string; lang: Lang; label: string }) {
+function SpeakButton({ onSpeak, label }: { onSpeak: () => void; label: string }) {
   return (
     <button
       type="button"
       onClick={(e) => {
         e.stopPropagation()
-        void speak(text, lang)
+        onSpeak()
       }}
       title={label}
       aria-label={label}
@@ -86,12 +85,33 @@ export function LessonView({
   const q = questions[position]
   const foreignPrompt = q ? promptSpeech(q) : null
 
+  // Fala só enquanto a tela está aberta e na mesma pergunta: cada troca de
+  // pergunta (e a saída) muda a geração, e a fala atrasada fica muda.
+  const alive = React.useRef(true)
+  const speechGen = React.useRef(0)
+  const say = React.useCallback(
+    (text: string) => {
+      const gen = speechGen.current
+      void speak(text, lang, () => alive.current && speechGen.current === gen)
+    },
+    [lang]
+  )
+
+  React.useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+      speechGen.current++
+      stopSpeech()
+    }
+  }, [])
+
   // Enunciado estrangeiro: fala sozinho quando a pergunta aparece.
   React.useEffect(() => {
-    if (foreignPrompt) void speak(foreignPrompt, lang)
-  }, [foreignPrompt, lang, position])
-
-  React.useEffect(() => stopSpeech, [])
+    speechGen.current++
+    stopSpeech()
+    if (foreignPrompt) say(foreignPrompt)
+  }, [foreignPrompt, say, position])
 
   const choose = async (choice: number) => {
     if (!q || busy || feedback || status !== 'active') return
@@ -99,14 +119,16 @@ export function LessonView({
     setError(null)
     try {
       const res = await lingua.answer(token, attempt.attemptId, position, choice)
+      if (!alive.current) return
       onLives(res.lives)
       setFeedback({ choice, answer: res.answer, correct: res.correct })
       setStatus(res.status)
       if (res.result) setResult(res.result)
       // Opções estrangeiras: fala a certa, pra fixar.
       const right = optionSpeech(q, res.answer)
-      if (right) void speak(right, lang)
+      if (right) say(right)
     } catch (e) {
+      if (!alive.current) return
       const code = errorCode(e)
       if (code === 'no_lives' && lives.nextPrice !== null) {
         setStatus('awaiting_life')
@@ -117,7 +139,7 @@ export function LessonView({
         setError(errorMessage(code))
       }
     } finally {
-      setBusy(false)
+      if (alive.current) setBusy(false)
     }
   }
 
@@ -149,10 +171,12 @@ export function LessonView({
     setBuyBusy(true)
     setBuyError(null)
     try {
-      onFinish(await lingua.giveUp(token, attempt.attemptId))
+      const result = await lingua.giveUp(token, attempt.attemptId)
+      if (alive.current) onFinish(result)
     } catch (e) {
+      if (!alive.current) return
       const code = errorCode(e)
-      // Já não estava esperando vida (fechou por fora): volta pra lista.
+      // Já não estava esperando vida (continuou ou fechou por fora): volta e recarrega.
       if (code === 'not_awaiting' || (code && FATAL.has(code))) onAbort(errorMessage(code, null))
       else setBuyError(errorMessage(code))
       setBuyBusy(false)
@@ -168,9 +192,10 @@ export function LessonView({
         <button
           type="button"
           onClick={onExit}
+          disabled={busy}
           title="Sair (continua depois, hoje)"
           aria-label="Sair da lição"
-          className="alvo-dedo rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
+          className="alvo-dedo rounded-brutal p-1.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground disabled:opacity-40"
         >
           <X className="h-5 w-5" aria-hidden />
         </button>
@@ -198,7 +223,7 @@ export function LessonView({
         <>
           <div className="flex items-start gap-2">
             <h2 className="flex-1 text-2xl font-semibold leading-tight text-foreground">{q.prompt}</h2>
-            {foreignPrompt && <SpeakButton text={foreignPrompt} lang={lang} label="Ouvir" />}
+            {foreignPrompt && <SpeakButton onSpeak={() => say(foreignPrompt)} label="Ouvir" />}
           </div>
           <p className="-mt-3 text-xs text-muted-foreground">
             {q.direction === 'to_pt' ? 'O que significa?' : `Como se diz em ${LANG_NAME[lang].toLowerCase()}?`}
@@ -235,7 +260,7 @@ export function LessonView({
                     {isRight && <Check className="h-4 w-4" aria-hidden />}
                     {isWrongPick && <X className="h-4 w-4" aria-hidden />}
                   </button>
-                  {speech && <SpeakButton text={speech} lang={lang} label={`Ouvir ${option}`} />}
+                  {speech && <SpeakButton onSpeak={() => say(speech)} label={`Ouvir ${option}`} />}
                 </div>
               )
             })}
