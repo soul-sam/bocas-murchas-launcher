@@ -690,6 +690,8 @@ export type CardMessageType =
   | 'poker'
   /** Mesa de truco ou cacheta aberta no canal de jogos. */
   | 'cartas'
+  /** Fim de jogo de futebol com os palpites da galera. */
+  | 'futebol'
 
 export type MessageType = 'text' | 'gif' | 'sticker' | 'image' | 'file' | 'video' | CardMessageType
 
@@ -710,7 +712,8 @@ export const CARD_MESSAGE_TYPES: ReadonlySet<string> = new Set<CardMessageType>(
   'clip',
   'print',
   'poker',
-  'cartas'
+  'cartas',
+  'futebol'
 ])
 
 export function isCardMessage(message: { type: string }): boolean {

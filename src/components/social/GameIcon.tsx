@@ -22,6 +22,7 @@ import { GameIcon as BocasGameIcon } from '@/lib/bocas-icons'
 import { parseFavoriteGames } from '@/lib/api'
 import { useMembersOptional } from '@/lib/members-context'
 import type { IconComponent } from '@/lib/icon-component'
+import { FutebolIcon } from '@/components/futebol/FutebolGlyphs'
 
 /**
  * Ícone do jogo. Um lugar só pra agenda, os cards, a faixa de "bora?" e os
@@ -100,6 +101,8 @@ const GAME_ICON: Record<string, IconComponent> = {
   chess: Crown,
   draughts: CircleDot,
   pool: CircleDashed,
+  // Tela de futebol (/futebol) e a pelada/jogo marcado na agenda.
+  futebol: FutebolIcon,
   valorant: Crosshair,
   cs2: Target,
   'arc-raiders': Radiation,
@@ -130,7 +133,8 @@ const GAME_ALIAS: [RegExp, string][] = [
   [/^(league-of-legends|tft)$/, 'lol'],
   [/^(counter-strike|cs-?go|cs-?2)$/, 'cs2'],
   [/^diablo(-[0-9iv]+)?$/, 'diablo'],
-  [/^priston(-tale)?$/, 'priston-tale']
+  [/^priston(-tale)?$/, 'priston-tale'],
+  [/^(pelada|soccer|bola|fut|futsal|society)$/, 'futebol']
 ]
 
 function iconFor(game: string): IconComponent | undefined {
@@ -203,6 +207,7 @@ const GAME_LABEL: Record<string, string> = {
   pool: 'Bilhar',
   truco: 'Truco',
   cacheta: 'Cacheta',
+  futebol: 'Futebol',
   ...Object.fromEntries(
     GAME_CATALOG.map((game) => [game.key, game.label])
   )

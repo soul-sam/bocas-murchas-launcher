@@ -126,6 +126,7 @@ function fundir(atual: LauncherSettings, patch: Partial<LauncherSettings>): Laun
     ...patch,
     voice: { ...atual.voice, ...(patch.voice ?? {}) },
     lol: { ...atual.lol, ...(patch.lol ?? {}) },
+    futebol: { ...atual.futebol, ...(patch.futebol ?? {}) },
     hotkeys: {
       ...atual.hotkeys,
       ...(patch.hotkeys ?? {}),

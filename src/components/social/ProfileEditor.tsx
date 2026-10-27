@@ -79,6 +79,7 @@ import { SupremeColorPicker } from './supreme/SupremeColorPicker'
 import { ownedNameColors, supremeColorSample, type OwnedColor } from '@/lib/supreme-shop'
 import { parseGradient } from '@/lib/name-gradient'
 import { ProfileHero, ProfileIdentity } from './ProfileCard'
+import { TimeDoCoracao } from '@/components/futebol/TimeDoCoracao'
 
 /**
  * Editor do perfil.
@@ -705,6 +706,9 @@ export function ProfileEditor({ open, onClose }: { open: boolean; onClose: () =>
                       : 'Aparece no seu perfil como "que horas são pra essa pessoa".'}
                   </p>
                 </div>
+
+                {/* Time do coração: salva na hora (é da tela de futebol, não do formulário). */}
+                <TimeDoCoracao />
 
                 {/* Jogos */}
                 <div className="space-y-1.5">

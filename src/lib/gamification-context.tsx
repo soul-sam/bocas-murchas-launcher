@@ -65,7 +65,8 @@ import { XpToasts } from '@/components/social/XpToast'
  */
 export interface GamificationToast {
   id: number
-  kind: 'levelup' | 'badge' | 'coins' | 'checkin' | 'gift' | 'info' | 'error'
+  /** `gol`: aviso do futebol-context (gol, apito, lembrete de palpite). */
+  kind: 'levelup' | 'badge' | 'coins' | 'checkin' | 'gift' | 'info' | 'error' | 'gol'
   title: string
   body?: string
   /**

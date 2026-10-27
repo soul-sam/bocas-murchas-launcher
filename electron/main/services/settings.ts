@@ -294,6 +294,7 @@ function normalize(raw: Partial<LauncherSettings>): LauncherSettings {
     shareMinecraftActivity: raw.shareMinecraftActivity ?? DEFAULTS.shareMinecraftActivity,
     lol: normalizeLol(raw.lol),
     overlay: normalizeOverlay(raw.overlay, raw.lol),
+    futebol: { avisos: typeof raw.futebol?.avisos === 'boolean' ? raw.futebol.avisos : DEFAULTS.futebol.avisos },
 
     voice: normalizeVoice(raw.voice),
     hotkeys: normalizeHotkeys(raw.hotkeys),
@@ -409,6 +410,7 @@ async function writeSettings(input: SettingsPatch): Promise<LauncherSettings> {
     voice: { ...current.voice, ...(patch.voice ?? {}) },
     lol: { ...current.lol, ...(patch.lol ?? {}) },
     overlay: { ...current.overlay, ...(patch.overlay ?? {}) },
+    futebol: { ...current.futebol, ...(patch.futebol ?? {}) },
     hotkeys: {
       ...current.hotkeys,
       ...(patch.hotkeys ?? {}),

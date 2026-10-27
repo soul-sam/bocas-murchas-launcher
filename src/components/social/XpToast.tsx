@@ -1,6 +1,7 @@
 import { X, ArrowUp, Info, TriangleAlert } from 'lucide-react'
 import { BadgeIcon as BocasBadgeIcon, GiftIcon, MurchosIcon, StreakIcon } from '@/lib/bocas-icons'
 import type { IconComponent } from '@/lib/icon-component'
+import { FutebolIcon } from '@/components/futebol/FutebolGlyphs'
 import { cn } from '@/lib/utils'
 import { NaFila } from '@/components/ui/filas'
 import { BadgeIcon } from '@/lib/cosmetic-icons'
@@ -53,7 +54,8 @@ const ACCENT: Record<GamificationToast['kind'], { border: string; text: string; 
   checkin: { border: 'border-burn/60', text: 'text-burn', Icon: StreakIcon },
   gift: { border: 'border-acid', text: 'text-acid', Icon: GiftIcon },
   info: { border: 'border-line-strong', text: 'text-muted-foreground', Icon: Info },
-  error: { border: 'border-destructive/60', text: 'text-destructive', Icon: TriangleAlert }
+  error: { border: 'border-destructive/60', text: 'text-destructive', Icon: TriangleAlert },
+  gol: { border: 'border-acid', text: 'text-acid', Icon: FutebolIcon }
 }
 
 function ToastRow({ toast, onDismiss }: { toast: GamificationToast; onDismiss: () => void }) {

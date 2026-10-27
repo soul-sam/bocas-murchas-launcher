@@ -35,6 +35,8 @@ import {
   localTimeIn
 } from '@/lib/profile-extras'
 import { GameIcon, gameLabel } from './GameIcon'
+import { Escudo } from '@/components/futebol/FutebolGlyphs'
+import { useFutebolOpcional } from '@/lib/futebol-context'
 import { useAuth } from '@/lib/auth-context'
 import { useNudge } from '@/lib/nudge-context'
 import { useActivity } from '@/lib/activity-context'
@@ -1185,8 +1187,10 @@ function AboutSection({
   const riotId = member.riotGameName
     ? `${member.riotGameName}#${member.riotTagLine ?? ''}`
     : null
+  // Time do coração (tela de futebol); fora do provider (janela própria), some.
+  const time = useFutebolOpcional()?.torcidas[member.id] ?? null
 
-  const hasFacts = !!localTime || !!birthdayLabel || games.length > 0
+  const hasFacts = !!localTime || !!birthdayLabel || games.length > 0 || !!time
   const empty = !member.bio && !hasFacts && links.length === 0 && !riotId
 
   if (empty) {
@@ -1249,6 +1253,14 @@ function AboutSection({
               hint={birthdayToday ? 'É HOJE. Dá os parabéns.' : 'Aniversário'}
             >
               {birthdayToday ? 'aniversário é hoje!' : birthdayLabel}
+            </Fact>
+          )}
+          {time && (
+            <Fact
+              icon={<Escudo src={time.teamLogo} sigla={time.teamAbbr} cor={time.teamColor} className="h-3.5 w-3.5 text-[11px]" />}
+              hint="Time do coração"
+            >
+              {time.teamName}
             </Fact>
           )}
           {games.map((game) => (

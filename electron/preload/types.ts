@@ -484,6 +484,16 @@ export interface OverlaySettings {
 }
 
 /** Preferencias da integracao com o LoL. */
+/** Tela de futebol (pages/FutebolPage). */
+export interface FutebolSettings {
+  /**
+   * Aviso de gol, começo e fim de jogo do time do coração e dos jogos em que
+   * palpitei, e o lembrete de palpitar uma hora antes. Na sobreposição quando
+   * estou em jogo, no balão do Windows com o app atrás.
+   */
+  avisos: boolean
+}
+
 export interface LolSettings {
   /** Ler o cliente do LoL e mostrar presenca pra galera. */
   enabled: boolean
@@ -900,6 +910,7 @@ export interface LauncherSettings {
   shareMinecraftActivity: boolean
   lol: LolSettings
   overlay: OverlaySettings
+  futebol: FutebolSettings
 
   voice: VoiceSettings
   hotkeys: HotkeySettings
@@ -1104,6 +1115,9 @@ export const DEFAULT_SETTINGS: LauncherSettings = {
     // bandeja e a graca e ele aparecer sozinho na hora certa. Quem acha
     // poluicao desliga numa chave.
     overlay: true
+  },
+  futebol: {
+    avisos: true
   },
   overlay: {
     enabled: true,

@@ -13,6 +13,7 @@ import { formatCompact } from '@/lib/api-gamification'
 import { useLayout } from '@/lib/layout-context'
 import { useOverlays } from '@/lib/overlay-context'
 import { useGamification } from '@/lib/gamification-context'
+import { useFutebol } from '@/lib/futebol-context'
 import { cn } from '@/lib/utils'
 import { ARENA_ICON, ARENA_LABEL, LiveCount, useLiveMatchCount, type ArenaItem } from './ArenaChrome'
 
@@ -53,6 +54,7 @@ export function ArenaRail() {
   // O Banco é a banca (a reserva foi juntada nela): livre = banca − exposição.
   const bankFree = house?.banca != null ? Math.max(0, house.banca - (house.exposure ?? 0)) : null
   const live = useLiveMatchCount()
+  const { meuJogo, meuTime } = useFutebol()
   const {
     isPhone,
     leaderboardOpen,
@@ -126,6 +128,27 @@ export function ArenaRail() {
           : 'Banco da Casa: empréstimo, CDB e consórcio.',
       meta: bankFree != null && (
         <span className="font-mono text-[11.5px] text-muted-foreground">{formatCompact(bankFree)}</span>
+      )
+    },
+    {
+      id: 'futebol',
+      active: pathname === '/futebol',
+      run: () => navigate('/futebol'),
+      hint: meuJogo
+        ? `${meuJogo.casa.curto} ${meuJogo.casa.gols ?? 0} x ${meuJogo.fora.gols ?? 0} ${meuJogo.fora.curto}, ${meuJogo.rotulo}.`
+        : 'Jogos ao vivo, tabela, bolão de palpites e o seu time do coração.',
+      // O jogo do meu time rolando: o placar no canto do ícone.
+      badge: meuJogo && (
+        <Pill tone="urgent" corner="top">
+          {meuJogo.casa.gols ?? 0}-{meuJogo.fora.gols ?? 0}
+        </Pill>
+      ),
+      meta: meuJogo ? (
+        <span className="font-mono text-[11.5px] text-destructive">
+          {meuJogo.casa.sigla} {meuJogo.casa.gols ?? 0}-{meuJogo.fora.gols ?? 0} {meuJogo.fora.sigla}
+        </span>
+      ) : (
+        meuTime && <span className="font-mono text-[11.5px] text-muted-foreground">{meuTime.teamAbbr}</span>
       )
     },
     {

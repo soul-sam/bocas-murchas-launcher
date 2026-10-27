@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Landmark, X, ScrollText } from 'lucide-react'
 import { BetIcon, MedalIcon, ShopIcon, TrophyIcon } from '@/lib/bocas-icons'
 import { PokerIcon } from '@/components/poker/PokerGlyphs'
+import { FutebolIcon } from '@/components/futebol/FutebolGlyphs'
 import type { IconComponent } from '@/lib/icon-component'
 import { cn } from '@/lib/utils'
 import { useLayout } from '@/lib/layout-context'
@@ -24,7 +25,7 @@ import { useGamification } from '@/lib/gamification-context'
  * sair do ranking e cair nas apostas é um passeio.
  */
 
-export type ArenaItem = 'ranking' | 'wagers' | 'bank' | 'poker' | 'achievements' | 'shop' | 'recap'
+export type ArenaItem = 'ranking' | 'wagers' | 'bank' | 'poker' | 'futebol' | 'achievements' | 'shop' | 'recap'
 
 export const ARENA_ICON: Record<ArenaItem, IconComponent> = {
   ranking: TrophyIcon,
@@ -34,6 +35,8 @@ export const ARENA_ICON: Record<ArenaItem, IconComponent> = {
   bank: Landmark,
   // O pôquer é uma TELA (pages/PokerPage, rota /poker), como o Minecraft.
   poker: PokerIcon,
+  // Futebol também é TELA (pages/FutebolPage, rota /futebol).
+  futebol: FutebolIcon,
   achievements: MedalIcon,
   shop: ShopIcon,
   recap: ScrollText
@@ -44,6 +47,7 @@ export const ARENA_LABEL: Record<ArenaItem, string> = {
   wagers: 'Apostas',
   bank: 'Banco',
   poker: 'Pôquer',
+  futebol: 'Futebol',
   achievements: 'Conquistas',
   shop: 'Lojinha',
   recap: 'Recap'

@@ -163,6 +163,15 @@ export function QuickSwitcher() {
     })
 
     list.push({
+      id: 'cmd:futebol',
+      label: 'Futebol',
+      hint: 'jogos ao vivo, tabela e bolão',
+      icon: <GameGlyph game="futebol" className="h-3.5 w-3.5" />,
+      keywords: 'futebol brasileirao serie a b copa do brasil libertadores sul-americana tabela placar palpite bolao gol time',
+      run: () => navigate('/futebol')
+    })
+
+    list.push({
       id: 'cmd:chess',
       label: 'Xadrez',
       hint: 'PvP valendo murchos',

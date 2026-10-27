@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.94.0',
+    headline: 'Futebol brasileiro no launcher',
+    items: [
+      'Ícone novo de Futebol na barra da esquerda, embaixo do troféu: jogos do dia com placar ao vivo do Brasileirão A e B, Copa do Brasil, Libertadores, Sul-Americana e estaduais.',
+      'Abra um jogo pra ver lances, estatísticas, escalações e a narração lance a lance.',
+      'Tabela de cada competição com as zonas, a artilharia e o rosto de quem do grupo torce pra cada time.',
+      'Bolão: palpite o placar até o apito inicial. Placar exato vale 10 pontos, vencedor e saldo 6, só o vencedor 4. Tem ranking da semana, do mês e geral, e cada palpite conferido dá XP (nunca murcho).',
+      'Escolha o time do coração (na tela ou no editor de perfil): o escudo aparece no seu perfil e você recebe aviso de gol, começo e fim de jogo, até em partida pela sobreposição. O sino na tela desliga os avisos.',
+      'No fim de cada jogo palpitado sai um card no chat com o placar e os palpites de todo mundo.',
+      'Sete conquistas novas, de Torcedor a Profeta da Goleada. O Bocas Bot também sabe o placar: pergunte a ele.'
+    ]
+  },
+  {
     version: '1.93.0',
     headline: 'Sem aposta em partida contra o computador',
     items: [

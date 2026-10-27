@@ -24,6 +24,7 @@ import { LayoutProvider, useLayout } from '@/lib/layout-context'
 import { ActivityProvider } from '@/lib/activity-context'
 import { PartyProvider } from '@/lib/party-context'
 import { PokerProvider } from '@/lib/poker-context'
+import { FutebolProvider } from '@/lib/futebol-context'
 import { CartasProvider } from '@/lib/cartas-context'
 import { BoardProvider } from '@/lib/board-context'
 import { SmokeProvider } from '@/lib/smoke-context'
@@ -97,6 +98,7 @@ const CartasPage = named(() => import('@/pages/CartasPage'), 'CartasPage')
 const BoardPage = named(() => import('@/pages/BoardPage'), 'BoardPage')
 const GameHallPage = named(() => import('@/pages/GameHallPage'), 'GameHallPage')
 const LolPage = named(() => import('@/pages/LolPage'), 'LolPage')
+const FutebolPage = named(() => import('@/pages/FutebolPage'), 'FutebolPage')
 const PrintPage = named(() => import('@/pages/PrintPage'), 'PrintPage')
 const WrappedModal = named(() => import('@/components/social/WrappedModal'), 'WrappedModal')
 const ShopModal = named(() => import('@/components/social/ShopModal'), 'ShopModal')
@@ -468,6 +470,10 @@ function AuthedLayout() {
                                 contexto só pros dois jogos de cartas de mesa. */}
                             <CartasProvider>
                               <BoardProvider>
+                              {/* Futebol: time do coração de todo mundo, jogos
+                                  ao vivo (rail e tela) e o aviso de gol, que
+                                  tem que chegar em qualquer tela. */}
+                              <FutebolProvider>
                               <SmokeProvider>
                               <WatchProvider>
                                 {/* Índices de @pessoa e #canal montados uma
@@ -485,6 +491,7 @@ function AuthedLayout() {
                                 </RichTextProvider>
                               </WatchProvider>
                               </SmokeProvider>
+                              </FutebolProvider>
                               </BoardProvider>
                             </CartasProvider>
                             </PokerProvider>
@@ -573,6 +580,7 @@ export function App() {
                             <Route path="/chat" element={<SocialPage />} />
                             <Route path="/jogos" element={<GameHallPage />} />
                             <Route path="/lol" element={<LolPage />} />
+                            <Route path="/futebol" element={<FutebolPage />} />
                             <Route path="/xadrez" element={<BoardPage game="chess" />} />
                             <Route path="/dama" element={<BoardPage game="draughts" />} />
                             <Route path="/bilhar" element={<BoardPage game="pool" />} />
