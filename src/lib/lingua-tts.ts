@@ -29,7 +29,7 @@ export function pickVoice<T extends VoiceLike>(voices: T[], lang: Lang): T | nul
   // zh: o fallback por prefixo não aceita tradicional (zh-TW/zh-HK) — pinyin é simplificado.
   const prefix = voices.filter((v) => {
     const n = norm(v)
-    return n.split('-')[0] === lang && !(lang === 'zh' && (n === 'zh-tw' || n === 'zh-hk'))
+    return n.split('-')[0] === lang && !(lang === 'zh' && /hant|-tw|-hk|-mo/.test(n))
   })
   const pool = exact.length ? exact : prefix
   if (!pool.length) return null
@@ -51,11 +51,14 @@ function loadVoices(timeoutMs = 1500): Promise<SpeechSynthesisVoice[]> {
   if (cached) return Promise.resolve(cached)
   const now = speechSynthesis.getVoices()
   if (now.length) return Promise.resolve((cached = now))
+  // (vazio não entra no cache: a voz pode aparecer depois)
   return new Promise((resolve) => {
     const done = () => {
       speechSynthesis.removeEventListener('voiceschanged', done)
       clearTimeout(timer)
-      resolve((cached = speechSynthesis.getVoices()))
+      const list = speechSynthesis.getVoices()
+      if (list.length) cached = list
+      resolve(list)
     }
     const timer = setTimeout(done, timeoutMs)
     speechSynthesis.addEventListener('voiceschanged', done)

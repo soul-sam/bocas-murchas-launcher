@@ -40,6 +40,7 @@ export function buildInstallArgs(lang: string): string[] | null {
   return [
     '-NoProfile',
     '-Command',
-    `$p = Start-Process '${ps}' -Verb RunAs -Wait -PassThru -ArgumentList '${inner}'; exit $p.ExitCode`
+    // Start-Process falhando (UAC cancelado) deixa $p nulo -> o catch sai com 1.
+    `try { $p = Start-Process '${ps}' -Verb RunAs -Wait -PassThru -ErrorAction Stop -ArgumentList '${inner}'; exit $p.ExitCode } catch { exit 1 }`
   ]
 }
