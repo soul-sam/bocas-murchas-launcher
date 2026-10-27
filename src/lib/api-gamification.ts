@@ -1,6 +1,7 @@
 import type * as React from 'react'
 import { request, type GameSessionSummary } from './api'
 import { gradientStyle, parseGradient } from './name-gradient'
+import type { Lang, Level } from './api-lingua'
 import { isShopThemeId, type ShopThemeId } from '../../electron/preload/types'
 
 /**
@@ -160,6 +161,8 @@ export interface EquippedCosmetics {
 
 export interface GamificationProfile {
   userId: string
+  /** Línguas com ao menos uma lição concluída (Língua Murcha). Ausente em API antiga. */
+  languages?: Array<{ lang: Lang; level: Level }>
   xp: number
   level: number
   /** XP já acumulado DENTRO do nível atual (0..nextLevelXp). */

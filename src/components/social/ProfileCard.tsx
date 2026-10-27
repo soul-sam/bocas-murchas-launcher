@@ -34,6 +34,8 @@ import {
   isBirthdayToday,
   localTimeIn
 } from '@/lib/profile-extras'
+import { Flag } from '@/components/lingua/Flag'
+import { LANG_NAME } from '@/lib/lingua-ui'
 import { GameIcon, gameLabel } from './GameIcon'
 import { Escudo } from '@/components/futebol/FutebolGlyphs'
 import { useFutebolOpcional } from '@/lib/futebol-context'
@@ -487,6 +489,18 @@ export function ProfileBody({
           ) : (
             <CompactStats profile={gp} />
           ))}
+
+        {gp?.languages && gp.languages.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5" aria-label="Línguas estudadas">
+            {gp.languages.map((l) => (
+              <Hint key={l.lang} label={`${LANG_NAME[l.lang]} · ${l.level}`}>
+                <span className="inline-flex">
+                  <Flag lang={l.lang} size={modal ? 18 : 14} />
+                </span>
+              </Hint>
+            ))}
+          </div>
+        )}
 
         {gp && gp.badges.length > 0 && (
           <BadgesSection
