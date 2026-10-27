@@ -42,6 +42,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.96.0',
+    headline: 'Língua Murcha: aprenda idiomas no launcher',
+    items: [
+      'Página nova "Língua Murcha" na barra da esquerda: inglês, espanhol, francês, italiano, alemão, japonês (romaji) e mandarim (pinyin).',
+      'Escolha seu nível (A1 a C1) na primeira vez. Depois ele sobe sozinho conforme você termina as lições.',
+      'Uma lição por idioma por dia, 10 perguntas de múltipla escolha. Cada acerto vale 10 XP, que soma no XP geral do launcher.',
+      '3 vidas por dia para todos os idiomas. Acabou no meio da lição? Dá pra comprar mais uma por 1000 murchos e outra por 2000.',
+      'Ouça a pronúncia de cada palavra e frase. Se faltar a voz do idioma no Windows, o launcher ajuda a instalar.',
+      'Ofensiva por idioma e geral, missões da semana (lição perfeita e 5 dias na semana, 150 XP cada) e ranking por idioma e geral, da semana e de sempre.',
+      'Pódio semanal geral paga 1000, 600 e 300 murchos pelo Banco. As bandeirinhas dos idiomas que você estuda aparecem no seu perfil.'
+    ]
+  },
+  {
     version: '1.95.0',
     headline: 'Seleção, Copa do Mundo e jogo ao vivo no launcher',
     items: [
