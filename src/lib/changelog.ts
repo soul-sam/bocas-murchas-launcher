@@ -42,6 +42,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.97.0',
+    headline: 'Teste de nivelamento e barra lateral mais enxuta',
+    items: [
+      'Língua Murcha: na primeira vez num idioma, faça o teste de nivelamento (até 25 perguntas, 5 por nível) ou comece do zero no A1.',
+      'Acertou 4 de 5, sobe pro próximo nível. Você começa no primeiro nível em que não passar. O teste não gasta vida, não dá XP e não conta como lição do dia.',
+      'Barra da esquerda mais curta: o troféu abre Ranking, Conquistas e Recap; o banco abre Banco, Lojinha e Apostas.',
+      'Conta do servidor, atalhos e sair agora ficam no ícone de engrenagem, lá embaixo.'
+    ],
+    note: 'Quem já começou um idioma continua no mesmo nível. O teste é só pra idioma novo.'
+  },
+  {
     version: '1.96.0',
     headline: 'Língua Murcha: aprenda idiomas no launcher',
     items: [
