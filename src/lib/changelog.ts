@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.97.2',
+    headline: 'Língua Murcha: voz e nivelamento consertados',
+    items: [
+      'A voz instalada agora é reconhecida. Antes o launcher pedia pra instalar de novo mesmo com ela já no Windows.',
+      'O resultado do teste de nivelamento fica guardado até a primeira lição. Sair no aviso de voz, ou reiniciar pra ativá-la, não joga mais o teste fora.',
+      'Depois de instalar a voz, o botão "Reiniciar agora" fecha e abre o launcher de verdade (o X só manda pra bandeja).'
+    ],
+    note: 'Quem fez o teste e perdeu o resultado antes desta versão precisa fazer de novo uma vez.'
+  },
+  {
     version: '1.97.1',
     headline: 'Teste de nivelamento e barra lateral mais enxuta',
     items: [
