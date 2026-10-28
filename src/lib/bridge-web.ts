@@ -464,6 +464,7 @@ function criarPonte(): BocasAPI {
     lingua: {
       installVoice: async () => ({ ok: false, error: 'web' }),
       openSpeechSettings: async () => {},
+      relaunch: async () => {},
     },
 
     app: {

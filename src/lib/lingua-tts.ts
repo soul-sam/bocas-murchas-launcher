@@ -53,15 +53,22 @@ function loadVoices(timeoutMs = 1500): Promise<SpeechSynthesisVoice[]> {
   if (now.length) return Promise.resolve((cached = now))
   // (vazio não entra no cache: a voz pode aparecer depois)
   return new Promise((resolve) => {
-    const done = () => {
-      speechSynthesis.removeEventListener('voiceschanged', done)
+    const finish = () => {
+      speechSynthesis.removeEventListener('voiceschanged', onChange)
       clearTimeout(timer)
       const list = speechSynthesis.getVoices()
       if (list.length) cached = list
       resolve(list)
     }
-    const timer = setTimeout(done, timeoutMs)
-    speechSynthesis.addEventListener('voiceschanged', done)
+    // O Electron 33 dispara `voiceschanged` DUAS vezes no primeiro getVoices():
+    // a primeira com a lista vazia, a segunda (~2 ms depois) com as vozes.
+    // Aceitar a primeira dava "sem voz" sempre no 1º clique após abrir o app —
+    // e pedia pra instalar de novo a voz que já estava instalada.
+    const onChange = () => {
+      if (speechSynthesis.getVoices().length) finish()
+    }
+    const timer = setTimeout(finish, timeoutMs)
+    speechSynthesis.addEventListener('voiceschanged', onChange)
   })
 }
 

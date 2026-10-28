@@ -26,7 +26,7 @@ import {
   stopProcessLoopback
 } from './services/process-loopback.js'
 import { shakeWindow, type NudgeOptions } from './services/nudge.js'
-import { setVoiceState, setCloseToTray, setPendencias } from './services/tray.js'
+import { setVoiceState, setCloseToTray, setPendencias, relaunchApp } from './services/tray.js'
 import { getLolStatus, refreshLolNow, startLolWatcher, stopLolWatcher } from './services/lol.js'
 import { launchLolClient } from './services/lol-launch.js'
 import {
@@ -240,6 +240,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('lingua:open-speech-settings', async () => {
     await shell.openExternal('ms-settings:speech')
   })
+  ipcMain.handle('lingua:relaunch', async () => relaunchApp())
 
   ipcMain.handle('app:version', async () => app.getVersion())
 

@@ -140,7 +140,8 @@ const api: BocasAPI = {
   },
   lingua: {
     installVoice: (lang) => ipcRenderer.invoke('lingua:install-voice', lang),
-    openSpeechSettings: () => ipcRenderer.invoke('lingua:open-speech-settings')
+    openSpeechSettings: () => ipcRenderer.invoke('lingua:open-speech-settings'),
+    relaunch: () => ipcRenderer.invoke('lingua:relaunch')
   },
   app: {
     applyAutostart: () => ipcRenderer.invoke('app:apply-autostart'),

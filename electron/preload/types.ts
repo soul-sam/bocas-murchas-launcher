@@ -1443,6 +1443,8 @@ export interface BocasAPI {
     installVoice: (lang: string) => Promise<{ ok: boolean; error?: string; restartNeeded?: boolean }>
     /** Abre Configurações > Fala do Windows (ms-settings:speech). */
     openSpeechSettings: () => Promise<void>
+    /** Fecha e reabre o launcher (pra o Chromium enxergar a voz nova). */
+    relaunch: () => Promise<void>
   }
   app: {
     /** Aplica iniciar-com-o-Windows AGORA (a preferencia ja foi salva). */

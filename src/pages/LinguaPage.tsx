@@ -10,7 +10,7 @@ import { MissionsPanel } from '@/components/lingua/MissionsPanel'
 import { PodiumPanel } from '@/components/lingua/PodiumPanel'
 import { RankingPanel } from '@/components/lingua/RankingPanel'
 import { VoiceSetup } from '@/components/lingua/VoiceSetup'
-import { lingua, type AttemptView, type FinishResult, type Lang, type Level, type LinguaMe, type LivesView } from '@/lib/api-lingua'
+import { LEVELS, lingua, type AttemptView, type FinishResult, type Lang, type Level, type LinguaMe, type LivesView } from '@/lib/api-lingua'
 import { useAuth } from '@/lib/auth-context'
 import { useGamification } from '@/lib/gamification-context'
 import { errorCode, errorMessage, fmtMurchos } from '@/lib/lingua-ui'
@@ -21,12 +21,38 @@ import { cn } from '@/lib/utils'
  * LÍNGUA MURCHA — o "Duolingo dos Bocas". Uma lição por língua por dia, vidas
  * globais (3 + até 2 compradas), ofensiva, missões da semana, ranking e pódio.
  *
- * Fluxo de abrir uma língua: sem nível → PlacementTest; sem voz no sistema →
+ * Fluxo de abrir uma língua: sem nível → PlacementTest (o resultado fica no
+ * localStorage até a 1ª lição); sem voz no sistema →
  * VoiceSetup (uma vez por sessão, dá pra seguir sem som); então `start` — que
  * devolve a tentativa já aberta se houver (retoma de `position`).
  */
 
 type Tab = 'licoes' | 'ranking' | 'podio'
+
+/**
+ * Nível que saiu do nivelamento, até a 1ª lição gravá-lo no servidor (o
+ * servidor só cria o progresso no `start`). Sem isto, sair no aviso de voz —
+ * ou reiniciar pra ativar a voz instalada — jogava o teste fora.
+ */
+const placedKey = (lang: Lang) => `lingua-placed:${lang}`
+
+function readPlaced(lang: Lang): Level | null {
+  try {
+    const v = localStorage.getItem(placedKey(lang))
+    return v && (LEVELS as readonly string[]).includes(v) ? (v as Level) : null
+  } catch {
+    return null
+  }
+}
+
+function writePlaced(lang: Lang, level: Level | null) {
+  try {
+    if (level) localStorage.setItem(placedKey(lang), level)
+    else localStorage.removeItem(placedKey(lang))
+  } catch {
+    // Sem storage: só não lembra.
+  }
+}
 
 const TABS: Array<{ id: Tab; nome: string }> = [
   { id: 'licoes', nome: 'Lições' },
@@ -66,6 +92,7 @@ export function LinguaPage() {
     lingua
       .me(token)
       .then((m) => {
+        for (const l of m.langs) if (l.level) writePlaced(l.lang, null)
         setMe(m)
         setLoadError(null)
       })
@@ -132,8 +159,9 @@ export function LinguaPage() {
     const state = me?.langs.find((l) => l.lang === lang)
     if (!state) return
     setFinished(null)
-    if (!state.level) setPicking(lang)
-    else void proceed(lang)
+    const level = state.level ?? readPlaced(lang)
+    if (level) void proceed(lang, state.level ? undefined : level)
+    else setPicking(lang)
   }
 
   // Reabriu a página com lição em andamento (ou parada sem vida): retoma
@@ -287,7 +315,10 @@ export function LinguaPage() {
         <PlacementTest
           lang={picking}
           busy={busyLang !== null}
-          onPick={(level) => void proceed(picking, level)}
+          onPick={(level) => {
+            writePlaced(picking, level)
+            void proceed(picking, level)
+          }}
           onClose={() => setPicking(null)}
         />
       )}

@@ -89,6 +89,33 @@ export async function confirmQuit(): Promise<void> {
   }
 }
 
+/**
+ * Fecha e abre o launcher de novo (o X só esconde na bandeja, então "reinicie"
+ * sozinho não reiniciava nada). Na call, confirma antes: derruba a chamada.
+ */
+export async function relaunchApp(): Promise<void> {
+  if (quitting) return
+  if (inVoice) {
+    const win = getMainWindow()
+    const opts: Electron.MessageBoxOptions = {
+      type: 'question',
+      title: 'Reiniciar o Bocas Murchas',
+      message: 'Reiniciar o launcher agora?',
+      detail: 'Voce esta numa chamada de voz. Reiniciar derruba a chamada.',
+      buttons: ['Reiniciar', 'Cancelar'],
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true
+    }
+    const { response } =
+      win && !win.isDestroyed() ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts)
+    if (response !== 0) return
+  }
+  beginQuit()
+  app.relaunch()
+  app.quit()
+}
+
 export function iconPath(): string {
   // Empacotado, os recursos de build ficam em resources/; em dev, na pasta do repo.
   return app.isPackaged

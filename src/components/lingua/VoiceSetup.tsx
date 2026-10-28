@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Loader2, Settings, VolumeX } from 'lucide-react'
+import { Loader2, RotateCcw, Settings, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { Lang } from '@/lib/api-lingua'
@@ -66,7 +66,8 @@ export function VoiceSetup({
 
         {step === 'restart' && (
           <p className="mt-4 rounded-brutal border border-acid/40 bg-acid/10 px-3 py-2 text-sm text-acid">
-            Voz instalada. Reinicie o launcher para ativar a voz.
+            Voz instalada. O launcher precisa reiniciar para ativar a voz (fechar no X só manda pra bandeja).
+            Seu nível já está guardado.
           </p>
         )}
 
@@ -94,6 +95,12 @@ export function VoiceSetup({
             Continuar sem som
           </Button>
           {step === 'ask' && <Button onClick={() => void install()}>Instalar voz</Button>}
+          {step === 'restart' && (
+            <Button onClick={() => void window.bocas.lingua.relaunch()}>
+              <RotateCcw className="mr-1.5 h-4 w-4" aria-hidden />
+              Reiniciar agora
+            </Button>
+          )}
           {step === 'manual' && !isWeb() && (
             <Button variant="secondary" onClick={() => void window.bocas.lingua.openSpeechSettings()}>
               <Settings className="mr-1.5 h-4 w-4" aria-hidden />
