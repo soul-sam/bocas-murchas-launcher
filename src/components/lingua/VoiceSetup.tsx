@@ -59,7 +59,8 @@ export function VoiceSetup({
         {step === 'installing' && (
           <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            Instalando… aceite o aviso do Windows. Pode levar uns minutos.
+            Instalando… aceite o aviso do Windows. Vai abrir uma janela azul baixando a voz: leva de 2 a 10
+            minutos e ela fecha sozinha. Não feche antes.
           </p>
         )}
 
@@ -71,7 +72,13 @@ export function VoiceSetup({
 
         {step === 'manual' && (
           <div className="mt-4 space-y-3 text-sm">
-            {error && <p className="text-destructive">Não deu pra instalar daqui ({error}).</p>}
+            {error && (
+              <p className="text-destructive">
+                {error === 'window_closed'
+                  ? 'A janela da instalação foi fechada antes de terminar. Tente de novo e espere ela fechar sozinha, ou instale pelo passo a passo abaixo.'
+                  : `Não deu pra instalar daqui (${error}).`}
+              </p>
+            )}
             <ol className="list-decimal space-y-1 pl-5 text-foreground">
               <li>Abra Configurações &gt; Hora e idioma &gt; Fala.</li>
               <li>Em "Gerenciar vozes", clique em "Adicionar vozes".</li>
@@ -92,6 +99,9 @@ export function VoiceSetup({
               <Settings className="mr-1.5 h-4 w-4" aria-hidden />
               Abrir configurações de fala
             </Button>
+          )}
+          {step === 'manual' && error === 'window_closed' && (
+            <Button onClick={() => void install()}>Tentar de novo</Button>
           )}
         </DialogFooter>
       </DialogContent>

@@ -1,7 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { VOICE_LANG, pickVoice } from './lingua-tts.ts'
-import { VOICE_BCP47, buildInstallArgs, voiceCapabilityName } from '../../electron/main/services/lingua-voice-args.ts'
+import {
+  VOICE_BCP47,
+  buildInstallArgs,
+  installErrorCode,
+  voiceCapabilityName
+} from '../../electron/main/services/lingua-voice-args.ts'
 
 test('pickVoice: casa o lang exato', () => {
   const v = pickVoice([{ lang: 'ja-JP', name: 'Haruka' }], 'ja')
@@ -48,13 +53,18 @@ test('VOICE_LANG do renderer bate com o mapa do main', () => {
 test('buildInstallArgs: monta a capability certa', () => {
   const args = buildInstallArgs('ja')
   assert.ok(args)
-  assert.match(args[2], /Language\.TextToSpeech~~~ja-JP~0\.0\.1\.0/)
   assert.match(args[2], /^try \{ \$p = Start-Process /)
   assert.match(args[2], /-Verb RunAs -Wait -PassThru -ErrorAction Stop/)
   assert.match(args[2], /exit \$p\.ExitCode \} catch \{ exit 1 \}$/)
-  assert.match(args[2], /exit \$p\.ExitCode/)
-  assert.match(args[2], /-ErrorAction Stop \} catch \{ exit 1 \}/)
   assert.match(args[2], /System32\\WindowsPowerShell\\v1\.0\\powershell\.exe/)
+  // O script da janela elevada vai em base64 (sem aspas pra escapar).
+  const b64 = args[2].match(/-EncodedCommand ([A-Za-z0-9+/=]+)'/)
+  assert.ok(b64)
+  const script = Buffer.from(b64[1], 'base64').toString('utf16le')
+  assert.match(script, /Get-WindowsCapability -Online -Name 'Language\.TextToSpeech~~~ja-JP~0\.0\.1\.0'/)
+  assert.match(script, /if \(\$cap\.State -ne 'Installed'\) \{ Add-WindowsCapability/)
+  assert.match(script, /NAO FECHE ESTA JANELA/)
+  assert.match(script, /exit 0[\s\S]*\} catch \{[\s\S]*exit 1/)
   assert.equal(voiceCapabilityName('zh-CN'), 'Language.TextToSpeech~~~zh-CN~0.0.1.0')
 })
 
@@ -63,4 +73,11 @@ test('buildInstallArgs: rejeita valor fora das 7 línguas (sem injeção)', () =
   assert.equal(buildInstallArgs('xx'), null)
   assert.equal(buildInstallArgs('__proto__'), null)
   assert.equal(voiceCapabilityName('ja-JP; calc'), null)
+})
+
+test('installErrorCode: janela fechada no meio vira window_closed', () => {
+  assert.equal(installErrorCode(3221225786), 'window_closed')
+  assert.equal(installErrorCode(-1073741510), 'window_closed')
+  assert.equal(installErrorCode(1), 'exit_1')
+  assert.equal(installErrorCode(null), 'exit_null')
 })

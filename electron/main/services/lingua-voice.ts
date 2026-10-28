@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { buildInstallArgs, powershellPath } from './lingua-voice-args.js'
+import { buildInstallArgs, installErrorCode, powershellPath } from './lingua-voice-args.js'
 
 /**
  * Instala a voz de leitura (TTS) de uma língua no Windows. Pede UAC (o
@@ -15,7 +15,7 @@ export function installVoice(lang: string): Promise<{ ok: boolean; error?: strin
     const child = spawn(powershellPath(), args, { windowsHide: true, stdio: 'ignore' })
     child.once('error', (err) => resolve({ ok: false, error: err.message }))
     child.once('exit', (code) =>
-      resolve(code === 0 ? { ok: true, restartNeeded: true } : { ok: false, error: `exit_${code ?? 'null'}` })
+      resolve(code === 0 ? { ok: true, restartNeeded: true } : { ok: false, error: installErrorCode(code) })
     )
   })
 }
