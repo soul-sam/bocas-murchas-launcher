@@ -29,6 +29,10 @@ import { ARENA_ICON, ARENA_LABEL, LiveCount, useLiveMatchCount, type ArenaItem }
  * houver), Conquistas, Lojinha (com os murchos) e Recap. Os três primeiros estados vivem na coluna da direita da
  * tela social (layout-context); conquistas e lojinha são modais.
  *
+ * NO PC os sete viraram três: o troféu abre um menu com Ranking, Conquistas
+ * e Recap; o banco, com Banco, Lojinha e Apostas; Futebol segue sozinho
+ * (tem placar ao vivo). Cada item do menu mostra nome, número e a dica.
+ *
  * NO CELULAR a barra deita no rodapé e não cabem mais cinco ícones: o troféu
  * vira um menu com os mesmos cinco, nome e número ao lado. Um toque a mais,
  * mas com rótulo — numa barra de 360px, cinco ícones sem nome seriam adivinhação.
@@ -216,34 +220,115 @@ export function ArenaRail() {
     )
   }
 
+  // No PC, três ícones em vez de sete: cada GRUPO abre um menu ao lado com os
+  // itens (nome, número, dica). Futebol fica sozinho — tem placar ao vivo.
+  const byId = new Map(items.map((item) => [item.id, item]))
+  const pick = (ids: ArenaItem[]) => ids.map((id) => byId.get(id)!)
+  const ranking = byId.get('ranking')!
+  const shop = byId.get('shop')!
+  const wagers = byId.get('wagers')!
+
   return (
     <>
       {/* Um risco separa a Arena das abas de cima (social, jogo, impressora):
           aquelas trocam a TELA; estas abrem coisas dentro dela. */}
       <span aria-hidden className="my-1 h-px w-8 shrink-0 bg-surface-raised" />
 
-      {items.map((item) => {
-        const Icon = ARENA_ICON[item.id]
-        return (
-          <React.Fragment key={item.id}>
-            <Hint label={ARENA_LABEL[item.id]} description={item.hint} side="right">
-              <button
-                type="button"
-                aria-label={ARENA_LABEL[item.id]}
-                aria-pressed={item.active}
-                onClick={item.run}
-                className={cn(RAIL_BUTTON, item.active ? RAIL_ACTIVE : RAIL_IDLE)}
-              >
-                <Icon className="h-5 w-5" />
-                {item.badge}
-              </button>
-            </Hint>
-            {/* O streak fica colado no troféu, como sempre esteve. */}
-            {item.id === 'ranking' && <StreakFlame streak={streak} />}
-          </React.Fragment>
-        )
-      })}
+      <RailGroup
+        icon="ranking"
+        label="Ranking, conquistas e recap"
+        items={pick(['ranking', 'achievements', 'recap'])}
+        badge={ranking.badge}
+      />
+      <StreakFlame streak={streak} />
+
+      <RailGroup
+        icon="bank"
+        label="Banco, lojinha e apostas"
+        items={pick(['bank', 'shop', 'wagers'])}
+        badge={
+          <>
+            {shop.badge}
+            {wagers.badge}
+          </>
+        }
+      />
+
+      <RailSingle item={byId.get('futebol')!} />
     </>
+  )
+}
+
+/** Um ícone da Arena que abre um menu à direita com os itens do grupo. */
+function RailGroup({
+  icon,
+  label,
+  items,
+  badge
+}: {
+  icon: ArenaItem
+  label: string
+  items: Item[]
+  badge?: React.ReactNode
+}) {
+  const Icon = ARENA_ICON[icon]
+  const anyActive = items.some((item) => item.active)
+  return (
+    // modal={false}: daqui abrem lojinha/conquistas/banco, e menu modal do
+    // Radix tranca o <body>. Ver lib/interaction-guard.ts.
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          title={label}
+          className={cn(RAIL_BUTTON, anyActive ? RAIL_ACTIVE : RAIL_IDLE)}
+        >
+          <Icon className="h-5 w-5" />
+          {badge}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="right" align="start" className="w-72">
+        {items.map((item) => {
+          const ItemIcon = ARENA_ICON[item.id]
+          return (
+            <DropdownMenuItem
+              key={item.id}
+              onSelect={item.run}
+              className={cn('items-start gap-2 py-2', item.active && 'text-acid')}
+            >
+              <ItemIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="flex items-center gap-2">
+                  <span className="flex-1 font-semibold">{ARENA_LABEL[item.id]}</span>
+                  {item.meta}
+                </span>
+                <span className="text-xs text-muted-foreground">{item.hint}</span>
+              </span>
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/** Ícone da Arena sem grupo: clique direto, dica ao passar o mouse. */
+function RailSingle({ item }: { item: Item }) {
+  const Icon = ARENA_ICON[item.id]
+  return (
+    <Hint label={ARENA_LABEL[item.id]} description={item.hint} side="right">
+      <button
+        type="button"
+        aria-label={ARENA_LABEL[item.id]}
+        aria-pressed={item.active}
+        onClick={item.run}
+        className={cn(RAIL_BUTTON, item.active ? RAIL_ACTIVE : RAIL_IDLE)}
+      >
+        <Icon className="h-5 w-5" />
+        {item.badge}
+      </button>
+    </Hint>
   )
 }
 

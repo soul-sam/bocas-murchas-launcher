@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, BellRing, LogOut, Keyboard, Languages } from 'lucide-react'
+import { Bell, BellRing, LogOut, Keyboard, Languages, Settings } from 'lucide-react'
 import { ChatIcon, GameIcon, PrinterIcon, ServerIcon } from '@/lib/bocas-icons'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -13,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { resolveAssetUrl } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useBoard } from '@/lib/board-context'
@@ -257,49 +264,49 @@ export function AppRail() {
         })}
       </div>
 
-      {/* A conta da hospedagem. Fica aqui embaixo, sempre no mesmo lugar,
-          porque a faixa do topo pode ter sido dispensada — e depois de
-          marcar "paguei" ela some de vez no mês, mas a tela precisa
-          continuar alcançável (pra desfazer, ou pra ver quem já ajudou).
-          O ponto laranja é o único aviso que sobra quando a faixa não está. */}
-      <button
-        type="button"
-        title="A conta do servidor"
-        aria-label="A conta do servidor"
-        onClick={openCosts}
-        className="alvo-dedo relative rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
-      >
-        <ServerIcon className="h-4 w-4" />
-        {costs && !costs.iPaid && (
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border border-void bg-burn" />
-        )}
-      </button>
-
-      {/* Lista de atalhos de TECLADO. No celular não há teclado pra ter
-          atalho, e cada ícone a menos nesta barra é espaço pro que se usa. */}
-      {!isPhone && (
-        <button
-          type="button"
-          title="Atalhos (Ctrl + /)"
-          aria-label="Atalhos"
-          onClick={toggleShortcuts}
-          className="alvo-dedo rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
-        >
-          <Keyboard className="h-4 w-4" />
-        </button>
-      )}
-
-      <button
-        type="button"
-        title="Sair da conta"
-        aria-label="Sair da conta"
-        // Último ícone da barra, colado nos atalhos: fácil de clicar sem
-        // querer, e sair derruba a call e pede login de novo.
-        onClick={() => setConfirmLogout(true)}
-        className="alvo-dedo rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
-      >
-        <LogOut className="h-4 w-4" />
-      </button>
+      {/* O RODAPÉ num menu só: a conta do servidor, os atalhos e sair. Eram
+          três ícones soltos; sair ficava colado nos atalhos, fácil de clicar
+          sem querer. A conta continua alcançável mesmo depois que a faixa do
+          topo some no mês, e o ponto laranja (não pagou ainda) sobe pro
+          ícone do menu. modal={false}: daqui abrem outras camadas. */}
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            title="Mais: conta do servidor, atalhos e sair"
+            aria-label="Mais opções"
+            className="alvo-dedo relative rounded-brutal p-2.5 text-muted-foreground transition-colors hover:bg-void-light hover:text-foreground"
+          >
+            <Settings className="h-4 w-4" />
+            {costs && !costs.iPaid && (
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border border-void bg-burn" />
+            )}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side={isPhone ? 'top' : 'right'} align="end" className="w-56">
+          <DropdownMenuItem onSelect={openCosts}>
+            <ServerIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="flex-1">A conta do servidor</span>
+            {costs && !costs.iPaid && <span aria-label="não pagou ainda" className="h-2 w-2 rounded-full bg-burn" />}
+          </DropdownMenuItem>
+          {/* No celular não há teclado pra ter atalho. */}
+          {!isPhone && (
+            <DropdownMenuItem onSelect={toggleShortcuts}>
+              <Keyboard className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="flex-1">Atalhos</span>
+              <span className="font-mono text-[11.5px] text-muted-foreground">Ctrl + /</span>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => setConfirmLogout(true)}
+            className="text-destructive focus:bg-destructive/15 focus:text-destructive"
+          >
+            <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="flex-1">Sair da conta</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <Dialog open={confirmLogout} onOpenChange={setConfirmLogout}>
         <DialogContent className="max-w-sm">
