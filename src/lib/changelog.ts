@@ -42,6 +42,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.99.0',
+    headline: 'Russo na Língua Murcha',
+    items: [
+      'Russo é o 8º idioma: do zero (A1) ao avançado (C1), com teste de nivelamento como os outros.',
+      'Nos níveis iniciais a palavra aparece em cirílico com a pronúncia em letras normais do lado, tipo Привет (privet).',
+      'A voz russa do Windows se instala pelo mesmo botão dos outros idiomas.'
+    ]
+  },
+  {
     version: '1.98.0',
     headline: 'Língua Murcha sem vidas, com revisão',
     items: [

@@ -8,7 +8,8 @@ export const VOICE_LANG: Record<Lang, string> = {
   it: 'it-IT',
   es: 'es-ES',
   de: 'de-DE',
-  zh: 'zh-CN'
+  zh: 'zh-CN',
+  ru: 'ru-RU'
 }
 
 interface VoiceLike {

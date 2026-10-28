@@ -12,7 +12,8 @@ export const LANG_NAME: Record<Lang, string> = {
   it: 'Italiano',
   es: 'Espanhol',
   de: 'Alemão',
-  zh: 'Mandarim'
+  zh: 'Mandarim',
+  ru: 'Russo'
 }
 
 export const LEVEL_LABEL: Record<Level, string> = {
@@ -31,7 +32,8 @@ export const VOICE_PACK_NAME: Record<Lang, string> = {
   it: 'Italiano (Itália)',
   es: 'Espanhol (Espanha)',
   de: 'Alemão (Alemanha)',
-  zh: 'Chinês (Simplificado, China)'
+  zh: 'Chinês (Simplificado, China)',
+  ru: 'Russo (Rússia)'
 }
 
 export const LESSONS_PER_LEVEL = 60

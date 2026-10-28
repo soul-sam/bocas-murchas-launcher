@@ -11,7 +11,8 @@ export const VOICE_BCP47: Readonly<Record<string, string>> = {
   it: 'it-IT',
   es: 'es-ES',
   de: 'de-DE',
-  zh: 'zh-CN'
+  zh: 'zh-CN',
+  ru: 'ru-RU'
 }
 
 const ALLOWED_BCP47 = new Set(Object.values(VOICE_BCP47))
@@ -22,7 +23,7 @@ export function powershellPath(): string {
   return `${root}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`
 }
 
-/** Nome da capability do Windows pra voz. null se o BCP47 não é um dos 7. */
+/** Nome da capability do Windows pra voz. null se o BCP47 não é um dos suportados. */
 export function voiceCapabilityName(bcp47: string): string | null {
   if (!ALLOWED_BCP47.has(bcp47)) return null
   return `Language.TextToSpeech~~~${bcp47}~0.0.1.0`

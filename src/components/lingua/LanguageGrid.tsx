@@ -4,7 +4,7 @@ import { canOpenToday, dayLabel, LANG_NAME, LESSONS_PER_LEVEL } from '@/lib/ling
 import { cn } from '@/lib/utils'
 import { Flag } from './Flag'
 
-/** As 7 línguas: nível, lição, ofensiva e como está a lição de hoje. */
+/** As línguas: nível, lição, ofensiva e como está a lição de hoje. */
 export function LanguageGrid({
   langs,
   busyLang,

@@ -11,7 +11,7 @@ import { request } from './api'
  *   GET  /podium                     -> LinguaPodium
  */
 
-export const LANGS = ['en', 'ja', 'fr', 'it', 'es', 'de', 'zh'] as const
+export const LANGS = ['en', 'ja', 'fr', 'it', 'es', 'de', 'zh', 'ru'] as const
 export type Lang = (typeof LANGS)[number]
 export const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'] as const
 export type Level = (typeof LEVELS)[number]
