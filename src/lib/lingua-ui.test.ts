@@ -7,6 +7,7 @@ import {
   heartSlots,
   missionsXp,
   optionSpeech,
+  placementResume,
   promptSpeech,
   resultTitle
 } from './lingua-ui.ts'
@@ -108,4 +109,16 @@ test('missionsXp soma as missões ganhas', () => {
     missionsXp(result({ missions: [{ kind: 'perfect', xp: 150 }, { kind: 'five_days', xp: 150 }] })),
     300
   )
+})
+
+test('placementResume: retoma do nível guardado', () => {
+  assert.equal(placementResume('B2'), 'B2')
+})
+
+test('placementResume: nada ou lixo guardado começa no A1', () => {
+  for (const v of [null, undefined, '', 'C2', 'b1', 3]) assert.equal(placementResume(v), 'A1')
+})
+
+test('errorMessage: already_placed', () => {
+  assert.equal(errorMessage('already_placed'), 'Você já começou essa língua. O nível não muda mais.')
 })

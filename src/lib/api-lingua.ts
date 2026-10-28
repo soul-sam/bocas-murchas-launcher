@@ -108,6 +108,18 @@ export interface LinguaPodium {
   byLang: Record<Lang, RankingRow[]>
 }
 
+/** Correção de um bloco do nivelamento: só a contagem, nunca o gabarito. */
+export interface PlacementResult {
+  level: Level
+  correct: number
+  total: number
+  passed: boolean
+  /** Próximo bloco; null quando acabou. */
+  next: Level | null
+  /** Nível de início; null enquanto continua. */
+  placed: Level | null
+}
+
 export const lingua = {
   me: (token: string) => request<LinguaMe>('/lingua/me', { token }),
   start: (token: string, lang: Lang, level?: Level) =>
@@ -130,5 +142,13 @@ export const lingua = {
   buyLife: (token: string) => request<LivesView>('/lingua/lives/buy', { token, method: 'POST' }),
   ranking: (token: string, lang: Lang | 'all', period: 'week' | 'total') =>
     request<LinguaRanking>(`/lingua/ranking?lang=${lang}&period=${period}`, { token }),
-  podium: (token: string) => request<LinguaPodium>('/lingua/podium', { token })
+  podium: (token: string) => request<LinguaPodium>('/lingua/podium', { token }),
+  placement: (token: string, lang: Lang, level: Level) =>
+    request<{ level: Level; questions: PublicQuestion[] }>(`/lingua/${lang}/placement/${level}`, { token }),
+  checkPlacement: (token: string, lang: Lang, level: Level, answers: number[]) =>
+    request<PlacementResult>(`/lingua/${lang}/placement/${level}`, {
+      token,
+      method: 'POST',
+      body: JSON.stringify({ answers })
+    })
 }

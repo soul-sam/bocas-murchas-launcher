@@ -131,7 +131,17 @@ export function errorMessage(code: string | null, nextPrice: number | null = nul
       return 'Essa lição já tinha continuado ou fechado.'
     case 'attempt_not_found':
       return 'Lição não encontrada. Recarregue a página.'
+    case 'already_placed':
+      return 'Você já começou essa língua. O nível não muda mais.'
   }
   // Erro 500 da API e regras de fora (dívida no banco…) já vêm em frase.
   return /\s/.test(code) ? code : 'Deu ruim. Tenta de novo.'
+}
+
+/**
+ * Nível guardado de um nivelamento interrompido (localStorage) → de onde
+ * retomar. Qualquer lixo volta pro A1.
+ */
+export function placementResume(stored: unknown): Level {
+  return typeof stored === 'string' && ['A1', 'A2', 'B1', 'B2', 'C1'].includes(stored) ? (stored as Level) : 'A1'
 }

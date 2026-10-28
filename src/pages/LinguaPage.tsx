@@ -5,7 +5,7 @@ import { BuyLifePrompt, Hearts } from '@/components/lingua/BuyLifePrompt'
 import { LanguageGrid } from '@/components/lingua/LanguageGrid'
 import { LessonResult } from '@/components/lingua/LessonResult'
 import { LessonView } from '@/components/lingua/LessonView'
-import { LevelPicker } from '@/components/lingua/LevelPicker'
+import { PlacementTest } from '@/components/lingua/PlacementTest'
 import { MissionsPanel } from '@/components/lingua/MissionsPanel'
 import { PodiumPanel } from '@/components/lingua/PodiumPanel'
 import { RankingPanel } from '@/components/lingua/RankingPanel'
@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
  * LÍNGUA MURCHA — o "Duolingo dos Bocas". Uma lição por língua por dia, vidas
  * globais (3 + até 2 compradas), ofensiva, missões da semana, ranking e pódio.
  *
- * Fluxo de abrir uma língua: sem nível → LevelPicker; sem voz no sistema →
+ * Fluxo de abrir uma língua: sem nível → PlacementTest; sem voz no sistema →
  * VoiceSetup (uma vez por sessão, dá pra seguir sem som); então `start` — que
  * devolve a tentativa já aberta se houver (retoma de `position`).
  */
@@ -284,7 +284,7 @@ export function LinguaPage() {
       </div>
 
       {picking && (
-        <LevelPicker
+        <PlacementTest
           lang={picking}
           busy={busyLang !== null}
           onPick={(level) => void proceed(picking, level)}
