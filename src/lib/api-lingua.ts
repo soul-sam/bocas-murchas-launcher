@@ -7,8 +7,6 @@ import { request } from './api'
  *   GET  /me                         -> LinguaMe
  *   POST /:lang/start { level? }     -> AttemptView
  *   POST /attempts/:id/answer { index, choice } -> AnswerResult
- *   POST /attempts/:id/give-up       -> FinishResult
- *   POST /lives/buy                  -> LivesView
  *   GET  /ranking?lang=all|<lang>&period=week|total -> { rows, me }
  *   GET  /podium                     -> LinguaPodium
  */
@@ -18,7 +16,7 @@ export type Lang = (typeof LANGS)[number]
 export const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'] as const
 export type Level = (typeof LEVELS)[number]
 
-export type AttemptStatus = 'active' | 'awaiting_life' | 'done' | 'failed'
+export type AttemptStatus = 'active' | 'done' | 'failed'
 export type DayStatus = 'available' | AttemptStatus
 
 export interface PublicQuestion {
@@ -29,12 +27,8 @@ export interface PublicQuestion {
   promptSpeak?: string
   options: string[]
   optionsSpeak?: string[]
-}
-
-export interface LivesView {
-  left: number
-  bought: number
-  nextPrice: number | null
+  /** Pergunta errada numa lição anterior, voltando pra revisão (vem depois das da lição). */
+  review?: true
 }
 
 export interface AttemptView {
@@ -44,13 +38,17 @@ export interface AttemptView {
   lesson: number
   topic: string
   questions: PublicQuestion[]
+  /** Quantas das `questions` são da lição; o resto é revisão. */
+  lessonCount: number
+  /** Acertos mínimos nas perguntas da lição pra passar pra próxima. */
+  passMin: number
   position: number
   correct: number
   status: AttemptStatus
-  lives: LivesView
 }
 
 export interface FinishResult {
+  /** done = passou de lição; failed = poucos acertos, repete amanhã. */
   status: 'done' | 'failed'
   correct: number
   xp: number
@@ -65,7 +63,6 @@ export interface AnswerResult {
   /** Índice da opção certa. */
   answer: number
   status: AttemptStatus
-  lives: LivesView
   /** Só quando esta resposta encerrou a tentativa. */
   result?: FinishResult
 }
@@ -79,11 +76,12 @@ export interface LinguaLangState {
   xpWeek: number
   xpTotal: number
   missions: { perfect: boolean; fiveDays: number }
+  /** Perguntas erradas esperando revisão nessa língua. */
+  review: number
 }
 
 export interface LinguaMe {
   langs: LinguaLangState[]
-  lives: LivesView
   generalStreak: number
   xpWeek: number
   xpTotal: number
@@ -134,12 +132,6 @@ export const lingua = {
       method: 'POST',
       body: JSON.stringify({ index, choice })
     }),
-  giveUp: (token: string, attemptId: string) =>
-    request<FinishResult>(`/lingua/attempts/${encodeURIComponent(attemptId)}/give-up`, {
-      token,
-      method: 'POST'
-    }),
-  buyLife: (token: string) => request<LivesView>('/lingua/lives/buy', { token, method: 'POST' }),
   ranking: (token: string, lang: Lang | 'all', period: 'week' | 'total') =>
     request<LinguaRanking>(`/lingua/ranking?lang=${lang}&period=${period}`, { token }),
   podium: (token: string) => request<LinguaPodium>('/lingua/podium', { token }),

@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { Flame, Languages, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { BuyLifePrompt, Hearts } from '@/components/lingua/BuyLifePrompt'
 import { LanguageGrid } from '@/components/lingua/LanguageGrid'
 import { LessonResult } from '@/components/lingua/LessonResult'
 import { LessonView } from '@/components/lingua/LessonView'
@@ -10,16 +9,17 @@ import { MissionsPanel } from '@/components/lingua/MissionsPanel'
 import { PodiumPanel } from '@/components/lingua/PodiumPanel'
 import { RankingPanel } from '@/components/lingua/RankingPanel'
 import { VoiceSetup } from '@/components/lingua/VoiceSetup'
-import { LEVELS, lingua, type AttemptView, type FinishResult, type Lang, type Level, type LinguaMe, type LivesView } from '@/lib/api-lingua'
+import { LEVELS, lingua, type AttemptView, type FinishResult, type Lang, type Level, type LinguaMe } from '@/lib/api-lingua'
 import { useAuth } from '@/lib/auth-context'
 import { useGamification } from '@/lib/gamification-context'
-import { errorCode, errorMessage, fmtMurchos } from '@/lib/lingua-ui'
+import { errorCode, errorMessage } from '@/lib/lingua-ui'
 import { hasVoice } from '@/lib/lingua-tts'
 import { cn } from '@/lib/utils'
 
 /**
- * LÍNGUA MURCHA — o "Duolingo dos Bocas". Uma lição por língua por dia, vidas
- * globais (3 + até 2 compradas), ofensiva, missões da semana, ranking e pódio.
+ * LÍNGUA MURCHA — o "Duolingo dos Bocas". Uma lição por língua por dia, sem
+ * limite de erro: passa com 6/10, senão repete amanhã; as erradas voltam como
+ * revisão nas lições seguintes. Ofensiva, missões da semana, ranking e pódio.
  *
  * Fluxo de abrir uma língua: sem nível → PlacementTest (o resultado fica no
  * localStorage até a 1ª lição); sem voz no sistema →
@@ -63,6 +63,8 @@ const TABS: Array<{ id: Tab; nome: string }> = [
 interface Finished {
   lang: Lang
   total: number
+  lessonCount: number
+  passMin: number
   result: FinishResult
 }
 
@@ -79,10 +81,6 @@ export function LinguaPage() {
   const [busyLang, setBusyLang] = React.useState<Lang | null>(null)
   const [lesson, setLesson] = React.useState<AttemptView | null>(null)
   const [finished, setFinished] = React.useState<Finished | null>(null)
-
-  const [buyOpen, setBuyOpen] = React.useState(false)
-  const [buyBusy, setBuyBusy] = React.useState(false)
-  const [buyError, setBuyError] = React.useState<string | null>(null)
 
   // "Continuar sem som" vale pra sessão: não pergunta de novo a cada lição.
   const silentLangs = React.useRef(new Set<Lang>())
@@ -101,40 +99,22 @@ export function LinguaPage() {
 
   React.useEffect(loadMe, [loadMe])
 
-  const setLives = (lives: LivesView) => setMe((m) => (m ? { ...m, lives } : m))
-
-  const buyLife = async () => {
-    if (!token) return
-    try {
-      setLives(await lingua.buyLife(token))
-    } catch (e) {
-      // Preço/compras mudaram por fora: recarrega pra não mostrar preço velho.
-      const code = errorCode(e)
-      if (code === 'no_more_purchases' || code === 'insufficient_funds') loadMe()
-      throw e
-    }
-    void refreshProfile()
-  }
-
   const begin = async (lang: Lang, level?: Level) => {
     if (!token) return
     setBusyLang(lang)
     setNotice(null)
     try {
       const attempt = await lingua.start(token, lang, level)
-      setLives(attempt.lives)
       setPicking(null)
       setLesson(attempt)
     } catch (e) {
       const code = errorCode(e)
-      const nextPrice = me?.lives.nextPrice ?? null
       setPicking(null)
       if (code === 'level_required') {
         setPicking(lang)
         return
       }
-      setNotice(errorMessage(code, nextPrice))
-      if (code === 'no_lives' && nextPrice !== null) setBuyOpen(true)
+      setNotice(errorMessage(code))
       if (code === 'already_done_today' || code === 'attempt_expired') loadMe()
     } finally {
       setBusyLang(null)
@@ -164,13 +144,13 @@ export function LinguaPage() {
     else setPicking(lang)
   }
 
-  // Reabriu a página com lição em andamento (ou parada sem vida): retoma
+  // Reabriu a página com lição em andamento: retoma
   // sozinho, uma vez — sair da lição e voltar pra lista não reabre.
   const autoResumed = React.useRef(false)
   React.useEffect(() => {
     if (!me || autoResumed.current) return
     autoResumed.current = true
-    const pending = me.langs.find((l) => l.today === 'active' || l.today === 'awaiting_life')
+    const pending = me.langs.find((l) => l.today === 'active')
     if (pending?.level) void proceed(pending.lang)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só na primeira carga do /me
   }, [me])
@@ -181,22 +161,6 @@ export function LinguaPage() {
     loadMe()
   }
 
-  const buyFromTop = async () => {
-    setBuyBusy(true)
-    setBuyError(null)
-    try {
-      await buyLife()
-      setBuyOpen(false)
-      setNotice(null)
-    } catch (e) {
-      setBuyError(errorMessage(errorCode(e)))
-    } finally {
-      setBuyBusy(false)
-    }
-  }
-
-  const lives = me?.lives
-
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
       <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line/70 px-4 py-3 sm:px-6">
@@ -204,17 +168,11 @@ export function LinguaPage() {
         <div className="min-w-0 flex-1">
           <h1 className="title-brutal text-2xl leading-none">Língua Murcha</h1>
           <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
-            Uma lição por língua por dia. Errou, perdeu vida.
+            Uma lição por língua por dia. Acertou 6 de 10, passa; o que errar volta pra revisão.
           </p>
         </div>
-        {me && lives && (
+        {me && (
           <div className="flex flex-wrap items-center gap-3 text-xs">
-            <Hearts lives={lives} />
-            {lives.nextPrice !== null && !lesson && (
-              <Button size="sm" variant="secondary" onClick={() => setBuyOpen(true)}>
-                Comprar vida ({fmtMurchos(lives.nextPrice)})
-              </Button>
-            )}
             <span className="flex items-center gap-1 font-mono text-burn" title="Ofensiva geral">
               <Flame className="h-4 w-4" aria-hidden />
               {me.generalStreak}
@@ -263,16 +221,19 @@ export function LinguaPage() {
             </p>
           )}
 
-          {lesson && token && lives ? (
+          {lesson && token ? (
             <LessonView
               key={lesson.attemptId}
               attempt={lesson}
               token={token}
-              lives={lives}
-              onLives={setLives}
-              buyLife={buyLife}
               onFinish={(result) => {
-                setFinished({ lang: lesson.lang, total: lesson.questions.length, result })
+                setFinished({
+                  lang: lesson.lang,
+                  total: lesson.questions.length,
+                  lessonCount: lesson.lessonCount,
+                  passMin: lesson.passMin,
+                  result
+                })
                 setLesson(null)
                 loadMe()
                 void refreshProfile()
@@ -284,6 +245,8 @@ export function LinguaPage() {
             <LessonResult
               lang={finished.lang}
               total={finished.total}
+              lessonCount={finished.lessonCount}
+              passMin={finished.passMin}
               result={finished.result}
               onBack={() => setFinished(null)}
             />
@@ -333,20 +296,6 @@ export function LinguaPage() {
             void begin(lang, level)
           }}
           onCancel={() => setVoiceFor(null)}
-        />
-      )}
-
-      {buyOpen && lives && !lesson && (
-        <BuyLifePrompt
-          price={lives.nextPrice}
-          inLesson={false}
-          busy={buyBusy}
-          error={buyError}
-          onBuy={() => void buyFromTop()}
-          onDecline={() => {
-            setBuyOpen(false)
-            setBuyError(null)
-          }}
         />
       )}
     </div>

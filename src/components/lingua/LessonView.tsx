@@ -1,17 +1,10 @@
 import * as React from 'react'
-import { Check, Loader2, Volume2, X } from 'lucide-react'
+import { Check, Loader2, RotateCcw, Volume2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  lingua,
-  type AttemptStatus,
-  type AttemptView,
-  type FinishResult,
-  type LivesView
-} from '@/lib/api-lingua'
+import { lingua, type AttemptStatus, type AttemptView, type FinishResult } from '@/lib/api-lingua'
 import { errorCode, errorMessage, LANG_NAME, optionSpeech, promptSpeech } from '@/lib/lingua-ui'
 import { speak } from '@/lib/lingua-tts'
 import { cn } from '@/lib/utils'
-import { BuyLifePrompt, Hearts } from './BuyLifePrompt'
 import { Flag } from './Flag'
 
 interface Feedback {
@@ -21,7 +14,7 @@ interface Feedback {
 }
 
 /** Erros que encerram a lição na tela: volta pra lista e recarrega. */
-const FATAL = new Set(['attempt_expired', 'already_done_today', 'attempt_not_found', 'no_lives'])
+const FATAL = new Set(['attempt_expired', 'already_done_today', 'attempt_not_found'])
 
 function stopSpeech() {
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel()
@@ -45,27 +38,21 @@ function SpeakButton({ onSpeak, label }: { onSpeak: () => void; label: string })
 }
 
 /**
- * A lição: 10 perguntas, uma por vez. O servidor confere cada resposta (e
- * desconta a vida); aqui só mostra. Abre de onde parou (`attempt.position`).
+ * A lição: as 10 perguntas da lição e depois as de revisão (erradas em lições
+ * anteriores), uma por vez, sem limite de erro. O servidor confere cada
+ * resposta; aqui só mostra. Abre de onde parou (`attempt.position`).
  */
 export function LessonView({
   attempt,
   token,
-  lives,
-  onLives,
-  buyLife,
   onFinish,
   onAbort,
   onExit
 }: {
   attempt: AttemptView
   token: string
-  lives: LivesView
-  onLives: (lives: LivesView) => void
-  /** Compra 1 vida (a página atualiza vidas e saldo). Lança ApiError. */
-  buyLife: () => Promise<void>
   onFinish: (result: FinishResult) => void
-  /** A lição acabou por fora (expirou, sem vidas…): volta com o aviso. */
+  /** A lição acabou por fora (expirou, já feita…): volta com o aviso. */
   onAbort: (message: string) => void
   /** Sair sem terminar: a tentativa fica aberta e retoma depois. */
   onExit: () => void
@@ -78,9 +65,6 @@ export function LessonView({
   const [result, setResult] = React.useState<FinishResult | null>(null)
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [buyOpen, setBuyOpen] = React.useState(attempt.status === 'awaiting_life')
-  const [buyBusy, setBuyBusy] = React.useState(false)
-  const [buyError, setBuyError] = React.useState<string | null>(null)
 
   const q = questions[position]
   const foreignPrompt = q ? promptSpeech(q) : null
@@ -120,7 +104,6 @@ export function LessonView({
     try {
       const res = await lingua.answer(token, attempt.attemptId, position, choice)
       if (!alive.current) return
-      onLives(res.lives)
       setFeedback({ choice, answer: res.answer, correct: res.correct })
       setStatus(res.status)
       if (res.result) setResult(res.result)
@@ -130,14 +113,8 @@ export function LessonView({
     } catch (e) {
       if (!alive.current) return
       const code = errorCode(e)
-      if (code === 'no_lives' && lives.nextPrice !== null) {
-        setStatus('awaiting_life')
-        setBuyOpen(true)
-      } else if (code && FATAL.has(code)) {
-        onAbort(errorMessage(code, lives.nextPrice))
-      } else {
-        setError(errorMessage(code))
-      }
+      if (code && FATAL.has(code)) onAbort(errorMessage(code))
+      else setError(errorMessage(code))
     } finally {
       if (alive.current) setBusy(false)
     }
@@ -150,37 +127,6 @@ export function LessonView({
     }
     setFeedback(null)
     setPosition((p) => p + 1)
-    if (status === 'awaiting_life') setBuyOpen(true)
-  }
-
-  const buy = async () => {
-    setBuyBusy(true)
-    setBuyError(null)
-    try {
-      await buyLife()
-      setStatus('active')
-      setBuyOpen(false)
-    } catch (e) {
-      setBuyError(errorMessage(errorCode(e), lives.nextPrice))
-    } finally {
-      setBuyBusy(false)
-    }
-  }
-
-  const giveUp = async () => {
-    setBuyBusy(true)
-    setBuyError(null)
-    try {
-      const result = await lingua.giveUp(token, attempt.attemptId)
-      if (alive.current) onFinish(result)
-    } catch (e) {
-      if (!alive.current) return
-      const code = errorCode(e)
-      // Já não estava esperando vida (continuou ou fechou por fora): volta e recarrega.
-      if (code === 'not_awaiting' || (code && FATAL.has(code))) onAbort(errorMessage(code, null))
-      else setBuyError(errorMessage(code))
-      setBuyBusy(false)
-    }
   }
 
   const shown = feedback ? position + 1 : position
@@ -211,7 +157,6 @@ export function LessonView({
         <span className="font-mono text-xs text-muted-foreground">
           {Math.min(position + 1, total)}/{total}
         </span>
-        <Hearts lives={lives} />
       </div>
 
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -221,6 +166,12 @@ export function LessonView({
 
       {q && (
         <>
+          {q.review && (
+            <p className="-mb-2 flex items-center gap-1.5 text-xs font-medium text-burn">
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+              Revisão: você errou essa numa lição anterior
+            </p>
+          )}
           <div className="flex items-start gap-2">
             <h2 className="flex-1 text-2xl font-semibold leading-tight text-foreground">{q.prompt}</h2>
             {foreignPrompt && <SpeakButton onSpeak={() => say(foreignPrompt)} label="Ouvir" />}
@@ -294,17 +245,6 @@ export function LessonView({
             {result ? 'Ver resultado' : 'Continuar'}
           </Button>
         </div>
-      )}
-
-      {buyOpen && !feedback && (
-        <BuyLifePrompt
-          price={lives.nextPrice}
-          inLesson
-          busy={buyBusy}
-          error={buyError}
-          onBuy={() => void buy()}
-          onDecline={() => void giveUp()}
-        />
       )}
     </div>
   )

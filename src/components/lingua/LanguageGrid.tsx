@@ -18,7 +18,7 @@ export function LanguageGrid({
     <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
       {langs.map((l) => {
         const open = canOpenToday(l.today)
-        const pending = l.today === 'active' || l.today === 'awaiting_life'
+        const pending = l.today === 'active'
         return (
           <button
             key={l.lang}
@@ -42,6 +42,7 @@ export function LanguageGrid({
               </span>
               <span className="block text-xs text-muted-foreground">
                 {l.level ? `lição ${l.lesson}/${LESSONS_PER_LEVEL}` : 'Escolher nível'}
+                {l.review > 0 && ` · ${l.review} pra revisar`}
               </span>
               <span
                 className={cn(

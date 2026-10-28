@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '1.98.0',
+    headline: 'Língua Murcha sem vidas, com revisão',
+    items: [
+      'Acabaram as vidas: dá pra errar à vontade e sempre chegar à última pergunta da lição.',
+      'Acertou 6 das 10 perguntas, passa pra próxima lição. Menos que isso, a mesma lição volta amanhã.',
+      'O que você errar volta depois: até 3 perguntas erradas de lições anteriores aparecem no fim da lição do dia, marcadas como revisão. Acertou, ela sai da fila.',
+      'Cada idioma mostra quantas perguntas estão esperando revisão.'
+    ]
+  },
+  {
     version: '1.97.2',
     headline: 'Língua Murcha: voz e nivelamento consertados',
     items: [

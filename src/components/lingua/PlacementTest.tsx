@@ -14,7 +14,7 @@ import { Flag } from './Flag'
  * bloco e diz se passou (4+) — sem mostrar qual estava certa, que essas
  * perguntas também caem nas lições. Começa no primeiro nível em que não
  * passou. Fechou no meio? O próximo bloco fica no localStorage e o teste
- * retoma dali. Não gasta vida, não dá XP, não conta como lição do dia.
+ * retoma dali. Não dá XP e não conta como lição do dia.
  */
 
 type Phase =
@@ -124,7 +124,7 @@ export function PlacementTest({
           </DialogTitle>
           <DialogDescription>
             {phase.kind === 'question' || phase.kind === 'loading' || phase.kind === 'checking'
-              ? `Nível ${phase.level}. Não vale vida nem XP, e não conta como lição do dia.`
+              ? `Nível ${phase.level}. Não vale XP e não conta como lição do dia.`
               : 'Descubra em que nível começar. Depois ele sobe sozinho a cada 60 lições.'}
           </DialogDescription>
         </DialogHeader>

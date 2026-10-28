@@ -9,11 +9,16 @@ import { Flag } from './Flag'
 export function LessonResult({
   lang,
   total,
+  lessonCount,
+  passMin,
   result,
   onBack
 }: {
   lang: Lang
+  /** Perguntas respondidas, revisão inclusa. */
   total: number
+  lessonCount: number
+  passMin: number
   result: FinishResult
   onBack: () => void
 }) {
@@ -71,7 +76,10 @@ export function LessonResult({
       )}
 
       {failed && (
-        <p className="text-xs text-muted-foreground">Os acertos contaram. Amanhã tem outra.</p>
+        <p className="text-xs text-muted-foreground">
+          Pra passar de lição são {passMin} acertos nas {lessonCount} perguntas dela. O XP dos acertos já contou, e as
+          que você errou voltam pra revisão.
+        </p>
       )}
 
       <Button onClick={onBack} autoFocus>

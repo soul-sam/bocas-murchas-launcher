@@ -2,9 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   canOpenToday,
+  dayLabel,
   errorCode,
   errorMessage,
-  heartSlots,
   missionsXp,
   optionSpeech,
   placementResume,
@@ -52,37 +52,27 @@ test('optionSpeech: to_pt não fala (opções em português)', () => {
   assert.equal(optionSpeech(toPt, 0), null)
 })
 
-test('canOpenToday: disponível, ativa e esperando vida abrem; feita e falha não', () => {
+test('canOpenToday: disponível e ativa abrem; feita e reprovada não', () => {
   assert.equal(canOpenToday('available'), true)
   assert.equal(canOpenToday('active'), true)
-  assert.equal(canOpenToday('awaiting_life'), true)
   assert.equal(canOpenToday('done'), false)
   assert.equal(canOpenToday('failed'), false)
 })
 
-test('heartSlots: 3 casas mínimas, cheias as que sobram', () => {
-  assert.deepEqual(heartSlots({ left: 1, bought: 0, nextPrice: 1000 }), [true, false, false])
-  assert.deepEqual(heartSlots({ left: 0, bought: 2, nextPrice: null }), [false, false, false])
-  assert.deepEqual(heartSlots({ left: 5, bought: 2, nextPrice: null }), [true, true, true, true, true])
-})
-
-test('errorMessage: no_lives oferece compra só com preço', () => {
-  assert.match(errorMessage('no_lives', 1000), /1\.000 murchos/)
-  assert.doesNotMatch(errorMessage('no_lives', null), /murchos/)
+test('dayLabel: reprovada hoje diz que repete amanhã', () => {
+  assert.equal(dayLabel('failed'), 'Repete amanhã')
 })
 
 test('errorMessage: códigos conhecidos viram frase; frase passa; código estranho vira genérico', () => {
-  assert.equal(errorMessage('insufficient_funds'), 'Murchos insuficientes pra comprar vida.')
-  assert.equal(errorMessage('no_more_purchases'), 'Já comprou as 2 vidas de hoje.')
-  assert.equal(errorMessage('not_awaiting'), 'Essa lição já tinha continuado ou fechado.')
+  assert.equal(errorMessage('already_done_today'), 'A lição dessa língua já foi feita hoje. Volta amanhã.')
   assert.equal(errorMessage('Erro ao iniciar lição'), 'Erro ao iniciar lição')
   assert.equal(errorMessage('weird_code'), 'Deu ruim. Tenta de novo.')
   assert.match(errorMessage(null), /conexão/)
 })
 
 test('errorCode: ApiError devolve o código; outro erro, null', () => {
-  const api = Object.assign(new Error('no_lives'), { name: 'ApiError' })
-  assert.equal(errorCode(api), 'no_lives')
+  const api = Object.assign(new Error('attempt_expired'), { name: 'ApiError' })
+  assert.equal(errorCode(api), 'attempt_expired')
   assert.equal(errorCode(new TypeError('Failed to fetch')), null)
   assert.equal(errorCode('x'), null)
 })
@@ -101,7 +91,7 @@ const result = (over: Partial<FinishResult>): FinishResult => ({
 test('resultTitle: perfeita, concluída, falhou', () => {
   assert.equal(resultTitle(result({}), 10), 'Lição perfeita!')
   assert.equal(resultTitle(result({ correct: 7 }), 10), 'Lição concluída')
-  assert.equal(resultTitle(result({ status: 'failed', correct: 4 }), 10), 'Lição falhou')
+  assert.equal(resultTitle(result({ status: 'failed', correct: 4 }), 10), 'Quase! Essa lição volta amanhã')
 })
 
 test('missionsXp soma as missões ganhas', () => {

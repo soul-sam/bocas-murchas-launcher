@@ -1,4 +1,4 @@
-import type { DayStatus, FinishResult, Lang, Level, LivesView, PublicQuestion } from './api-lingua'
+import type { DayStatus, FinishResult, Lang, Level, PublicQuestion } from './api-lingua'
 
 /**
  * LÍNGUA MURCHA — regras puras da tela (o que falar, rótulos, erro → frase).
@@ -53,7 +53,7 @@ export function optionSpeech(q: PublicQuestion, i: number): string | null {
 
 /** Dá pra abrir a lição da língua hoje (nova ou retomando)? */
 export function canOpenToday(today: DayStatus): boolean {
-  return today === 'available' || today === 'active' || today === 'awaiting_life'
+  return today === 'available' || today === 'active'
 }
 
 export function dayLabel(today: DayStatus): string {
@@ -62,12 +62,10 @@ export function dayLabel(today: DayStatus): string {
       return 'Lição de hoje liberada'
     case 'active':
       return 'Lição em andamento'
-    case 'awaiting_life':
-      return 'Parada sem vida'
     case 'done':
       return 'Feita hoje'
     case 'failed':
-      return 'Falhou hoje'
+      return 'Repete amanhã'
   }
 }
 
@@ -75,18 +73,12 @@ export function fmtMurchos(n: number): string {
   return Math.round(n).toLocaleString('pt-BR')
 }
 
-/** Corações do topo: no mínimo 3 casas; as `left` primeiras cheias. */
-export function heartSlots(lives: LivesView): boolean[] {
-  const left = Math.max(0, lives.left)
-  return Array.from({ length: Math.max(3, left) }, (_, i) => i < left)
-}
-
 export function missionsXp(result: FinishResult): number {
   return result.missions.reduce((sum, m) => sum + m.xp, 0)
 }
 
 export function resultTitle(result: FinishResult, total: number): string {
-  if (result.status === 'failed') return 'Lição falhou'
+  if (result.status === 'failed') return 'Quase! Essa lição volta amanhã'
   if (result.correct >= total) return 'Lição perfeita!'
   return 'Lição concluída'
 }
@@ -106,29 +98,19 @@ export function errorCode(e: unknown): string | null {
 
 /**
  * Erro da API → frase. `code` é a mensagem do ApiError (o código, tipo
- * `no_lives`); null = nem chegou no servidor.
+ * `already_done_today`); null = nem chegou no servidor.
  */
-export function errorMessage(code: string | null, nextPrice: number | null = null): string {
+export function errorMessage(code: string | null): string {
   if (code === null) return 'Sem conexão com o servidor. Tenta de novo.'
   switch (code) {
     case 'level_required':
       return 'Escolha o nível antes de começar.'
     case 'already_done_today':
       return 'A lição dessa língua já foi feita hoje. Volta amanhã.'
-    case 'no_lives':
-      return nextPrice !== null
-        ? `Acabaram as vidas. Dá pra comprar uma por ${fmtMurchos(nextPrice)} murchos.`
-        : 'Acabaram as vidas de hoje. Volta amanhã.'
     case 'attempt_expired':
       return 'Essa lição era de ontem e já fechou.'
-    case 'insufficient_funds':
-      return 'Murchos insuficientes pra comprar vida.'
-    case 'no_more_purchases':
-      return 'Já comprou as 2 vidas de hoje.'
     case 'invalid_lang':
       return 'Língua desconhecida.'
-    case 'not_awaiting':
-      return 'Essa lição já tinha continuado ou fechado.'
     case 'attempt_not_found':
       return 'Lição não encontrada. Recarregue a página.'
     case 'already_placed':
