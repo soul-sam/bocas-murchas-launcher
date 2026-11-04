@@ -27,6 +27,7 @@ import {
 import { loadSettings } from './services/settings.js'
 import { startLolWatcher, stopLolWatcher } from './services/lol.js'
 import { applyOverlaySettings, destroyOverlay } from './services/overlay.js'
+import { initDiagLog, stopDiagLog } from './services/diag-log.js'
 import { destroyPopout } from './services/popout.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 import { closeSplash, showSplash } from './services/splash.js'
@@ -212,6 +213,9 @@ if (!gotTheLock) {
   app.on('second-instance', showMainWindow)
 
   app.whenReady().then(async () => {
+    // Primeiro de tudo: se algo daqui pra baixo travar, a linha do boot ja
+    // esta no disco.
+    initDiagLog()
     setMainWindowFactory(createWindow)
     registerIpcHandlers()
     initScreenShare()
@@ -267,4 +271,5 @@ app.on('will-quit', () => {
   stopLolWatcher()
   destroyOverlay()
   destroyPopout()
+  stopDiagLog()
 })

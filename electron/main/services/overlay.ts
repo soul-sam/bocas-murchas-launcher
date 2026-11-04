@@ -15,6 +15,9 @@ import type {
 import { anyMouseButtonDown } from './mouse-buttons.js'
 import { ensureNoActivate } from './no-activate.js'
 import { getMainWindow, showMainWindow } from './main-window.js'
+import { addDiagProbe, diagLog } from './diag-log.js'
+import { TOP_CHECK_MS, decideTop, inQuiet, quietAfterPhaseChange, sameRect } from './overlay-policy.js'
+import { isCovered } from './zorder.js'
 
 /**
  * A SOBREPOSICAO — a janela que aparece por cima do jogo.
@@ -191,11 +194,12 @@ const HIT_MARGIN = 24
  * partida carregou" que nao e tela cheia exclusiva (essa nao tem conserto).
  *
  * Reafirmar o topo custa um `SetWindowPos` com NOACTIVATE — nao rouba foco,
- * nao pisca — e roda no mesmo relogio do cursor, a cada TOP_REASSERT_MS. Junto
- * vai a conferencia de que a janela continua visivel: se alguma coisa a
- * escondeu (Win+D, troca de sessao), ela volta sozinha.
+ * nao pisca. Ate nov/2026 isso rodava a cada 1,5 s, precisando ou nao, e
+ * cada chamada faz o DWM recompor a pilha. Hoje o relogio so CONFERE (ver
+ * zorder.ts) e reafirma quando ha alguem por cima ou a janela sumiu (Win+D,
+ * troca de sessao). E perto de uma troca de fase da partida nem confere: ver
+ * `quietUntil` e overlay-policy.ts.
  */
-const TOP_REASSERT_MS = 1500
 let lastTopAt = 0
 /** A janela ja foi mostrada uma vez (antes disso `isVisible()` e falso por desenho). */
 let overlayShown = false
@@ -206,6 +210,57 @@ function keepOnTop(win: BrowserWindow): void {
   win.moveTop()
 }
 
+/** Quantas vezes o topo foi reafirmado desde o boot (vai pro pulso do log). */
+let topReasserts = 0
+
+function checkTop(win: BrowserWindow, now: number): void {
+  const visible = !overlayShown || win.isVisible()
+  // So pergunta a pilha quando a regra vai olhar pra resposta.
+  const due = now - lastTopAt >= TOP_CHECK_MS && !inQuiet(now, quietUntil)
+  const covered = due && visible ? isCovered(win) : false
+  const decision = decideTop({ now, lastCheckAt: lastTopAt, quietUntil, visible, covered })
+  if (decision === 'wait' || decision === 'quiet') return
+  lastTopAt = now
+  if (decision === 'ok') return
+  topReasserts++
+  diagLog('overlay', 'reafirma topo', { visible, covered })
+  keepOnTop(win)
+}
+
+/**
+ * ===========================================================================
+ * SILENCIO EM VOLTA DA TROCA DE FASE DA PARTIDA.
+ * ===========================================================================
+ *
+ * Quando a partida comeca ou acaba o Windows troca o jogo de modo de
+ * apresentacao, e num notebook com duas GPUs mexer na nossa janela
+ * transparente ali (criar, mudar tamanho, puxar pro topo) coincidiu com o DWM
+ * congelando. Enquanto `quietUntil` nao passa, nada disso acontece; o que foi
+ * pedido fica pendente e roda quando o silencio acaba. Ver overlay-policy.ts.
+ */
+let quietUntil = 0
+let pendingRefit = false
+let pendingReveal = false
+let quietTimer: NodeJS.Timeout | null = null
+
+function afterQuiet(): void {
+  if (quietTimer) return
+  const wait = Math.max(0, quietUntil - Date.now()) + 50
+  quietTimer = setTimeout(() => {
+    quietTimer = null
+    if (inQuiet(Date.now(), quietUntil)) {
+      afterQuiet()
+      return
+    }
+    diagLog('overlay', 'fim do silencio', { pendingRefit })
+    const rebound = pendingRefit
+    pendingRefit = false
+    if (pendingReveal) reveal = Date.now()
+    pendingReveal = false
+    applyMode(rebound)
+  }, wait)
+}
+
 /**
  * Encaixa a janela no retangulo do monitor.
  *
@@ -214,19 +269,16 @@ function keepOnTop(win: BrowserWindow): void {
  * janela: o primeiro chamado move, e o tamanho sai errado — a sobreposicao
  * ficava cobrindo so um pedaco da tela, ou sobrando pra fora, com a logo
  * longe da borda onde devia estar. O segundo chamado, ja no monitor certo,
- * acerta o tamanho. Conferir antes de repetir evita um repaint a toa.
+ * acerta o tamanho. Conferir antes de repetir evita um repaint a toa — e
+ * conferir ANTES do primeiro tambem: com um monitor so, o retangulo quase
+ * sempre ja e o certo, e cada `setBounds` numa janela transparente do tamanho
+ * da tela e trabalho pro DWM.
  */
 function fitToDisplay(win: BrowserWindow, bounds: Electron.Rectangle): void {
+  if (sameRect(win.getBounds(), bounds)) return
+  diagLog('overlay', 'encaixa no monitor', { from: win.getBounds(), to: bounds })
   win.setBounds(bounds)
-  const got = win.getBounds()
-  if (
-    got.x !== bounds.x ||
-    got.y !== bounds.y ||
-    got.width !== bounds.width ||
-    got.height !== bounds.height
-  ) {
-    win.setBounds(bounds)
-  }
+  if (!sameRect(win.getBounds(), bounds)) win.setBounds(bounds)
 }
 
 let hitAreas: OverlayHitArea[] = []
@@ -267,11 +319,7 @@ function pollCursor(): void {
     if (win.isDestroyed()) return
   }
 
-  const tick = Date.now()
-  if (tick - lastTopAt >= TOP_REASSERT_MS) {
-    lastTopAt = tick
-    keepOnTop(win)
-  }
+  checkTop(win, Date.now())
 
   if (forcedInteractive) {
     applyInteractive(true)
@@ -439,6 +487,13 @@ function watchDisplayMetrics(): void {
   // da TELA, entao o retangulo antigo aparece na hora (sobrando ou faltando).
   const refit = (): void => {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
+      // Jogo em tela cheia exclusiva troca a resolucao bem na troca de fase:
+      // ajusta depois do silencio, junto com o resto.
+      if (inQuiet(Date.now(), quietUntil)) {
+        pendingRefit = true
+        afterQuiet()
+        return
+      }
       fitToDisplay(overlayWindow, targetBounds())
     }
   }
@@ -449,8 +504,10 @@ function watchDisplayMetrics(): void {
 
 function createOverlayWindow(): BrowserWindow {
   watchDisplayMetrics()
+  registerProbe()
 
   const bounds = targetBounds()
+  diagLog('overlay', 'janela criada', { bounds })
 
   const win = new BrowserWindow({
     ...bounds,
@@ -572,6 +629,7 @@ function showOverlay(rebound: boolean): void {
 function closeOverlay(): void {
   const win = overlayWindow
   overlayWindow = null
+  if (win && !win.isDestroyed()) diagLog('overlay', 'janela destruida')
   // O ouvinte de 'closed' so desliga o relogio quando a janela ainda e a
   // `overlayWindow` — e aqui ela ja foi zerada. Sem isto o relogio de cursor
   // seguia batendo 20x/s depois de minimizar, com os retangulos da janela
@@ -611,6 +669,27 @@ function applyMode(rebound = false): void {
 
   // Nada mudou e a janela esta como devia: o relogio chama isto 20x/s.
   if (same && exists === wanted && !rebound) return
+
+  // Silencio da troca de fase: nao cria janela nem muda tamanho agora. O
+  // `mode` fica como estava, entao a proxima chamada (a do fim do silencio)
+  // ainda enxerga a diferenca e faz o que faltou.
+  if (wanted && inQuiet(Date.now(), quietUntil)) {
+    if (!exists) {
+      pendingRefit = pendingRefit || rebound
+      // O "abre o painel por uns segundos" do comeco da partida venceria
+      // durante a espera; ele e refeito quando a janela nascer.
+      pendingReveal = pendingReveal || (reveal !== 0 && Date.now() - reveal < 5_000)
+      diagLog('overlay', 'criacao adiada (silencio)')
+      afterQuiet()
+      return
+    }
+    if (rebound) {
+      pendingRefit = true
+      afterQuiet()
+      rebound = false
+    }
+  }
+
   mode = next
 
   if (!wanted) {
@@ -714,8 +793,38 @@ export function applyOverlaySettings(settings: LauncherSettings): void {
  * decide sozinha, com `lol.overlay` ligado, e o comeco: desminimiza e abre o
  * painel por uns segundos, que e o aviso de que da pra apostar.
  */
+let lastLoggedPhase = ''
+
+/** Toda troca de `inGame` passa aqui: abre o silencio ANTES do applyMode. */
+function setInGame(next: boolean): void {
+  const q = quietAfterPhaseChange(inGame, next, Date.now(), quietUntil)
+  inGame = next
+  if (q === quietUntil) return
+  quietUntil = q
+  diagLog('overlay', 'silencio (troca de fase)', { inGame: next, ate: new Date(q).toISOString() })
+}
+
+/** Pro pulso do log: o estado da sobreposicao em uma linha. */
+let probeRegistered = false
+function registerProbe(): void {
+  if (probeRegistered) return
+  probeRegistered = true
+  addDiagProbe(() => ({
+    overlay: Boolean(overlayWindow && !overlayWindow.isDestroyed()),
+    inGame,
+    quiet: inQuiet(Date.now(), quietUntil),
+    topReasserts
+  }))
+}
+
 export function syncOverlayWithLol(status: LolStatus): void {
   const playing = status.clientRunning && status.phase === 'in-progress'
+
+  const phaseKey = `${status.clientRunning ? 'cliente' : 'sem-cliente'}/${status.phase}`
+  if (phaseKey !== lastLoggedPhase) {
+    lastLoggedPhase = phaseKey
+    diagLog('lol', 'fase', { phase: status.phase, clientRunning: status.clientRunning })
+  }
 
   if (!playing) {
     // Cliente que CAIU no meio da partida nao e partida acabando: o jogo
@@ -724,7 +833,7 @@ export function syncOverlayWithLol(status: LolStatus): void {
     // partida nova — desminimizando e abrindo o painel no meio da luta.
     if (status.clientRunning) currentPhaseSince = 0
     if (inGame) {
-      inGame = false
+      setInGame(false)
       applyMode()
     }
     return
@@ -734,7 +843,7 @@ export function syncOverlayWithLol(status: LolStatus): void {
   currentPhaseSince = status.phaseSince
 
   if (!started) return
-  inGame = true
+  setInGame(true)
   if (prefs.autoOnMatch) {
     minimized = false
     reveal = Date.now()
@@ -750,6 +859,11 @@ export function dismissOverlay(): void {
 }
 
 export function destroyOverlay(): void {
+  if (quietTimer) clearTimeout(quietTimer)
+  quietTimer = null
+  quietUntil = 0
+  pendingRefit = false
+  pendingReveal = false
   closeOverlay()
   mode = { dock: false, wheel: false, inGame: false, appFocused: false, reveal: 0 }
   lastState = null

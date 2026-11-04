@@ -1359,6 +1359,14 @@ export interface BocasAPI {
     launch: () => Promise<{ ok: boolean; error?: string }>
   }
   /**
+   * Log de diagnostico do main (`logs/main.log`, ver diag-log.ts). O renderer
+   * conta o que so ele sabe: entrou/saiu da call, tela compartilhada. Sem
+   * nome de gente nem conteudo — so tipo de evento e numero. No site, nada.
+   */
+  diag: {
+    log: (tag: string, msg: string, data?: Record<string, string | number | boolean | null>) => void
+  }
+  /**
    * Sobreposicao em partida. Os dois lados usam o MESMO objeto: a janela
    * principal chama `push`/`onAction`, a janela da sobreposicao chama
    * `onState`/`send`/`setInteractive`.

@@ -569,7 +569,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       )
       // `isDesired` e o que ESTE cliente pediu; sem a comparacao cada
       // sincronizacao mandaria um UpdateSubscription redundante pro servidor.
-      if (publication.isDesired !== wanted) publication.setSubscribed(wanted)
+      if (publication.isDesired !== wanted) {
+        publication.setSubscribed(wanted)
+        // So o video da tela: e o que pesa na GPU (decodificar + desenhar).
+        if (publication.source === Track.Source.ScreenShare) {
+          window.bocas.diag.log('tela', wanted ? 'assistindo' : 'parou de assistir')
+        }
+      }
     },
     []
   )
@@ -1118,6 +1124,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     selfMutedRef.current = false
 
     void window.bocas.tray.setVoiceState({ inVoice: false, micMuted: false })
+    window.bocas.diag.log('call', 'saiu')
   }, [cue, dropCaptureGate, dropLoopback])
 
   const join = React.useCallback(
@@ -1672,6 +1679,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         publishFlags()
 
         void window.bocas.tray.setVoiceState({ inVoice: true, micMuted: startMuted })
+        window.bocas.diag.log('call', 'entrou', { muted: startMuted })
       } catch (err) {
         // Uma entrada mais nova é dona da tela agora; esta só se desfaz.
         if (!stale()) {
@@ -2083,6 +2091,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         )
 
         setScreenSharing(true)
+        window.bocas.diag.log('tela', 'compartilhando', { quality, withAudio, legacyAudio })
         setShareInfo({
           sourceName: options.sourceName ?? 'Sua tela',
           quality,
@@ -2132,6 +2141,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     const current = roomRef.current
     if (!current) return
     dropCaptureGate()
+    window.bocas.diag.log('tela', 'parou de compartilhar')
     await current.localParticipant.setScreenShareEnabled(false)
     const audioPub = current.localParticipant.getTrackPublication(Track.Source.ScreenShareAudio)
     if (audioPub?.track) {

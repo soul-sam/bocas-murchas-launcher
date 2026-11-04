@@ -53,6 +53,7 @@ import type {
   OverlayToast
 } from '../preload/types.js'
 import { isOverlaySide } from '../preload/types.js'
+import { diagLog } from './services/diag-log.js'
 import { applyAutostart, launchedAtLogin } from './services/autostart.js'
 import { getMainWindow, showMainWindow } from './services/main-window.js'
 import { bringBack, closePopout, flashPopout, focusPopout, getPopoutState, openPopout } from './services/popout.js'
@@ -193,6 +194,21 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('overlay:dismiss', async () => {
     dismissOverlay()
+  })
+
+  // Do renderer pro log de diagnostico. So tags conhecidas e valores
+  // primitivos curtos: o arquivo nao pode virar deposito do que a tela mandar.
+  ipcMain.on('diag:log', (_e, tag: unknown, msg: unknown, data: unknown) => {
+    if (tag !== 'call' && tag !== 'tela') return
+    if (typeof msg !== 'string' || msg.length > 80) return
+    const clean: Record<string, string | number | boolean | null> = {}
+    if (data && typeof data === 'object') {
+      for (const [k, v] of Object.entries(data as Record<string, unknown>).slice(0, 8)) {
+        if (typeof v === 'number' || typeof v === 'boolean' || v === null) clean[k] = v
+        else if (typeof v === 'string') clean[k] = v.slice(0, 40)
+      }
+    }
+    diagLog(tag, msg, clean)
   })
 
   ipcMain.handle('overlay:mode', async () => getOverlayMode())

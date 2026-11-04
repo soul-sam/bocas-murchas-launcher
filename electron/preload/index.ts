@@ -99,6 +99,9 @@ const api: BocasAPI = {
     refresh: () => ipcRenderer.invoke('lol:refresh'),
     launch: () => ipcRenderer.invoke('lol:launch')
   },
+  diag: {
+    log: (tag, msg, data) => ipcRenderer.send('diag:log', tag, msg, data)
+  },
   overlay: {
     push: (state) => ipcRenderer.invoke('overlay:push', state),
     onAction: (cb) => on('overlay:action', cb),

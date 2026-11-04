@@ -432,6 +432,10 @@ function criarPonte(): BocasAPI {
       onBringBack: semEventos,
     },
 
+    // Log de diagnóstico mora no disco do launcher; no navegador não há onde.
+    diag: {
+      log: () => {}
+    },
     // A sobreposição é uma segunda janela transparente, sem moldura e sempre
     // por cima do jogo. Não tem equivalente nenhum no navegador — nem a
     // janela, nem o clique que atravessa, nem o atalho global que a chama.

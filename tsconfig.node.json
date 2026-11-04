@@ -21,5 +21,6 @@
     "electron/shared/**/*.ts",
     "electron/env.d.ts",
     "electron.vite.config.ts"
-  ]
+  ],
+  "exclude": ["electron/**/*.test.ts"]
 }
