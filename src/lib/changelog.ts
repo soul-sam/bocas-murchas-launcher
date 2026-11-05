@@ -42,6 +42,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '2.0.1',
+    headline: 'Launcher 2.0 — sobreposição mais leve',
+    items: [
+      'A sobreposição parou de ficar se puxando pra frente o tempo todo: agora ela só volta pra cima quando o jogo ou outra janela realmente a cobre.',
+      'No começo e no fim da partida ela fica quieta por alguns segundos e só se ajeita depois, pra não brigar com o jogo bem na troca de tela.',
+      'O launcher agora guarda um registro do que estava fazendo (sem mensagens nem dados de ninguém), pra ajudar a achar a causa quando o PC de alguém travar.',
+      'Novo: quando a memória do PC fica quase cheia, o registro anota quais programas estão usando mais memória (só o nome do programa), pra descobrir o que trava o computador.'
+    ]
+  },
+  {
     version: '2.0.0',
     headline: 'Launcher 2.0 — sobreposição mais leve',
     items: [

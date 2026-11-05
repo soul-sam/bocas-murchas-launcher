@@ -1,7 +1,9 @@
 import { app, powerMonitor, screen } from 'electron'
+import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { parseSystemMem, parseTasklistCsv, shouldSampleSystem, shouldSnapshot } from './memory-watch-policy.js'
 
 /**
  * LOG DE DIAGNOSTICO — `%APPDATA%\<app>\logs\main.log`.
@@ -15,8 +17,10 @@ import path from 'node:path'
  * O QUE ENTRA: versao, GPUs e drivers, monitores, processos do Chromium que
  * morreram, troca de monitor, suspender/retomar, fase da partida, o que a
  * sobreposicao fez com a janela, call e tela (pelo renderer) e um pulso a
- * cada 30 s com memoria. O QUE NAO ENTRA: mensagem, nome de gente, token,
- * caminho com nome de usuario. So tipo de evento, horario e numero.
+ * cada 30 s com memoria. Com a RAM livre baixa, os processos que mais usam
+ * memoria (so o nome do executavel, somado); a cada 10 min, pool do kernel e
+ * commit (ver memory-watch-policy.ts). O QUE NAO ENTRA: mensagem, nome de
+ * gente, token, caminho com nome de usuario, titulo de janela.
  *
  * GRAVACAO SINCRONA COM fdatasync, de proposito: o caso que importa e o PC
  * travar e ser desligado no botao. Linha que ficou no cache do sistema morre
@@ -126,6 +130,53 @@ async function logGpu(): Promise<void> {
   }
 }
 
+// Vigia de memoria: processos filhos baratos (tasklist ~0,4 s; PowerShell so
+// a cada 10 min). Um de cada vez; resposta que demorar mais que 15 s e largada.
+let lastSnapshotAt = 0
+let lastSystemAt = 0
+let memBusy = false
+
+function run(file: string, args: string[], done: (out: string) => void): void {
+  try {
+    execFile(file, args, { windowsHide: true, timeout: 15_000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout) => {
+      memBusy = false
+      if (err) return diagLog('memoria', 'leitura falhou', { cmd: path.basename(file), err: err.code ?? err.message })
+      done(String(stdout))
+    })
+    memBusy = true
+  } catch {
+    memBusy = false
+  }
+}
+
+function watchMemory(freeMb: number): void {
+  if (process.platform !== 'win32' || memBusy) return
+  const now = Date.now()
+  if (shouldSnapshot(freeMb, lastSnapshotAt, now)) {
+    lastSnapshotAt = now
+    run('tasklist', ['/fo', 'csv', '/nh'], (out) => {
+      diagLog('memoria', 'pouca RAM livre', { freeMb, top: parseTasklistCsv(out) })
+    })
+    return
+  }
+  if (shouldSampleSystem(lastSystemAt, now)) {
+    lastSystemAt = now
+    run(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        'Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory | Select-Object PoolNonpagedBytes,PoolPagedBytes,CommittedBytes,CommitLimit | ConvertTo-Json -Compress'
+      ],
+      (out) => {
+        const sys = parseSystemMem(out.trim())
+        if (sys) diagLog('memoria', 'sistema', { freeMb, ...sys })
+      }
+    )
+  }
+}
+
 function pulse(): void {
   let rssMb = 0
   try {
@@ -143,11 +194,13 @@ function pulse(): void {
       /* uma sonda quebrada nao cala as outras */
     }
   }
+  const freeMb = Math.round(os.freemem() / 1048576)
   diagLog('pulso', 'ok', {
-    freeMb: Math.round(os.freemem() / 1048576),
+    freeMb,
     appMb: rssMb,
     ...extra
   })
+  watchMemory(freeMb)
 }
 
 /** Depois do `ready` (usa `screen` e `powerMonitor`). */
